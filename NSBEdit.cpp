@@ -5,6 +5,7 @@
 
 #include "NSBEdit.h"
 #include <windows.h>
+#include <windowsx.h>
 #include <richedit.h>
 #include <commdlg.h>
 #include <gdiplus.h>
@@ -29,6 +30,16 @@
 #define IDM_EXIT            105
 #define IDM_PRINT           106
 #define IDM_ABOUT           107
+#define IDM_EXPORT_PDF      108
+#define IDM_SHORTCUTS       109
+#define IDM_UNDO            110
+#define IDM_REDO            111
+#define IDM_CUT             112
+#define IDM_COPY            113
+#define IDM_PASTE           114
+#define IDM_SELECTALL       115
+#define IDM_FIND            116
+#define IDM_REPLACE         117
 #define IDR_LOCALE_EN_GB    10
 
 #define IDC_NE_EDIT         201
@@ -502,6 +513,316 @@ static void Ne_Print(HWND hwnd)
 
     // Restore selection.
     SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&crSaved);
+}
+
+// ── Export to PDF via "Microsoft Print to PDF" ──────────────────────────────
+// We locate the printer by name, build a DEVMODE for it, then render the
+// RichEdit content via EM_FORMATRANGE into a printer DC that writes a PDF
+// file.  The output path is chosen by a Save As dialog — the user never
+// sees a printer dialog.
+static void Ne_ExportPdf(HWND hwnd)
+{
+    HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+    if (!hEdit) return;
+
+    // ── Ask user where to save ────────────────────────────────────────────────
+    wchar_t path[MAX_PATH] = {};
+    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (st && !st->currentPath.empty()) {
+        // Pre-fill with current filename, extension changed to .pdf
+        wcsncpy_s(path, st->currentPath.c_str(), _TRUNCATE);
+        wchar_t* dot = wcsrchr(path, L'.');
+        if (dot) wcscpy_s(dot, MAX_PATH - (dot - path), L".pdf");
+    }
+
+    OPENFILENAMEW ofn = {}; ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner   = hwnd;
+    auto filtPdf    = Ne_Filter(L"FILTER_PDF");
+    ofn.lpstrFilter = filtPdf.c_str();
+    ofn.lpstrFile   = path;
+    ofn.nMaxFile    = MAX_PATH;
+    ofn.lpstrDefExt = L"pdf";
+    ofn.Flags       = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+    ofn.lpstrTitle  = Ls(L"DLG_EXPORT_PDF");
+    if (!GetSaveFileNameW(&ofn)) return;
+
+    // ── Open a printer DC for "Microsoft Print to PDF" ────────────────────────
+    // We must set the output file in the DEVMODE before creating the DC.
+    const wchar_t* printerName = L"Microsoft Print to PDF";
+    HANDLE hPrinter = NULL;
+    if (!OpenPrinterW((LPWSTR)printerName, &hPrinter, NULL)) {
+        MessageBoxW(hwnd, Ls(L"MSG_PDF_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    LONG dmSize = DocumentPropertiesW(hwnd, hPrinter, (LPWSTR)printerName, NULL, NULL, 0);
+    if (dmSize <= 0) { ClosePrinter(hPrinter); MessageBoxW(hwnd, Ls(L"MSG_PDF_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR); return; }
+
+    std::vector<BYTE> dmBuf((size_t)dmSize);
+    DEVMODEW* pDm = (DEVMODEW*)dmBuf.data();
+    DocumentPropertiesW(hwnd, hPrinter, (LPWSTR)printerName, pDm, NULL, DM_OUT_BUFFER);
+    ClosePrinter(hPrinter);
+
+    // Set the output file name into DEVMODE.
+    pDm->dmFields |= DM_PRINTQUALITY;
+    pDm->dmPrintQuality = DMRES_HIGH;
+    // The output filename is passed via DEVMODE.dmFields / private data on
+    // "Microsoft Print to PDF" — we use the documented approach:
+    // set dmOutputFile (not in standard DEVMODE, use SetPrinterData workaround
+    // via CreateDCW with the path as the port name in a temporary copy).
+    // Simplest portable way: set DM_ORIENTATION so DC is created, then
+    // use DOCINFO.lpszOutput to redirect to file.
+    pDm->dmFields      |= DM_ORIENTATION;
+    pDm->dmOrientation  = DMORIENT_PORTRAIT;
+
+    HDC hDC = CreateDCW(L"WINSPOOL", printerName, NULL, pDm);
+    if (!hDC) {
+        MessageBoxW(hwnd, Ls(L"MSG_PDF_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
+        return;
+    }
+
+    // ── Start document, redirecting output to the chosen file ─────────────────
+    NeState* stDoc = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    std::wstring docTitle = (stDoc && !stDoc->currentPath.empty())
+                            ? stDoc->currentPath : Ls(L"UNTITLED");
+    DOCINFOW di = {};
+    di.cbSize      = sizeof(di);
+    di.lpszDocName = docTitle.c_str();
+    di.lpszOutput  = path;   // redirect PDF output to chosen file
+
+    if (StartDocW(hDC, &di) <= 0) { DeleteDC(hDC); MessageBoxW(hwnd, Ls(L"MSG_PDF_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR); return; }
+
+    // ── Page geometry in twips ────────────────────────────────────────────────
+    int pageW = MulDiv(GetDeviceCaps(hDC, PHYSICALWIDTH),  1440, GetDeviceCaps(hDC, LOGPIXELSX));
+    int pageH = MulDiv(GetDeviceCaps(hDC, PHYSICALHEIGHT), 1440, GetDeviceCaps(hDC, LOGPIXELSY));
+    int offX  = MulDiv(GetDeviceCaps(hDC, PHYSICALOFFSETX), 1440, GetDeviceCaps(hDC, LOGPIXELSX));
+    int offY  = MulDiv(GetDeviceCaps(hDC, PHYSICALOFFSETY), 1440, GetDeviceCaps(hDC, LOGPIXELSY));
+    RECT rcPage = { offX, offY, pageW - offX, pageH - offY };
+
+    GETTEXTLENGTHEX gtl = { GTL_NUMCHARS | GTL_PRECISE, 1200 };
+    int docLen = (int)SendMessageW(hEdit, EM_GETTEXTLENGTHEX, (WPARAM)&gtl, 0);
+
+    CHARRANGE crSaved = {};
+    SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&crSaved);
+
+    FORMATRANGE fr = {};
+    fr.hdc = fr.hdcTarget = hDC;
+    fr.rc = fr.rcPage = rcPage;
+    fr.chrg.cpMin = 0;
+    fr.chrg.cpMax = -1;
+
+    int printed = 0;
+    while (printed < docLen) {
+        StartPage(hDC);
+        fr.chrg.cpMin = printed;
+        fr.chrg.cpMax = -1;
+        fr.rc = rcPage;
+        printed = (int)SendMessageW(hEdit, EM_FORMATRANGE, TRUE, (LPARAM)&fr);
+        EndPage(hDC);
+        if (printed <= fr.chrg.cpMin) break;
+    }
+
+    SendMessageW(hEdit, EM_FORMATRANGE, FALSE, 0);  // free cached render info
+    EndDoc(hDC);
+    DeleteDC(hDC);
+
+    SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&crSaved);
+}
+
+// ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+// Displays a read-only ListView with three columns: Shortcut | Function | Description.
+// Sorted most-used → least-used.  Includes menu accelerators, Alt-key mnemonics,
+// and standard RichEdit editing shortcuts so new users can discover everything.
+struct ShortcutRow { const wchar_t* key; const wchar_t* func; const wchar_t* desc; };
+
+static const ShortcutRow s_shortcuts[] = {
+    // ── Formatting (most typed by far) ────────────────────────────────────────
+    { L"[Ctrl]+B",             L"Bold",               L"Toggle bold on the selection" },
+    { L"[Ctrl]+I",             L"Italic",             L"Toggle italic on the selection" },
+    { L"[Ctrl]+U",             L"Underline",          L"Toggle underline on the selection" },
+    // ── Edit ──────────────────────────────────────────────────────────────────
+    { L"[Ctrl]+Z",             L"Undo",               L"Undo the last change" },
+    { L"[Ctrl]+Y",             L"Redo",               L"Redo the last undone change" },
+    { L"[Ctrl]+X",             L"Cut",                L"Cut selection to clipboard" },
+    { L"[Ctrl]+C",             L"Copy",               L"Copy selection to clipboard" },
+    { L"[Ctrl]+V",             L"Paste",              L"Paste from clipboard" },
+    { L"[Ctrl]+A",             L"Select All",         L"Select the entire document" },
+    // ── File ──────────────────────────────────────────────────────────────────
+    { L"[Ctrl]+S",             L"Save",               L"Save the current file" },
+    { L"[Ctrl]+[Shift]+S",     L"Save As",            L"Save to a new file" },
+    { L"[Ctrl]+N",             L"New",                L"Create a new empty document" },
+    { L"[Ctrl]+O",             L"Open",               L"Open a file" },
+    { L"[Ctrl]+P",             L"Print",              L"Print the document" },
+    { L"[Ctrl]+[Shift]+P",     L"Export as PDF",      L"Export the document as a PDF file" },
+    // ── Navigation ────────────────────────────────────────────────────────────
+    { L"[Ctrl]+[Home]",        L"Go to start",        L"Move cursor to start of document" },
+    { L"[Ctrl]+[End]",         L"Go to end",          L"Move cursor to end of document" },
+    { L"[Ctrl]+[Left]",        L"Word left",          L"Move cursor one word to the left" },
+    { L"[Ctrl]+[Right]",       L"Word right",         L"Move cursor one word to the right" },
+    { L"[Shift]+[Left/Right]", L"Extend selection",   L"Extend text selection one character" },
+    { L"[Ctrl]+[Shift]+[Left/Right]", L"Select word", L"Extend selection one word at a time" },
+    // ── Menu access (Alt mnemonics) ───────────────────────────────────────────
+    { L"[Alt]+F, N",           L"New",                L"File menu \u2192 New" },
+    { L"[Alt]+F, O",           L"Open",               L"File menu \u2192 Open" },
+    { L"[Alt]+F, S",           L"Save",               L"File menu \u2192 Save" },
+    { L"[Alt]+F, A",           L"Save As",            L"File menu \u2192 Save As" },
+    { L"[Alt]+F, P",           L"Print",              L"File menu \u2192 Print" },
+    { L"[Alt]+F, E",           L"Export as PDF",      L"File menu \u2192 Export as PDF" },
+    { L"[Ctrl]+W",             L"Exit",               L"Close the document (exit app)" },
+    { L"[Alt]+F, X",           L"Exit",               L"File menu \u2192 Exit" },
+    { L"[Alt]+E, U",           L"Undo",               L"Edit menu \u2192 Undo" },
+    { L"[Alt]+E, R",           L"Redo",               L"Edit menu \u2192 Redo" },
+    { L"[Alt]+E, T",           L"Cut",                L"Edit menu \u2192 Cut" },
+    { L"[Alt]+E, C",           L"Copy",               L"Edit menu \u2192 Copy" },
+    { L"[Alt]+E, P",           L"Paste",              L"Edit menu \u2192 Paste" },
+    { L"[Alt]+E, A",           L"Select All",         L"Edit menu \u2192 Select All" },
+    { L"[Alt]+H, K",           L"Keyboard Shortcuts", L"Help menu \u2192 Keyboard Shortcuts" },
+    { L"[Alt]+H, A",           L"About",              L"Help menu \u2192 About NSBEdit" },
+    // ── Misc ──────────────────────────────────────────────────────────────────
+    { L"[F1]",                 L"Keyboard Shortcuts", L"Show this keyboard shortcuts list" },
+    { L"[Esc]",                L"Close dialog",       L"Close the current dialog" },
+    { L"[Enter]",              L"New line",            L"Insert a new paragraph" },
+    { L"[Tab]",                L"Indent",              L"Insert a tab character" },
+    { L"[Delete]",             L"Delete",              L"Delete the character to the right" },
+    { L"[Backspace]",          L"Backspace",           L"Delete the character to the left" },
+    { L"[Ctrl]+[Delete]",      L"Delete word right",  L"Delete word to the right of cursor" },
+    { L"[Ctrl]+[Backspace]",   L"Delete word left",   L"Delete word to the left of cursor" },
+};
+static const int s_shortcutCount = (int)(sizeof(s_shortcuts) / sizeof(s_shortcuts[0]));
+
+static void Ne_ShowShortcuts(HWND parent)
+{
+    // Simple modal dialog: title bar, a ListView, and a Close button.
+    // We create it manually (no .rc dialog template needed).
+    HINSTANCE hi = GetModuleHandleW(NULL);
+
+    // ── Register class (once) ─────────────────────────────────────────────────
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc   = [](HWND h, UINT m, WPARAM w, LPARAM l) -> LRESULT {
+        if (m == WM_COMMAND && (LOWORD(w) == IDOK || LOWORD(w) == IDCANCEL))
+            { PostMessageW(h, WM_CLOSE, 0, 0); return 0; }
+        if (m == WM_CLOSE)  { DestroyWindow(h); return 0; }
+        if (m == WM_DESTROY) {
+            // Free the bold font we created for the Shortcut column.
+            HFONT hf = (HFONT)GetWindowLongPtrW(h, GWLP_USERDATA);
+            if (hf) DeleteObject(hf);
+            PostQuitMessage(0); return 0;
+        }
+        if (m == WM_KEYDOWN && w == VK_ESCAPE) { PostMessageW(h, WM_CLOSE, 0, 0); return 0; }
+        // ── Custom-draw: bold Shortcut column, royal-blue Description column ──
+        if (m == WM_NOTIFY) {
+            NMHDR* hdr = (NMHDR*)l;
+            if (hdr->idFrom == 100 && hdr->code == NM_CUSTOMDRAW) {
+                NMLVCUSTOMDRAW* cd = (NMLVCUSTOMDRAW*)l;
+                switch (cd->nmcd.dwDrawStage) {
+                case CDDS_PREPAINT:
+                    return CDRF_NOTIFYITEMDRAW;
+                case CDDS_ITEMPREPAINT:
+                    return CDRF_NOTIFYSUBITEMDRAW;
+                case CDDS_ITEMPREPAINT | CDDS_SUBITEM: {
+                    if (cd->iSubItem == 0) {
+                        HFONT hfBold = (HFONT)GetWindowLongPtrW(h, GWLP_USERDATA);
+                        if (hfBold) SelectObject(cd->nmcd.hdc, hfBold);
+                        return CDRF_NEWFONT;
+                    }
+                    if (cd->iSubItem == 2) {
+                        cd->clrText = RGB(0, 56, 184);  // dark royal blue
+                        return CDRF_NEWFONT;
+                    }
+                    return CDRF_DODEFAULT;
+                }
+                }
+            }
+        }
+        return DefWindowProcW(h, m, w, l);
+    };
+    wc.hInstance     = hi;
+    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
+    wc.lpszClassName = L"NsbShortcutsClass";
+    if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
+
+    const int W = S(640), H = S(520);
+    RECT pr = {}; if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
+    int x = (pr.left + pr.right)  / 2 - W / 2;
+    int y = (pr.top  + pr.bottom) / 2 - H / 2;
+    if (y < 30) y = 30;
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE,
+        L"NsbShortcutsClass", Ls(L"SHORTCUTS_TITLE"),
+        WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_VISIBLE,
+        x, y, W, H, parent, NULL, hi, NULL);
+    if (!dlg) return;
+
+    HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
+    if (hIco) {
+        SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+        SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco);
+    }
+
+    RECT rcC; GetClientRect(dlg, &rcC);
+    const int PAD   = S(8);
+    const int BTN_H = S(28);
+
+    // ── ListView ──────────────────────────────────────────────────────────────
+    HWND hLV = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
+        WS_CHILD | WS_VISIBLE | LVS_REPORT | LVS_NOSORTHEADER | LVS_SINGLESEL | WS_VSCROLL,
+        PAD, PAD,
+        rcC.right - 2 * PAD, rcC.bottom - 3 * PAD - BTN_H,
+        dlg, (HMENU)100, hi, NULL);
+    SendMessageW(hLV, LVM_SETEXTENDEDLISTVIEWSTYLE, 0,
+        LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+
+    // Create a bold font for the Shortcut column; store on the dialog for cleanup.
+    HFONT hfBase = (HFONT)SendMessageW(hLV, WM_GETFONT, 0, 0);
+    if (!hfBase) hfBase = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+    LOGFONTW lfBold = {};
+    GetObjectW(hfBase, sizeof(lfBold), &lfBold);
+    lfBold.lfWeight = FW_BOLD;
+    HFONT hfBold = CreateFontIndirectW(&lfBold);
+    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)hfBold);
+
+    // Columns
+    auto addCol = [&](int idx, const wchar_t* text, int w) {
+        LVCOLUMNW lvc = {};
+        lvc.mask    = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+        lvc.iSubItem = idx;
+        lvc.pszText  = (LPWSTR)text;
+        lvc.cx       = w;
+        ListView_InsertColumn(hLV, idx, &lvc);
+    };
+    addCol(0, Ls(L"SHORTCUTS_COL1"), S(170));
+    addCol(1, Ls(L"SHORTCUTS_COL2"), S(130));
+    addCol(2, Ls(L"SHORTCUTS_COL3"), S(295));
+
+    // Rows
+    for (int i = 0; i < s_shortcutCount; ++i) {
+        LVITEMW lvi = {};
+        lvi.mask    = LVIF_TEXT;
+        lvi.iItem   = i;
+        lvi.iSubItem = 0;
+        lvi.pszText  = (LPWSTR)s_shortcuts[i].key;
+        ListView_InsertItem(hLV, &lvi);
+        ListView_SetItemText(hLV, i, 1, (LPWSTR)s_shortcuts[i].func);
+        ListView_SetItemText(hLV, i, 2, (LPWSTR)s_shortcuts[i].desc);
+    }
+
+    // ── Close button ──────────────────────────────────────────────────────────
+    int bx = (rcC.right - S(80)) / 2;
+    int by = rcC.bottom - PAD - BTN_H;
+    HWND hBtn = CreateWindowExW(0, L"BUTTON", Ls(L"SHORTCUTS_BTN_CLOSE"),
+        WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
+        bx, by, S(80), BTN_H, dlg, (HMENU)IDOK, hi, NULL);
+    SendMessageW(hBtn, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
+    if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
+    SetFocus(hBtn);
+    MSG m;
+    while (GetMessageW(&m, NULL, 0, 0)) {
+        if (m.message == WM_KEYDOWN && m.wParam == VK_ESCAPE)
+            PostMessageW(dlg, WM_CLOSE, 0, 0);
+        if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
+    }
+    if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
 }
 
 static bool Ne_IsRtf(const std::string& bytes)
@@ -1153,18 +1474,34 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
         // ── File menu ─────────────────────────────────────────────────────────
         HMENU hMenu  = CreateMenu();
+        // ── File menu ─────────────────────────────────────────────────────────
         HMENU hFile  = CreatePopupMenu();
-        AppendMenuW(hFile, MF_STRING, IDM_NEW,    Ls(L"MENU_NEW"));
-        AppendMenuW(hFile, MF_STRING, IDM_OPEN,   Ls(L"MENU_OPEN"));
-        AppendMenuW(hFile, MF_STRING, IDM_SAVE,   Ls(L"MENU_SAVE"));
-        AppendMenuW(hFile, MF_STRING, IDM_SAVEAS, Ls(L"MENU_SAVEAS"));
+        AppendMenuW(hFile, MF_STRING, IDM_NEW,        Ls(L"MENU_NEW"));
+        AppendMenuW(hFile, MF_STRING, IDM_OPEN,       Ls(L"MENU_OPEN"));
+        AppendMenuW(hFile, MF_STRING, IDM_SAVE,       Ls(L"MENU_SAVE"));
+        AppendMenuW(hFile, MF_STRING, IDM_SAVEAS,     Ls(L"MENU_SAVEAS"));
         AppendMenuW(hFile, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hFile, MF_STRING, IDM_PRINT,  Ls(L"MENU_PRINT"));
+        AppendMenuW(hFile, MF_STRING, IDM_PRINT,      Ls(L"MENU_PRINT"));
+        AppendMenuW(hFile, MF_STRING, IDM_EXPORT_PDF, Ls(L"MENU_EXPORT_PDF"));
         AppendMenuW(hFile, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hFile, MF_STRING, IDM_EXIT,   Ls(L"MENU_EXIT"));
+        AppendMenuW(hFile, MF_STRING, IDM_EXIT,       Ls(L"MENU_EXIT"));
         AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hFile, Ls(L"MENU_FILE"));
+        // ── Edit menu ─────────────────────────────────────────────────────────
+        HMENU hEdit2 = CreatePopupMenu();
+        AppendMenuW(hEdit2, MF_STRING, IDM_UNDO,      Ls(L"MENU_UNDO"));
+        AppendMenuW(hEdit2, MF_STRING, IDM_REDO,      Ls(L"MENU_REDO"));
+        AppendMenuW(hEdit2, MF_SEPARATOR, 0, NULL);
+        AppendMenuW(hEdit2, MF_STRING, IDM_CUT,       Ls(L"MENU_CUT"));
+        AppendMenuW(hEdit2, MF_STRING, IDM_COPY,      Ls(L"MENU_COPY"));
+        AppendMenuW(hEdit2, MF_STRING, IDM_PASTE,     Ls(L"MENU_PASTE"));
+        AppendMenuW(hEdit2, MF_SEPARATOR, 0, NULL);
+        AppendMenuW(hEdit2, MF_STRING, IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
+        AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hEdit2, Ls(L"MENU_EDIT"));
+        // ── Help menu ─────────────────────────────────────────────────────────
         HMENU hHelp = CreatePopupMenu();
-        AppendMenuW(hHelp, MF_STRING, IDM_ABOUT, Ls(L"MENU_ABOUT"));
+        AppendMenuW(hHelp, MF_STRING, IDM_SHORTCUTS, Ls(L"MENU_SHORTCUTS"));
+        AppendMenuW(hHelp, MF_SEPARATOR, 0, NULL);
+        AppendMenuW(hHelp, MF_STRING, IDM_ABOUT,     Ls(L"MENU_ABOUT"));
         AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ls(L"MENU_HELP"));
         SetMenu(hwnd, hMenu);
 
@@ -1411,13 +1748,23 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         int wmEv  = HIWORD(wParam);
 
         // ── File menu ─────────────────────────────────────────────────────────
-        if (wmId == IDM_NEW)    { Ne_New(hwnd);    return 0; }
-        if (wmId == IDM_OPEN)   { Ne_Open(hwnd);   return 0; }
-        if (wmId == IDM_SAVE)   { Ne_Save(hwnd);   return 0; }
-        if (wmId == IDM_SAVEAS) { Ne_SaveAs(hwnd); return 0; }
-        if (wmId == IDM_EXIT)   { PostMessageW(hwnd, WM_CLOSE, 0, 0); return 0; }
-        if (wmId == IDM_PRINT)  { Ne_Print(hwnd); return 0; }
-        if (wmId == IDM_ABOUT)  { ShowNsbAboutDialog(hwnd); return 0; }
+        if (wmId == IDM_NEW)        { Ne_New(hwnd);               return 0; }
+        if (wmId == IDM_OPEN)       { Ne_Open(hwnd);              return 0; }
+        if (wmId == IDM_SAVE)       { Ne_Save(hwnd);              return 0; }
+        if (wmId == IDM_SAVEAS)     { Ne_SaveAs(hwnd);            return 0; }
+        if (wmId == IDM_EXIT)       { PostMessageW(hwnd, WM_CLOSE, 0, 0); return 0; }
+        if (wmId == IDM_PRINT)      { Ne_Print(hwnd);             return 0; }
+        if (wmId == IDM_EXPORT_PDF) { Ne_ExportPdf(hwnd);         return 0; }
+        // ── Edit menu ─────────────────────────────────────────────────────────
+        if (wmId == IDM_UNDO)      { if (hEdit) SendMessageW(hEdit, WM_UNDO, 0, 0);                  SetFocus(hEdit); return 0; }
+        if (wmId == IDM_REDO)      { if (hEdit) SendMessageW(hEdit, EM_REDO, 0, 0);                  SetFocus(hEdit); return 0; }
+        if (wmId == IDM_CUT)       { if (hEdit) SendMessageW(hEdit, WM_CUT,  0, 0);                  SetFocus(hEdit); return 0; }
+        if (wmId == IDM_COPY)      { if (hEdit) SendMessageW(hEdit, WM_COPY, 0, 0);                  SetFocus(hEdit); return 0; }
+        if (wmId == IDM_PASTE)     { if (hEdit) SendMessageW(hEdit, WM_PASTE, 0, 0);                 SetFocus(hEdit); return 0; }
+        if (wmId == IDM_SELECTALL) { if (hEdit) SendMessageW(hEdit, EM_SETSEL, 0, -1);               SetFocus(hEdit); return 0; }
+        // ── Help menu ─────────────────────────────────────────────────────────
+        if (wmId == IDM_SHORTCUTS) { Ne_ShowShortcuts(hwnd);      return 0; }
+        if (wmId == IDM_ABOUT)     { ShowNsbAboutDialog(hwnd);     return 0; }
 
         if (!hEdit) break;
 
@@ -1557,6 +1904,62 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (wmEv == EN_SELCHANGE) Ne_SyncToolbar(hwnd, hEdit);
         }
         break;
+    }
+
+    // ── WM_CONTEXTMENU — right-click context menu on the editor ────────────────────
+    // Mirrors the Edit menu: Undo/Redo, Cut/Copy/Paste, Select All.
+    case WM_CONTEXTMENU: {
+        HWND hSrc = (HWND)wParam;
+        HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+        if (hSrc != hEdit) break;   // only for the editor, not toolbar buttons
+
+        HMENU hCtx = CreatePopupMenu();
+        // Grey Undo/Redo based on whether the operation is available.
+        DWORD canUndo = (DWORD)SendMessageW(hEdit, EM_CANUNDO, 0, 0);
+        DWORD canRedo = (DWORD)SendMessageW(hEdit, EM_CANREDO, 0, 0);
+        AppendMenuW(hCtx, MF_STRING | (canUndo ? 0 : MF_GRAYED), IDM_UNDO, Ls(L"MENU_UNDO"));
+        AppendMenuW(hCtx, MF_STRING | (canRedo ? 0 : MF_GRAYED), IDM_REDO, Ls(L"MENU_REDO"));
+        AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
+        // Grey Cut/Copy when nothing is selected.
+        CHARRANGE cr = {}; SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+        bool hasSel = (cr.cpMin != cr.cpMax);
+        AppendMenuW(hCtx, MF_STRING | (hasSel ? 0 : MF_GRAYED), IDM_CUT,  Ls(L"MENU_CUT"));
+        AppendMenuW(hCtx, MF_STRING | (hasSel ? 0 : MF_GRAYED), IDM_COPY, Ls(L"MENU_COPY"));
+        AppendMenuW(hCtx, MF_STRING, IDM_PASTE, Ls(L"MENU_PASTE"));
+        AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
+        AppendMenuW(hCtx, MF_STRING, IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
+
+        int sx = GET_X_LPARAM(lParam), sy = GET_Y_LPARAM(lParam);
+        if (sx == -1 && sy == -1) {
+            // Keyboard context-menu key: show near caret.
+            POINT pt = {}; SendMessageW(hEdit, EM_GETSCROLLPOS, 0, (LPARAM)&pt);
+            POINTL caret = {};
+            SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&caret, cr.cpMax);
+            POINT scr = { (int)caret.x, (int)caret.y };
+            ClientToScreen(hEdit, &scr);
+            sx = scr.x; sy = scr.y;
+        }
+        TrackPopupMenu(hCtx, TPM_RIGHTBUTTON, sx, sy, 0, hwnd, NULL);
+        DestroyMenu(hCtx);
+        return 0;
+    }
+
+    // ── WM_INITMENUPOPUP — grey Edit menu items dynamically ──────────────────
+    case WM_INITMENUPOPUP: {
+        HMENU hPop = (HMENU)wParam;
+        HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+        if (!hEdit) break;
+        // Only update the Edit popup (check by presence of IDM_UNDO).
+        if (GetMenuState(hPop, IDM_UNDO, MF_BYCOMMAND) == (UINT)-1) break;
+        CHARRANGE cr = {}; SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+        bool hasSel  = (cr.cpMin != cr.cpMax);
+        bool canUndo = SendMessageW(hEdit, EM_CANUNDO, 0, 0) != 0;
+        bool canRedo = SendMessageW(hEdit, EM_CANREDO, 0, 0) != 0;
+        EnableMenuItem(hPop, IDM_UNDO,  MF_BYCOMMAND | (canUndo ? MF_ENABLED : MF_GRAYED));
+        EnableMenuItem(hPop, IDM_REDO,  MF_BYCOMMAND | (canRedo ? MF_ENABLED : MF_GRAYED));
+        EnableMenuItem(hPop, IDM_CUT,   MF_BYCOMMAND | (hasSel  ? MF_ENABLED : MF_GRAYED));
+        EnableMenuItem(hPop, IDM_COPY,  MF_BYCOMMAND | (hasSel  ? MF_ENABLED : MF_GRAYED));
+        return 0;
     }
 
     // ── Background colours ────────────────────────────────────────────────────
@@ -1704,13 +2107,26 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
                 SendMessageW(s_hwndMain, WM_COMMAND, shift ? IDM_SAVEAS : IDM_SAVE, 0);
                 continue;
             }
-            if (msg.wParam == 'P') { SendMessageW(s_hwndMain, WM_COMMAND, IDM_PRINT, 0); continue; }
+            if (msg.wParam == 'P') {
+                SendMessageW(s_hwndMain, WM_COMMAND, shift ? IDM_EXPORT_PDF : IDM_PRINT, 0);
+                continue;
+            }
+            if (msg.wParam == 'W') {
+                // Ctrl+W: close tab (once tabs exist); for now, exit the app.
+                SendMessageW(s_hwndMain, WM_CLOSE, 0, 0);
+                continue;
+            }
             // Ctrl+B/I/U for text formatting (only when editor has focus).
             if (GetFocus() == GetDlgItem(s_hwndMain, IDC_NE_EDIT)) {
                 if (msg.wParam == 'B') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_BOLD,      0); continue; }
                 if (msg.wParam == 'I') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_ITALIC,    0); continue; }
                 if (msg.wParam == 'U') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_UNDERLINE, 0); continue; }
             }
+        }
+        // F1 → Keyboard Shortcuts dialog
+        if (msg.message == WM_KEYDOWN && msg.wParam == VK_F1) {
+            SendMessageW(s_hwndMain, WM_COMMAND, IDM_SHORTCUTS, 0);
+            continue;
         }
         TranslateMessage(&msg);
         DispatchMessageW(&msg);

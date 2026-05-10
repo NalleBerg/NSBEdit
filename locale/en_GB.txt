@@ -8,15 +8,24 @@ APP_NAME = NSBEdit
 UNTITLED = Untitled
 
 # ── Menus ─────────────────────────────────────────────────────────────────────
-MENU_FILE   = &File
-MENU_NEW    = &New\tCtrl+N
-MENU_OPEN   = &Open...\tCtrl+O
-MENU_SAVE   = &Save\tCtrl+S
-MENU_SAVEAS = Save &As...\tCtrl+Shift+S
-MENU_PRINT  = &Print...\tCtrl+P
-MENU_EXIT   = E&xit
-MENU_HELP   = &Help
-MENU_ABOUT  = &About NSBEdit
+MENU_FILE       = &File
+MENU_NEW        = &New\tCtrl+N
+MENU_OPEN       = &Open...\tCtrl+O
+MENU_SAVE       = &Save\tCtrl+S
+MENU_SAVEAS     = Save &As...\tCtrl+Shift+S
+MENU_PRINT      = &Print...\tCtrl+P
+MENU_EXPORT_PDF = &Export as PDF...\tCtrl+Shift+P
+MENU_EXIT       = E&xit	Ctrl+W
+MENU_EDIT         = &Edit
+MENU_UNDO         = &Undo\tCtrl+Z
+MENU_REDO         = &Redo\tCtrl+Y
+MENU_CUT          = Cu&t\tCtrl+X
+MENU_COPY         = &Copy\tCtrl+C
+MENU_PASTE        = &Paste\tCtrl+V
+MENU_SELECTALL    = Select &All\tCtrl+A
+MENU_HELP       = &Help
+MENU_SHORTCUTS  = &Keyboard Shortcuts...\tF1
+MENU_ABOUT      = &About NSBEdit
 
 # ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
 FILTER_OPEN   = Supported files (*.rtf;*.txt;*.md)|*.rtf;*.txt;*.md|RTF files (*.rtf)|*.rtf|Text files (*.txt)|*.txt|Markdown files (*.md)|*.md|All files (*.*)|*.*
@@ -53,6 +62,18 @@ TIP_ALIGN_J     = Justify
 TIP_BULLET      = Bullet list
 TIP_NUMBERED    = Numbered list
 TIP_IMAGE       = Insert image  (PNG / JPEG)
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF files (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Export as PDF
+MSG_PDF_ERR      = Could not export PDF. Make sure "Microsoft Print to PDF" is installed (Windows 10+).
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Keyboard Shortcuts
+SHORTCUTS_COL1   = Shortcut
+SHORTCUTS_COL2   = Function
+SHORTCUTS_COL3   = Description
+SHORTCUTS_BTN_CLOSE = Close
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.

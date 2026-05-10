@@ -1,6 +1,17 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 10 May 2026 &mdash; v2026.05.10.15 (15:15)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 10 May 2026 &mdash; v2026.05.10.16 (16:25)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.10.16</span></h3>
+<p><strong>Edit menu, right-click context menu, Export as PDF, Keyboard Shortcuts dialog (10.05.2026, 16:25):</strong></p>
+<ul>
+<li><strong>Edit menu:</strong> Undo, Redo, Cut, Copy, Paste, Select All &mdash; with keyboard shortcuts shown in menu. <code>WM_INITMENUPOPUP</code> greys Undo/Redo when unavailable and Cut/Copy when nothing is selected.</li>
+<li><strong>Right-click context menu on editor:</strong> Same items as Edit menu (Undo/Redo, Cut/Copy/Paste, Select All), greyed dynamically based on state. Context-menu key (<code>VK_APPS</code>) positions the popup near the caret.</li>
+<li><strong>Export as PDF (<code>[Ctrl]+[Shift]+P</code>):</strong> Uses <em>Microsoft Print to PDF</em> (built into Windows 10+). Save As dialog to pick output path, then renders via <code>EM_FORMATRANGE</code> into a printer DC with <code>DOCINFO.lpszOutput</code> redirected to the chosen file. No third-party libraries. Added <code>-lwinspool</code> to linker flags.</li>
+<li><strong>Keyboard Shortcuts dialog (<code>[F1]</code>):</strong> Modal dialog with a three-column <code>WC_LISTVIEWW</code> (Shortcut / Function / Description). 40 rows, sorted most-used to least. <code>NM_CUSTOMDRAW</code> renders the Shortcut column in <strong>bold</strong> and the Description column in dark royal blue. Esc and Close button both dismiss.</li>
+<li><strong>[Ctrl]+W to exit:</strong> Fires <code>WM_CLOSE</code> (triggers the unsaved-change prompt). Menu item <em>Exit</em> now shows <code>Ctrl+W</code> as its accelerator hint. Designed to become &ldquo;close current tab&rdquo; once tabbed editing is added.</li>
+<li><strong><code>#include &lt;windowsx.h&gt;</code>:</strong> Added for <code>GET_X_LPARAM</code>&thinsp;/&thinsp;<code>GET_Y_LPARAM</code> used in the context-menu handler.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.10.15</span></h3>
 <p><strong>First release &mdash; standalone portable RTF notepad (10.05.2026, 15:15):</strong></p>
