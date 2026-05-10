@@ -1,0 +1,7 @@
+# Compiled outputs
+NSBEdit.exe
+NSBEdit.res
+
+# Generated header
+version.h
+curver.txt

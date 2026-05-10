@@ -1,0 +1,172 @@
+NSBEdit — project handover notes
+Written: 2026-05-10
+Purpose: Pick this up after moving the folder to its own workspace (e.g. C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit\ or BSBEdit\ — see NOTE below).
+====================================================================================================
+
+NOTE ON FOLDER NAME
+-------------------
+The folder is currently named NSBEdit inside the SetupCraft repo.
+When you move it, the destination in the chat was mentioned as "BSBEdit" — double-check whether
+that is intentional (a rename) or a typo for NSBEdit. If you rename the app itself, you will
+need to update: executable name in makeit.bat, class names in NSBEdit.cpp, window title string,
+resource file names, and the .rc IDI_APPICON resource.
+
+
+WHAT THE APP IS
+---------------
+NSBEdit is a standalone Win32 RTF notepad with a full formatting toolbar and status bar.
+It is written in a single C++ source file (NSBEdit.cpp) plus a tiny header (NSBEdit.h).
+It shares two source files with the parent SetupCraft project: dpi.cpp / dpi.h and tooltip.cpp / tooltip.h.
+After the move those files must either be:
+  (a) copied into the new folder and the #include paths updated from "../dpi.h" to "dpi.h", OR
+  (b) kept at a relative path — but that only works if the workspace layout is the same.
+Option (a) is cleaner for a standalone repo.
+
+
+FILES IN THIS FOLDER AND WHAT THEY ARE
+---------------------------------------
+NSBEdit.cpp       — Entire application: WinMain, Ne_WndProc, toolbar, menus, RTF streaming,
+                    About dialog, License dialog, icon loading. ~1500 lines.
+NSBEdit.h         — Trivial header, just a #pragma once + comment. Nothing functional.
+NSBEdit.rc        — Resource script. Two lines:
+                      1 ICON "NSBEdit.ico"
+                      1 RT_MANIFEST "app.manifest"
+app.manifest      — DPI awareness (PerMonitorV2) + ComCtl32 v6 activation context.
+NSBEdit.ico       — 4-frame ICO (256, 48, 32, 16 px). Generated from NSB.svg via ImageMagick.
+NSB.svg           — Master logo SVG. Square viewBox "8 -3 151 151". Transparent background.
+                    Contains a 3D blue "E" glyph + 3D crimson "NSB" monogram.
+NSB.png           — 256×256 transparent PNG derived from NSB.svg. Used by the About dialog
+                    (rendered via GDI+ Image::FromFile at runtime).
+NSBEdit.exe       — Compiled binary (statically linked, no external DLL deps except system ones).
+NSBEdit.res       — Compiled resource object. Regenerated every build.
+GnuLogo.bmp       — GNU wildebeest bitmap. Shown at the top of the License dialog.
+                    Copied from the parent SetupCraft folder by makeit.bat.
+GPLv2.md          — License text (UTF-8). Read and parsed at runtime for the License dialog.
+                    Copied from the parent SetupCraft folder by makeit.bat.
+makeit.bat        — The ONE AND ONLY build script. Always use this to compile.
+NSB_letters.svg   — Working file used during logo design (the NSB letters layer).
+NSB_letters.pbm   — Raster intermediate used during logo design.
+NSB.pbm           — Another raster intermediate.
+nsb_16/32/48/256.png — Individual size PNGs used when building the ICO.
+API_INTERNALS/    — Folder with API notes (carried over from SetupCraft context; may be pruned).
+
+
+HOW TO BUILD (after the move)
+------------------------------
+Prerequisites (same as before):
+  - MinGW-w64 with g++ on PATH  (tested with GCC 13 / MinGW 2.45)
+  - windres on PATH (same MinGW install)
+  - ImageMagick "magick" command (only needed to regenerate the ICO/PNG, not for normal builds)
+
+If you copied dpi.cpp/tooltip.cpp into the folder, update makeit.bat compile line:
+  Change:  ../dpi.cpp ../tooltip.cpp
+  To:      dpi.cpp tooltip.cpp
+
+Normal build:
+  cd NSBEdit   (or whatever the new folder is called)
+  .\makeit.bat
+
+The bat does:
+  1. taskkill /F /IM NSBEdit.exe   — kills any running instance
+  2. windres NSBEdit.rc -o NSBEdit.res --output-format=coff   — MUST have --output-format=coff
+  3. g++ -std=c++17 -O2 -mwindows -municode NSBEdit.cpp NSBEdit.res dpi.cpp tooltip.cpp
+       -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid -luser32 -lgdi32 -lgdiplus
+       -static -static-libgcc -static-libstdc++ -o NSBEdit.exe
+  4. Copies GPLv2.md, GnuLogo.bmp, NSB.png next to the exe.
+
+After the move, if GnuLogo.bmp and GPLv2.md are already in the folder, update the copy lines
+in makeit.bat from "..\GnuLogo.bmp" to "GnuLogo.bmp" (i.e. copy to themselves or just remove
+those copy lines since the files are already present).
+
+
+KEY CODE ARCHITECTURE
+----------------------
+Entry point:       wWinMain (line ~1493). Registers WNDCLASSEXW "NeWndClass", creates main window.
+Main WndProc:      Ne_WndProc — handles WM_CREATE, WM_SIZE, WM_COMMAND, WM_CLOSE, WM_DESTROY etc.
+State struct:      NeState — stored in GWLP_USERDATA on the main window.
+  Fields: currentPath (wstring), modified (bool), suppressChange, updatingToolbar,
+          editY, statusH, pad (ints), hIconLarge/hIconSmall (HICONs).
+DPI:               g_dpiScale (float, from dpi.cpp). S(x) macro scales pixels.
+Toolbar:           Created in WM_CREATE as a custom child HWND row of buttons (IDC_NE_BOLD etc.)
+RichEdit:          Loads Msftedit.dll (RICHEDIT50W), falls back to RichEdit20W.
+                   IDC_NE_EDIT (201). RTF streaming via EM_STREAMIN/EM_STREAMOUT callbacks.
+Status bar:        IDC_NE_STATUSBAR (219), standard STATUSCLASSNAME.
+Icon:              Embedded as resource ID 1 (IDI_APPICON=1). Loaded via LoadImageW MAKEINTRESOURCEW.
+Menu:              Built programmatically in WM_CREATE: File | Help menus.
+                   IDM_NEW=101 … IDM_ABOUT=107.
+Help→About:        Calls ShowNsbAboutDialog(hwnd). Creates "NsbAboutClass" popup window.
+                   Uses GDI+ (gdiplus.h / -lgdiplus) to render NSB.png as logo.
+                   Contains RichEdit with app name, version (read from curver.txt), description.
+                   "View License" button (id=1001) opens ShowNsbLicenseDialog.
+                   "Close" button (IDOK) closes.
+License dialog:    ShowNsbLicenseDialog(HWND parent). Creates "NsbLicClass" popup window.
+                   Loads GnuLogo.bmp via LoadImageW LR_LOADFROMFILE into SS_BITMAP Static control.
+                   Reads GPLv2.md from exe directory, parses it line by line:
+                     - "Preamble"           → bold blue 12pt heading
+                     - "TERMS AND CONDITIONS" / "NO WARRANTY" → bold dark-red 11pt heading
+                     - Lines starting 0.–12. (numbered sections) → bold dark-blue 10pt
+                     - Lines starting a)/b)/c) → bold black
+                     - Everything else       → normal RGB(40,40,40)
+                   Title "GNU GENERAL PUBLIC LICENSE" + "Version 2, June 1991" added first (blue).
+                   Single "OK" button at bottom.
+AppendNsbRich():   Helper (line ~690) for inserting formatted text into a RichEdit.
+                   Signature: AppendNsbRich(HWND, const wchar_t*, bool bold, COLORREF, int pt, bool center)
+                   Uses CHARFORMAT2W + PARAFORMAT2. Font face from SystemParametersInfoW SPI_GETNONCLIENTMETRICS.
+Tooltip system:    InitTooltipSystem(hInst) called in WM_CREATE. Uses ../tooltip.cpp (shared).
+GDI+ init:         Done inside ShowNsbAboutDialog only (GdiplusStartup / GdiplusShutdown).
+Modal loop pattern: About and License dialogs run their own GetMessageW pump with IsDialogMessageW,
+                   and call EnableWindow(parent, FALSE) before / TRUE after for modality.
+
+
+RUNTIME ASSETS (must be next to NSBEdit.exe)
+---------------------------------------------
+NSB.png       — About dialog logo (GDI+ loads by path: exeDir + "NSB.png")
+GnuLogo.bmp   — License dialog GNU logo (LoadImageW LR_LOADFROMFILE: exeDir + "GnuLogo.bmp")
+GPLv2.md      — License text (CreateFileW: exeDir + "GPLv2.md")
+curver.txt    — Version string, one line, e.g. "1.0.0". Read by ShowNsbAboutDialog.
+                If missing, version shows "—". Currently NOT copied by makeit.bat — needs adding,
+                or a curver.txt must be created in the new folder.
+
+TODO: add to makeit.bat:  copy /Y curver.txt curver.txt >nul   (or copy from wherever you keep it)
+
+
+CURRENT STATUS / WHAT IS DONE
+-------------------------------
+[DONE] NSB.svg logo designed — transparent background, square viewBox, 3D blue E + crimson NSB
+[DONE] NSBEdit.ico — 4-frame ICO generated from NSB.svg via ImageMagick
+[DONE] app.manifest — PerMonitorV2 DPI + ComCtl32 v6
+[DONE] NSBEdit.rc — embeds icon + manifest
+[DONE] makeit.bat — correct build script with --output-format=coff windres flag
+[DONE] App icon displayed on taskbar and title bar (LoadImageW IDI_APPICON)
+[DONE] File menu: New, Open, Save, Save As, Print, Exit
+[DONE] Full RTF formatting toolbar: Bold, Italic, Underline, Strike, Sub, Super,
+        Font face combo, Font size combo, Color, Highlight, Align L/C/R/J, Bullet, Numbered, Image
+[DONE] Status bar showing line/col and file path
+[DONE] Help → About NSBEdit menu item
+[DONE] About dialog: NSB.png logo (GDI+ rendered), app title, version from curver.txt,
+        description text, "View License" button, "Close" button
+[DONE] License dialog: GNU wildebeest logo BMP, formatted GPLv2 text with section headings,
+        OK button
+[DONE] GnuLogo.bmp + GPLv2.md copied to NSBEdit folder and synced by makeit.bat
+[DONE] -lgdiplus added to link flags; #include <gdiplus.h> + <sstream> in source
+
+[TODO] curver.txt: create one in the folder (e.g. "1.0.0") and add copy step to makeit.bat
+[TODO] After move: update "../dpi.cpp" and "../tooltip.cpp" paths if files are copied in
+[TODO] After move: create a GitHub repo for NSBEdit (or BSBEdit if renaming)
+[TODO] After move: update makeit.bat asset copy paths (remove "../" prefixes)
+[TODO] Decide on app name — NSBEdit or BSBEdit? If BSBEdit, do a rename sweep
+
+
+KNOWN QUIRKS / GOTCHAS
+------------------------
+- windres REQUIRES --output-format=coff with this MinGW. Without it, link fails with strange errors.
+- IDI_APPICON is #define'd as 1 (integer). RC file uses "1 ICON". C++ uses MAKEINTRESOURCEW(IDI_APPICON).
+- GDI+ must be initialized before any Gdiplus::Image usage. It is init'd inside ShowNsbAboutDialog.
+- The About and License dialogs reuse the same NsbAboutWndProc for WM_COMMAND/WM_CLOSE.
+  NsbLicClass is registered with NsbAboutWndProc.
+- The modal loop in the dialogs uses PostQuitMessage(0) on WM_CLOSE to break out — this means
+  the dialog must always be pumped in its own local GetMessageW loop, not the main loop.
+- AppendNsbRich has a static s_face / s_twips cache — first call wins for font metrics.
+  This is fine as long as DPI doesn't change mid-session (it won't for these modal dialogs).
+- GnuLogo.bmp is deleted via DeleteObject(hBmp) at the end of ShowNsbLicenseDialog.
+- NSB.png is deleted via "delete s_nas.logo" at the end of ShowNsbAboutDialog.

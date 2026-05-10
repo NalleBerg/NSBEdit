@@ -1,0 +1,1109 @@
+﻿================================================================================
+  SetupCraft — Documentation Index
+================================================================================
+
+  Location:
+    API_INTERNALS\API\         Reusable toolbox modules — public interfaces.
+                               When the project is done, a consolidated API.txt
+                               will be generated from these files.
+    API_INTERNALS\INTERNALS\   Project-internal architecture — subsystem flow,
+                               bug history, and fix guidance.
+
+  Living document rule:
+    This file is kept up to date throughout development. Every time a module
+    is added, moved, or improved, the entry here is updated in the same step.
+    By publish time it will be a complete, accurate index ready to seed the
+    project skeleton for future Win32/C++ apps.
+
+  Naming convention:
+    _API.txt        Public component interface — what to call and what it returns.
+    _INTERNALS.txt  Architectural / flow reference — how a subsystem works
+                    internally, bug history, and fix guidance.
+
+  ── API (reusable toolbox modules) ──────────────────────────────────────────
+
+  File                                          Description
+  ──────────────────────────────────────────────────────────────────────────────
+  API_INTERNALS\API\tooltip_API.txt             Custom multilingual tooltip system — creation,
+                                                positioning, subclassing, locale integration,
+                                                and aboveAnchorY parameter for placing tooltip
+                                                above a button (prevents blink when near screen
+                                                bottom). Critical pattern: always call
+                                                HideTooltip() + clear icon/tracking state in
+                                                WM_LBUTTONDOWN before any ShowXxxDialog() that
+                                                calls EnableWindow(parent, FALSE) — WM_MOUSELEAVE
+                                                is never delivered after the parent is disabled.
+                                                §16: TreeView item-hover pattern (HitTest + iImage).
+                                                §17: Shared subclass proc for many dialog
+                                                checkboxes/radios — attach tip string via
+                                                SetPropW(L"avTip") and read in one shared proc;
+                                                Win32 TOOLTIPS_CLASS unreliable for these controls.
+
+  API_INTERNALS\API\spinner_dialog_API.txt      Modal progress/spinner dialog component — API,
+                                                thread usage, and progress callback protocol.
+
+  API_INTERNALS\API\dragdrop_API.txt            Generic Win32 TreeView/ListView drag-and-drop
+                                                module — subclass-based detection, callbacks,
+                                                parent hooks, and utility functions.
+
+  API_INTERNALS\API\shell32_API.txt             Shell icon loading reference — PrivateExtractIconsW
+                                                vs LoadImageW(MAKEINTRESOURCE), verified
+                                                sequential icon indices for shell32.dll and
+                                                imageres.dll, ImageList loading pattern,
+                                                and ComponentRow dest_path cascade-scope rules.
+
+  API_INTERNALS\API\edit_rtf_API.txt            General-purpose resizable RTF editor modal —
+                                                OpenRtfEditor() API, RtfEditorData struct,
+                                                responsive one/two-row toolbar layout
+                                                (RtfEd_LayoutToolbar, recalculated on WM_SIZE),
+                                                19 controls (Bold/Italic/Underline/Strike/
+                                                Subscript/Superscript/FontFace/FontSize/TextColor/
+                                                Highlight/Align L/C/R/J/Bullet/Numbered/Insert
+                                                Image/Open file/Insert table), Ctrl+B/I/U,
+                                                BS_AUTOCHECKBOX|BS_PUSHLIKE toggle state with
+                                                EN_SELCHANGE sync, PNG/JPEG image insertion via
+                                                \pict\pngblip/\jpegblip hex stream, Open button
+                                                streams RTF/TXT/.md files, Insert table dialog
+                                                (rows/cols/width%/row-height/border style+colour/
+                                                table+cell alignment/column width px or %/unit
+                                                picker; pct-mode tables rescaled on WM_SIZE),
+                                                pLocale field for i18n, wrapToWindow flag
+                                                (true → EM_SETTARGETDEVICE NULL,0 — wraps to
+                                                window width, no H-scroll; false = default →
+                                                32767-px page-layout canvas), hover tooltips on
+                                                all 19 toolbar controls (RtfEd_SetToolTip /
+                                                RtfEd_ToolbarBtnProc subclass pattern), RTF stream
+                                                in/out, optional char limit, WS_OVERLAPPEDWINDOW
+                                                resizable, control ID range 4500–4555.
+                                                Preferred over notes_editor for component notes,
+                                                dep notes, and any field with no char limit.
+
+  page_manual.h / page_manual.cpp               Contextual per-page manual popup — one entry
+                                                point: ShowPageManual(hwndParent, pageIndex,
+                                                locale). Resizable WS_THICKFRAME |
+                                                WS_MAXIMIZEBOX popup with RICHEDIT50W (Msftedit
+                                                .dll v4.1; falls back to RichEdit20W) for full
+                                                Unicode font-linking and emoji glyph rendering.
+                                                CHARFORMAT2W CFM_CHARSET|DEFAULT_CHARSET enables
+                                                Segoe UI Emoji fallback. EM_SETTARGETDEVICE(NULL,0)
+                                                word-wraps to control width (no H-scroll).
+                                                AppendManual(hEdit, pd, text, bold, color,
+                                                fontSize=0, centered=false) — AM macro shorthand.
+                                                ML(pd, key, fallback) — locale lookup with English
+                                                fallback.
+                                                AppendManualHRule(hEdit, pd) — centered horizontal
+                                                divider (RGB(100,140,180), fontSize=0, centered=true).
+                                                Color shell32 icon overlays — because GDI cannot
+                                                render OpenType COLR tables, emoji are monochrome.
+                                                RegisterShell32Icon(hEdit, pd, idx) records the
+                                                char position and loads the icon via ExtractIconExW.
+                                                RegisterSystemIcon variant handles IDI_WARNING etc.
+                                                ManualEditSubclassProc WM_PAINT draws each icon
+                                                via DrawIconEx at EM_POSFROMCHAR coordinates after
+                                                the original proc; icons freed in WM_DESTROY.
+                                                SC logo drawn via GDI+ at top of each page:
+                                                blank lines reserved = (logoH+S(10))/S(15).
+                                                Implemented pages (as of v2026.05.10.11):
+                                                  0  = Files          (PopulateFilesManual)
+                                                  1  = Registry       (PopulateRegistryManual)
+                                                  2  = Shortcuts      (PopulateShortcutsManual)
+                                                  3  = Dependencies   (PopulateDepsManual)
+                                                  4  = Dialogs        (PopulateDialogsManual)
+                                                  5  = Settings       (PopulateSettingsManual)
+                                                  8  = Scripts        (PopulateScriptsManual)
+                                                  9  = Components     (PopulateComponentsManual)
+                                                  10 = File Types     (PopulateFileTypesManual)
+                                                Pages 6 (Build) and 7 (Test) show placeholder.
+                                                Toolbar ? button: flat SS_NOTIFY static control
+                                                in CreateToolbar(), S(5) px left of the About icon.
+                                                ManualIcon_SubclassProc: WM_PAINT (DrawIconEx +
+                                                COLOR_BTNFACE fill), WM_ERASEBKGND (return 1),
+                                                WM_MOUSEMOVE/LEAVE (tooltip), WM_NCDESTROY
+                                                (DestroyIcon + free prop). WM_COMMAND handler:
+                                                ShowPageManual(hwnd, s_currentPageIndex, s_locale)
+                                                — opens the correct manual for the active page.
+                                                Locale key pattern: man_<subsystem>_window_title,
+                                                man_<subsystem>_h1/h2/h3, man_<subsystem>_p1/p2/p3,
+                                                man_<subsystem>_l<n><letter>, man_<subsystem>_next.
+                                                Tip callout pattern (amber warning, grey info):
+                                                  RegisterShell32Icon(hEdit, pd, iconIdx);
+                                                  AM(L" " + ML(...), false, RGB(160,80,0), 11);
+                                                  AM(ML(...) + L"\r\n\r\n", false, RGB(120,60,0));
+
+  API_INTERNALS\API\notes_editor_API.txt        Rich-text Notes/Description editor popup —
+                                                OpenNotesEditor() API, NotesEditorData struct,
+                                                RTF stream in/out, 500-char limit, Bold/Italic/
+                                                Underline/Subscript/Superscript/Font size/Color,
+                                                toolbar, i18n string fields, comdlg32 colour
+                                                picker, DPI-aware layout.
+
+  API_INTERNALS\API\vfs_picker_API.txt          Reusable VFS-backed file/folder picker dialog —
+                                                ShowVfsPicker() entry point, VfsPickerParams config
+                                                struct (singleSelect, showFilePane, allowFolderPick,
+                                                fileFilter), VfsPicker_IsExecutable() predicate,
+                                                VfsPickerResult output: sourcePath = real disk
+                                                source path (may be empty for pure-virtual folders;
+                                                do not use for installer fields), displayName,
+                                                virtualFolderPath = Inno-constant installed-location
+                                                path, always derived from virtualPath regardless of
+                                                whether fullPath is empty; for file picks = Inno
+                                                constant of the containing folder; for folder picks
+                                                = Inno constant of the selected folder. Always use
+                                                virtualFolderPath for PATH entries,
+                                                UninstallFilesDir, script working-dir, etc.
+                                                MainWindow::TreeSnapshot_*
+                                                accessor wiring, locale keys, and usage examples for
+                                                both exe-picker and folder-picker modes.
+                                                Virtual folder support: when allowFolderPick=true,
+                                                virtualFolderPath is unconditionally derived from
+                                                TreeNodeSnapshot.virtualPath using the DB section
+                                                root prefix → Inno constant mapping:
+                                                "Program Files\..." → "{pf}\...",
+                                                "ProgramData\..." → "{commonappdata}\...",
+                                                "AppData (Roaming)\..." → "{userappdata}\...",
+                                                "AskAtInstall\..." → "{app}\...".
+                                                virtualPath is populated by SaveTreeSnapshot
+                                                (parentVirtualPath parameter, built recursively
+                                                from section root name) and EnsureTreeSnapshotsFromDb
+                                                (destination_path key).
+                                                MainWindow::GetTotalInstalledFileSize() —
+                                                calls EnsureTreeSnapshotsFromDb(), walks all
+                                                four s_treeSnapshot_* via CollectSnapshotPaths,
+                                                stats each source path with GetFileAttributesExW,
+                                                returns total bytes as long long. Used by the
+                                                Ready-to-Install preview to show installed size.
+
+  API_INTERNALS\API\checkbox_API.txt            Custom theme-aware checkbox — CreateCustomCheckbox,
+                                                DrawCustomCheckbox, OnCheckboxSettingChange,
+                                                CreateCheckboxStateImageList,
+                                                UpdateTreeViewCheckboxImages, colour palettes for
+                                                Light/Dark/HC Black/HC White themes, BM_GETCHECK/
+                                                BM_SETCHECK compatibility, and step-by-step guide
+                                                for adding a new checkbox or TreeView state image
+                                                list.
+
+  API_INTERNALS\API\skeleton_idea.txt           Future project skeleton — checklist of what to
+                                                include (build system, sqlite3, UI modules,
+                                                localisation stub, DPI, icons, Inno Setup stub,
+                                                doc seed) and open decisions to resolve at
+                                                publish time.
+
+  issgen.h / issgen.cpp                         .iss script generator — ISS_FindInnoDir()
+                                                locates inno/ relative to the running exe
+                                                (exe-adjacent, then ../inno/ fallback);
+                                                ISS_GenerateIss(templatePath, outPath, proj,
+                                                cfg, langs) reads template.iss via Win32
+                                                CreateFileW (wide paths on MinGW), expands
+                                                every {#Token} placeholder, replaces the
+                                                "; <<LANGUAGES>>" marker with correct Inno
+                                                [Languages] entries (local=false →
+                                                "compiler:X.isl"; local=true → "X.isl"
+                                                relative path; Name: = lowercased ISL base;
+                                                "Default" → "english"), writes UTF-8+BOM
+                                                output.  Token table: AppName, AppVersion,
+                                                Publisher, PublisherURL, SupportURL,
+                                                AppCopyright (© YYYY Publisher, year
+                                                from GetLocalTime at generation time),
+                                                AppId (braces escaped to {{…}}),
+                                                DefaultDirBase, OutputDir, OutputBase,
+                                                Compression, SolidCompression,
+                                                PrivilegesRequired,
+                                                PrivilegesRequiredOverridesAllowed
+                                                (none/commandline/dialog),
+                                                WizardStyle (modern/classic),
+                                                Uninstallable,
+                                                CloseApplications, ChangesEnvironment,
+                                                PathFolders (multi-entry PATH registry;
+                                                "; <<PATH_REGISTRY>>" marker expands to
+                                                one [Registry] row per entry in
+                                                cfg.pathFolders, each appending the
+                                                configured Inno path to
+                                                HKLM\…\Environment\Path using expandsz +
+                                                preservestringtype; empty string when
+                                                pathFolders is empty; replaces old
+                                                single AddToPath bool),
+                                                ChangesAssociations (auto-derived
+                                                from File Associations page),
+                                                DisableDirPage,
+                                                DisableProgramGroupPage,
+                                                UsePreviousAppDir,
+                                                UsePreviousGroup,
+                                                DirExistsWarning
+                                                (auto/yes/no),
+                                                MinVersion, ExeName,
+                                                SourceDir.
+                                                VersionInfo* tokens (installer .exe
+                                                file-version resource / Properties→Details):
+                                                VersionInfoVersion, VersionInfoTextVersion,
+                                                VersionInfoDescription ("<AppName> Setup"),
+                                                VersionInfoProductName, VersionInfoProductVersion,
+                                                VersionInfoCompany, VersionInfoCopyright
+                                                — all derived from existing project fields,
+                                                no new UI fields required.
+                                                SignToolLine token: BuildSignToolLine(cfg)
+                                                emits Inno's "SignTool=sc <cmd> $f"
+                                                directive when signing is enabled (ISCC
+                                                calls signtool after producing the .exe);
+                                                empty string (blank line) when disabled.
+                                                Supports thumbprint (/sha1) or PFX (/f /p),
+                                                SHA-1 (/t) or SHA-256 (/tr /td) timestamps.
+                                                SetupLogging (yes/no — enables Inno's
+                                                built-in setup log written by the installer).
+                                                UninstallDisplayName (overrides the entry
+                                                shown in Add/Remove Programs; empty →
+                                                evaluates to AppName so the directive is
+                                                always present but a no-op when blank).
+                                                UninstallFilesDir (Inno constant path for
+                                                where the uninstaller .exe is placed;
+                                                empty → evaluates to {app} so the directive
+                                                is always present; populated from
+                                                cfg.uninstallFilesDir).
+                                                LanguageDetectionMethod (uilanguage/locale/
+                                                none — how Inno auto-selects the default
+                                                language; LangDetectionMethodStr() helper;
+                                                default uilanguage).
+                                                ShowLanguageDialog (auto/yes/no — whether
+                                                the pre-wizard language picker dialog is
+                                                shown; ShowLanguageDialogStr() helper;
+                                                default auto).
+                                                EscapePascalString() helper doubles single
+                                                quotes for Pascal string literals.
+                                                Proc markers: "; <<SETUP_LOG_PROC>>"
+                                                replaced with generated CopySetupLog() proc
+                                                before DeinitializeSetup() in [Code];
+                                                overwrite mode: FileCopy(ExpandConstant
+                                                ('{log}'), dest, False); append mode:
+                                                LoadStringFromFile + concat +
+                                                SaveStringToFile. "; <<SETUP_LOG_CALL>>"
+                                                inside DeinitializeSetup() calls the proc.
+                                                Both markers expand to empty string when
+                                                no log folder or filename is configured.
+                                                BuildComponentsSection: generates [Components]
+                                                block; emits one entry per ComponentRow with
+                                                ComponentRow has two distinct installation
+                                                behavior flags: is_required (int, DEFAULT 0)
+                                                = always installed silently, hidden from wizard
+                                                (component skipped in [Components] block);
+                                                is_fixed (int, DEFAULT 0) = shown in wizard
+                                                but greyed-out / locked, cannot be deselected
+                                                (emits Flags: fixed); is_exclusive (int,
+                                                DEFAULT 0) = radio-button style, selecting
+                                                deselects all others in the same group (emits
+                                                Flags: exclusive); is_restart (int, DEFAULT 0)
+                                                = reboot required after installing this component
+                                                (emits Flags: restart). Flags: fixed, exclusive
+                                                and restart are combined into a single
+                                                "; Flags: ..." token
+                                                (never two separate Flags: entries). install_types →
+                                                Types: <space-sep names>; group_name → Name:
+                                                "group\comp" (backslash-separated); when any
+                                                component has a group_name, an extra header
+                                                row (Name: "group"; Description: "group") is
+                                                is_fixed, is_exclusive, is_restart and is_preselected are
+                                                fields alongside install_types and group_name;
+                                                all persisted via idempotent ALTER TABLE
+                                                migrations (14-param INSERT/UPDATE); both
+                                                dialogs (CompEditDlgProc / CompFolderEditDlgProc)
+                                                expose them: install types via custom checkboxes
+                                                (IDC_COMP_TYPE_BASE=2100 / IDC_FOLDER_DLG_TYPE_BASE
+                                                =2000, count in "CompTypeCount"/"FolderTypeCount");
+                                                group via CBS_DROPDOWN combobox (IDC_COMPDLG_GROUP
+                                                =312 / IDC_FOLDER_DLG_GROUP=344); fixed via
+                                                custom checkbox (IDC_COMPDLG_FIXED=313 /
+                                                IDC_FOLDER_DLG_FIXED=328), locale key
+                                                comp_fixed_label; exclusive via custom checkbox
+                                                (IDC_COMPDLG_EXCLUSIVE=314 /
+                                                IDC_FOLDER_DLG_EXCLUSIVE=329), locale key
+                                                comp_exclusive_label. Restart via custom checkbox
+                                                (IDC_COMPDLG_RESTART=315 /
+                                                IDC_FOLDER_DLG_RESTART=330), locale key
+                                                comp_restart_label. Cascade on folder-edit OK:
+                                                prefix scan over all s_components whose
+                                                source_path starts with snap->fullPath+"\\"
+                                                updates is_required, is_preselected, is_fixed,
+                                                is_exclusive, is_restart, install_types + group_name on
+                                                every subfolder and nested file row; paths loop
+                                                handles virtual-file nodes (fullPath empty).
+                                                Init fallback: if no folder row found, reads
+                                                install_types/group_name from first matching
+                                                file-component row.
+                                                Dependencies (ComponentRow.dependencies —
+                                                vector<int> of dep component IDs, persisted in
+                                                component_dependencies table): shown in a ListView
+                                                (IDC_COMPDLG_DEPS_LIST=309 / IDC_FOLDER_DLG_DEPS_LIST
+                                                =321) with Choose (IDC_COMPDLG_CHOOSE_DEPS=310 /
+                                                IDC_FOLDER_DLG_CHOOSE_DEPS=322) and Remove buttons.
+                                                A blue ℹ button (IDC_COMPDLG_DEPS_HINT=316 /
+                                                IDC_FOLDER_DLG_DEPS_HINT=331, shell32.dll index 23)
+                                                sits next to each Requires:/Dependencies: label;
+                                                its tooltip (locale key comp_deps_hint) explains
+                                                that deps are enforced at install time via generated
+                                                [Code] Pascal: selecting A auto-selects B; deselecting
+                                                B auto-deselects A. Pascal code emitted by
+                                                BuildDepEnforceCode() in issgen.cpp into the
+                                                ; <<DEP_ENFORCE_CODE>> marker in template.iss.
+                                                SBuildConfig struct + SETT_GetBuildConfig()
+                                                in settings.h/.cpp provide the build settings
+                                                snapshot consumed by the generator.
+                                                Called by IDM_BUILD_COMPILE (F7) in
+                                                mainwindow.cpp which then launches
+                                                compile_inno.bat <generated.iss> via
+                                                ShellExecuteW in a visible cmd window.
+
+  API_INTERNALS\API\my_scrollbar_vscroll_API.txt  Custom Win32 vertical scrollbar — full public API.
+                                                msb_attach / msb_detach / msb_sync /
+                                                msb_notify_content_changed; MSB_VERTICAL /
+                                                MSB_HORIZONTAL / MSB_NOHIDE flags; color and
+                                                layout macros; RichEdit specifics (nMax/nPos
+                                                measurement, EM_SETRECT format-rect management,
+                                                EM_SHOWSCROLLBAR suppression); typical wiring
+                                                pattern for V+H dual-attach. ListView H-axis:
+
+  API_INTERNALS\API\my_scrollbar_hscroll_API.txt  Custom Win32 horizontal scrollbar — impl notes.
+                                                Step-by-step rewrite (Steps 1-3 complete).
+                                                Golden Rules for ListView H-axis. MsbH_DeliverScroll
+                                                is #included into my_scrollbar_vscroll.cpp.
+                                                Scroll dispatch via LVM_SCROLL(delta) with
+                                                SetScrollInfo(nPos=lvHPos, FALSE) before the call
+                                                and inHDeliver flag on MsbCtx around it.
+                                                Tilt-wheel LEFT and RIGHT both work.
+                                                Custom H-bar shown (Step 3): MSB_HORIZONTAL guards
+                                                removed, proximity-expand added, edge cases fixed
+                                                (empty ListView, premature-hide guard V-only).
+                                                Msb_HideNativeBar(H) uses ShowScrollBar(FALSE)
+                                                (same as V-axis) — collapses NC area. inHDeliver
+                                                guard in WM_NCPAINT + WM_SIZE protects the
+                                                internal counter during delivery.
+
+  about.h / about.cpp                           About dialog module — three public functions:
+                                                ShowAboutDialog, ShowLicenseDialog,
+                                                ShowCreditsDialog. Each is a fully modal
+                                                WS_POPUP window with custom scrollbar, i18n
+                                                buttons sized via MeasureButtonWidth, and all
+                                                strings via Loc(). Credits dialog has two
+                                                sections (Inno Setup / Scintilla) with colored
+                                                headings, decorative underlines, and clickable
+                                                URLs opened via ShellExecuteW. Hand cursor on
+                                                URL hover: CreditsEditSubclassProc intercepts
+                                                WM_SETCURSOR, calls EM_CHARFROMPOS +
+                                                EM_GETCHARFORMAT, sets IDC_HAND when CFE_LINK
+                                                is present.
+                                                Center image: GDI+ Image::FromFile loads
+                                                SetupCraft.png (256×256, generated from
+                                                SCLogo.svg) from the exe directory;
+                                                EditSubclassProc draws it at 75% native size,
+                                                horizontally centred, EM_GETSCROLLPOS-aware.
+                                                Blank lines for logo reserved after msb_attach:
+                                                logoSpaceLines = (logoH+20)/S(15).
+                                                Dialog title-bar icons: LoadIconW(
+                                                GetModuleHandleW(NULL), MAKEINTRESOURCEW(1));
+                                                both ICON_SMALL and ICON_BIG set via WM_SETICON.
+                                                Locale keys: about_title,
+                                                about_license_btn, about_credits_btn,
+                                                about_credits_title, about_close_btn,
+                                                about_license_title, about_license_ok_btn,
+                                                credits_inno_heading, credits_inno_desc,
+                                                credits_scintilla_heading, credits_scintilla_desc.
+
+  about_icon.h / about_icon.cpp                 Entry-screen About icon button — SS_ICON STATIC
+                                                control subclassed with AboutIcon_SubclassProc.
+                                                CreateAboutIconControl(parent, hInst, x, y,
+                                                size, id, locale) creates the control, loads
+                                                the app icon via LoadImageW(hInst,
+                                                MAKEINTRESOURCEW(1), IMAGE_ICON, size, size,
+                                                LR_DEFAULTCOLOR), sends STM_SETICON.
+                                                SS_NOTIFY required — without it the STATIC
+                                                eats mouse messages. Subclass handles:
+                                                WM_MOUSEMOVE → ShowMultilingualTooltip
+                                                ("About SetupCraft") + TrackMouseEvent(TME_LEAVE);
+                                                WM_MOUSELEAVE → HideTooltip();
+                                                WM_LBUTTONDOWN → HideTooltip() then
+                                                ShowAboutDialog (tooltip hidden before
+                                                EnableWindow(parent,FALSE) — §9 of tooltip API);
+                                                WM_NCDESTROY → restore WNDPROC.
+
+  SCLogo.svg                                    Master app icon source — balloon-letter SC
+                                                monogram (pure SVG, viewBox 200×200, no
+                                                external deps). Red S + blue C, braided,
+                                                specular balloon shines, gradient border.
+                                                Source for both SetupCraft.ico (multi-frame,
+                                                via ImageMagick) and SetupCraft.png (256×256,
+                                                About dialog center image). See
+                                                icon_INTERNALS.txt for full design notes and
+                                                update checklist.
+
+  SetupCraft.rc                                 Win32 resource script.
+                                                1 ICON "SetupCraft.ico"  (resource ID 1 = app)
+                                                2 ICON "icons/trashcan_empty.ico"  (IDI_TRASHCAN)
+                                                Compiled by windres; linked into the exe.
+                                                All LoadIconW/LoadImageW calls reference
+                                                MAKEINTRESOURCEW(1) for the app icon.
+
+  ctrlw.h / ctrlw.cpp                           Custom modal dialog module — fully i18n,
+                                                owner-drawn, non-native (no MessageBoxW /
+                                                TaskDialog). Replaces MessageBoxW app-wide.
+                                                ShowQuitDialog(hwndParent, locale) — IDYES/IDNO
+                                                confirmation before app exit.
+                                                ShowCloseProjectDialog(hwndParent, locale) —
+                                                IDYES/IDNO/IDCANCEL (save/discard/cancel)
+                                                before closing a project.
+                                                ShowConfirmDeleteDialog(hwndParent, locale,
+                                                  itemName) — IDYES/IDNO for destructive deletes.
+                                                ShowRenameProjectDialog(hwndParent, locale,
+                                                  current, out) — single-line edit for rename.
+                                                ShowValidationDialog(hwndParent, locale,
+                                                  message) — info/OK with icon; narrow
+                                                  VAL_CONT_W layout; used for all validation
+                                                  feedback and reference popups.
+                                                ShowMutexRunningDialog(hwndParent, locale)
+                                                  → bool — shown when a duplicate installer
+                                                  instance is detected (mutex already owned).
+                                                  Three buttons: Green IDYES "Close the
+                                                  running installer", Blue IDNO "Close this
+                                                  installer", Red IDCANCEL "Cancel". Returns
+                                                  true only when IDYES was chosen — caller
+                                                  should then close the running instance and
+                                                  retry the mutex. Locale keys: mutex_title,
+                                                  mutex_message, mutex_close_btn,
+                                                  mutex_close_this_btn, cancel.
+                                                All dialogs use the standard measure-then-create
+                                                pattern (DLG_PAD_H/B, DLG_BTN_H, DLG_BTN_GAP,
+                                                VAL_CONT_W constants; AdjustWindowRectEx outer
+                                                sizing); button rows are centred and
+                                                auto-widen to the widest label at any DPI.
+
+  ── INTERNALS (project-internal architecture) ────────────────────────────────
+
+  API_INTERNALS\INTERNALS\icon_INTERNALS.txt    App icon system — SCLogo.svg design (balloon SC
+                                                monogram, braided S+C, specular shines, gradient
+                                                border), ICO generation via ImageMagick
+                                                (magick SCLogo.svg → 16/32/48/64/128/256 px
+                                                frames; make_ico.ps1 repacks any .ico),
+                                                resource script (SetupCraft.rc: 1 ICON
+                                                "SetupCraft.ico"; 2 ICON trashcan_empty.ico),
+                                                window-class icon wiring (LoadIconW +
+                                                LoadImageW 16px + WM_SETICON in WM_CREATE),
+                                                modal dialog icons (About/License/Credits —
+                                                LoadIconW(GetModuleHandleW(NULL),
+                                                MAKEINTRESOURCEW(1)); both ICON_SMALL and
+                                                ICON_BIG set), About dialog center image
+                                                (GDI+ Image::FromFile("SetupCraft.png") from
+                                                exe directory; EditSubclassProc draws at 75%
+                                                native size, scroll-offset-aware, blank-lines
+                                                reserved for logo space), entry-screen About
+                                                button (SS_ICON STATIC + SS_NOTIFY;
+                                                LoadImageW MAKEINTRESOURCEW(1) at explicit
+                                                size; subclass handles tooltip + click →
+                                                ShowAboutDialog), icon cache pitfall and
+                                                step-by-step update checklist.
+
+  API_INTERNALS\INTERNALS\files_save_load_INTERNALS.txt
+                                                Files-page save/load architecture — data flow
+                                                between the TreeView, s_virtualFolderFiles,
+                                                SaveTreeToDb, the DB files table, DB-rebuild
+                                                load path, and fixed-bug history.
+                                                VirtualFolderFile.inno_flags — space-separated
+                                                Inno [Files] flags string; persisted in the
+                                                files.inno_flags DB column (migration in InitDb).
+                                                FileFlagsDialogProc — per-file modal: four
+                                                sections (Overwrite behaviour, Post-install
+                                                actions, Registration, Architecture radio group);
+                                                white background + 1 px COLOR_BTNSHADOW section
+                                                borders; 20 locale keys (files_col_flags,
+                                                files_ctx_flags, fflg_*); control ID range
+                                                9001–9015 (IDC_FFLG_*).
+                                                FileCompDialogProc — per-file component
+                                                assignment modal: scrollable listbox of
+                                                component names + "(Unassigned)" entry;
+                                                edit + Add button row for coining new names
+                                                inline; OK commits to s_components by
+                                                source_path; Cancel discards. Custom scrollbar
+                                                (MSB_VERTICAL), NONCLIENTMETRICS font,
+                                                CreateCustomButtonWithIcon buttons (Blue Add /
+                                                Green OK / Red Cancel), WM_DRAWITEM +
+                                                WM_CTLCOLORSTATIC + WM_DESTROY plumbing.
+                                                Locale keys: files_col_component,
+                                                files_ctx_component, fcomp_title,
+                                                fcomp_unassigned, fcomp_new_label,
+                                                fcomp_add_btn. Control ID range 9020–9024
+                                                (IDC_FCOMP_*).
+                                                FolderFilterDialogProc — Add Folder exclude
+                                                filter modal: wildcard-pattern listbox (msb,
+                                                NONCLIENTMETRICS font), edit + Add/Remove row,
+                                                Add Folder OK / Cancel. PathMatchSpecW used
+                                                for MatchExcludePattern (files + dirs).
+                                                IngestRealPathFiles accepts optional
+                                                excludePatterns param; AddTreeNodeRecursive
+                                                accepts optional excludePatterns param and
+                                                eagerly ingests each subfolder when patterns
+                                                are present so TVN_SELCHANGED lazy path never
+                                                re-reads disk without filter. Root node must
+                                                also be eagerly ingested by the caller before
+                                                AddTreeNodeRecursive. ListView refreshed via
+                                                ForceRefreshListView (not PopulateListView)
+                                                when patterns are active. Patterns persisted
+                                                via DB::GetSetting/SetSetting with key
+                                                folder_exclude_patterns_<id> (newline-sep).
+                                                Locale keys: ffilter_title, ffilter_label,
+                                                ffilter_hint, ffilter_add_btn,
+                                                ffilter_remove_btn, ffilter_ok,
+                                                ffilter_cancel. Control ID range 9030–9035
+                                                (IDC_FFILTER_*).
+                                                AddValueDialogProc — Add/Edit Registry Value
+                                                modal (IDC_ADDVAL_* = 5060–5080):
+                                                name/type/data fields; data-type syntax hint
+                                                label (IDC_ADDVAL_HINT=5078, gray, updates on
+                                                CBN_SELCHANGE via GetRegTypeHint); Uninstall
+                                                behaviour section (7 checkboxes:
+                                                deletevalue/uninsdeletevalue/deletekey/
+                                                uninsdeletekey/uninsdeletekeyifempty/
+                                                dontcreatekey/preservestringtype) + Registry
+                                                view radio group (Default/32bit/64bit); all
+                                                controls subclassed with AVFlag_SubclassProc
+                                                for per-control hover tooltips (SetPropW
+                                                L"avTip" pattern); Components row:
+                                                ES_READONLY edit (IDC_ADDVAL_COMPONENTS=5079)
+                                                + "…" button (IDC_ADDVAL_COMP_PICK=5080,
+                                                AV_PICK_W=30). PickCompDialogProc: no
+                                                TVS_CHECKBOXES; uses TVS_FULLROWSELECT +
+                                                system image list (SHGetFileInfoW
+                                                SHGFI_SYSICONINDEX) for real file icons.
+                                                Multi-select via PickMultiCtx (heap struct,
+                                                prop L"hPickCtx") + PickTree_SubclassProc:
+                                                plain click = single, Ctrl+click = toggle,
+                                                Shift+click = range, Ctrl+A = all.
+                                                NM_CUSTOMDRAW/CDDS_ITEMPREPAINT paints
+                                                COLOR_HIGHLIGHT. PickComp_CollectSelected
+                                                collects in tree order. Custom icon buttons
+                                                (Green OK imageres#89 / Red Cancel
+                                                shell32#131). Localized title:
+                                                pick_comp_title locale key.
+                                                Layout constants: AV_PAD_H/T/B, AV_LBL_W,
+                                                AV_FLD_GAP, AV_EDIT_W, AV_ROW_H, AV_GAP_R1/R2,
+                                                AV_GAP_DH, AV_HINT_H, AV_GAP_RD(=18),
+                                                AV_SEC_H, AV_GAP_SEC, AV_CHK_H, AV_GAP_BTW,
+                                                AV_GAP_RB, AV_BTN_H/W0/W1, AV_BTN_GAP,
+                                                AV_GAP_CF, AV_PICK_W.
+                                                Flags/components persisted to DB:
+                                                ALTER TABLE registry_entries ADD COLUMN flags
+                                                + components (idempotent migrations).
+                                                InsertRegistryEntry takes 8 params.
+                                                5-column ListView: Name 22%, Type 14%,
+                                                Data 27%, Flags 20%, Components 17%.
+                                                Modal message loop pattern: ALWAYS guard with
+                                                IsWindow(hDlg) in the while condition —
+                                                while (IsWindow(hDlg) && GetMessageW(...) > 0).
+                                                Never drain with PeekMessage(PM_REMOVE) after
+                                                the loop — it consumes WM_PAINT messages that
+                                                TreeView_Expand / TreeView_SelectItem queue.
+                                                Call InvalidateRect(tree, NULL, TRUE) +
+                                                UpdateWindow after all tree modifications.
+
+  API_INTERNALS\INTERNALS\button_INTERNALS.txt  Custom button & toolbar system — ButtonColor
+                                                enum, CreateCustomButton* variants, icon
+                                                property scheme, ButtonSubclassProc hover/
+                                                tooltip flow, DrawCustomButton WM_DRAWITEM
+                                                path, toolbar row layout, step-by-step
+                                                guide for adding a new toolbar button,
+                                                and §9 critical bug history: NEVER add
+                                                GetCursorPos/GetWindowRect/PtInRect guard
+                                                to WM_MOUSELEAVE (causes 4–12 sec app-wide
+                                                dialog-open delays).
+
+  API_INTERNALS\INTERNALS\dialog_INTERNALS.txt  Custom modal dialog system — measure-then-create
+                                                dynamic sizing pattern, layout constants,
+                                                ExpandEscapes / MeasureDialogTextHeight helpers,
+                                                AdjustWindowRectEx sizing recipe, WM_CREATE
+                                                GetClientRect layout, per-dialog status
+                                                (which dialogs have been converted), and
+                                                Z-order / always-on-top policy (no WS_EX_TOPMOST;
+                                                use ownership for intra-app Z-order; audit
+                                                checklist for translation pass).
+
+  API_INTERNALS\INTERNALS\sc_shortcut_dialog_INTERNALS.txt
+                                                Configure Shortcut modal dialog — SC_EditShortcutDialog()
+                                                full signature (hwndParent, hInst, type, smPath,
+                                                initName, initExePath, initWorkingDir, initArguments,
+                                                initComment, initHotKey, initIconPath, initIconIndex,
+                                                initRunAsAdmin, locale, out); ScDlgData heap struct
+                                                (all fields: name/exePath/workingDir/arguments/comment/
+                                                hotkey/iconPath/iconIndex/runAsAdmin/hInst/pLocale/
+                                                hCurrentIcon/okPressed); ScDlgResult struct (same
+                                                writable fields); UI order: Executable+browse → Name →
+                                                WorkDir+browse → Arguments → Comment → HotKey+Clear →
+                                                SM path label (SCT_STARTMENU) → Icon preview+picker →
+                                                Run as admin → OK/Cancel; IDC range 5200–5239;
+                                                InnoHotKeyToWord/WordToInnoHotKey helpers;
+                                                ScIconPreviewProc subclass; LoadPreviewIcon;
+                                                icon file picker filter (*.ico;*.exe;*.dll);
+                                                modal message loop pattern; WM_CTLCOLORSTATIC;
+                                                WM_DRAWITEM routing (DrawCustomCheckbox first,
+                                                DrawCustomButton fallback); caller wiring from
+                                                shortcuts.cpp (Desktop + SM add/edit; Pin buttons
+                                                have NO context menu — they pin, not configure);
+                                                all locale keys listed in INTERNALS file.
+
+  API_INTERNALS\INTERNALS\comp_deps_INTERNALS.txt
+                                                Component dependency-summary panel — two-column
+                                                ListView, DepListSubclassProc (hover tooltip via
+                                                project tooltip system, double-click file popup,
+                                                right-click context menu), ShowDepsFileListPopup
+                                                VFS file-tree viewer, Remove/Choose custom buttons,
+                                                folder-coverage filter, cascade-remove logic, and
+                                                full locale key reference.
+
+  API_INTERNALS\INTERNALS\button_rightclick_combo_INTERNALS.txt
+                                                Reusable pattern: ListView + explicit action
+                                                buttons + right-click context menu. Covers
+                                                subclass proc wiring (SetWindowLongPtrW),
+                                                TPM_RETURNCMD dispatch, Remove button enable/
+                                                disable via LVN_ITEMCHANGED, context menu
+                                                delegating to the button handler, tooltip
+                                                integration, and step-by-step guide for
+                                                replicating the pattern in a new dialog.
+
+  API_INTERNALS\INTERNALS\shortcuts_INTERNALS.txt
+                                                Shortcuts page module architecture — static
+                                                variables, SC_BuildPage / SC_Reset / SC_TearDown
+                                                lifecycle, SC_OnNotify return-value convention,
+                                                TreeView TVN_BEGINLABELEDIT / TVN_ENDLABELEDIT
+                                                in-place rename flow, SC_OnContextMenu dispatch
+                                                pattern (TPM_RETURNCMD → SendMessageW WM_COMMAND),
+                                                shell32.dll icon indices used, ImageList lifetime,
+                                                and full locale key table.
+
+  API_INTERNALS\INTERNALS\deps_INTERNALS.txt    Dependencies page module architecture —
+                                                ExternalDep data model (instructions_list
+                                                vector<wstring> for multi-page RTF instructions;
+                                                dep_instructions DB table), enums (DepDelivery /
+                                                DepArch / DepOffline / DepInstallOrder with
+                                                DIO_UNSPECIFIED sentinel and DIO_CUSTOM_DIALOG
+                                                stage / DepVersionSource DVS_NONE/REGISTRY/FILE),
+                                                DIO_BEFORE_WELCOME restriction for
+                                                Instructions Only, ListView subclass for
+                                                right-click context menu, modal measure-then-
+                                                create edit dialog (instructions icon-grid with
+                                                InstrIconCtx / WM_DEPINSTR_REMOVE, install order
+                                                as named dropdown combo), download timeout field
+                                                (IDC_DEPDLG_TIMEOUT=422, ES_NUMBER, 0=no timeout,
+                                                DD_AUTO_DOWNLOAD only), acceptable exit codes field
+                                                (IDC_DEPDLG_EXIT_CODES=423, space-separated,
+                                                DD_BUNDLED + DD_AUTO_DOWNLOAD), exit codes help
+                                                button (IDC_DEPDLG_EXIT_CODES_HELP=425, shell32 #23,
+                                                ShowValidationDialog reference popup), max version
+                                                field (IDC_DEPDLG_MAX_VER=424, Detection section,
+                                                empty = no upper bound), version check source combo
+                                                (IDC_DEPDLG_VER_SOURCE=428, DVS_NONE/REGISTRY/FILE,
+                                                between file path and min version rows; guard >=11),
+                                                per-dep component linkage
+                                                (required_components wstring; IDC_DEPDLG_COMP_EDIT=426
+                                                read-only edit + IDC_DEPDLG_COMP_PICK=427 "…" button
+                                                → PickCompDlgProc LBS_EXTENDEDSEL picker; empty =
+                                                install always; section hidden when no components;
+                                                InsertExternalDep 22 params; column 21 in SELECT),
+                                                DB table schema and CRUD API, control ID ranges,
+                                                locale key table, and mainwindow.cpp wiring guide.
+
+  API_INTERNALS\INTERNALS\scrollbar_reopen_INTERNALS.txt
+                                                MSB lifecycle across project-close/reopen and
+                                                page switches — the double-free crash pattern
+                                                (WM_DESTROY → Msb_TargetSubclassProc → msb_detach
+                                                frees ctx before explicit detach runs), three root
+                                                fixes (chain WM_DESTROY, null statics in WM_DESTROY,
+                                                null statics at top of Create()), the sister bug
+                                                (detach BEFORE controlIds[] loop, not after), rule
+                                                for adding MSBs to any new page, and key ID ranges.
+
+  API_INTERNALS\INTERNALS\scrollbar_INTERNALS.txt
+                                                Shortcuts-page vertical scrollbar — SCROLLINFO
+                                                setup, why SW_SCROLLCHILDREN fails, correct manual
+                                                child-enumeration pattern with SetWindowPos,
+                                                windows to exclude (toolbar buttons, status bar,
+                                                About button, MSB bar window), SC_SetScrollOffset
+                                                integration, SC_TearDown cleanup protocol, and
+                                                status-bar HWND_TOP anti-overlap technique.
+                                                (Migrated from native WS_VSCROLL to my_scrollbar
+                                                MSB on 2026-04-05 — same pattern as Dialogs page.)
+
+  API_INTERNALS\INTERNALS\i18n_INTERNALS.txt    Internationalisation policy — English-first rule
+                                                (only en_GB.txt maintained during development),
+                                                locale file format (key=value, \n escapes),
+                                                key naming conventions (subsystem_ prefix,
+                                                _dlg_ qualifier), runtime lookup pattern with
+                                                fallback, ExpandEscapes usage, and step-by-step
+                                                guide for adding a new locale key.
+
+  API_INTERNALS\INTERNALS\dialogs_INTERNALS.txt Dialogs page module (toolbar index 4) —
+                                                InstallerDialogType enum (0–9) and row
+                                                visibility rules:
+                                                  0=WELCOME, 1=LICENSE, 2=DEPENDENCIES,
+                                                  3=FOR_ME_ALL, 4=SELECT_FOLDER (new),
+                                                  5=COMPONENTS, 6=SHORTCUTS, 7=READY,
+                                                  8=INSTALL, 9=FINISH; IDLG_COUNT=10.
+                                                DB migration: InitDb detects old 9-type
+                                                schema (missing type-9 row) and shifts
+                                                dialog_defaults + installer_dialogs rows
+                                                4→5…8→9 (descending to avoid PK conflict).
+                                                installer-title section
+                                                (48×48 icon preview, OFN_EXPLORER .ico picker,
+                                                title edit field, IDLG_SetInstallerInfo /
+                                                IDLG_GetInstallerTitle / IDLG_GetInstallerIconPath),
+                                                control ID ranges (7000-7137; enable checkboxes
+                                                7060-7069; finish launch section 7070-7073;
+                                                license IDCs 7110-7117; select-folder IDCs
+                                                7118-7119; row base max = 7010+9×4+3=7049),
+                                                per-dialog enable toggles
+                                                (IDC_IDLG_ROW_ENABLE_BASE=7060; WELCOME/LICENSE/
+                                                READY/FINISH rows each carry a custom checkbox
+                                                replacing the plain label; s_dialogEnabled[10]
+                                                bool array; IsDialogActiveInInstaller() combines
+                                                IsDialogVisible()+s_dialogEnabled[];
+                                                SELECT_FOLDER active = !SETT_IsSelectFolderDisabled();
+                                                Next/PrevVisibleType use IsDialogActiveInInstaller;
+                                                IDLG_IsDialogEnabled() public accessor for
+                                                script generation — emit DisableWelcomePage=yes/
+                                                DisableReadyPage=yes/DisableFinishedPage=yes;
+                                                persisted as installer_dialog_enabled_<pid>
+                                                compact 10-char string; reset to all-true in
+                                                IDLG_Reset(); INSTALL row always active),
+                                                Select-folder preview
+                                                (IDC_IDLG_SELECT_FOLDER_PATH=7118 ES_READONLY edit
+                                                shows SHGetKnownFolderPath(token)+"\"+ appName;
+                                                IDC_IDLG_SELECT_FOLDER_BROWSE=7119 icon-only
+                                                Blue button opens SHBrowseForFolderW pre-navigated
+                                                to current base; on pick appName always appended;
+                                                WM_DRAWITEM must route 7119 to DrawCustomButton —
+                                                the DrawCustomCheckbox-only fallback leaves it blank;
+                                                icon-only (L"") buttons must NOT be EnableWindow(FALSE);
+                                                SETT_IsSelectFolderDisabled() controls row visibility),
+                                                Ready-row disk space preview
+                                                (GetTotalInstalledFileSize() walks all four VFS
+                                                snapshots via CollectSnapshotPaths + GetFileAttributesExW;
+                                                formatSize lambda: bytes→KB/MB/GB/TB 2dp, %ls for
+                                                wide unit suffix in swprintf; 3 lines: required /
+                                                available C: / free-after-install; required omitted
+                                                silently when 0; extLblH=S(62) for IDLG_READY,
+                                                S(22) for all other extras types),
+                                                Finish-row launch sub-section
+                                                (IDC_IDLG_FINISH_LAUNCH=7070 checkbox;
+                                                IDC_IDLG_FINISH_LAUNCH_DESC=7072 edit;
+                                                IDC_IDLG_FINISH_LAUNCH_DEFCHK=7073 checkbox;
+                                                emits [Run] Filename:"{app}\{#MyAppExeName}";
+                                                Flags: nowait postinstall shellexec skipifsilent
+                                                [+ unchecked when DEFCHK unchecked];
+                                                s_finishLaunchEnabled/s_finishLaunchDesc/
+                                                s_finishLaunchDefChecked state; persisted as
+                                                installer_finish_launch_<pid>,
+                                                installer_finish_launch_desc_<pid>,
+                                                installer_finish_launch_defchk_<pid>;
+                                                public accessors IDLG_GetFinishLaunchEnabled()/
+                                                IDLG_GetFinishLaunchDesc()/
+                                                IDLG_GetFinishLaunchDefaultChecked();
+                                                preview shows launch checkbox in extras panel),
+                                                Ready-row summary sub-section
+                                                (IDC_IDLG_READY_SHOW_DIR=7074 checkbox;
+                                                IDC_IDLG_READY_SHOW_GROUP=7075 checkbox;
+                                                both default true matching Inno defaults;
+                                                emit AlwaysShowDirOnReadyPage=yes and
+                                                AlwaysShowGroupOnReadyPage=yes in [Setup];
+                                                s_readyShowDir/s_readyShowGroup state;
+                                                persisted as installer_ready_show_dir_<pid>
+                                                and installer_ready_show_group_<pid>;
+                                                public accessors IDLG_GetReadyShowDir()/
+                                                IDLG_GetReadyShowGroup()),
+                                                sizer-panel header font/color controls
+                                                (IdlgHeaderFont struct {name,size,bold,italic};
+                                                IDLG_NOCOLOR=(COLORREF)-1 sentinel;
+                                                font IDs 7128-7137: FONT_GLOBAL/NAME/SIZE_E/
+                                                SIZE_S/BOLD/ITALIC/BROWSE; FONT_BROWSE=7137
+                                                is a "…" button that opens ChooseFontW
+                                                pre-seeded with current settings — on confirm
+                                                updates all four font controls + preview;
+                                                color IDs 7134-7136:
+                                                CLR_GLOBAL/FG/BG; two independent "Use on all
+                                                dialogs" toggles; live preview via
+                                                WM_ERASEBKGND+WM_CTLCOLORSTATIC; right-click
+                                                swatch resets to IDLG_NOCOLOR; accessors
+                                                IDLG_GetHeaderFont/FgColor/BgColor(t),
+                                                IDLG_IsHeaderFontGlobal/ColorGlobal();
+                                                persisted via installer_hdr_font_*+clr_*;
+                                                sizer panel width = S(180) logical px),
+                                                license source selector (IDC_IDLG_LICENSE_SRC=7050
+                                                CBS_DROPDOWNLIST: 0=Built-in RTF editor,
+                                                1=External file; CBN_SELCHANGE shows/hides
+                                                template vs file-path branch and enables/
+                                                disables "Edit Content..." for IDLG_LICENSE;
+                                                s_licenseSource int; IDLG_GetLicenseSource()
+                                                + IDLG_GetLicenseFilePath() accessors; file
+                                                branch IDs 7051-7053 OFN .rtf/.txt picker),
+                                                license template selector (IDC_IDLG_LICENSE_TEMPLATE=7047
+                                                CBS_DROPDOWNLIST combo + IDC_IDLG_LICENSE_TEMPLATE_LBL
+                                                =7048; populated from DB::GetAllLicenseTemplates();
+                                                CBN_SELCHANGE loads RTF via GetLicenseTemplateRtf
+                                                with <<AppName>>+<<Year>> substitution; persisted
+                                                via DB::SetSetting installer_license_template_<pid>;
+                                                s_licenseTemplateId int; 19 templates seeded in
+                                                license_templates table — see below),
+                                                license acceptance toggle (IDC_IDLG_LICENSE_ACCEPT=7046,
+                                                custom checkbox below License row; s_licenseMustAccept
+                                                bool; preview shows I accept/I do not accept radio
+                                                pair in split layout when enabled; persisted via
+                                                DB::SetSetting installer_license_must_accept_<pid>;
+                                                IDLG_GetLicenseMustAccept() public accessor),
+                                                license_templates DB table (id PK, name, spdx_id,
+                                                img_file, content_rtf; UPSERT seed (INSERT …
+                                                ON CONFLICT DO UPDATE) for 19 licences id 0–18;
+                                                DB::GetAllLicenseTemplates() /
+                                                DB::GetLicenseTemplateRtf(int id) accessors),
+                                                LicenseImg\ deployment folder (logo PNGs keyed
+                                                by img_file column; GNU licences share GnuLogo.png),
+                                                module-private state variables, IDLG_OnCommand
+                                                dispatch cases, preview dialog PreviewWndProc
+                                                (BS_PUSHBUTTON ◀/▶ glyph buttons,
+                                                MeasureButtonWidth sizing, hRadioMe/hRadioAll
+                                                reused by both IDLG_FOR_ME_ALL and IDLG_LICENSE
+                                                with text set dynamically in PopulateExtras),
+                                                vertical scrollbar (IDLG_BuildPage int return,
+                                                IDLG_SetScrollOffset / IDLG_GetScrollOffset,
+                                                WS_CLIPSIBLINGS, IDLG_TearDown cleanup),
+                                                dialog_defaults DB table (INSERT OR IGNORE seed
+                                                for all 9 types; <<AppName>> / <<AppVersion>> /
+                                                <<AppNameAndVersion>> placeholders),
+                                                IDLG_ApplyDefaults wiring (called in Create()
+                                                after IDLG_LoadFromDb — fills empty slots;
+                                                License slot is re-seeded from the active
+                                                license template whenever the slot has no
+                                                embedded image (\pict) but the template does —
+                                                fixes projects seeded from image-less
+                                                dialog_defaults row without touching slots
+                                                that already have a custom image),
+                                                preview RichEdit word-wrap: WS_HSCROLL must
+                                                NOT be in reStyle — RichEdit interprets it as
+                                                "infinite wrap width"; fix: create without
+                                                WS_HSCROLL and call EM_SETTARGETDEVICE(NULL,0)
+                                                after every EM_STREAMIN to lock wrap to the
+                                                actual control width; no horizontal MSB needed,
+                                                installer_dialogs DB schema and CRUD API,
+                                                mainwindow.cpp 7-point wiring checklist
+                                                (with mistake history), layout constants,
+                                                and full locale key table.
+
+  API_INTERNALS\INTERNALS\scripts_INTERNALS.txt  Scripts page module architecture —
+                                                SCR_BuildPage / SCR_Reset / SCR_TearDown
+                                                lifecycle, ScrWhenToRun enum → Inno Setup
+                                                section mapping (BEFORE_FILES→[Code],
+                                                AFTER_FILES→[Run], FINISH_OPTOUT→[Run]
+                                                postinstall skipifsilent, UNINSTALL→
+                                                [UninstallRun]),
+                                                drag-to-reorder (ScrListSubclassProc subclass:
+                                                WM_LBUTTONDOWN record hit item, WM_MOUSEMOVE
+                                                start drag after 4px threshold + SetCapture +
+                                                ComputeDropIndex, WM_LBUTTONUP commit via
+                                                MoveScript — save srcIdx/dropIdx BEFORE
+                                                ReleaseCapture() because ReleaseCapture
+                                                synchronously delivers WM_CAPTURECHANGED which
+                                                resets drag state; WM_CAPTURECHANGED cancel;
+                                                LVS_AUTOARRANGE removed; sort_order renumbered;
+                                                NM_CUSTOMDRAW CDDS_POSTPAINT 3px blue bar
+                                                DrawDropIndicator;
+                                                custom tooltip scr_list_drag_tip via
+                                                ShowMultilingualTooltip + TME_LEAVE),
+                                                SCR_EditDialog modal pattern
+                                                (measure-then-create, ScriptDlgData struct
+                                                {hSci, yEditorTop, bigEditor, hExpandToggle},
+                                                pExisting duplicate check, IsDupName helper,
+                                                ShowRenameDialog sub-dialog with RenameDlgProc;
+                                                on_error checkbox IDC_SCRDLG_ABORT_ON_ERROR=7369
+                                                persisted as on_error INTEGER 0=continue/1=abort;
+                                                working_dir edit+VFS picker
+                                                IDC_SCRDLG_WORKING_DIR=7370 /
+                                                IDC_SCRDLG_WORKING_DIR_BTN=7371 persisted as
+                                                working_dir TEXT — Inno constant path;
+                                                parameters edit IDC_SCRDLG_PARAMETERS=7372
+                                                persisted as parameters TEXT — command-line
+                                                args, empty=none;
+                                                finish_checked_by_default checkbox
+                                                IDC_SCRDLG_FINISH_CHECKED=7373 persisted as
+                                                finish_checked_by_default INTEGER — maps to
+                                                Inno checkedonce flag, visible only when
+                                                SWR_FINISH_OPTOUT selected;
+                                                Big editor toggle IDC_SCRDLG_EXPAND=7374
+                                                (scr_dlg_expand): EnumChildWindows hides
+                                                controls above threshold, Scintilla resized
+                                                to fill freed space;
+                                                layout: SD_CONTENT_H=240, SD_PAD_B=28,
+                                                Script type: label removed;
+                                                finish-page overlay approach: controls NOT
+                                                in contentH, created AFTER SciCreateEditor
+                                                (higher Z-order), yEditorTop recorded before
+                                                SciCreateEditor, UpdateWhenVisibility resizes
+                                                Scintilla around them when shown;
+                                                Load/Test buttons centred;
+                                                SS_ETCHEDHORZ separator above them),
+                                                Scintilla runtime load
+                                                (SciLoad: LoadLibraryW Scintilla.dll+Lexilla.dll,
+                                                Scintilla_RegisterClasses, CreateLexer;
+                                                plain EDIT fallback), DB table (scripts;
+                                                columns: on_error INTEGER DEFAULT 0,
+                                                working_dir TEXT DEFAULT '',
+                                                parameters TEXT DEFAULT '',
+                                                finish_checked_by_default INTEGER DEFAULT 0,
+                                                required_components TEXT DEFAULT '',
+                                                run_elevated INTEGER DEFAULT 0),
+                                                per-script component linkage
+                                                (required_components wstring;
+                                                IDC_SCRDLG_COMP_EDIT=7375 read-only edit +
+                                                IDC_SCRDLG_COMP_PICK=7376 "\u2026" button
+                                                -> reuses RunPickCompDialog from
+                                                dep_edit_dialog.cpp (now non-static, declared
+                                                in dep_edit_dialog.h); section hidden when no
+                                                components; InsertScript 16 params; column 15
+                                                in SELECT; SCR_EditDialog gains compNames
+                                                const vector<wstring>& parameter; call sites
+                                                in scripts.cpp build from GetComponents()),
+                                                run_elevated right-click toggle
+                                                (scr_ctx_run_elevated; MF_CHECKED menu item;
+                                                \u2713 tile prefix when active;
+                                                Inno: runascurrentuser flag in [Run]/
+                                                [UninstallRun]; ShellExec runas in [Code]),
+                                                notes field + LV_VIEW_TILE subtitles
+                                                (IDC_SCRDLG_NOTES=7377 edit in dialog;
+                                                DB col notes TEXT DEFAULT '';
+                                                InsertScript 17 params; col 16 in SELECT;
+                                                SCR_BuildPage: LVM_SETVIEW LV_VIEW_TILE +
+                                                2 hidden cols + LVTILEVIEWINFO S(240) cLines=2;
+                                                RefreshList: LVTILEINFO per item
+                                                col1=notes col2=when-to-run,
+                                                1 line when notes empty else 2;
+                                                locale keys scr_tile_when_0..3 +
+                                                scr_dlg_notes),
+                                                control ID ranges (page 7300\u20137349,
+                                                dialog 7350\u20137399), and full locale key table.
+
+  preview_autofit_INTERNALS.txt                 Preview dialog auto-fit, positioning, and
+                                                scrollbar system —
+                                                AutoFitPreview (all dialog types, both layouts),
+                                                ScanRtfNaturalWidthTwips (twip→logical-px width),
+                                                SyncContentScrollbar (my_scrollbar attach/detach
+                                                for both auto-fit cap and manual-resize overflow;
+                                                when hContentSB is non-NULL, msb_sync is used
+                                                directly — GetScrollInfo path bypassed to avoid
+                                                false detach after EM_SHOWSCROLLBAR(FALSE)),
+                                                measurement RichEdit MUST have WS_VISIBLE +
+                                                RedrawWindow(RDW_UPDATENOW) before GetScrollInfo
+                                                or nMax=0 always (images never measured),
+                                                layout constants (kPreviewChromeLogH=114,
+                                                split 160+extrasContentH+rtfLogH, no-RTF 144+n×28;
+                                                extrasContentH=n×28 for checkboxes,
+                                                extrasContentH=62 for radio-button types),
+                                                +1 logical-px rtfLogH tolerance in single-layout
+                                                non-capped path (prevents false 1-px overflow
+                                                from MeasureRichEditLogHeight vs Msb_MeasureRichVertMax
+                                                rounding difference), width formula,
+                                                cap values (95 %/75 %), scrollbar lifecycle,
+                                                s_previewUserSized per-type suppression,
+                                                monitor-work-area centring (initial open,
+                                                post-AutoFit, after NavigateTo, after Reset —
+                                                all use MonitorFromWindow→GetMonitorInfoW→rcWork;
+                                                NavigateTo re-centres both preview and sizer
+                                                after each AutoFitPreview call),
+                                                Cancel-guard snapshot (openLogW/H/openUserSized)
+                                                must be taken AFTER AutoFitPreview — not before.
+
+  API_INTERNALS\INTERNALS\manual_INTERNALS.txt  Per-page manual system — architecture
+                                                overview, RICHEDIT50W vs RichEdit20W
+                                                (font-linking, emoji), CHARFORMAT2W
+                                                DEFAULT_CHARSET, body twips formula,
+                                                color icon overlay system
+                                                (RegisterShell32Icon / RegisterSystemIcon /
+                                                ManualEditSubclassProc WM_PAINT pattern),
+                                                logo painting (GDI+, blank-line reserve,
+                                                scroll offset), window layout + live resize,
+                                                modality (EnableWindow + PostQuitMessage),
+                                                toolbar ? button internals (SS_NOTIFY rule,
+                                                ManualIcon_SubclassProc message handling,
+                                                s_prevManualProc / s_manualIconTracking
+                                                statics, forward declaration requirement),
+                                                step-by-step guide for adding a new page
+                                                manual (PopulateXxxManual, locale keys,
+                                                pageIndex dispatch), and shell32 icon
+                                                index reference table.
+
+  page_manual.h / page_manual.cpp               Per-page contextual manual popup —
+                                                ShowPageManual(hwndParent, pageIndex, locale)
+                                                entry point; dispatches to PopulateXxxManual()
+                                                per page index (PopulateFilesManual for 0;
+                                                stub for all other pages).
+                                                Window: WS_POPUP | WS_CAPTION | WS_SYSMENU |
+                                                WS_THICKFRAME | WS_MAXIMIZEBOX | WS_VISIBLE.
+                                                RichEdit: loads Msftedit.dll → RICHEDIT50W
+                                                (v4.1, full Unicode font-linking, emoji-capable);
+                                                falls back to RichEdit20W. CHARFORMAT2W with
+                                                CFM_CHARSET | DEFAULT_CHARSET enables Segoe UI
+                                                Emoji font substitution. EM_SETTARGETDEVICE(NULL,0)
+                                                locks word-wrap to control width (no H-scroll).
+                                                Color icon overlays (GDI ≠ COLR color emoji):
+                                                RegisterShell32Icon(hEdit, pd, iconIdx) — records
+                                                current char position + loads shell32 icon via
+                                                ExtractIconExW (large). RegisterSystemIcon variant
+                                                for IDI_WARNING etc. ManualEditSubclassProc
+                                                WM_PAINT: after original proc draws text, calls
+                                                EM_POSFROMCHAR for each recorded IconEntry and
+                                                draws the full-color icon via DrawIconEx at the
+                                                scroll-adjusted client coordinates. Icons freed in
+                                                WM_DESTROY. SC logo drawn via GDI+ at top.
+                                                Toolbar ? button (IDC_FILES_MANUAL_BTN=5029):
+                                                flat SS_NOTIFY (no SS_ICON) static control in
+                                                CreateToolbar(), S(5) px left of About icon, same
+                                                size (S(36)×S(36)). ManualIcon_SubclassProc:
+                                                WM_PAINT (DrawIconEx + COLOR_BTNFACE fill),
+                                                WM_ERASEBKGND (return 1), WM_MOUSEMOVE/MOUSELEAVE
+                                                (tooltip via ShowMultilingualTooltip/HideTooltip,
+                                                TooltipText prop set by SetButtonTooltip),
+                                                WM_NCDESTROY (DestroyIcon + free prop).
+                                                WM_COMMAND calls ShowPageManual(hwnd,
+                                                s_currentPageIndex, s_locale) — page-aware.
+                                                Locale key: man_files_btn_hint.
+
+  file_assoc.h / file_assoc.cpp                 File Associations page module (toolbar index 10,
+                                                IDC_TB_FILE_ASSOC=5084). FA_BuildPage /
+                                                FA_Reset / FA_TearDown / FA_OnCommand /
+                                                FA_OnNotify / FA_SaveToDb / FA_LoadFromDb.
+                                                FA_HasAnyEnabled() → bool (drives
+                                                ChangesAssociations in SBuildConfig).
+                                                FA_GetAssociations() → vector<FileAssocRow>
+                                                (consumed by ISS_GenerateIss for HKCR
+                                                registry generation).
+                                                ListView LVS_EX_CHECKBOXES; s_refreshing
+                                                flag guards FA_OnNotify against spurious
+                                                LVN_ITEMCHANGED fired by ListView_SetCheckState
+                                                during RefreshList() — MUST set before
+                                                ListView_DeleteAllItems and clear after loop.
+                                                Right-click context menu (IDM_FA_CTX_EDIT=6400,
+                                                IDM_FA_CTX_REMOVE=6401); double-click to edit.
+                                                Button IDs: IDC_FA_LIST=8100,
+                                                IDC_FA_ADD=8101, IDC_FA_EDIT=8102,
+                                                IDC_FA_REMOVE=8103,
+                                                IDC_FA_PAGE_TITLE=8104.
+
+  file_assoc_dialog.h / file_assoc_dialog.cpp   Add/Edit File Association modal dialog.
+                                                FA_ShowEditDialog(hwndParent, hInst,
+                                                  locale, row, isNew) → bool.
+                                                Flat form: Extension (required, leading dot),
+                                                Description, ProgID (auto AppName.ext if blank),
+                                                Icon path+browse, Icon index (0-based),
+                                                Open/Edit/Print commands (%1 = file path),
+                                                MIME type, Enabled checkbox.
+                                                Per-field help icon: shell32.dll index 23 (ℹ)
+                                                appended to each field row via MakeRow()
+                                                hasHelp/helpId/helpTip params +
+                                                SetButtonTooltip(hHelp, tip) — tooltip text
+                                                describes format, example, and blank behaviour.
+                                                Help IDs FADLG_IDC_HELP_ENABLED–HELP_MIME
+                                                (3220–3229). 10 fa_tip_* locale keys.
+                                                WM_DRAWITEM: DrawCustomCheckbox first,
+                                                DrawCustomButton fallback (matches
+                                                dep_edit_dialog pattern).
+                                                IDC range 3200–3229.
+
+================================================================================
