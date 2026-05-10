@@ -10,19 +10,16 @@ if %ERRORLEVEL% neq 0 ( echo [ERROR] windres failed & pause & exit /b 1 )
 
 :: Compile and link
 g++ -std=c++17 -O2 -mwindows -municode ^
-    NSBEdit.cpp NSBEdit.res ^
-    ../dpi.cpp ../tooltip.cpp ^
+    NSBEdit.cpp dpi.cpp tooltip.cpp NSBEdit.res ^
     -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid -luser32 -lgdi32 -lgdiplus ^
     -static -static-libgcc -static-libstdc++ ^
     -o NSBEdit.exe
 
 if %ERRORLEVEL% neq 0 ( echo. & echo BUILD FAILED & pause & exit /b 1 )
 
-::Keep runtime assets in sync
-copy /Y ..\GPLv2.md GPLv2.md >nul
-copy /Y ..\GnuLogo.bmp GnuLogo.bmp >nul
+::Keep runtime assets alongside the exe (already in repo; no-op copy)
 copy /Y NSB.png NSB.png >nul
-copy /Y curver.txt curver.txt >nul
+copy /Y curver.txt curver.txt >nul 2>&1
 
 echo.
 echo Done - NSBEdit.exe updated

@@ -17,8 +17,8 @@
 #include <sstream>
 #include <unordered_map>
 #include <stdio.h>
-#include "../dpi.h"
-#include "../tooltip.h"
+#include "dpi.h"
+#include "tooltip.h"
 
 // ── Control and menu IDs ───────────────────────────────────────────────────────
 #define IDI_APPICON         1
@@ -54,14 +54,15 @@
 // ── Internal state ─────────────────────────────────────────────────────────────
 struct NeState {
     std::wstring currentPath;
-    bool  modified       = false;
-    bool  suppressChange = false;
+    bool  modified        = false;
+    bool  suppressChange  = false;
     bool  updatingToolbar = false;
-    int   editY          = 0;
-    int   statusH        = 0;
-    int   pad            = 0;
-    HICON hIconLarge     = NULL;
-    HICON hIconSmall     = NULL;
+    int   editY           = 0;
+    int   statusH         = 0;
+    int   pad             = 0;
+    int   minClientW      = 0;  // minimum client width enforced by WM_GETMINMAXINFO
+    HICON hIconLarge      = NULL;
+    HICON hIconSmall      = NULL;
 };
 
 // ── RichEdit DLL ───────────────────────────────────────────────────────────────
@@ -686,8 +687,11 @@ static void Ne_SetTip(HWND hCtrl, const wchar_t* text)
     SetPropW(hCtrl, L"neTipProc", (HANDLE)(void*)(LONG_PTR)prev);
 }
 
-// ── Responsive toolbar layout ────────────────────────────────────────────────────
-// Reflows all 17 toolbar controls into one row (wide enough) or two rows.
+// ── Responsive toolbar layout ─────────────────────────────────────────────────
+// Controls are placed left-to-right.  When the next one would overflow the row
+// it drops to the next row — one control at a time.  When a row would hold
+// fewer than 3 controls, the window can no longer be narrowed; that minimum
+// width is stored in NeState::minClientW so WM_GETMINMAXINFO can enforce it.
 // Returns the Y coordinate where the RichEdit should start.
 static int Ne_LayoutToolbar(HWND hwnd, int cW)
 {
@@ -700,53 +704,99 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW)
     const int wCol  = bSz + S(10);
     const int wFace = S(170);
     const int wSize = S(56);
+    const int rowH  = bSz + S(4);   // height of one toolbar row including gap
 
-    // Total pixel width needed to fit everything in one row.
-    int oneRowW = pad
-        + bSz+bG + bSz+bG + bSz+bG + bSz+sG   // B I U S
-        + wXs+bG + wXs+sG                       // X2 X^2
-        + wFace+bG + wSize                      // Face Size
-        + sG                                    // separator
-        + wAl+bG + wAl+bG + wAl+bG + wAl+sG    // ≡L ≡C ≡R ≡J
-        + wAl+bG + wAl+sG                       // • 1.
-        + wCol+bG + wCol+sG                     // A▼ H▼
-        + wCol                                  // 🖼
-        + pad;
-
-    bool oneRow = (cW >= oneRowW);
-    int x  = pad;
-    int y1 = pad;
-    int y2 = oneRow ? pad : (pad + bSz + S(4));
-
-    auto P = [&](int id, int w, int gap, int ry) {
-        HWND h = GetDlgItem(hwnd, id);
-        if (h) SetWindowPos(h, NULL, x, ry, w, bSz, SWP_NOZORDER | SWP_NOACTIVATE);
-        x += w + gap;
+    // Ordered list of all 17 toolbar controls: { id, pixel-width, gap-after }.
+    // Gap conventions: bG = tight gap inside a group, sG = wider gap between groups.
+    struct Ctrl { int id, w, gap; };
+    const Ctrl ctrls[] = {
+        { IDC_NE_BOLD,        bSz,   bG },
+        { IDC_NE_ITALIC,      bSz,   bG },
+        { IDC_NE_UNDERLINE,   bSz,   bG },
+        { IDC_NE_STRIKE,      bSz,   sG },
+        { IDC_NE_SUBSCRIPT,   wXs,   bG },
+        { IDC_NE_SUPERSCRIPT, wXs,   sG },
+        { IDC_NE_FONTFACE,    wFace, bG },
+        { IDC_NE_FONTSIZE,    wSize, sG },
+        { IDC_NE_ALIGN_L,     wAl,   bG },
+        { IDC_NE_ALIGN_C,     wAl,   bG },
+        { IDC_NE_ALIGN_R,     wAl,   bG },
+        { IDC_NE_ALIGN_J,     wAl,   sG },
+        { IDC_NE_BULLET,      wAl,   bG },
+        { IDC_NE_NUMBERED,    wAl,   sG },
+        { IDC_NE_COLOR,       wCol,  bG },
+        { IDC_NE_HIGHLIGHT,   wCol,  sG },
+        { IDC_NE_IMAGE,       wCol,  0  },
     };
+    const int N = (int)(sizeof(ctrls) / sizeof(ctrls[0]));
 
-    P(IDC_NE_BOLD,        bSz,   bG, y1);
-    P(IDC_NE_ITALIC,      bSz,   bG, y1);
-    P(IDC_NE_UNDERLINE,   bSz,   bG, y1);
-    P(IDC_NE_STRIKE,      bSz,   sG, y1);
-    P(IDC_NE_SUBSCRIPT,   wXs,   bG, y1);
-    P(IDC_NE_SUPERSCRIPT, wXs,   sG, y1);
-    P(IDC_NE_FONTFACE,    wFace, bG, y1);
-    P(IDC_NE_FONTSIZE,    wSize, 0,  y1);
+    // ── Pass 1: assign each control to a row ─────────────────────────────────
+    // Row changes when adding the next control would push x past cW - pad.
+    int rowOf[N];        // which row each control belongs to
+    int rowCount[32] = {};  // number of controls per row (unlikely > 32 rows)
+    int numRows = 0;
+    {
+        int x = pad;
+        int row = 0;
+        rowCount[0] = 0;
+        for (int i = 0; i < N; ++i) {
+            int needed = ctrls[i].w + (i + 1 < N ? ctrls[i].gap : 0);
+            if (rowCount[row] > 0 && x + needed > cW - pad) {
+                // wrap to next row
+                ++row;
+                x = pad;
+                rowCount[row] = 0;
+            }
+            rowOf[i]    = row;
+            rowCount[row]++;
+            x += ctrls[i].w + ctrls[i].gap;
+            if (row + 1 > numRows) numRows = row + 1;
+        }
+    }
 
-    if (oneRow) x += sG;
-    else        x  = pad;
+    // ── Pass 2: place controls ────────────────────────────────────────────────
+    int x   = pad;
+    int curRow = 0;
+    int y   = pad;
+    for (int i = 0; i < N; ++i) {
+        if (rowOf[i] != curRow) {
+            curRow = rowOf[i];
+            x = pad;
+            y = pad + curRow * rowH;
+        }
+        HWND h = GetDlgItem(hwnd, ctrls[i].id);
+        if (h) SetWindowPos(h, NULL, x, y, ctrls[i].w, bSz, SWP_NOZORDER | SWP_NOACTIVATE);
+        x += ctrls[i].w + ctrls[i].gap;
+    }
 
-    P(IDC_NE_ALIGN_L,   wAl,  bG, y2);
-    P(IDC_NE_ALIGN_C,   wAl,  bG, y2);
-    P(IDC_NE_ALIGN_R,   wAl,  bG, y2);
-    P(IDC_NE_ALIGN_J,   wAl,  sG, y2);
-    P(IDC_NE_BULLET,    wAl,  bG, y2);
-    P(IDC_NE_NUMBERED,  wAl,  sG, y2);
-    P(IDC_NE_COLOR,     wCol, bG, y2);
-    P(IDC_NE_HIGHLIGHT, wCol, sG, y2);
-    P(IDC_NE_IMAGE,     wCol, 0,  y2);
+    // ── Compute minimum client width analytically ─────────────────────────────
+    // For the current row assignment, each row has a fixed pixel extent.
+    // The minimum cW that keeps every control in its current row is:
+    //   for each row r:  row_min = pad + (sum of w+gap for all controls in r
+    //                               except the trailing gap of the last one) + pad
+    // minClientW = max over all rows.
+    // This is stable: at exactly minClientW, no control wraps, so the layout
+    // is identical and the stored value remains correct until the next WM_SIZE.
+    // WM_GETMINMAXINFO uses this to prevent the window from shrinking further.
+    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (st && numRows > 0) {
+        int minCW = 0;
+        for (int r = 0; r < numRows; ++r) {
+            int rx = pad;
+            for (int i = 0; i < N; ++i) {
+                if (rowOf[i] != r) continue;
+                rx += ctrls[i].w;
+                // Add inter-control gap, but not the trailing gap of the
+                // last control in this row (it does not consume row space).
+                bool isLastInRow = (i == N - 1 || rowOf[i + 1] != r);
+                if (!isLastInRow) rx += ctrls[i].gap;
+            }
+            minCW = std::max(minCW, rx + pad);  // rx already includes left pad
+        }
+        st->minClientW = minCW;
+    }
 
-    return y2 + bSz + S(6);
+    return pad + numRows * rowH + S(2);
 }
 
 // ── About dialog ──────────────────────────────────────────────────────────────
@@ -1516,6 +1566,25 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         SetBkColor(hdc, GetSysColor(COLOR_BTNFACE));
         SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
         return (LRESULT)GetSysColorBrush(COLOR_BTNFACE);
+    }
+
+    // ── Minimum window size — enforced by Ne_LayoutToolbar's minClientW ───────
+    case WM_GETMINMAXINFO: {
+        NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+        if (st && st->minClientW > 0) {
+            // Convert minimum client width → minimum window width by adding
+            // the non-client frame (borders + title bar + menu bar).
+            RECT rc = { 0, 0, st->minClientW, 100 };
+            AdjustWindowRectEx(&rc,
+                (DWORD)GetWindowLongPtrW(hwnd, GWL_STYLE),
+                GetMenu(hwnd) != NULL,
+                (DWORD)GetWindowLongPtrW(hwnd, GWL_EXSTYLE));
+            int minW = rc.right - rc.left;
+            MINMAXINFO* mmi = (MINMAXINFO*)lParam;
+            if (minW > mmi->ptMinTrackSize.x)
+                mmi->ptMinTrackSize.x = minW;
+        }
+        return 0;
     }
 
     // ── WM_CLOSE — prompt if modified ────────────────────────────────────────
