@@ -61,6 +61,7 @@
 #define IDC_NE_NUMBERED     217
 #define IDC_NE_IMAGE        218
 #define IDC_NE_STATUSBAR    219
+#define IDC_NE_DLG_TEXT     230
 
 // ── Internal state ─────────────────────────────────────────────────────────────
 struct NeState {
@@ -68,10 +69,13 @@ struct NeState {
     bool  modified        = false;
     bool  suppressChange  = false;
     bool  updatingToolbar = false;
+    bool  hasDiskStamp    = false;
     int   editY           = 0;
     int   statusH         = 0;
     int   pad             = 0;
     int   minClientW      = 0;  // minimum client width enforced by WM_GETMINMAXINFO
+    FILETIME   diskWriteTime = {};
+    ULONGLONG  diskFileSize  = 0;
     HICON hIconLarge      = NULL;
     HICON hIconSmall      = NULL;
 };
@@ -437,8 +441,353 @@ static void Ne_UpdateStatusText(HWND hwnd)
     SendMessageW(hSb, SB_SETTEXT, 0, (LPARAM)txt);
 }
 
-// ── File operations ────────────────────────────────────────────────────────────
+enum class NeBtnTone { Blue, Green, Red };
+
+struct NeDialogButtonSpec {
+    int id;
+    std::wstring text;
+    NeBtnTone tone;
+    const wchar_t* iconRes;
+    int width;
+};
+
+struct NeDialogData {
+    std::wstring title;
+    std::wstring message;
+    int textH = 0;
+    int result = IDCANCEL;
+    int closeResult = IDCANCEL;
+    int buttonCount = 0;
+    NeDialogButtonSpec buttons[3];
+};
+
 static bool Ne_PromptSaveIfModified(HWND hwnd); // forward
+static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path);
+
+static bool Ne_GetFileStamp(const std::wstring& path, FILETIME* outWrite, ULONGLONG* outSize)
+{
+    if (!outWrite || !outSize || path.empty()) return false;
+    WIN32_FILE_ATTRIBUTE_DATA fa = {};
+    if (!GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &fa)) return false;
+    *outWrite = fa.ftLastWriteTime;
+    *outSize = ((ULONGLONG)fa.nFileSizeHigh << 32) | (ULONGLONG)fa.nFileSizeLow;
+    return true;
+}
+
+static void Ne_RememberDiskStamp(NeState* st)
+{
+    if (!st || st->currentPath.empty()) {
+        if (st) st->hasDiskStamp = false;
+        return;
+    }
+    FILETIME ft = {};
+    ULONGLONG sz = 0;
+    if (Ne_GetFileStamp(st->currentPath, &ft, &sz)) {
+        st->diskWriteTime = ft;
+        st->diskFileSize = sz;
+        st->hasDiskStamp = true;
+    } else {
+        st->hasDiskStamp = false;
+    }
+}
+
+static HFONT Ne_CreateDialogFont(bool bold)
+{
+    NONCLIENTMETRICSW ncm = {}; ncm.cbSize = sizeof(ncm);
+    SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
+    if (ncm.lfMessageFont.lfHeight < 0)
+        ncm.lfMessageFont.lfHeight = (LONG)(ncm.lfMessageFont.lfHeight * 1.15f);
+    ncm.lfMessageFont.lfQuality = CLEARTYPE_QUALITY;
+    if (bold) ncm.lfMessageFont.lfWeight = FW_BOLD;
+    return CreateFontIndirectW(&ncm.lfMessageFont);
+}
+
+static int Ne_MeasureDialogTextHeight(const std::wstring& text, int maxW)
+{
+    HDC hdc = GetDC(NULL);
+    if (!hdc) return S(48);
+    HFONT hf = Ne_CreateDialogFont(false);
+    HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
+    RECT rc = { 0, 0, maxW, 0 };
+    DrawTextW(hdc, text.c_str(), -1, &rc, DT_WORDBREAK | DT_CALCRECT | DT_NOPREFIX);
+    if (old) SelectObject(hdc, old);
+    if (hf) DeleteObject(hf);
+    ReleaseDC(NULL, hdc);
+    int h = rc.bottom - rc.top;
+    return std::max(h, S(24));
+}
+
+static int Ne_MeasureButtonWidth(const std::wstring& text)
+{
+    HDC hdc = GetDC(NULL);
+    if (!hdc) return S(120);
+    HFONT hf = Ne_CreateDialogFont(true);
+    HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
+    SIZE sz = {};
+    GetTextExtentPoint32W(hdc, text.c_str(), (int)text.size(), &sz);
+    if (old) SelectObject(hdc, old);
+    if (hf) DeleteObject(hf);
+    ReleaseDC(NULL, hdc);
+    // icon + gap + text + horizontal padding
+    int w = S(16) + S(8) + sz.cx + S(24);
+    return std::max(w, S(120));
+}
+
+static COLORREF Ne_ToneColor(NeBtnTone tone, bool pressed)
+{
+    switch (tone) {
+        case NeBtnTone::Green: return pressed ? RGB(50, 120, 50) : RGB(70, 140, 70);
+        case NeBtnTone::Red:   return pressed ? RGB(180, 70, 70) : RGB(205, 92, 92);
+        default:               return pressed ? RGB(204, 228, 247) : RGB(225, 225, 225);
+    }
+}
+
+static int Ne_ButtonIndexById(const NeDialogData* dd, int id)
+{
+    if (!dd) return -1;
+    for (int i = 0; i < dd->buttonCount; ++i)
+        if (dd->buttons[i].id == id) return i;
+    return -1;
+}
+
+static void Ne_DrawDialogButton(const DRAWITEMSTRUCT* dis, const NeDialogData* dd)
+{
+    if (!dis || !dd) return;
+    int idx = Ne_ButtonIndexById(dd, dis->CtlID);
+    if (idx < 0) return;
+    const NeDialogButtonSpec& b = dd->buttons[idx];
+
+    RECT rc = dis->rcItem;
+    HDC hdc = dis->hDC;
+    bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+
+    HBRUSH hb = CreateSolidBrush(Ne_ToneColor(b.tone, pressed));
+    FillRect(hdc, &rc, hb);
+    DeleteObject(hb);
+    FrameRect(hdc, &rc, GetSysColorBrush(COLOR_3DSHADOW));
+
+    HFONT hf = Ne_CreateDialogFont(true);
+    HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
+
+    SIZE ts = {};
+    GetTextExtentPoint32W(hdc, b.text.c_str(), (int)b.text.size(), &ts);
+    int contentW = S(16) + S(8) + ts.cx;
+    int startX = rc.left + ((rc.right - rc.left) - contentW) / 2;
+    int iconY = rc.top + ((rc.bottom - rc.top) - S(16)) / 2;
+
+    HICON hIcon = LoadIconW(NULL, b.iconRes ? b.iconRes : IDI_INFORMATION);
+    if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
+
+    RECT tr = rc;
+    tr.left = startX + S(16) + S(8);
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, RGB(25, 25, 25));
+    DrawTextW(hdc, b.text.c_str(), -1, &tr, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX);
+
+    if (dis->itemState & ODS_FOCUS) {
+        RECT fr = rc;
+        InflateRect(&fr, -S(4), -S(4));
+        DrawFocusRect(hdc, &fr);
+    }
+
+    if (old) SelectObject(hdc, old);
+    if (hf) DeleteObject(hf);
+}
+
+static LRESULT CALLBACK Ne_DialogWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    NeDialogData* dd = (NeDialogData*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    switch (msg) {
+    case WM_CREATE: {
+        CREATESTRUCTW* cs = (CREATESTRUCTW*)lParam;
+        dd = (NeDialogData*)cs->lpCreateParams;
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)dd);
+
+        HINSTANCE hi = GetModuleHandleW(NULL);
+        HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
+        if (hIco) {
+            SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+            SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIco);
+        }
+
+        RECT rc = {}; GetClientRect(hwnd, &rc);
+        const int padH = S(20), padT = S(18), padB = S(15), gapTB = S(14), btnH = S(34), btnGap = S(10);
+
+        HWND hTxt = CreateWindowExW(0, L"STATIC", dd->message.c_str(),
+            WS_CHILD | WS_VISIBLE | SS_LEFT,
+            padH, padT, rc.right - 2 * padH, dd->textH,
+            hwnd, (HMENU)(UINT_PTR)IDC_NE_DLG_TEXT, hi, NULL);
+        if (hTxt) SendMessageW(hTxt, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
+        int totalW = 0;
+        for (int i = 0; i < dd->buttonCount; ++i) {
+            totalW += dd->buttons[i].width;
+            if (i + 1 < dd->buttonCount) totalW += btnGap;
+        }
+        int bx = (rc.right - totalW) / 2;
+        int by = rc.bottom - padB - btnH;
+        for (int i = 0; i < dd->buttonCount; ++i) {
+            DWORD style = WS_CHILD | WS_VISIBLE | BS_OWNERDRAW;
+            if (i == 0) style |= BS_DEFPUSHBUTTON;
+            HWND hBtn = CreateWindowExW(0, L"BUTTON", dd->buttons[i].text.c_str(),
+                style, bx, by, dd->buttons[i].width, btnH,
+                hwnd, (HMENU)(UINT_PTR)dd->buttons[i].id, hi, NULL);
+            if (hBtn) SendMessageW(hBtn, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+            bx += dd->buttons[i].width + btnGap;
+        }
+        return 0;
+    }
+    case WM_DRAWITEM:
+        Ne_DrawDialogButton((const DRAWITEMSTRUCT*)lParam, dd);
+        return TRUE;
+    case WM_COMMAND:
+        if (!dd) break;
+        if (HIWORD(wParam) == BN_CLICKED) {
+            int id = LOWORD(wParam);
+            if (Ne_ButtonIndexById(dd, id) >= 0) {
+                dd->result = id;
+                DestroyWindow(hwnd);
+                return 0;
+            }
+        }
+        break;
+    case WM_CLOSE:
+        if (dd) dd->result = dd->closeResult;
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_CTLCOLORSTATIC: {
+        HDC hdc = (HDC)wParam;
+        SetBkColor(hdc, RGB(255, 255, 255));
+        SetTextColor(hdc, RGB(20, 20, 20));
+        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+    }
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wstring& message,
+                               NeDialogButtonSpec* buttons, int buttonCount, int closeResult)
+{
+    if (buttonCount <= 0 || buttonCount > 3) return closeResult;
+
+    for (int i = 0; i < buttonCount; ++i)
+        buttons[i].width = Ne_MeasureButtonWidth(buttons[i].text);
+
+    const int padH = S(20), padT = S(18), padB = S(15), gapTB = S(14), btnH = S(34), btnGap = S(10);
+    int contW = S(420);
+    int textH = Ne_MeasureDialogTextHeight(message, contW);
+    int totalBtnW = 0;
+    for (int i = 0; i < buttonCount; ++i) {
+        totalBtnW += buttons[i].width;
+        if (i + 1 < buttonCount) totalBtnW += btnGap;
+    }
+    int clientW = std::max(contW + 2 * padH, totalBtnW + 2 * padH);
+    int clientH = padT + textH + gapTB + btnH + padB;
+
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME);
+    int winW = wr.right - wr.left;
+    int winH = wr.bottom - wr.top;
+
+    RECT pr = {};
+    if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
+    int x = pr.left + ((pr.right - pr.left) - winW) / 2;
+    int y = pr.top + ((pr.bottom - pr.top) - winH) / 2;
+
+    RECT wa = {};
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+    if (x < wa.left) x = wa.left;
+    if (y < wa.top) y = wa.top;
+    if (x + winW > wa.right) x = wa.right - winW;
+    if (y + winH > wa.bottom) y = wa.bottom - winH;
+
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = Ne_DialogWndProc;
+    wc.hInstance = hi;
+    wc.hCursor = LoadCursorW(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszClassName = L"NSBEditChoiceDialogClass";
+    if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
+
+    NeDialogData dd = {};
+    dd.title = title ? title : L"";
+    dd.message = message;
+    dd.textH = textH;
+    dd.closeResult = closeResult;
+    dd.result = closeResult;
+    dd.buttonCount = buttonCount;
+    for (int i = 0; i < buttonCount; ++i) dd.buttons[i] = buttons[i];
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME,
+        wc.lpszClassName, dd.title.c_str(),
+        WS_POPUP | WS_CAPTION | WS_SYSMENU,
+        x, y, winW, winH, parent, NULL, hi, &dd);
+    if (!dlg) return closeResult;
+
+    if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
+    ShowWindow(dlg, SW_SHOW);
+    SetForegroundWindow(dlg);
+
+    MSG m;
+    while (IsWindow(dlg) && GetMessageW(&m, NULL, 0, 0)) {
+        if (!IsDialogMessageW(dlg, &m)) {
+            TranslateMessage(&m);
+            DispatchMessageW(&m);
+        }
+    }
+    if (parent && IsWindow(parent)) {
+        EnableWindow(parent, TRUE);
+        SetForegroundWindow(parent);
+    }
+    return dd.result;
+}
+
+static bool Ne_CheckExternalFileChangeOnFocus(HWND hwnd)
+{
+    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (!st || st->currentPath.empty()) return true;
+
+    FILETIME ft = {};
+    ULONGLONG sz = 0;
+    if (!Ne_GetFileStamp(st->currentPath, &ft, &sz)) {
+        st->hasDiskStamp = false;
+        return true;
+    }
+    if (!st->hasDiskStamp) {
+        st->diskWriteTime = ft;
+        st->diskFileSize = sz;
+        st->hasDiskStamp = true;
+        return true;
+    }
+
+    bool changed = (CompareFileTime(&ft, &st->diskWriteTime) != 0) || (sz != st->diskFileSize);
+    if (!changed) return true;
+
+    wchar_t msg[MAX_PATH + 256] = {};
+    swprintf_s(msg, Ls(L"MSG_FILE_CHANGED_PROMPT"), st->currentPath.c_str());
+
+    NeDialogButtonSpec btns[2] = {
+        { IDYES, Ls(L"BTN_RELOAD"), NeBtnTone::Green, IDI_INFORMATION, 0 },
+        { IDNO,  Ls(L"BTN_KEEP"),   NeBtnTone::Blue,  IDI_WARNING,     0 },
+    };
+    int r = Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_FILE_CHANGED"), msg, btns, 2, IDNO);
+    if (r == IDYES) {
+        if (!Ne_LoadPathIntoEditor(hwnd, st->currentPath)) {
+            MessageBoxW(hwnd, Ls(L"MSG_OPEN_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
+            Ne_RememberDiskStamp(st);
+            return false;
+        }
+        return true;
+    }
+
+    st->diskWriteTime = ft;
+    st->diskFileSize = sz;
+    st->hasDiskStamp = true;
+    return true;
+}
+
+// ── File operations ────────────────────────────────────────────────────────────
 
 static void Ne_Print(HWND hwnd)
 {
@@ -837,10 +1186,45 @@ static void Ne_New(HWND hwnd)
     NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (st) st->suppressChange = true;
     if (hEdit) SetWindowTextW(hEdit, L"");
-    if (st) { st->suppressChange = false; st->currentPath.clear(); st->modified = false; }
+    if (st) {
+        st->suppressChange = false;
+        st->currentPath.clear();
+        st->modified = false;
+        st->hasDiskStamp = false;
+        st->diskWriteTime = {};
+        st->diskFileSize = 0;
+    }
     Ne_UpdateTitle(hwnd);
     Ne_UpdateStatusText(hwnd);
     if (hEdit) SetFocus(hEdit);
+}
+
+static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
+{
+    FILE* f = nullptr;
+    if (_wfopen_s(&f, path.c_str(), L"rb") != 0 || !f) return false;
+
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    std::string bytes((size_t)std::max(0L, sz), '\0');
+    if (sz > 0) fread(&bytes[0], 1, (size_t)sz, f);
+    fclose(f);
+
+    HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (!hEdit || !st) return false;
+
+    st->suppressChange = true;
+    Ne_StreamIn(hEdit, bytes, Ne_IsRtf(bytes));
+    st->suppressChange = false;
+    st->currentPath = path;
+    st->modified = false;
+    Ne_RememberDiskStamp(st);
+
+    Ne_UpdateTitle(hwnd);
+    Ne_UpdateStatusText(hwnd);
+    return true;
 }
 
 static void Ne_Open(HWND hwnd)
@@ -857,27 +1241,12 @@ static void Ne_Open(HWND hwnd)
     ofn.lpstrTitle  = Ls(L"DLG_OPEN");
     if (!GetOpenFileNameW(&ofn)) return;
 
-    FILE* f = nullptr;
-    if (_wfopen_s(&f, path, L"rb") != 0 || !f) {
+    if (!Ne_LoadPathIntoEditor(hwnd, path)) {
         MessageBoxW(hwnd, Ls(L"MSG_OPEN_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
         return;
     }
-    fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
-    std::string bytes(sz, '\0');
-    if (sz > 0) fread(&bytes[0], 1, (size_t)sz, f);
-    fclose(f);
 
     HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (hEdit && st) {
-        st->suppressChange = true;
-        Ne_StreamIn(hEdit, bytes, Ne_IsRtf(bytes));
-        st->suppressChange = false;
-        st->currentPath = path;
-        st->modified    = false;
-    }
-    Ne_UpdateTitle(hwnd);
-    Ne_UpdateStatusText(hwnd);
     if (hEdit) SetFocus(hEdit);
 }
 
@@ -924,7 +1293,11 @@ static bool Ne_SaveAs(HWND hwnd)
     if (!GetSaveFileNameW(&ofn)) return false;
 
     if (!Ne_SaveToPath(hwnd, path)) return false;
-    if (st) { st->currentPath = path; st->modified = false; }
+    if (st) {
+        st->currentPath = path;
+        st->modified = false;
+        Ne_RememberDiskStamp(st);
+    }
     Ne_UpdateTitle(hwnd);
     Ne_UpdateStatusText(hwnd);
     return true;
@@ -936,6 +1309,7 @@ static bool Ne_Save(HWND hwnd)
     if (!st || st->currentPath.empty()) return Ne_SaveAs(hwnd);
     if (!Ne_SaveToPath(hwnd, st->currentPath)) return false;
     st->modified = false;
+    Ne_RememberDiskStamp(st);
     Ne_UpdateTitle(hwnd);
     return true;
 }
@@ -947,7 +1321,12 @@ static bool Ne_PromptSaveIfModified(HWND hwnd)
     const wchar_t* name = st->currentPath.empty() ? Ls(L"UNTITLED") : st->currentPath.c_str();
     wchar_t msg[MAX_PATH + 64];
     swprintf_s(msg, MAX_PATH + 64, Ls(L"MSG_SAVE_PROMPT"), name);
-    int r = MessageBoxW(hwnd, msg, Ls(L"APP_NAME"), MB_YESNOCANCEL | MB_ICONQUESTION);
+    NeDialogButtonSpec btns[3] = {
+        { IDYES,    Ls(L"BTN_SAVE"),       NeBtnTone::Green, IDI_INFORMATION, 0 },
+        { IDNO,     Ls(L"BTN_DONT_SAVE"),  NeBtnTone::Red,   IDI_WARNING,     0 },
+        { IDCANCEL, Ls(L"BTN_CANCEL"),     NeBtnTone::Blue,  IDI_ERROR,       0 },
+    };
+    int r = Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SAVE_CHANGES"), msg, btns, 3, IDCANCEL);
     if (r == IDCANCEL) return false;
     if (r == IDYES)    return Ne_Save(hwnd);
     return true; // IDNO — discard
@@ -1901,6 +2280,12 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 st->modified = true;
                 Ne_UpdateTitle(hwnd);
             }
+            if (wmEv == EN_KILLFOCUS && st) {
+                Ne_RememberDiskStamp(st);
+            }
+            if (wmEv == EN_SETFOCUS) {
+                Ne_CheckExternalFileChangeOnFocus(hwnd);
+            }
             if (wmEv == EN_SELCHANGE) Ne_SyncToolbar(hwnd, hEdit);
         }
         break;
@@ -2072,24 +2457,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
             if (q != std::wstring::npos) arg.erase(q);
         }
         if (!arg.empty()) {
-            FILE* f = nullptr;
-            if (_wfopen_s(&f, arg.c_str(), L"rb") == 0 && f) {
-                fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
-                std::string bytes((size_t)std::max(0L, sz), '\0');
-                if (sz > 0) fread(&bytes[0], 1, (size_t)sz, f);
-                fclose(f);
-                HWND hEdit = GetDlgItem(s_hwndMain, IDC_NE_EDIT);
-                NeState* st = (NeState*)GetWindowLongPtrW(s_hwndMain, GWLP_USERDATA);
-                if (hEdit && st) {
-                    st->suppressChange = true;
-                    Ne_StreamIn(hEdit, bytes, Ne_IsRtf(bytes));
-                    st->suppressChange = false;
-                    st->currentPath = arg;
-                    st->modified    = false;
-                    Ne_UpdateTitle(s_hwndMain);
-                    Ne_UpdateStatusText(s_hwndMain);
-                }
-            }
+            Ne_LoadPathIntoEditor(s_hwndMain, arg);
         }
     }
 

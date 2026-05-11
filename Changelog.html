@@ -1,6 +1,16 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 10 May 2026 &mdash; v2026.05.10.16 (16:25)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 May 2026 &mdash; v2026.05.11.08 (08:38)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.11.08</span></h3>
+<p><strong>Custom decision dialogs with icon buttons and external-file change detection (11.05.2026, 08:38):</strong></p>
+<ul>
+<li><strong>Unsaved-changes prompt is now a custom NSBEdit dialog:</strong> Replaced the system <code>MessageBoxW(MB_YESNOCANCEL)</code> flow with a dedicated modal dialog using owner-draw buttons and localized labels. Buttons are <em>Save</em>, <em>Don't Save</em>, and <em>Cancel</em>, each with a small icon for clearer visual feedback.</li>
+<li><strong>Focus-based external change detection:</strong> When the editor regains focus, NSBEdit compares file stamp (last write time + size) against the stamp captured when focus was last lost. If the file changed on disk, a custom decision dialog asks whether to <em>Reload</em> from disk or <em>Keep Current</em>.</li>
+<li><strong>Reusable custom dialog infrastructure:</strong> Added a shared <code>Ne_ShowChoiceDialog</code> path with dynamic text measurement, dynamic button-width sizing, centered layout, and owner-window modal behavior.</li>
+<li><strong>Safer load pipeline:</strong> Added <code>Ne_LoadPathIntoEditor</code> as a single code path used by Open, startup file argument, and external reload flow. This keeps editor state and title/status updates consistent.</li>
+<li><strong>Locale updates:</strong> Added new keys for dialog titles, prompts, and button labels so all new UI text remains fully localized through <code>Ls()</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.10.16</span></h3>
 <p><strong>Edit menu, right-click context menu, Export as PDF, Keyboard Shortcuts dialog (10.05.2026, 16:25):</strong></p>

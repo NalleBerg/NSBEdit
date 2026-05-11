@@ -43,6 +43,17 @@
                                                 Ne_ShowShortcuts — modal ListView dialog,
                                                 40 rows, NM_CUSTOMDRAW bold col 0 /
                                                 royal-blue col 2.
+                                                Ne_ShowChoiceDialog — custom modal
+                                                white-background question dialog with
+                                                owner-draw icon buttons (Save/Don't
+                                                Save/Cancel and Reload/Keep flows),
+                                                locale-driven labels, and dynamic
+                                                text/button sizing.
+                                                External file-change detection on
+                                                editor focus: compares current file's
+                                                last-write time + size against the
+                                                stamp captured when focus was last lost,
+                                                then asks Reload-from-disk or Keep.
                                                 RichEdit50W via Msftedit.dll, fallback
                                                 RichEdit20W. Ne_LayoutToolbar — greedy
                                                 one-by-one reflow, minClientW in NeState.
@@ -50,7 +61,7 @@
                                                 i18n: Ls()/Ne_Filter()/Ne_Unescape()/
                                                 Ne_LoadLocale(). Tooltip subclass:
                                                 Ne_SetTip/Ne_TipSubclassProc.
-                                                Control ID range: 201–219.
+                                                Control ID range: 201–230.
                                                 IDM range: 107–117.
 
   dpi.h / dpi.cpp                               DPI scaling utility — g_dpiScale (float,

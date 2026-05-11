@@ -43,6 +43,15 @@ MSG_SAVE_ERR      = Could not save file.
 MSG_IMG_OPEN_ERR  = Could not open image file.
 MSG_IMG_FMT_ERR   = Unsupported format. Please use PNG or JPEG.
 MSG_SAVE_PROMPT   = Save changes to "%s"?
+DLG_SAVE_CHANGES  = Save Changes
+BTN_SAVE          = Save
+BTN_DONT_SAVE     = Don't Save
+BTN_CANCEL        = Cancel
+
+DLG_FILE_CHANGED        = File Changed on Disk
+MSG_FILE_CHANGED_PROMPT = "%s" was changed by another program while NSBEdit did not have focus.\n\nReload from disk?
+BTN_RELOAD              = Reload
+BTN_KEEP                = Keep Current
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Bold  (Ctrl+B)

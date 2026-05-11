@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.10.16**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.11.08**
 
 ## Download
 
@@ -19,6 +19,8 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - Export as PDF via *Microsoft Print to PDF* — no third-party libraries
 - Keyboard Shortcuts dialog (`F1`) — 40 shortcuts, bold/colour-coded
 - `Ctrl+W` to close / exit (with unsaved-change prompt)
+- Custom save-changes dialog with icon buttons (Save / Don't Save / Cancel)
+- On-focus external file change detection with Reload / Keep Current dialog
 - Status bar showing line/column and file path
 - Smart toolbar reflow — controls drop one at a time as the window narrows
 - Minimum window width enforced (never narrower than 3 controls per toolbar row)
