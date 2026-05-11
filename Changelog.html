@@ -1,6 +1,19 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 May 2026 &mdash; v2026.05.11.08 (08:38)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 May 2026 &mdash; v2026.05.11.09 (09:59)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.11.09</span></h3>
+<p><strong>Owner-draw menus, tabbed editor, 12pt UI fonts, status bar with icons (11.05.2026, 09:59):</strong></p>
+<ul>
+<li><strong>12pt UI fonts everywhere:</strong> All user-visible text &mdash; toolbar buttons, combos, dialogs, status bar, tooltips &mdash; now uses 12pt Segoe UI rendered DPI-aware via <code>GetDpiForWindow()</code>/<code>GetDpiForSystem()</code>. Previously the default system message font was used, which Windows 10/11 regressed to a too-small size.</li>
+<li><strong>Owner-draw popup menus with white background:</strong> All popup menu items (File/Edit/Help dropdowns) are now owner-drawn at 12pt Segoe UI. White background on normal items, system highlight colour on hover, correct grayed colour for disabled items. Separators drawn as thin light-grey lines. Accelerator text right-aligned.</li>
+<li><strong>Owner-draw menu bar items:</strong> File, Edit, and Help bar entries are also owner-drawn at 12pt via <code>Ne_AppendMenuOD(isBar=true)</code>, fixing the too-small system default.</li>
+<li><strong>Tabbed editor &mdash; <code>ne_tabs.h/cpp</code>:</strong> Multiple documents open simultaneously in a tab strip. Each tab shows the filename and an owner-drawn &times; close glyph (hover = red circle). A <code>[+]</code> button opens a new tab. Right-click context menu on the tab strip: <em>New Tab</em> / <em>Close Tab</em> (localized). Tab titles use non-breaking spaces as padding so the &times; glyph is drawn by WM_PAINT.</li>
+<li><strong>Custom status bar &mdash; <code>ne_statusbar.h/cpp</code>:</strong> Owner-drawn status bar showing <em>Words: N</em> and <em>Chars: N</em> on the left, and a shell32 icon + <em>Saved</em> (green checkmark, index&nbsp;294) or <em>Unsaved</em> (red&nbsp;X, index&nbsp;131) on the right. Updates in real-time on every <code>EN_CHANGE</code>. Bold 12pt font.</li>
+<li><strong>Ctrl+W behaviour:</strong> With more than one tab, closes the active tab (with save prompt). With exactly one tab remaining, closes the application.</li>
+<li><strong>Softer dialog button colours with hover:</strong> Owner-draw dialog buttons use a muted green/red/blue palette. A subclass proc tracks mouse enter/leave so the hover tint updates without polling.</li>
+<li><strong>Locale additions:</strong> <code>TAB_CTX_NEW_TAB</code>, <code>TAB_CTX_CLOSE_TAB</code>, <code>SB_WORDS</code>, <code>SB_CHARS</code>, <code>SB_SAVED</code>, <code>SB_UNSAVED</code> added to <code>locale/en_GB.txt</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.11.08</span></h3>
 <p><strong>Custom decision dialogs with icon buttons and external-file change detection (11.05.2026, 08:38):</strong></p>

@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include "dpi.h"
 #include "tooltip.h"
+#include "ne_tabs.h"
+#include "ne_statusbar.h"
 
 // ── Control and menu IDs ───────────────────────────────────────────────────────
 #define IDI_APPICON         1
@@ -62,23 +64,38 @@
 #define IDC_NE_IMAGE        218
 #define IDC_NE_STATUSBAR    219
 #define IDC_NE_DLG_TEXT     230
+#define IDC_NE_TABCTRL      231
 
 // ── Internal state ─────────────────────────────────────────────────────────────
 struct NeState {
-    std::wstring currentPath;
-    bool  modified        = false;
-    bool  suppressChange  = false;
     bool  updatingToolbar = false;
-    bool  hasDiskStamp    = false;
+    int   tabY            = 0;
+    int   tabH            = 0;
     int   editY           = 0;
     int   statusH         = 0;
     int   pad             = 0;
     int   minClientW      = 0;  // minimum client width enforced by WM_GETMINMAXINFO
-    FILETIME   diskWriteTime = {};
-    ULONGLONG  diskFileSize  = 0;
     HICON hIconLarge      = NULL;
     HICON hIconSmall      = NULL;
 };
+
+// ── Owner-draw menu support ───────────────────────────────────────────────────
+static HFONT g_hMenuFont = NULL;
+
+struct NeMenuItemData {
+    const wchar_t* text;
+    bool           isSeparator;
+    bool           isBar;
+};
+static std::vector<NeMenuItemData*> g_menuItemStorage;
+
+static void Ne_AppendMenuOD(HMENU hMenu, UINT flags, UINT_PTR id, const wchar_t* text, bool isBar = false)
+{
+    bool sep = (flags & MF_SEPARATOR) != 0;
+    NeMenuItemData* d = new NeMenuItemData{ text, sep, isBar };
+    g_menuItemStorage.push_back(d);
+    AppendMenuW(hMenu, flags | MF_OWNERDRAW, id, (LPCWSTR)d);
+}
 
 // ── RichEdit DLL ───────────────────────────────────────────────────────────────
 static HMODULE s_neRtfDll = NULL;
@@ -416,16 +433,16 @@ static void Ne_SyncToolbar(HWND hwnd, HWND hEdit)
 // ── Title and status bar ───────────────────────────────────────────────────────
 static void Ne_UpdateTitle(HWND hwnd)
 {
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st) return;
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!doc) return;
     std::wstring title;
-    if (st->modified) title += L"* ";
-    if (st->currentPath.empty()) {
+    if (doc->modified) title += L"* ";
+    if (doc->path.empty()) {
         title += Ls(L"UNTITLED");
         title += L" \u2014 NSBEdit";
     } else {
-        size_t pos = st->currentPath.find_last_of(L"\\/");
-        title += (pos == std::wstring::npos ? st->currentPath : st->currentPath.substr(pos + 1));
+        size_t pos = doc->path.find_last_of(L"\\/");
+        title += (pos == std::wstring::npos ? doc->path : doc->path.substr(pos + 1));
         title += L" \u2014 NSBEdit";
     }
     SetWindowTextW(hwnd, title.c_str());
@@ -435,10 +452,27 @@ static void Ne_UpdateStatusText(HWND hwnd)
 {
     HWND hSb = GetDlgItem(hwnd, IDC_NE_STATUSBAR);
     if (!hSb) return;
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st) return;
-    const wchar_t* txt = st->currentPath.empty() ? Ls(L"UNTITLED") : st->currentPath.c_str();
-    SendMessageW(hSb, SB_SETTEXT, 0, (LPARAM)txt);
+    NeTabDoc* doc  = NeTabs_GetActiveDoc(hwnd);
+    HWND      hEdit = doc ? doc->hEdit : NULL;
+
+    int words = 0, chars = 0;
+    if (hEdit) {
+        int len = GetWindowTextLengthW(hEdit);
+        chars = len;
+        if (len > 0) {
+            std::vector<wchar_t> buf((size_t)len + 1);
+            GetWindowTextW(hEdit, buf.data(), len + 1);
+            bool inWord = false;
+            for (int i = 0; i < len; ++i) {
+                wchar_t c = buf[i];
+                bool ws = (c == L' ' || c == L'\t' || c == L'\n' || c == L'\r');
+                if (!ws && !inWord) { ++words; inWord = true; }
+                else if (ws)          inWord = false;
+            }
+        }
+    }
+    bool modified = doc ? doc->modified : false;
+    NeStatusBar_Update(hSb, words, chars, modified);
 }
 
 enum class NeBtnTone { Blue, Green, Red };
@@ -474,20 +508,20 @@ static bool Ne_GetFileStamp(const std::wstring& path, FILETIME* outWrite, ULONGL
     return true;
 }
 
-static void Ne_RememberDiskStamp(NeState* st)
+static void Ne_RememberDiskStamp(NeTabDoc* doc)
 {
-    if (!st || st->currentPath.empty()) {
-        if (st) st->hasDiskStamp = false;
+    if (!doc || doc->path.empty()) {
+        if (doc) doc->hasDiskStamp = false;
         return;
     }
     FILETIME ft = {};
     ULONGLONG sz = 0;
-    if (Ne_GetFileStamp(st->currentPath, &ft, &sz)) {
-        st->diskWriteTime = ft;
-        st->diskFileSize = sz;
-        st->hasDiskStamp = true;
+    if (Ne_GetFileStamp(doc->path, &ft, &sz)) {
+        doc->diskWriteTime = ft;
+        doc->diskFileSize = sz;
+        doc->hasDiskStamp = true;
     } else {
-        st->hasDiskStamp = false;
+        doc->hasDiskStamp = false;
     }
 }
 
@@ -495,8 +529,7 @@ static HFONT Ne_CreateDialogFont(bool bold)
 {
     NONCLIENTMETRICSW ncm = {}; ncm.cbSize = sizeof(ncm);
     SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
-    if (ncm.lfMessageFont.lfHeight < 0)
-        ncm.lfMessageFont.lfHeight = (LONG)(ncm.lfMessageFont.lfHeight * 1.15f);
+    ncm.lfMessageFont.lfHeight = -MulDiv(12, GetDpiForSystem(), 72);
     ncm.lfMessageFont.lfQuality = CLEARTYPE_QUALITY;
     if (bold) ncm.lfMessageFont.lfWeight = FW_BOLD;
     return CreateFontIndirectW(&ncm.lfMessageFont);
@@ -509,7 +542,8 @@ static int Ne_MeasureDialogTextHeight(const std::wstring& text, int maxW)
     HFONT hf = Ne_CreateDialogFont(false);
     HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
     RECT rc = { 0, 0, maxW, 0 };
-    DrawTextW(hdc, text.c_str(), -1, &rc, DT_WORDBREAK | DT_CALCRECT | DT_NOPREFIX);
+    DrawTextW(hdc, text.c_str(), -1, &rc,
+              DT_WORDBREAK | DT_CENTER | DT_CALCRECT | DT_NOPREFIX);
     if (old) SelectObject(hdc, old);
     if (hf) DeleteObject(hf);
     ReleaseDC(NULL, hdc);
@@ -533,12 +567,15 @@ static int Ne_MeasureButtonWidth(const std::wstring& text)
     return std::max(w, S(120));
 }
 
-static COLORREF Ne_ToneColor(NeBtnTone tone, bool pressed)
+static COLORREF Ne_ToneColor(NeBtnTone tone, bool pressed, bool hover)
 {
     switch (tone) {
-        case NeBtnTone::Green: return pressed ? RGB(50, 120, 50) : RGB(70, 140, 70);
-        case NeBtnTone::Red:   return pressed ? RGB(180, 70, 70) : RGB(205, 92, 92);
-        default:               return pressed ? RGB(204, 228, 247) : RGB(225, 225, 225);
+        case NeBtnTone::Green:
+            return pressed ? RGB(100, 160, 100) : hover ? RGB(155, 205, 155) : RGB(175, 215, 175);
+        case NeBtnTone::Red:
+            return pressed ? RGB(190, 100, 100) : hover ? RGB(225, 145, 145) : RGB(235, 175, 175);
+        default:
+            return pressed ? RGB(204, 228, 247) : hover ? RGB(229, 241, 251) : RGB(225, 225, 225);
     }
 }
 
@@ -560,8 +597,9 @@ static void Ne_DrawDialogButton(const DRAWITEMSTRUCT* dis, const NeDialogData* d
     RECT rc = dis->rcItem;
     HDC hdc = dis->hDC;
     bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+    bool hover   = (GetPropW(dis->hwndItem, L"NeHover") != NULL);
 
-    HBRUSH hb = CreateSolidBrush(Ne_ToneColor(b.tone, pressed));
+    HBRUSH hb = CreateSolidBrush(Ne_ToneColor(b.tone, pressed, hover));
     FillRect(hdc, &rc, hb);
     DeleteObject(hb);
     FrameRect(hdc, &rc, GetSysColorBrush(COLOR_3DSHADOW));
@@ -594,6 +632,31 @@ static void Ne_DrawDialogButton(const DRAWITEMSTRUCT* dis, const NeDialogData* d
     if (hf) DeleteObject(hf);
 }
 
+static LRESULT CALLBACK Ne_BtnHoverProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    WNDPROC prev = (WNDPROC)GetPropW(hwnd, L"NePrevProc");
+    switch (msg) {
+    case WM_MOUSEMOVE:
+        if (!GetPropW(hwnd, L"NeHover")) {
+            SetPropW(hwnd, L"NeHover", (HANDLE)1);
+            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hwnd, 0 };
+            TrackMouseEvent(&tme);
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+        break;
+    case WM_MOUSELEAVE:
+        RemovePropW(hwnd, L"NeHover");
+        InvalidateRect(hwnd, NULL, FALSE);
+        break;
+    case WM_NCDESTROY:
+        RemovePropW(hwnd, L"NeHover");
+        RemovePropW(hwnd, L"NePrevProc");
+        break;
+    }
+    return prev ? CallWindowProcW(prev, hwnd, msg, wParam, lParam)
+                : DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
 static LRESULT CALLBACK Ne_DialogWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     NeDialogData* dd = (NeDialogData*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
@@ -614,7 +677,7 @@ static LRESULT CALLBACK Ne_DialogWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
         const int padH = S(20), padT = S(18), padB = S(15), gapTB = S(14), btnH = S(34), btnGap = S(10);
 
         HWND hTxt = CreateWindowExW(0, L"STATIC", dd->message.c_str(),
-            WS_CHILD | WS_VISIBLE | SS_LEFT,
+            WS_CHILD | WS_VISIBLE | SS_CENTER,
             padH, padT, rc.right - 2 * padH, dd->textH,
             hwnd, (HMENU)(UINT_PTR)IDC_NE_DLG_TEXT, hi, NULL);
         if (hTxt) SendMessageW(hTxt, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
@@ -632,7 +695,12 @@ static LRESULT CALLBACK Ne_DialogWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
             HWND hBtn = CreateWindowExW(0, L"BUTTON", dd->buttons[i].text.c_str(),
                 style, bx, by, dd->buttons[i].width, btnH,
                 hwnd, (HMENU)(UINT_PTR)dd->buttons[i].id, hi, NULL);
-            if (hBtn) SendMessageW(hBtn, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+            if (hBtn) {
+                SendMessageW(hBtn, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+                // Subclass for hover tracking
+                WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+                SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+            }
             bx += dd->buttons[i].width + btnGap;
         }
         return 0;
@@ -745,27 +813,27 @@ static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wst
 
 static bool Ne_CheckExternalFileChangeOnFocus(HWND hwnd)
 {
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st || st->currentPath.empty()) return true;
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!doc || doc->path.empty()) return true;
 
     FILETIME ft = {};
     ULONGLONG sz = 0;
-    if (!Ne_GetFileStamp(st->currentPath, &ft, &sz)) {
-        st->hasDiskStamp = false;
+    if (!Ne_GetFileStamp(doc->path, &ft, &sz)) {
+        doc->hasDiskStamp = false;
         return true;
     }
-    if (!st->hasDiskStamp) {
-        st->diskWriteTime = ft;
-        st->diskFileSize = sz;
-        st->hasDiskStamp = true;
+    if (!doc->hasDiskStamp) {
+        doc->diskWriteTime = ft;
+        doc->diskFileSize = sz;
+        doc->hasDiskStamp = true;
         return true;
     }
 
-    bool changed = (CompareFileTime(&ft, &st->diskWriteTime) != 0) || (sz != st->diskFileSize);
+    bool changed = (CompareFileTime(&ft, &doc->diskWriteTime) != 0) || (sz != doc->diskFileSize);
     if (!changed) return true;
 
     wchar_t msg[MAX_PATH + 256] = {};
-    swprintf_s(msg, Ls(L"MSG_FILE_CHANGED_PROMPT"), st->currentPath.c_str());
+    swprintf_s(msg, Ls(L"MSG_FILE_CHANGED_PROMPT"), doc->path.c_str());
 
     NeDialogButtonSpec btns[2] = {
         { IDYES, Ls(L"BTN_RELOAD"), NeBtnTone::Green, IDI_INFORMATION, 0 },
@@ -773,17 +841,17 @@ static bool Ne_CheckExternalFileChangeOnFocus(HWND hwnd)
     };
     int r = Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_FILE_CHANGED"), msg, btns, 2, IDNO);
     if (r == IDYES) {
-        if (!Ne_LoadPathIntoEditor(hwnd, st->currentPath)) {
+        if (!Ne_LoadPathIntoEditor(hwnd, doc->path)) {
             MessageBoxW(hwnd, Ls(L"MSG_OPEN_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
-            Ne_RememberDiskStamp(st);
+            Ne_RememberDiskStamp(doc);
             return false;
         }
         return true;
     }
 
-    st->diskWriteTime = ft;
-    st->diskFileSize = sz;
-    st->hasDiskStamp = true;
+    doc->diskWriteTime = ft;
+    doc->diskFileSize = sz;
+    doc->hasDiskStamp = true;
     return true;
 }
 
@@ -791,7 +859,7 @@ static bool Ne_CheckExternalFileChangeOnFocus(HWND hwnd)
 
 static void Ne_Print(HWND hwnd)
 {
-    HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+    HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (!hEdit) return;
 
     PRINTDLGW pd = {};
@@ -827,8 +895,8 @@ static void Ne_Print(HWND hwnd)
 
     DOCINFOW di = {};
     di.cbSize   = sizeof(di);
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    std::wstring docTitle = (st && !st->currentPath.empty()) ? st->currentPath : Ls(L"UNTITLED");
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    std::wstring docTitle = (doc && !doc->path.empty()) ? doc->path : Ls(L"UNTITLED");
     di.lpszDocName = docTitle.c_str();
 
     if (StartDocW(hDC, &di) <= 0) { DeleteDC(hDC); return; }
@@ -871,15 +939,15 @@ static void Ne_Print(HWND hwnd)
 // sees a printer dialog.
 static void Ne_ExportPdf(HWND hwnd)
 {
-    HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+    HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (!hEdit) return;
 
     // ── Ask user where to save ────────────────────────────────────────────────
     wchar_t path[MAX_PATH] = {};
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (st && !st->currentPath.empty()) {
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (doc && !doc->path.empty()) {
         // Pre-fill with current filename, extension changed to .pdf
-        wcsncpy_s(path, st->currentPath.c_str(), _TRUNCATE);
+        wcsncpy_s(path, doc->path.c_str(), _TRUNCATE);
         wchar_t* dot = wcsrchr(path, L'.');
         if (dot) wcscpy_s(dot, MAX_PATH - (dot - path), L".pdf");
     }
@@ -931,9 +999,9 @@ static void Ne_ExportPdf(HWND hwnd)
     }
 
     // ── Start document, redirecting output to the chosen file ─────────────────
-    NeState* stDoc = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    std::wstring docTitle = (stDoc && !stDoc->currentPath.empty())
-                            ? stDoc->currentPath : Ls(L"UNTITLED");
+    NeTabDoc* docTitleSrc = NeTabs_GetActiveDoc(hwnd);
+    std::wstring docTitle = (docTitleSrc && !docTitleSrc->path.empty())
+                            ? docTitleSrc->path : Ls(L"UNTITLED");
     DOCINFOW di = {};
     di.cbSize      = sizeof(di);
     di.lpszDocName = docTitle.c_str();
@@ -1181,22 +1249,23 @@ static bool Ne_IsRtf(const std::string& bytes)
 
 static void Ne_New(HWND hwnd)
 {
-    if (!Ne_PromptSaveIfModified(hwnd)) return;
-    HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (st) st->suppressChange = true;
-    if (hEdit) SetWindowTextW(hEdit, L"");
-    if (st) {
-        st->suppressChange = false;
-        st->currentPath.clear();
-        st->modified = false;
-        st->hasDiskStamp = false;
-        st->diskWriteTime = {};
-        st->diskFileSize = 0;
-    }
+    if (!NeTabs_AddUntitled(hwnd)) return;
     Ne_UpdateTitle(hwnd);
     Ne_UpdateStatusText(hwnd);
-    if (hEdit) SetFocus(hEdit);
+    HWND hEdit = NeTabs_GetActiveEdit(hwnd);
+    if (hEdit) {
+        CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
+        cfD.dwMask    = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
+        cfD.dwEffects = CFE_AUTOCOLOR;
+        cfD.yHeight   = s_neFontSizes[s_neFontDefault] * 20;
+        cfD.bCharSet  = DEFAULT_CHARSET;
+        wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
+        SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
+        SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
+        SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE);
+        SetFocus(hEdit);
+    }
+    NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
 }
 
 static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
@@ -1211,17 +1280,18 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
     if (sz > 0) fread(&bytes[0], 1, (size_t)sz, f);
     fclose(f);
 
-    HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!hEdit || !st) return false;
+    HWND hEdit = NeTabs_GetActiveEdit(hwnd);
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!hEdit || !doc) return false;
 
-    st->suppressChange = true;
+    doc->suppressChange = true;
     Ne_StreamIn(hEdit, bytes, Ne_IsRtf(bytes));
-    st->suppressChange = false;
-    st->currentPath = path;
-    st->modified = false;
-    Ne_RememberDiskStamp(st);
+    doc->suppressChange = false;
+    doc->path = path;
+    doc->modified = false;
+    Ne_RememberDiskStamp(doc);
 
+    NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
     Ne_UpdateTitle(hwnd);
     Ne_UpdateStatusText(hwnd);
     return true;
@@ -1229,7 +1299,6 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
 
 static void Ne_Open(HWND hwnd)
 {
-    if (!Ne_PromptSaveIfModified(hwnd)) return;
     wchar_t path[MAX_PATH] = {};
     OPENFILENAMEW ofn = {}; ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner   = hwnd;
@@ -1241,18 +1310,20 @@ static void Ne_Open(HWND hwnd)
     ofn.lpstrTitle  = Ls(L"DLG_OPEN");
     if (!GetOpenFileNameW(&ofn)) return;
 
+    if (!NeTabs_AddUntitled(hwnd)) return;
+
     if (!Ne_LoadPathIntoEditor(hwnd, path)) {
         MessageBoxW(hwnd, Ls(L"MSG_OPEN_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
         return;
     }
 
-    HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+    HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (hEdit) SetFocus(hEdit);
 }
 
 static bool Ne_SaveToPath(HWND hwnd, const std::wstring& path)
 {
-    HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+    HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (!hEdit) return false;
 
     bool asRtf = true;
@@ -1277,9 +1348,9 @@ static bool Ne_SaveToPath(HWND hwnd, const std::wstring& path)
 static bool Ne_SaveAs(HWND hwnd)
 {
     wchar_t path[MAX_PATH] = {};
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (st && !st->currentPath.empty())
-        wcsncpy_s(path, st->currentPath.c_str(), _TRUNCATE);
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (doc && !doc->path.empty())
+        wcsncpy_s(path, doc->path.c_str(), _TRUNCATE);
 
     OPENFILENAMEW ofn = {}; ofn.lStructSize = sizeof(ofn);
     ofn.hwndOwner   = hwnd;
@@ -1293,11 +1364,12 @@ static bool Ne_SaveAs(HWND hwnd)
     if (!GetSaveFileNameW(&ofn)) return false;
 
     if (!Ne_SaveToPath(hwnd, path)) return false;
-    if (st) {
-        st->currentPath = path;
-        st->modified = false;
-        Ne_RememberDiskStamp(st);
+    if (doc) {
+        doc->path = path;
+        doc->modified = false;
+        Ne_RememberDiskStamp(doc);
     }
+    NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
     Ne_UpdateTitle(hwnd);
     Ne_UpdateStatusText(hwnd);
     return true;
@@ -1305,20 +1377,21 @@ static bool Ne_SaveAs(HWND hwnd)
 
 static bool Ne_Save(HWND hwnd)
 {
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st || st->currentPath.empty()) return Ne_SaveAs(hwnd);
-    if (!Ne_SaveToPath(hwnd, st->currentPath)) return false;
-    st->modified = false;
-    Ne_RememberDiskStamp(st);
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!doc || doc->path.empty()) return Ne_SaveAs(hwnd);
+    if (!Ne_SaveToPath(hwnd, doc->path)) return false;
+    doc->modified = false;
+    Ne_RememberDiskStamp(doc);
+    NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
     Ne_UpdateTitle(hwnd);
     return true;
 }
 
 static bool Ne_PromptSaveIfModified(HWND hwnd)
 {
-    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st || !st->modified) return true;
-    const wchar_t* name = st->currentPath.empty() ? Ls(L"UNTITLED") : st->currentPath.c_str();
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!doc || !doc->modified) return true;
+    const wchar_t* name = doc->path.empty() ? Ls(L"UNTITLED") : doc->path.c_str();
     wchar_t msg[MAX_PATH + 64];
     swprintf_s(msg, MAX_PATH + 64, Ls(L"MSG_SAVE_PROMPT"), name);
     NeDialogButtonSpec btns[3] = {
@@ -1330,6 +1403,36 @@ static bool Ne_PromptSaveIfModified(HWND hwnd)
     if (r == IDCANCEL) return false;
     if (r == IDYES)    return Ne_Save(hwnd);
     return true; // IDNO — discard
+}
+
+static bool Ne_CloseTabAt(HWND hwnd, int index)
+{
+    if (!NeTabs_SetActive(hwnd, index)) return false;
+    Ne_UpdateStatusText(hwnd);
+    Ne_UpdateTitle(hwnd);
+
+    if (!Ne_PromptSaveIfModified(hwnd)) return false;
+    if (!NeTabs_CloseTab(hwnd, index)) return false;
+
+    Ne_UpdateStatusText(hwnd);
+    Ne_UpdateTitle(hwnd);
+    HWND hEdit = NeTabs_GetActiveEdit(hwnd);
+    if (hEdit) Ne_SyncToolbar(hwnd, hEdit);
+    return true;
+}
+
+static bool Ne_CloseAllTabsForExit(HWND hwnd)
+{
+    while (NeTabs_GetCount(hwnd) > 0) {
+        int idx = NeTabs_GetActiveIndex(hwnd);
+        if (idx < 0) break;
+        if (!Ne_CloseTabAt(hwnd, idx)) return false;
+        if (NeTabs_GetCount(hwnd) == 1) {
+            NeTabDoc* d = NeTabs_GetActiveDoc(hwnd);
+            if (d && d->path.empty() && !d->modified) break;
+        }
+    }
+    return true;
 }
 
 // ── Tooltip subclass (English-only, project tooltip system) ───────────────────
@@ -1393,7 +1496,7 @@ static void Ne_SetTip(HWND hCtrl, const wchar_t* text)
 // fewer than 3 controls, the window can no longer be narrowed; that minimum
 // width is stored in NeState::minClientW so WM_GETMINMAXINFO can enforce it.
 // Returns the Y coordinate where the RichEdit should start.
-static int Ne_LayoutToolbar(HWND hwnd, int cW)
+static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
 {
     const int pad   = S(8);
     const int bSz   = S(26);
@@ -1457,12 +1560,12 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW)
     // ── Pass 2: place controls ────────────────────────────────────────────────
     int x   = pad;
     int curRow = 0;
-    int y   = pad;
+    int y   = topY;
     for (int i = 0; i < N; ++i) {
         if (rowOf[i] != curRow) {
             curRow = rowOf[i];
             x = pad;
-            y = pad + curRow * rowH;
+            y = topY + curRow * rowH;
         }
         HWND h = GetDlgItem(hwnd, ctrls[i].id);
         if (h) SetWindowPos(h, NULL, x, y, ctrls[i].w, bSz, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -1496,7 +1599,7 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW)
         st->minClientW = minCW;
     }
 
-    return pad + numRows * rowH + S(2);
+    return topY + numRows * rowH + S(2);
 }
 
 // ── About dialog ──────────────────────────────────────────────────────────────
@@ -1853,35 +1956,46 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
         // ── File menu ─────────────────────────────────────────────────────────
         HMENU hMenu  = CreateMenu();
+
+        // ── Menu font — created before SetMenu so WM_MEASUREITEM has it ───────
+        if (!g_hMenuFont) {
+            LOGFONTW lf = {};
+            lf.lfHeight  = -MulDiv(12, GetDpiForWindow(hwnd), 72);
+            lf.lfQuality = CLEARTYPE_QUALITY;
+            lf.lfCharSet = DEFAULT_CHARSET;
+            wcscpy_s(lf.lfFaceName, L"Segoe UI");
+            g_hMenuFont = CreateFontIndirectW(&lf);
+        }
+
         // ── File menu ─────────────────────────────────────────────────────────
         HMENU hFile  = CreatePopupMenu();
-        AppendMenuW(hFile, MF_STRING, IDM_NEW,        Ls(L"MENU_NEW"));
-        AppendMenuW(hFile, MF_STRING, IDM_OPEN,       Ls(L"MENU_OPEN"));
-        AppendMenuW(hFile, MF_STRING, IDM_SAVE,       Ls(L"MENU_SAVE"));
-        AppendMenuW(hFile, MF_STRING, IDM_SAVEAS,     Ls(L"MENU_SAVEAS"));
-        AppendMenuW(hFile, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hFile, MF_STRING, IDM_PRINT,      Ls(L"MENU_PRINT"));
-        AppendMenuW(hFile, MF_STRING, IDM_EXPORT_PDF, Ls(L"MENU_EXPORT_PDF"));
-        AppendMenuW(hFile, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hFile, MF_STRING, IDM_EXIT,       Ls(L"MENU_EXIT"));
-        AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hFile, Ls(L"MENU_FILE"));
+        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_NEW,        Ls(L"MENU_NEW"));
+        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_OPEN,       Ls(L"MENU_OPEN"));
+        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE,       Ls(L"MENU_SAVE"));
+        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVEAS,     Ls(L"MENU_SAVEAS"));
+        Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0,              NULL);
+        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_PRINT,      Ls(L"MENU_PRINT"));
+        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_EXPORT_PDF, Ls(L"MENU_EXPORT_PDF"));
+        Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0,              NULL);
+        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_EXIT,       Ls(L"MENU_EXIT"));
+        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hFile, Ls(L"MENU_FILE"), true);
         // ── Edit menu ─────────────────────────────────────────────────────────
         HMENU hEdit2 = CreatePopupMenu();
-        AppendMenuW(hEdit2, MF_STRING, IDM_UNDO,      Ls(L"MENU_UNDO"));
-        AppendMenuW(hEdit2, MF_STRING, IDM_REDO,      Ls(L"MENU_REDO"));
-        AppendMenuW(hEdit2, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hEdit2, MF_STRING, IDM_CUT,       Ls(L"MENU_CUT"));
-        AppendMenuW(hEdit2, MF_STRING, IDM_COPY,      Ls(L"MENU_COPY"));
-        AppendMenuW(hEdit2, MF_STRING, IDM_PASTE,     Ls(L"MENU_PASTE"));
-        AppendMenuW(hEdit2, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hEdit2, MF_STRING, IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
-        AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hEdit2, Ls(L"MENU_EDIT"));
+        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_UNDO,      Ls(L"MENU_UNDO"));
+        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_REDO,      Ls(L"MENU_REDO"));
+        Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
+        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_CUT,       Ls(L"MENU_CUT"));
+        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_COPY,      Ls(L"MENU_COPY"));
+        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PASTE,     Ls(L"MENU_PASTE"));
+        Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
+        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
+        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hEdit2, Ls(L"MENU_EDIT"), true);
         // ── Help menu ─────────────────────────────────────────────────────────
         HMENU hHelp = CreatePopupMenu();
-        AppendMenuW(hHelp, MF_STRING, IDM_SHORTCUTS, Ls(L"MENU_SHORTCUTS"));
-        AppendMenuW(hHelp, MF_SEPARATOR, 0, NULL);
-        AppendMenuW(hHelp, MF_STRING, IDM_ABOUT,     Ls(L"MENU_ABOUT"));
-        AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ls(L"MENU_HELP"));
+        Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_SHORTCUTS, Ls(L"MENU_SHORTCUTS"));
+        Ne_AppendMenuOD(hHelp, MF_SEPARATOR, 0,             NULL);
+        Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_ABOUT,     Ls(L"MENU_ABOUT"));
+        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ls(L"MENU_HELP"), true);
         SetMenu(hwnd, hMenu);
 
         // ── Load RichEdit DLL ─────────────────────────────────────────────────
@@ -1996,47 +2110,56 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_IMAGE, hInst, NULL);
 
         // ── Status bar ────────────────────────────────────────────────────────
-        HWND hSb = CreateWindowExW(0, STATUSCLASSNAME, NULL,
-            WS_CHILD|WS_VISIBLE|SBARS_SIZEGRIP,
-            0, 0, 0, 0, hwnd, (HMENU)(UINT_PTR)IDC_NE_STATUSBAR, hInst, NULL);
-        {
-            int parts[1] = { -1 };
-            SendMessageW(hSb, SB_SETPARTS, 1, (LPARAM)parts);
-            SendMessageW(hSb, SB_SETTEXT,  0, (LPARAM)Ls(L"UNTITLED"));
-            if (st->hIconSmall)
-                SendMessageW(hSb, SB_SETICON, 0, (LPARAM)st->hIconSmall);
-        }
+        HWND hSb = NeStatusBar_Create(hwnd, IDC_NE_STATUSBAR, hInst);
+        NeStatusBar_SetLabels(hSb,
+            Ls(L"SB_WORDS"), Ls(L"SB_CHARS"),
+            Ls(L"SB_SAVED"), Ls(L"SB_UNSAVED"));
         {
             RECT rcSb; GetClientRect(hSb, &rcSb);
             st->statusH = rcSb.bottom > 0 ? rcSb.bottom : S(22);
         }
 
-        // ── Layout toolbar and determine editY ─────────────────────────────────
-        int editY = Ne_LayoutToolbar(hwnd, cW);
+        // ── Tab strip + toolbar layout ──────────────────────────────────────────
+        st->tabY = pad;
+        st->tabH = S(30);
+        int toolbarTop = st->tabY + st->tabH + S(4);
+        int editY = Ne_LayoutToolbar(hwnd, cW, toolbarTop);
         st->editY = editY;
         int editH = rcC.bottom - editY - st->statusH - S(2);
 
-        HWND hEdit = CreateWindowExW(WS_EX_CLIENTEDGE, reClass, L"",
-            WS_CHILD|WS_VISIBLE|WS_VSCROLL|ES_MULTILINE|ES_WANTRETURN|ES_AUTOVSCROLL,
-            pad, editY, cW - 2*pad, std::max(1, editH),
-            hwnd, (HMENU)(UINT_PTR)IDC_NE_EDIT, hInst, NULL);
+        NeTabsCreateParams tp = {};
+        tp.hwndParent = hwnd;
+        tp.hInst = hInst;
+        tp.richEditClass = reClass;
+        tp.tabCtrlId = IDC_NE_TABCTRL;
+        tp.editCtrlId = IDC_NE_EDIT;
+        tp.pad = pad;
+        tp.tabHeight = st->tabH;
+        tp.untitledLabel = Ls(L"UNTITLED");
+        NeTabs_Create(tp);
+        NeTabs_SetContextLabels(hwnd, Ls(L"TAB_CTX_NEW_TAB"), Ls(L"TAB_CTX_CLOSE_TAB"));
+        NeTabs_SetRects(hwnd,
+            pad, st->tabY, cW - 2 * pad, st->tabH,
+            pad, editY, cW - 2 * pad, std::max(1, editH));
 
-        // Default font: Segoe UI 12pt, auto colour.
-        CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
-        cfD.dwMask    = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
-        cfD.dwEffects = CFE_AUTOCOLOR;
-        cfD.yHeight   = s_neFontSizes[s_neFontDefault] * 20;
-        cfD.bCharSet  = DEFAULT_CHARSET;
-        wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
-        SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
-        SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
-        SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE);
+        HWND hEdit = NeTabs_GetActiveEdit(hwnd);
+        if (hEdit) {
+            // Default font: Segoe UI 12pt, auto colour.
+            CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
+            cfD.dwMask    = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
+            cfD.dwEffects = CFE_AUTOCOLOR;
+            cfD.yHeight   = s_neFontSizes[s_neFontDefault] * 20;
+            cfD.bCharSet  = DEFAULT_CHARSET;
+            wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
+            SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
+            SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
+            SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE);
+        }
 
         // ── Apply system font to toolbar buttons / combos ─────────────────────
         NONCLIENTMETRICSW ncm = {}; ncm.cbSize = sizeof(ncm);
         SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
-        if (ncm.lfMessageFont.lfHeight < 0)
-            ncm.lfMessageFont.lfHeight = (LONG)(ncm.lfMessageFont.lfHeight * 1.2f);
+        ncm.lfMessageFont.lfHeight = -MulDiv(12, GetDpiForWindow(hwnd), 72);
         ncm.lfMessageFont.lfQuality = CLEARTYPE_QUALITY;
         HFONT hF = CreateFontIndirectW(&ncm.lfMessageFont);
         if (hF) {
@@ -2087,8 +2210,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         Ne_SetTip(GetDlgItem(hwnd, IDC_NE_NUMBERED),       Ls(L"TIP_NUMBERED"));
         Ne_SetTip(hImgBtn,                                  Ls(L"TIP_IMAGE"));
 
-        SetFocus(hEdit);
-        Ne_SyncToolbar(hwnd, hEdit);
+        if (hEdit) SetFocus(hEdit);
+        if (hEdit) Ne_SyncToolbar(hwnd, hEdit);
+        NeTabs_UpdateAllTitles(hwnd);
         return 0;
     }
 
@@ -2102,32 +2226,34 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // Reposition status bar.
         HWND hSb = GetDlgItem(hwnd, IDC_NE_STATUSBAR);
         if (hSb) {
-            SendMessageW(hSb, WM_SIZE, wParam, lParam);
-            RECT rcSb; GetClientRect(hSb, &rcSb);
-            if (rcSb.bottom > 0) st->statusH = rcSb.bottom;
+            int sbH = S(22);
+            SetWindowPos(hSb, NULL, 0, cH - sbH, cW, sbH, SWP_NOZORDER | SWP_NOACTIVATE);
+            st->statusH = sbH;
         }
 
         // Re-layout toolbar (switches between one/two rows as window is resized).
-        int newEditY = Ne_LayoutToolbar(hwnd, cW);
+        int toolbarTop = st->tabY + st->tabH + S(4);
+        int newEditY = Ne_LayoutToolbar(hwnd, cW, toolbarTop);
         st->editY = newEditY;
 
-        // Resize RichEdit.
-        HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
         int editH  = cH - newEditY - st->statusH - S(2);
-        if (hEdit && editH > 0)
-            SetWindowPos(hEdit, NULL, pad, newEditY, cW - 2*pad, editH, SWP_NOZORDER);
+        if (editH > 0) {
+            NeTabs_SetRects(hwnd,
+                pad, st->tabY, cW - 2 * pad, st->tabH,
+                pad, newEditY, cW - 2 * pad, editH);
+        }
         return 0;
     }
 
     // ── WM_COMMAND ────────────────────────────────────────────────────────────
     case WM_COMMAND: {
         NeState* st    = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-        HWND     hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+        HWND     hEdit = NeTabs_GetActiveEdit(hwnd);
         int wmId  = LOWORD(wParam);
         int wmEv  = HIWORD(wParam);
 
         // ── File menu ─────────────────────────────────────────────────────────
-        if (wmId == IDM_NEW)        { Ne_New(hwnd);               return 0; }
+        if (wmId == IDM_NEW || wmId == IDC_NE_TABCTRL + 10) { Ne_New(hwnd); return 0; }
         if (wmId == IDM_OPEN)       { Ne_Open(hwnd);              return 0; }
         if (wmId == IDM_SAVE)       { Ne_Save(hwnd);              return 0; }
         if (wmId == IDM_SAVEAS)     { Ne_SaveAs(hwnd);            return 0; }
@@ -2276,27 +2402,94 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
         // ── RichEdit notifications ────────────────────────────────────────────
         if (wmId == IDC_NE_EDIT) {
-            if (wmEv == EN_CHANGE && st && !st->suppressChange) {
-                st->modified = true;
+            HWND hSrcEdit = (HWND)lParam;
+            NeTabDoc* doc = NeTabs_GetDocByEdit(hwnd, hSrcEdit);
+            if (wmEv == EN_CHANGE && doc && !doc->suppressChange) {
+                doc->modified = true;
+                int idx = NeTabs_GetActiveIndex(hwnd);
+                NeTabs_UpdateTabTitle(hwnd, idx);
                 Ne_UpdateTitle(hwnd);
+                Ne_UpdateStatusText(hwnd);
             }
-            if (wmEv == EN_KILLFOCUS && st) {
-                Ne_RememberDiskStamp(st);
+            if (wmEv == EN_KILLFOCUS && doc) {
+                Ne_RememberDiskStamp(doc);
             }
             if (wmEv == EN_SETFOCUS) {
                 Ne_CheckExternalFileChangeOnFocus(hwnd);
             }
-            if (wmEv == EN_SELCHANGE) Ne_SyncToolbar(hwnd, hEdit);
+            if (wmEv == EN_SELCHANGE && hSrcEdit == NeTabs_GetActiveEdit(hwnd))
+                Ne_SyncToolbar(hwnd, hSrcEdit);
         }
         break;
     }
 
-    // ── WM_CONTEXTMENU — right-click context menu on the editor ────────────────────
-    // Mirrors the Edit menu: Undo/Redo, Cut/Copy/Paste, Select All.
+    case WM_NOTIFY: {
+        LPNMHDR nh = (LPNMHDR)lParam;
+        if (nh && nh->idFrom == IDC_NE_TABCTRL && nh->code == TCN_SELCHANGE) {
+            int idx = TabCtrl_GetCurSel(NeTabs_GetTabHwnd(hwnd));
+            if (NeTabs_SetActive(hwnd, idx)) {
+                HWND hEdit = NeTabs_GetActiveEdit(hwnd);
+                if (hEdit) Ne_SyncToolbar(hwnd, hEdit);
+                Ne_UpdateStatusText(hwnd);
+                Ne_UpdateTitle(hwnd);
+            }
+            return 0;
+        }
+        break;
+    }
+
+    case NE_WM_TABCLOSE: {
+        int idx = (int)wParam;
+        Ne_CloseTabAt(hwnd, idx);
+        return 0;
+    }
+
+    case NE_WM_TABNEW:
+        Ne_New(hwnd);
+        return 0;
+
+    // ── WM_CONTEXTMENU — right-click context menus ─────────────────────────────
     case WM_CONTEXTMENU: {
-        HWND hSrc = (HWND)wParam;
-        HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
-        if (hSrc != hEdit) break;   // only for the editor, not toolbar buttons
+        HWND hSrc  = (HWND)wParam;
+        HWND hEdit = NeTabs_GetActiveEdit(hwnd);
+        HWND hTab  = NeTabs_GetTabHwnd(hwnd);
+
+        // ── Right-click on the tab bar area (including [+] and empty space) ──
+        // Check if hSrc is the tab control, the [+] button, or a right-click
+        // in the tab-row Y band on the parent background.
+        {
+            bool onTabCtrl = (hSrc == hTab);
+            bool onTabRow  = false;
+            if (!onTabCtrl) {
+                // Check if it's the [+] button (child of hwnd in tab row area)
+                NeState* st2 = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+                if (st2) {
+                    POINT cp = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+                    if (cp.x == -1 && cp.y == -1) break; // keyboard menu, skip
+                    ScreenToClient(hwnd, &cp);
+                    int tabY, tabH;
+                    NeTabs_GetTabRowRect(hwnd, &tabY, &tabH);
+                    onTabRow = (cp.y >= tabY && cp.y < tabY + tabH);
+                }
+            }
+
+            if (onTabCtrl || onTabRow) {
+                // Determine which tab (if any) is under the cursor
+                int tabIdx = -1;
+                if (hTab) {
+                    POINT tp = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+                    ScreenToClient(hTab, &tp);
+                    TCHITTESTINFO hti = {}; hti.pt = tp;
+                    tabIdx = TabCtrl_HitTest(hTab, &hti);
+                }
+                NeTabs_ShowTabContextMenu(hwnd,
+                    GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), tabIdx);
+                return 0;
+            }
+        }
+
+        // ── Right-click on the editor ──────────────────────────────────────────
+        if (hSrc != hEdit) break;
 
         HMENU hCtx = CreatePopupMenu();
         // Grey Undo/Redo based on whether the operation is available.
@@ -2329,10 +2522,75 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         return 0;
     }
 
+    // ── WM_MEASUREITEM — size owner-draw menu items ───────────────────────────
+    case WM_MEASUREITEM: {
+        MEASUREITEMSTRUCT* mis = (MEASUREITEMSTRUCT*)lParam;
+        if (mis->CtlType != ODT_MENU || !g_hMenuFont) break;
+        NeMenuItemData* d = (NeMenuItemData*)(ULONG_PTR)mis->itemData;
+        if (!d || d->isSeparator) { mis->itemHeight = S(8); mis->itemWidth = 10; return TRUE; }
+        HDC hdc = GetDC(hwnd);
+        HFONT hOld = (HFONT)SelectObject(hdc, g_hMenuFont);
+        const wchar_t* tab = d->text ? wcschr(d->text, L'\t') : nullptr;
+        std::wstring main = (d->text && tab) ? std::wstring(d->text, tab - d->text) : (d->text ? d->text : L"");
+        RECT rc = {}; DrawTextW(hdc, main.c_str(), -1, &rc, DT_CALCRECT | DT_SINGLELINE);
+        int accelW = 0;
+        if (tab && !d->isBar) {
+            RECT ra = {}; DrawTextW(hdc, tab+1, -1, &ra, DT_CALCRECT | DT_SINGLELINE);
+            accelW = ra.right + S(30);
+        }
+        SelectObject(hdc, hOld); ReleaseDC(hwnd, hdc);
+        int hPad = d->isBar ? S(6) : S(8);
+        int wPad = d->isBar ? S(20) : S(44);
+        mis->itemHeight = (rc.bottom - rc.top) + hPad;
+        mis->itemWidth  = (rc.right - rc.left) + wPad + accelW;
+        return TRUE;
+    }
+
+    // ── WM_DRAWITEM — paint owner-draw menu items ─────────────────────────────
+    case WM_DRAWITEM: {
+        DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+        if (dis->CtlType != ODT_MENU || !g_hMenuFont) break;
+        NeMenuItemData* d = (NeMenuItemData*)(ULONG_PTR)dis->itemData;
+        if (!d) break;
+        bool selected = (dis->itemState & ODS_SELECTED) != 0;
+        bool grayed   = (dis->itemState & ODS_GRAYED)   != 0;
+        RECT rc = dis->rcItem;
+        // Background
+        COLORREF bg = selected ? GetSysColor(COLOR_HIGHLIGHT) : RGB(255, 255, 255);
+        HBRUSH hbr = CreateSolidBrush(bg); FillRect(dis->hDC, &rc, hbr); DeleteObject(hbr);
+        // Separator
+        if (d->isSeparator) {
+            int y = (rc.top + rc.bottom) / 2;
+            HPEN hp = CreatePen(PS_SOLID, 1, RGB(220, 220, 220));
+            HPEN op = (HPEN)SelectObject(dis->hDC, hp);
+            MoveToEx(dis->hDC, rc.left + S(4), y, NULL); LineTo(dis->hDC, rc.right - S(4), y);
+            SelectObject(dis->hDC, op); DeleteObject(hp);
+            return TRUE;
+        }
+        // Text
+        COLORREF fg = grayed   ? RGB(160, 160, 160)            :
+                      selected ? GetSysColor(COLOR_HIGHLIGHTTEXT)  :
+                                 RGB(30, 30, 30);
+        SetTextColor(dis->hDC, fg);
+        SetBkMode(dis->hDC, TRANSPARENT);
+        HFONT hOld = (HFONT)SelectObject(dis->hDC, g_hMenuFont);
+        const wchar_t* tab = d->text ? wcschr(d->text, L'\t') : nullptr;
+        std::wstring mainTxt = (d->text && tab) ? std::wstring(d->text, tab - d->text) : (d->text ? d->text : L"");
+        int leftPad = d->isBar ? S(10) : S(28);
+        RECT rcT = { rc.left + leftPad, rc.top, rc.right - S(6), rc.bottom };
+        DrawTextW(dis->hDC, mainTxt.c_str(), -1, &rcT, DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        if (tab && !d->isBar) {
+            RECT rcA = { rc.left, rc.top, rc.right - S(6), rc.bottom };
+            DrawTextW(dis->hDC, tab+1, -1, &rcA, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
+        }
+        SelectObject(dis->hDC, hOld);
+        return TRUE;
+    }
+
     // ── WM_INITMENUPOPUP — grey Edit menu items dynamically ──────────────────
     case WM_INITMENUPOPUP: {
         HMENU hPop = (HMENU)wParam;
-        HWND hEdit = GetDlgItem(hwnd, IDC_NE_EDIT);
+        HWND hEdit = NeTabs_GetActiveEdit(hwnd);
         if (!hEdit) break;
         // Only update the Edit popup (check by presence of IDM_UNDO).
         if (GetMenuState(hPop, IDM_UNDO, MF_BYCOMMAND) == (UINT)-1) break;
@@ -2377,12 +2635,18 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     // ── WM_CLOSE — prompt if modified ────────────────────────────────────────
     case WM_CLOSE:
-        if (!Ne_PromptSaveIfModified(hwnd)) return 0;
+        if (!Ne_CloseAllTabsForExit(hwnd)) return 0;
         DestroyWindow(hwnd);
         return 0;
 
     // ── WM_DESTROY ────────────────────────────────────────────────────────────
     case WM_DESTROY: {
+        NeTabs_Destroy(hwnd);
+
+        if (g_hMenuFont) { DeleteObject(g_hMenuFont); g_hMenuFont = NULL; }
+        for (auto* p : g_menuItemStorage) delete p;
+        g_menuItemStorage.clear();
+
         auto freeProp = [&](const wchar_t* name) {
             HFONT h = (HFONT)GetPropW(hwnd, name);
             if (h) { DeleteObject(h); RemovePropW(hwnd, name); }
@@ -2480,12 +2744,25 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
                 continue;
             }
             if (msg.wParam == 'W') {
-                // Ctrl+W: close tab (once tabs exist); for now, exit the app.
-                SendMessageW(s_hwndMain, WM_CLOSE, 0, 0);
+                if (NeTabs_GetCount(s_hwndMain) <= 1) {
+                    SendMessageW(s_hwndMain, WM_CLOSE, 0, 0);
+                } else {
+                    int idx = NeTabs_GetActiveIndex(s_hwndMain);
+                    if (idx >= 0) Ne_CloseTabAt(s_hwndMain, idx);
+                }
+                continue;
+            }
+            if (msg.wParam == VK_TAB) {
+                if (NeTabs_Cycle(s_hwndMain, !shift)) {
+                    HWND hAct = NeTabs_GetActiveEdit(s_hwndMain);
+                    if (hAct) Ne_SyncToolbar(s_hwndMain, hAct);
+                    Ne_UpdateStatusText(s_hwndMain);
+                    Ne_UpdateTitle(s_hwndMain);
+                }
                 continue;
             }
             // Ctrl+B/I/U for text formatting (only when editor has focus).
-            if (GetFocus() == GetDlgItem(s_hwndMain, IDC_NE_EDIT)) {
+            if (GetFocus() == NeTabs_GetActiveEdit(s_hwndMain)) {
                 if (msg.wParam == 'B') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_BOLD,      0); continue; }
                 if (msg.wParam == 'I') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_ITALIC,    0); continue; }
                 if (msg.wParam == 'U') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_UNDERLINE, 0); continue; }

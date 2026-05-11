@@ -31,6 +31,14 @@
                                                 Select All, greyed via WM_INITMENUPOPUP),
                                                 right-click context menu (WM_CONTEXTMENU),
                                                 Help menu (Keyboard Shortcuts/About).
+                                                Owner-draw menus at 12pt Segoe UI via
+                                                Ne_AppendMenuOD / WM_MEASUREITEM /
+                                                WM_DRAWITEM — white bg, highlight/grayed
+                                                states, right-aligned accelerators.
+                                                Bar items (File/Edit/Help) also owner-
+                                                drawn (isBar=true, tighter padding).
+                                                All UI fonts: 12pt Segoe UI DPI-aware
+                                                (GetDpiForWindow / GetDpiForSystem).
                                                 17-control RTF toolbar (Bold/Italic/
                                                 Underline/Strike/Subscript/Superscript/
                                                 FontFace/FontSize/Color/Highlight/Align
@@ -63,6 +71,30 @@
                                                 Ne_SetTip/Ne_TipSubclassProc.
                                                 Control ID range: 201–230.
                                                 IDM range: 107–117.
+
+  ne_tabs.h / ne_tabs.cpp                       Tabbed editor module — SysTabControl32
+                                                strip + per-tab RichEdit HWND ownership.
+                                                Each tab stores its own path/modified/
+                                                suppress-change/disk-stamp state.
+                                                Switching tabs shows/hides editor HWNDs
+                                                (no content swapping). Tab captions show
+                                                filename with owner-drawn × close glyph
+                                                (hover = red circle). [+] button opens
+                                                new tab. Right-click tab strip shows
+                                                New Tab / Close Tab context menu.
+                                                NE_WM_TABCLOSE / NE_WM_TABNEW posted to
+                                                parent. Keyboard: Ctrl+Tab cycle, Ctrl+W
+                                                close active tab (through main-window
+                                                save-prompt flow).
+
+  ne_statusbar.h / ne_statusbar.cpp             Custom owner-drawn status bar module.
+                                                Left: Words: N  Chars: N in bold 12pt.
+                                                Right: shell32 icon + Saved (index 294,
+                                                green checkmark) or Unsaved (index 131,
+                                                red X). Updates via NeStatusBar_Update().
+                                                Height: S(22). Registered as window class
+                                                "NSBEditStatusBar". Labels fully localized
+                                                via NeStatusBar_SetLabels().
 
   dpi.h / dpi.cpp                               DPI scaling utility — g_dpiScale (float,
                                                 initialised from GetDpiForSystem()/96.0f),
@@ -97,6 +129,12 @@
                                                 checkboxes/radios — attach tip string via
                                                 SetPropW(L"avTip") and read in one shared proc;
                                                 Win32 TOOLTIPS_CLASS unreliable for these controls.
+
+  API_INTERNALS\INTERNALS\tab_editor_INTERNALS.txt
+                                                Tabbed-editor architecture reference for
+                                                ne_tabs.h/.cpp integration, close-zone
+                                                behavior, per-tab editor state, and
+                                                toolbar/status synchronization semantics.
 
   API_INTERNALS\API\spinner_dialog_API.txt      Modal progress/spinner dialog component — API,
                                                 thread usage, and progress callback protocol.

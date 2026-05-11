@@ -10,7 +10,7 @@ if %ERRORLEVEL% neq 0 ( echo [ERROR] windres failed & pause & exit /b 1 )
 
 :: Compile and link
 g++ -std=c++17 -O2 -mwindows -municode ^
-    NSBEdit.cpp dpi.cpp tooltip.cpp NSBEdit.res ^
+    NSBEdit.cpp ne_tabs.cpp ne_statusbar.cpp dpi.cpp tooltip.cpp NSBEdit.res ^
     -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid -luser32 -lgdi32 -lgdiplus -lwinspool ^
     -static -static-libgcc -static-libstdc++ ^
     -o NSBEdit.exe

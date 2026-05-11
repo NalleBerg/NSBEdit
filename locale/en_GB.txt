@@ -53,6 +53,15 @@ MSG_FILE_CHANGED_PROMPT = "%s" was changed by another program while NSBEdit did 
 BTN_RELOAD              = Reload
 BTN_KEEP                = Keep Current
 
+TAB_CTX_NEW_TAB         = New Tab
+TAB_CTX_CLOSE_TAB       = Close Tab
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Words
+SB_CHARS                = Chars
+SB_SAVED                = Saved
+SB_UNSAVED              = Unsaved
+
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Bold  (Ctrl+B)
 TIP_ITALIC      = Italic  (Ctrl+I)

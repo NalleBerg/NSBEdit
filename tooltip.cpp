@@ -245,8 +245,7 @@ bool InitTooltipSystem(HINSTANCE hInstance) {
         ncm.cbSize = sizeof(ncm);
         SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
         LOGFONTW lf       = ncm.lfMessageFont;   // start from system metrics (gets DPI-correct height)
-        if (lf.lfHeight < 0)
-            lf.lfHeight   = (LONG)(lf.lfHeight * 1.2f); // 120 % — match project-wide body font scale
+        lf.lfHeight = -MulDiv(12, GetDpiForSystem(), 72); // 12pt
         lf.lfWeight       = FW_BOLD;
         lf.lfQuality      = CLEARTYPE_QUALITY;
         lf.lfCharSet      = DEFAULT_CHARSET;      // allow per-glyph GDI substitution
