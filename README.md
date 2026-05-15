@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.14.10**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.15.12**
 
 ## Download
 
@@ -36,6 +36,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - Full i18n — all UI strings through embedded locale (en_GB)
 - DPI-aware (PerMonitorV2), statically linked — no external DLLs beyond Windows system ones
 - Hover tooltips on all toolbar controls
+- Credits dialog (About → Credits): Scintilla, Lexilla, GDI+, MinGW-W64 sections with links
 
 ## Building from source
 
@@ -46,15 +47,6 @@ Requirements: MinGW-w64 (GCC 13+) with `g++` and `windres` on PATH.
 ```
 
 Optionally run `NewVersion.ps1` first to stamp the build date into the About dialog.
-
-## Changelog
-
-See [Changelog.html](Changelog.html) for full version history.
-
-## License
-
-GNU General Public License v2 — see [GPLv2.md](GPLv2.md).
-
 
 ## Changelog
 

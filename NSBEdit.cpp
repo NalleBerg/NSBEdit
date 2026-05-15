@@ -26,6 +26,13 @@
 #include "ne_statusbar.h"
 #include "scroll/my_scrollbar_vscroll.h"
 #include "scroll/my_scrollbar_hscroll.h"
+#include "highlight/highlight.h"
+#include "checkbox.h"
+// Scintilla + Lexilla (statically linked)
+#include "ILexer.h"
+#include "Scintilla.h"
+#include "ScintillaMessages.h"
+#include "Lexilla.h"
 
 // ── Control and menu IDs ───────────────────────────────────────────────────────
 #define IDI_APPICON         1
@@ -97,6 +104,7 @@ enum class NeEncoding {
 #define IDM_TABLE_PROPS     127   // Table properties (menu/button)
 #define IDM_CTX_TABLE_PROPS 128   // Context-menu "Table properties"
 #define IDM_CTX_HRULE_PROPS 129   // Context-menu "Horizontal Rule Properties"
+#define IDM_LANG_BASE       600   // Language menu: 600..600+NE_LANG_COUNT-1
 #define IDC_NE_CLEARFMT     227
 #define IDC_NE_PRINT_BTN    228
 #define IDC_NE_ZOOM         229
@@ -117,8 +125,11 @@ enum class NeEncoding {
 #define IDC_NE_DLG_TABLE_COLS   249
 #define IDC_NE_DLG_MATCHCASE    250
 #define IDC_NE_DLG_WHOLEWORD    251
+#define IDC_NE_DLG_FIND_COUNT   260
+#define IDC_NE_DLG_REGEX        261
 #define IDC_NE_DLG_PAR_BEF      252
 #define IDC_NE_DLG_PAR_AFT      253
+#define IDC_BTN_LINENUM         262   // line-number toggle button (▸/◂)
 
 // ── Internal state ─────────────────────────────────────────────────────────────
 // ── Per-tab custom scrollbar handles (keyed by hEdit HWND) ──────────────────
@@ -181,7 +192,179 @@ struct NeState {
     int   minClientW      = 0;  // minimum client width enforced by WM_GETMINMAXINFO
     HICON hIconLarge      = NULL;
     HICON hIconSmall      = NULL;
+    HWND  hBtnLineNum     = NULL; // line-number toggle button (▸/◂)
 };
+
+// ── Language / Scintilla support ─────────────────────────────────────────────
+
+struct NeLang {
+    const wchar_t* name;   // display name
+    const char*    lexer;  // Lexilla lexer name (nullptr = Plain Text, no lexer)
+    const wchar_t* exts;   // pipe-separated lowercase extensions
+};
+
+static const NeLang s_langs[] = {
+    { L"Plain Text",   nullptr,       L"txt|text|log"             },
+    { L"Batch",        "batch",       L"bat|cmd"                  },
+    { L"C / C++",      "cpp",         L"c|cpp|cxx|cc|h|hpp|hxx|inl" },
+    { L"C#",           "cpp",         L"cs"                       },
+    { L"CSS",          "css",         L"css|scss|less"            },
+    { L"HTML",         "hypertext",   L"html|htm|xhtml|shtml"     },
+    { L"INI / Config", "props",       L"ini|cfg|conf|properties|editorconfig" },
+    { L"Java",         "cpp",         L"java"                     },
+    { L"JavaScript",   "cpp",         L"js|mjs|cjs"               },
+    { L"JSON",         "json",        L"json|jsonc|geojson"       },
+    { L"Lua",          "lua",         L"lua"                      },
+    { L"Makefile",     "makefile",    L"makefile|mak|mk"          },
+    { L"Markdown",     "markdown",    L"md|markdown"              },
+    { L"Pascal",       "pascal",      L"pas|pp|dpr|lpr"           },
+    { L"Perl",         "perl",        L"pl|pm|pod"                },
+    { L"PHP",          "hypertext",   L"php|php3|php4|php5|phtml" },
+    { L"PowerShell",   "powershell",  L"ps1|psm1|psd1"            },
+    { L"Python",       "python",      L"py|pyw|pyi"               },
+    { L"Ruby",         "ruby",        L"rb|rbw|gemspec"           },
+    { L"Rust",         "rust",        L"rs"                       },
+    { L"SQL",          "sql",         L"sql"                      },
+    { L"TypeScript",   "cpp",         L"ts|tsx"                   },
+    { L"VBScript",     "vbscript",    L"vbs"                      },
+    { L"XML",          "xml",         L"xml|xsl|xslt|xsd|svg|plist|resx" },
+    { L"YAML",         "yaml",        L"yaml|yml"                 },
+};
+static const int NE_LANG_COUNT = (int)(sizeof(s_langs) / sizeof(s_langs[0]));
+
+// Menu handle for the Language popup (so we can update checkmarks).
+static HMENU s_hLangMenu = NULL;
+
+// Returns the language index matching the given lowercase extension, or 0 (Plain Text).
+static int Ne_LangFromExt(const std::wstring& path)
+{
+    size_t dot = path.rfind(L'.');
+    if (dot == std::wstring::npos) return 0;
+    std::wstring ext = path.substr(dot + 1);
+    for (auto& c : ext) c = (wchar_t)towlower(c);
+    // Check filename-based matches (no dot in extension list means match full basename)
+    std::wstring base = path.substr(path.find_last_of(L"\\/") + 1);
+    std::wstring baseLow = base;
+    for (auto& c : baseLow) c = (wchar_t)towlower(c);
+
+    for (int i = 0; i < NE_LANG_COUNT; ++i) {
+        const wchar_t* p = s_langs[i].exts;
+        while (p && *p) {
+            const wchar_t* e = wcschr(p, L'|');
+            size_t len = e ? (size_t)(e - p) : wcslen(p);
+            // Match against extension
+            if (ext.size() == len && wcsncmp(ext.c_str(), p, len) == 0)
+                return i;
+            // Match against full basename (for Makefile, .editorconfig etc.)
+            if (baseLow.size() == len && wcsncmp(baseLow.c_str(), p, len) == 0)
+                return i;
+            p = e ? e + 1 : nullptr;
+        }
+    }
+    return 0; // Plain Text
+}
+
+// Apply a light-theme color scheme to a Scintilla window.
+static void Ne_SetupScintillaStyle(HWND hSci)
+{
+    auto sci = [hSci](UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+        return SendMessageW(hSci, msg, wp, lp);
+    };
+    // Set STYLE_DEFAULT then propagate to all styles
+    sci(SCI_STYLESETFONT, STYLE_DEFAULT, (LPARAM)"Consolas");
+    sci(SCI_STYLESETSIZE, STYLE_DEFAULT, 10);
+    sci(SCI_STYLESETBACK, STYLE_DEFAULT, RGB(255,255,255));
+    sci(SCI_STYLESETFORE, STYLE_DEFAULT, RGB(0,0,0));
+    sci(SCI_STYLECLEARALL, 0, 0);
+
+    // Common style indices used across most Scintilla lexers
+    // 1 = block comment,  2 = line comment,  3 = doc comment
+    sci(SCI_STYLESETFORE, 1, RGB(0,128,0));
+    sci(SCI_STYLESETFORE, 2, RGB(0,128,0));
+    sci(SCI_STYLESETFORE, 3, RGB(0,128,128));
+    // 4 = number,  5 = keyword1,  6 = string,  7 = char
+    sci(SCI_STYLESETFORE, 4, RGB(9,136,90));
+    sci(SCI_STYLESETFORE, 5, RGB(0,0,200));
+    sci(SCI_STYLESETBOLD, 5, TRUE);
+    sci(SCI_STYLESETFORE, 6, RGB(163,21,21));
+    sci(SCI_STYLESETFORE, 7, RGB(163,21,21));
+    // 8 = UUID/script,  9 = preprocessor,  10 = keyword2 / operator
+    sci(SCI_STYLESETFORE, 9, RGB(128,64,0));
+    sci(SCI_STYLESETFORE, 10, RGB(0,0,160));
+    sci(SCI_STYLESETBOLD, 10, TRUE);
+
+    // Editor-level settings
+    sci(SCI_SETCARETFORE, RGB(0,0,0), 0);
+    sci(SCI_SETSELBACK, TRUE, RGB(179,215,255));
+    sci(SCI_SETSCROLLWIDTHTRACKING, TRUE, 0);
+    sci(SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
+    sci(SCI_SETTABWIDTH, 4, 0);
+    // Line number margin (margin 0)
+    sci(SCI_SETMARGINTYPEN,  0, SC_MARGIN_NUMBER);
+    sci(SCI_SETMARGINWIDTHN, 0, S(44));
+    sci(SCI_STYLESETBACK, STYLE_LINENUMBER, RGB(240,240,240));
+    sci(SCI_STYLESETFORE, STYLE_LINENUMBER, RGB(100,100,100));
+    sci(SCI_STYLESETSIZE, STYLE_LINENUMBER, 8);
+    sci(SCI_STYLESETFONT, STYLE_LINENUMBER, (LPARAM)"Consolas");
+}
+
+// Assign a Lexilla lexer (by name) to a Scintilla window.
+static void Ne_SetScintillaLexer(HWND hSci, const char* lexerName)
+{
+    if (!lexerName) {
+        SendMessageW(hSci, SCI_SETILEXER, 0, 0); // null = plain text
+        return;
+    }
+    ILexer5* pLex = CreateLexer(lexerName);
+    if (pLex)
+        SendMessageW(hSci, SCI_SETILEXER, 0, (LPARAM)pLex);
+}
+
+// Forward declaration so Ne_SyncLineNumBtn can be called from anywhere.
+static void Ne_SyncLineNumBtn(HWND hwnd);
+
+// Create and configure a Scintilla child window (hidden; caller shows it).
+static HWND Ne_CreateScintilla(HWND hwndParent, int x, int y, int w, int h)
+{
+    HWND hSci = CreateWindowExW(0, L"Scintilla", L"",
+        WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+        x, y, std::max(1,w), std::max(1,h),
+        hwndParent, NULL, GetModuleHandleW(NULL), NULL);
+    if (!hSci) return NULL;
+    Ne_SetupScintillaStyle(hSci);
+    // Enable save-point + caret notifications
+    SendMessageW(hSci, SCI_SETMODEVENTMASK,
+        SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT, 0);
+    // SCN_UPDATEUI is always sent on selection/caret change — no extra mask needed.
+    return hSci;
+}
+
+// Get UTF-8 text from a Scintilla window.
+static std::string Ne_SciGetText(HWND hSci)
+{
+    int len = (int)SendMessageW(hSci, SCI_GETLENGTH, 0, 0);
+    if (len <= 0) return {};
+    std::string buf(len + 1, '\0');
+    SendMessageW(hSci, SCI_GETTEXT, (WPARAM)(len + 1), (LPARAM)buf.data());
+    buf.resize(len);
+    return buf;
+}
+
+// Update the Language menu checkmarks to reflect the active tab's langId.
+static void Ne_UpdateLangMenuCheck(int langId)
+{
+    if (!s_hLangMenu) return;
+    if (langId < 0 || langId >= NE_LANG_COUNT) {
+        // Uncheck all
+        for (int i = 0; i < NE_LANG_COUNT; ++i)
+            CheckMenuItem(s_hLangMenu, IDM_LANG_BASE + i, MF_BYCOMMAND | MF_UNCHECKED);
+        return;
+    }
+    CheckMenuRadioItem(s_hLangMenu,
+        IDM_LANG_BASE, IDM_LANG_BASE + NE_LANG_COUNT - 1,
+        IDM_LANG_BASE + langId,
+        MF_BYCOMMAND);
+}
 
 // ── Owner-draw menu support ───────────────────────────────────────────────────
 static HFONT g_hMenuFont = NULL;
@@ -703,30 +886,64 @@ static void Ne_UpdateStatusText(HWND hwnd)
     HWND hSb = GetDlgItem(hwnd, IDC_NE_STATUSBAR);
     if (!hSb) return;
     NeTabDoc* doc  = NeTabs_GetActiveDoc(hwnd);
-    HWND      hEdit = doc ? doc->hEdit : NULL;
 
     int words = 0, chars = 0;
-    if (hEdit) {
-        int len = GetWindowTextLengthW(hEdit);
-        chars = len;
-        if (len > 0) {
-            std::vector<wchar_t> buf((size_t)len + 1);
-            GetWindowTextW(hEdit, buf.data(), len + 1);
+    if (doc && doc->hSci) {
+        // Count from Scintilla (UTF-8 byte length ≈ char count for status bar)
+        int byteLen = (int)SendMessageW(doc->hSci, SCI_GETLENGTH, 0, 0);
+        chars = byteLen;
+        if (byteLen > 0) {
+            std::string utf8 = Ne_SciGetText(doc->hSci);
             bool inWord = false;
-            for (int i = 0; i < len; ++i) {
-                wchar_t c = buf[i];
-                bool ws = (c == L' ' || c == L'\t' || c == L'\n' || c == L'\r');
+            for (char ch : utf8) {
+                bool ws = (ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r');
                 if (!ws && !inWord) { ++words; inWord = true; }
-                else if (ws)          inWord = false;
+                else if (ws) inWord = false;
+            }
+        }
+    } else {
+        HWND hEdit = doc ? doc->hEdit : NULL;
+        if (hEdit) {
+            int len = GetWindowTextLengthW(hEdit);
+            chars = len;
+            if (len > 0) {
+                std::vector<wchar_t> buf((size_t)len + 1);
+                GetWindowTextW(hEdit, buf.data(), len + 1);
+                bool inWord = false;
+                for (int i = 0; i < len; ++i) {
+                    wchar_t c = buf[i];
+                    bool ws = (c == L' ' || c == L'\t' || c == L'\n' || c == L'\r');
+                    if (!ws && !inWord) { ++words; inWord = true; }
+                    else if (ws) inWord = false;
+                }
             }
         }
     }
     bool modified = doc ? doc->modified : false;
     NeStatusBar_Update(hSb, words, chars, modified);
 
-    // Centre info: encoding / file type
+    // Line / Col from caret position
+    int caretLine = 0, caretCol = 0;
+    if (doc && doc->hSci) {
+        int pos  = (int)SendMessageW(doc->hSci, SCI_GETCURRENTPOS, 0, 0);
+        caretLine = (int)SendMessageW(doc->hSci, SCI_LINEFROMPOSITION, (WPARAM)pos, 0) + 1;
+        caretCol  = (int)SendMessageW(doc->hSci, SCI_GETCOLUMN, (WPARAM)pos, 0) + 1;
+    } else if (doc && doc->hEdit) {
+        DWORD selStart = 0;
+        SendMessageW(doc->hEdit, EM_GETSEL, (WPARAM)&selStart, 0);
+        int lineIdx = (int)SendMessageW(doc->hEdit, EM_LINEFROMCHAR, (WPARAM)selStart, 0);
+        int lineStart = (int)SendMessageW(doc->hEdit, EM_LINEINDEX, (WPARAM)lineIdx, 0);
+        caretLine = lineIdx + 1;
+        caretCol  = (int)(selStart - (DWORD)lineStart) + 1;
+    }
+    NeStatusBar_SetLineCol(hSb, caretLine, caretCol);
+
+    // Centre info: encoding / language
     NeEncoding enc = doc ? (NeEncoding)doc->encoding : NeEncoding::Unknown;
-    NeStatusBar_SetInfo(hSb, Ne_EncLabel(enc));
+    if (doc && doc->hSci && doc->langId >= 0 && doc->langId < NE_LANG_COUNT)
+        NeStatusBar_SetInfo(hSb, s_langs[doc->langId].name);
+    else
+        NeStatusBar_SetInfo(hSb, Ne_EncLabel(enc));
 }
 
 enum class NeBtnTone { Blue, Green, Red };
@@ -747,7 +964,7 @@ struct NeDialogData {
     int result = IDCANCEL;
     int closeResult = IDCANCEL;
     int buttonCount = 0;
-    NeDialogButtonSpec buttons[3];
+    NeDialogButtonSpec buttons[4];
     HICON hMsgIcon = NULL;   // optional left-side icon (e.g. IDI_WARNING)
     HFONT hDlgFont = NULL;   // created in WM_CREATE, deleted in WM_NCDESTROY
 };
@@ -1406,99 +1623,357 @@ static void Ne_ApplyDlgFont(HWND dlg, HFONT hf)
 // ── Find / Replace dialog (modeless) ─────────────────────────────────────────
 static HWND s_hwndFind = NULL;
 static HWND s_hwndFindEdit = NULL;  // the hEdit to search in (updated when opened)
+static NeHighlightState s_findHL;   // current search highlights
+
+// Cached search parameters — used to detect when a full rescan is needed.
+static std::wstring s_findCachedNeedle;
+static bool         s_findCachedMatchCase = false;
+static bool         s_findCachedWholeWord = false;
+static bool         s_findCachedRegex     = false;
+static std::vector<NeHighlightRange> s_findMatches;  // all match ranges
+
+static void Ne_UpdateFindCount()
+{
+    if (!s_hwndFind || !IsWindow(s_hwndFind)) return;
+    HWND hCount = GetDlgItem(s_hwndFind, IDC_NE_DLG_FIND_COUNT);
+    if (!hCount) return;
+    if (s_findMatches.empty()) {
+        SetWindowTextW(hCount, L"");
+    } else {
+        wchar_t buf[32];
+        swprintf_s(buf, L"%d / %d",
+                   s_findHL.activeIdx + 1, (int)s_findMatches.size());
+        SetWindowTextW(hCount, buf);
+    }
+}
+
+// Extract the full plain text from a RichEdit control.
+static std::wstring Ne_GetEditText(HWND hEdit)
+{
+    GETTEXTLENGTHEX gle = { GTL_DEFAULT, 1200 };
+    int len = (int)SendMessageW(hEdit, EM_GETTEXTLENGTHEX, (WPARAM)&gle, 0);
+    if (len <= 0) return {};
+    std::wstring buf(len + 1, L'\0');
+    GETTEXTEX gte = {};
+    gte.cb       = (DWORD)((len + 1) * sizeof(wchar_t));
+    gte.flags    = GT_DEFAULT;
+    gte.codepage = 1200;   // Unicode
+    int actual = (int)SendMessageW(hEdit, EM_GETTEXTEX, (WPARAM)&gte, (LPARAM)buf.data());
+    buf.resize(actual);
+    return buf;
+}
+
+// Case-insensitive wstring search helper.
+static int Ne_FindInText(const std::wstring& text, const std::wstring& needle,
+                         int startPos, bool forward, bool matchCase, bool wholeWord)
+{
+    if (needle.empty() || (int)text.size() < (int)needle.size()) return -1;
+    const int tLen = (int)text.size();
+    const int nLen = (int)needle.size();
+
+    auto charMatch = [&](int ti) -> bool {
+        if (!matchCase)
+            return _wcsnicmp(text.c_str() + ti, needle.c_str(), nLen) == 0;
+        return wcsncmp(text.c_str() + ti, needle.c_str(), nLen) == 0;
+    };
+    auto isWordChar = [](wchar_t c) -> bool {
+        return iswalnum(c) || c == L'_';
+    };
+
+    if (forward) {
+        for (int i = startPos; i <= tLen - nLen; i++) {
+            if (!charMatch(i)) continue;
+            if (wholeWord) {
+                if (i > 0 && isWordChar(text[i - 1])) continue;
+                if (i + nLen < tLen && isWordChar(text[i + nLen])) continue;
+            }
+            return i;
+        }
+    } else {
+        for (int i = std::min(startPos, tLen - nLen); i >= 0; i--) {
+            if (!charMatch(i)) continue;
+            if (wholeWord) {
+                if (i > 0 && isWordChar(text[i - 1])) continue;
+                if (i + nLen < tLen && isWordChar(text[i + nLen])) continue;
+            }
+            return i;
+        }
+    }
+    return -1;
+}
 
 static void Ne_DoFindNext(HWND dlg, bool forward = true)
 {
-    HWND hWhat  = GetDlgItem(dlg, IDC_NE_DLG_FIND_WHAT);
-    HWND hEdit  = s_hwndFindEdit;
+    HWND hWhat = GetDlgItem(dlg, IDC_NE_DLG_FIND_WHAT);
+    HWND hEdit = s_hwndFindEdit;
     if (!hWhat || !hEdit) return;
 
     wchar_t buf[512] = {};
     GetWindowTextW(hWhat, buf, 512);
-    if (!buf[0]) return;
-
-    bool matchCase  = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_MATCHCASE), BM_GETCHECK, 0, 0) == BST_CHECKED);
-    bool wholeWord  = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_WHOLEWORD), BM_GETCHECK, 0, 0) == BST_CHECKED);
-
-    CHARRANGE cr = {};
-    SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
-
-    FINDTEXTEXW ft = {};
-    ft.lpstrText = buf;
-    DWORD flags = FR_DOWN;
-    if (matchCase)  flags |= FR_MATCHCASE;
-    if (wholeWord)  flags |= FR_WHOLEWORD;
-    if (!forward)   flags &= ~FR_DOWN;
-
-    // Start search from end (or start) of current selection.
-    ft.chrg.cpMin = forward ? cr.cpMax : cr.cpMin - 1;
-    ft.chrg.cpMax = -1;
-    if (ft.chrg.cpMin < 0) ft.chrg.cpMin = 0;
-
-    LRESULT pos = SendMessageW(hEdit, EM_FINDTEXTEXW, (WPARAM)flags, (LPARAM)&ft);
-    if (pos < 0) {
-        // Wrap around.
-        ft.chrg.cpMin = forward ? 0 : -1;
-        ft.chrg.cpMax = forward ? -1 : cr.cpMin;
-        pos = SendMessageW(hEdit, EM_FINDTEXTEXW, (WPARAM)flags, (LPARAM)&ft);
+    if (!buf[0]) {
+        NeHighlight_Clear(hEdit, s_findHL);
+        s_findMatches.clear();
+        s_findCachedNeedle.clear();
+        Ne_UpdateFindCount();
+        return;
     }
-    if (pos >= 0) {
-        SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&ft.chrgText);
-        SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
-    } else {
-        MessageBoxW(dlg, Ls(L"MSG_FIND_NOT_FOUND"), Ls(L"DLG_FIND"), MB_OK | MB_ICONINFORMATION);
-    }
-}
-static void Ne_DoReplace(HWND dlg, bool all)
-{
-    HWND hWhat  = GetDlgItem(dlg, IDC_NE_DLG_FIND_WHAT);
-    HWND hWith  = GetDlgItem(dlg, IDC_NE_DLG_REPL_WITH);
-    HWND hEdit  = s_hwndFindEdit;
-    if (!hWhat || !hWith || !hEdit) return;
-
-    wchar_t what[512] = {}, with[512] = {};
-    GetWindowTextW(hWhat, what, 512);
-    GetWindowTextW(hWith, with, 512);
-    if (!what[0]) return;
+    std::wstring needle(buf);
 
     bool matchCase = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_MATCHCASE), BM_GETCHECK, 0, 0) == BST_CHECKED);
     bool wholeWord = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_WHOLEWORD), BM_GETCHECK, 0, 0) == BST_CHECKED);
-    DWORD flags = FR_DOWN | (matchCase ? FR_MATCHCASE : 0) | (wholeWord ? FR_WHOLEWORD : 0);
+    bool useRegex  = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_REGEX),     BM_GETCHECK, 0, 0) == BST_CHECKED);
+
+    bool dirty = (needle    != s_findCachedNeedle    ||
+                  matchCase != s_findCachedMatchCase ||
+                  wholeWord != s_findCachedWholeWord ||
+                  useRegex  != s_findCachedRegex);
+
+    if (dirty) {
+        NeHighlight_Clear(hEdit, s_findHL);
+        s_findMatches.clear();
+
+        std::wstring text = Ne_GetEditText(hEdit);
+
+        if (useRegex) {
+            std::wregex re;
+            try {
+                auto flags = std::regex_constants::ECMAScript;
+                if (!matchCase) flags |= std::regex_constants::icase;
+                re = std::wregex(needle, flags);
+            } catch (...) {
+                MessageBoxW(dlg, L"Invalid regular expression.", Ls(L"DLG_FIND"), MB_OK | MB_ICONERROR);
+                Ne_UpdateFindCount();
+                return;
+            }
+            for (auto it = std::wsregex_iterator(text.begin(), text.end(), re);
+                 it != std::wsregex_iterator(); ++it) {
+                int s = (int)it->position();
+                s_findMatches.push_back({ s, s + (int)it->length() });
+            }
+        } else {
+            int from = 0;
+            while (true) {
+                int pos = Ne_FindInText(text, needle, from, true, matchCase, wholeWord);
+                if (pos < 0) break;
+                s_findMatches.push_back({ pos, pos + (int)needle.size() });
+                from = pos + (int)needle.size();
+            }
+        }
+
+        s_findCachedNeedle    = needle;
+        s_findCachedMatchCase = matchCase;
+        s_findCachedWholeWord = wholeWord;
+        s_findCachedRegex     = useRegex;
+
+        if (s_findMatches.empty()) {
+            Ne_UpdateFindCount();
+            MessageBoxW(dlg, Ls(L"MSG_FIND_NOT_FOUND"), Ls(L"DLG_FIND"), MB_OK | MB_ICONINFORMATION);
+            return;
+        }
+
+        // Pick nearest match to the current caret.
+        CHARRANGE cr = {};
+        SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+        int caretPos = forward ? (int)cr.cpMax : (int)cr.cpMin;
+        int bestIdx  = forward ? 0 : (int)s_findMatches.size() - 1;
+        if (forward) {
+            for (int i = 0; i < (int)s_findMatches.size(); i++) {
+                if (s_findMatches[i].start >= caretPos) { bestIdx = i; break; }
+            }
+        } else {
+            for (int i = (int)s_findMatches.size() - 1; i >= 0; i--) {
+                if (s_findMatches[i].start < caretPos) { bestIdx = i; break; }
+            }
+        }
+
+        NeHighlight_SetAll(hEdit, s_findMatches, bestIdx,
+                           NE_HL_FG, NE_HL_BG, NE_HL_BG_INACTIVE, s_findHL);
+    } else {
+        if (s_findMatches.empty()) return;
+        int n = (int)s_findMatches.size();
+        int newIdx = forward
+            ? (s_findHL.activeIdx + 1) % n
+            : (s_findHL.activeIdx - 1 + n) % n;
+        NeHighlight_SetActive(hEdit, newIdx,
+                              NE_HL_FG, NE_HL_BG, NE_HL_BG_INACTIVE, s_findHL);
+    }
+
+    Ne_UpdateFindCount();
+}
+
+static void Ne_DoReplace(HWND dlg, bool all)
+{
+    HWND hWhat = GetDlgItem(dlg, IDC_NE_DLG_FIND_WHAT);
+    HWND hWith = GetDlgItem(dlg, IDC_NE_DLG_REPL_WITH);
+    HWND hEdit = s_hwndFindEdit;
+    if (!hWhat || !hWith || !hEdit) return;
+
+    wchar_t what[512] = {}, with_[512] = {};
+    GetWindowTextW(hWhat, what, 512);
+    GetWindowTextW(hWith, with_, 512);
+    if (!what[0]) return;
+    std::wstring needle(what), replacement(with_);
+
+    bool matchCase = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_MATCHCASE), BM_GETCHECK, 0, 0) == BST_CHECKED);
+    bool wholeWord = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_WHOLEWORD), BM_GETCHECK, 0, 0) == BST_CHECKED);
+    bool useRegex  = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_REGEX),     BM_GETCHECK, 0, 0) == BST_CHECKED);
+
+    // Helper: build wregex (shows error and returns false on bad pattern).
+    auto buildRegex = [&](std::wregex& re) -> bool {
+        try {
+            auto flags = std::regex_constants::ECMAScript;
+            if (!matchCase) flags |= std::regex_constants::icase;
+            re = std::wregex(needle, flags);
+            return true;
+        } catch (...) {
+            MessageBoxW(dlg, L"Invalid regular expression.", Ls(L"DLG_FIND"), MB_OK | MB_ICONERROR);
+            return false;
+        }
+    };
 
     if (all) {
-        // Replace all: start from top.
-        CHARRANGE cr0 = { 0, 0 };
-        SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&cr0);
+        std::wstring text = Ne_GetEditText(hEdit);
         int count = 0;
-        FINDTEXTEXW ft = {}; ft.lpstrText = what;
-        ft.chrg.cpMin = 0; ft.chrg.cpMax = -1;
-        while (SendMessageW(hEdit, EM_FINDTEXTEXW, (WPARAM)flags, (LPARAM)&ft) >= 0) {
-            SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&ft.chrgText);
-            SendMessageW(hEdit, EM_REPLACESEL, TRUE, (LPARAM)with);
-            count++;
-            ft.chrg.cpMin = ft.chrgText.cpMin + (LONG)wcslen(with);
-            ft.chrg.cpMax = -1;
-            if (ft.chrg.cpMin < 0) break;
+        if (useRegex) {
+            std::wregex re;
+            if (!buildRegex(re)) return;
+            struct MR { int s, e; std::wstring repl; };
+            std::vector<MR> mrs;
+            for (auto it = std::wsregex_iterator(text.begin(), text.end(), re);
+                 it != std::wsregex_iterator(); ++it) {
+                int s = (int)it->position();
+                mrs.push_back({ s, s + (int)it->length(), it->format(replacement) });
+            }
+            for (int i = (int)mrs.size() - 1; i >= 0; i--) {
+                CHARRANGE sel = { (LONG)mrs[i].s, (LONG)mrs[i].e };
+                SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&sel);
+                SendMessageW(hEdit, EM_REPLACESEL, TRUE, (LPARAM)mrs[i].repl.c_str());
+                count++;
+            }
+        } else {
+            int searchFrom = 0;
+            std::vector<int> positions;
+            while (true) {
+                int pos = Ne_FindInText(text, needle, searchFrom, true, matchCase, wholeWord);
+                if (pos < 0) break;
+                positions.push_back(pos);
+                searchFrom = pos + (int)needle.size();
+            }
+            for (int i = (int)positions.size() - 1; i >= 0; i--) {
+                CHARRANGE sel = { (LONG)positions[i], (LONG)(positions[i] + (int)needle.size()) };
+                SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&sel);
+                SendMessageW(hEdit, EM_REPLACESEL, TRUE, (LPARAM)replacement.c_str());
+                count++;
+            }
         }
+        NeHighlight_Clear(hEdit, s_findHL);
+        s_findCachedNeedle.clear();
+        Ne_UpdateFindCount();
         if (count == 0)
             MessageBoxW(dlg, Ls(L"MSG_FIND_NOT_FOUND"), Ls(L"DLG_FIND"), MB_OK | MB_ICONINFORMATION);
     } else {
-        // Replace current selection if it matches, then find next.
-        CHARRANGE cr = {};
-        SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
-        if (cr.cpMin != cr.cpMax) {
-            // Check if current selection equals search term.
-            int selLen = cr.cpMax - cr.cpMin;
-            std::wstring selText(selLen + 1, L'\0');
-            SendMessageW(hEdit, EM_GETSELTEXT, 0, (LPARAM)selText.data());
-            selText.resize(selLen);
-            bool matches = matchCase ? (selText == what) : (_wcsicmp(selText.c_str(), what) == 0);
-            if (matches) {
-                SendMessageW(hEdit, EM_REPLACESEL, TRUE, (LPARAM)with);
+        // Replace the current active highlighted match, then find next.
+        if (useRegex && !s_findMatches.empty() && s_findHL.activeIdx >= 0) {
+            const auto& mr = s_findMatches[s_findHL.activeIdx];
+            CHARRANGE sel = { (LONG)mr.start, (LONG)mr.end };
+            SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&sel);
+            int len = mr.end - mr.start;
+            std::wstring matchText(len, L'\0');
+            SendMessageW(hEdit, EM_GETSELTEXT, 0, (LPARAM)matchText.data());
+            std::wregex re;
+            if (buildRegex(re)) {
+                std::wsmatch m;
+                std::wstring expanded = replacement;
+                if (std::regex_search(matchText, m, re)) expanded = m.format(replacement);
+                SendMessageW(hEdit, EM_REPLACESEL, TRUE, (LPARAM)expanded.c_str());
+            }
+        } else if (!useRegex) {
+            CHARRANGE cr = {};
+            SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+            if (cr.cpMin != cr.cpMax) {
+                int selLen = cr.cpMax - cr.cpMin;
+                std::wstring selText(selLen + 1, L'\0');
+                SendMessageW(hEdit, EM_GETSELTEXT, 0, (LPARAM)selText.data());
+                selText.resize(selLen);
+                bool matches = matchCase ? (selText == needle)
+                                         : (_wcsicmp(selText.c_str(), needle.c_str()) == 0);
+                if (matches)
+                    SendMessageW(hEdit, EM_REPLACESEL, TRUE, (LPARAM)replacement.c_str());
             }
         }
+        NeHighlight_Clear(hEdit, s_findHL);
+        s_findCachedNeedle.clear();
+        Ne_UpdateFindCount();
         Ne_DoFindNext(dlg, true);
     }
+}
+
+static NeDialogData s_findBtnDD;
+
+static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
+{
+    switch (m) {
+    case WM_COMMAND: {
+        int id = LOWORD(w);
+        if (id == IDCANCEL)                  { DestroyWindow(h); return 0; }
+        if (id == IDOK)                      { Ne_DoFindNext(h, true); return 0; }  // Enter key
+        if (id == IDC_NE_DLG_FIND_NEXT)      { Ne_DoFindNext(h, true);  return 0; }
+        if (id == IDC_NE_DLG_REPLACE)        { Ne_DoReplace(h, false);  return 0; }
+        if (id == IDC_NE_DLG_REPLACE_ALL)    { Ne_DoReplace(h, true);   return 0; }
+        // Regex checkbox toggled — grey out MatchCase and WholeWord.
+        if (id == IDC_NE_DLG_REGEX && HIWORD(w) == BN_CLICKED) {
+            bool on = (SendMessageW(GetDlgItem(h, IDC_NE_DLG_REGEX), BM_GETCHECK, 0, 0) == BST_CHECKED);
+            EnableWindow(GetDlgItem(h, IDC_NE_DLG_MATCHCASE), !on);
+            EnableWindow(GetDlgItem(h, IDC_NE_DLG_WHOLEWORD), !on);
+            InvalidateRect(GetDlgItem(h, IDC_NE_DLG_MATCHCASE), NULL, TRUE);
+            InvalidateRect(GetDlgItem(h, IDC_NE_DLG_WHOLEWORD), NULL, TRUE);
+            s_findCachedNeedle.clear();  // force rescan with new mode
+            return 0;
+        }
+        break;
+    }
+    case WM_KEYDOWN:
+        if (w == VK_ESCAPE) { DestroyWindow(h); return 0; }
+        break;
+    case WM_DRAWITEM: {
+        LPDRAWITEMSTRUCT dis = (LPDRAWITEMSTRUCT)l;
+        if (DrawCustomCheckbox(dis)) return TRUE;
+        if (dis->CtlType == ODT_BUTTON) {
+            Ne_DrawDialogButton(dis, &s_findBtnDD);
+            return TRUE;
+        }
+        break;
+    }
+    case WM_SETTINGCHANGE:
+        OnCheckboxSettingChange(h);
+        break;
+    case WM_CTLCOLORSTATIC:
+        SetBkColor((HDC)w, GetSysColor(COLOR_WINDOW));
+        SetTextColor((HDC)w, RGB(20, 20, 20));
+        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+    case WM_CTLCOLORBTN:
+        SetBkColor((HDC)w, GetSysColor(COLOR_WINDOW));
+        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+    case WM_CLOSE:
+        DestroyWindow(h);
+        return 0;
+    case WM_DESTROY: {
+        NeHighlight_Clear(s_hwndFindEdit, s_findHL);
+        s_findMatches.clear();
+        s_findCachedNeedle.clear();
+        HFONT hf = (HFONT)GetWindowLongPtrW(h, GWLP_USERDATA);
+        if (hf) DeleteObject(hf);
+        for (int i = 0; i < s_findBtnDD.buttonCount; i++) {
+            if (s_findBtnDD.buttons[i].hIconOverride) {
+                DestroyIcon(s_findBtnDD.buttons[i].hIconOverride);
+                s_findBtnDD.buttons[i].hIconOverride = NULL;
+            }
+        }
+        s_hwndFind = NULL;
+        return 0;
+    }
+    }
+    return DefWindowProcW(h, m, w, l);
 }
 
 static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
@@ -1511,30 +1986,39 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
         return;
     }
 
-    WNDCLASSW wc = {};
-    wc.lpfnWndProc   = [](HWND h, UINT m, WPARAM w, LPARAM l) -> LRESULT {
-        if (m == WM_COMMAND) {
-            int id = LOWORD(w);
-            if (id == IDCANCEL || id == IDOK) { DestroyWindow(h); return 0; }
-            if (id == IDC_NE_DLG_FIND_NEXT)   { Ne_DoFindNext(h, true);  return 0; }
-            if (id == IDC_NE_DLG_REPLACE)      { Ne_DoReplace(h, false); return 0; }
-            if (id == IDC_NE_DLG_REPLACE_ALL)  { Ne_DoReplace(h, true);  return 0; }
-        }
-        if (m == WM_KEYDOWN && w == VK_ESCAPE) { DestroyWindow(h); return 0; }
-        if (m == WM_DESTROY) {
-            HFONT hf = (HFONT)GetWindowLongPtrW(h, GWLP_USERDATA);
-            if (hf) DeleteObject(hf);
-            s_hwndFind = NULL;
-            return 0;
-        }
-        return DefWindowProcW(h, m, w, l);
-    };
-    wc.hInstance     = hi;
-    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
-    wc.lpszClassName = L"NsbFindClass";
-    if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
+    static bool s_registered = false;
+    if (!s_registered) {
+        WNDCLASSW wc = {};
+        wc.lpfnWndProc   = Ne_FindDlgProc;
+        wc.hInstance     = hi;
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wc.lpszClassName = L"NsbFindClass";
+        RegisterClassW(&wc);
+        s_registered = true;
+    }
 
-    const int W = S(440), H = S(220);
+    // Build button specs with measured widths and shell32 icon overrides.
+    s_findBtnDD = {};
+    s_findBtnDD.buttonCount = 4;
+    HICON hIconCheck = NULL, hIconClose = NULL;
+    ExtractIconExW(L"shell32.dll", 294, NULL, &hIconCheck, 1);
+    ExtractIconExW(L"shell32.dll", 131, NULL, &hIconClose,  1);
+    s_findBtnDD.buttons[0] = { IDC_NE_DLG_FIND_NEXT,  Ls(L"BTN_FIND_NEXT"),   NeBtnTone::Blue,  IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_FIND_NEXT")),   NULL       };
+    s_findBtnDD.buttons[1] = { IDC_NE_DLG_REPLACE,    Ls(L"BTN_REPLACE"),     NeBtnTone::Green, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_REPLACE")),     hIconCheck };
+    s_findBtnDD.buttons[2] = { IDC_NE_DLG_REPLACE_ALL,Ls(L"BTN_REPLACE_ALL"), NeBtnTone::Green, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_REPLACE_ALL")), hIconCheck };
+    s_findBtnDD.buttons[3] = { IDCANCEL,               Ls(L"BTN_CLOSE"),       NeBtnTone::Red,   IDI_ERROR,       Ne_MeasureButtonWidth(Ls(L"BTN_CLOSE")),       hIconClose };
+
+    const int P = S(10), LH = S(24), EB = S(22), CB = S(34);
+    int totalBtnW = 0;
+    for (int i = 0; i < 4; i++) totalBtnW += s_findBtnDD.buttons[i].width;
+    totalBtnW += 3 * S(6);
+
+    int clientW = std::max(S(450), totalBtnW + 2 * P);
+    int clientH = P + (EB + P) + (EB + P) + LH + P + CB + P;
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE,
+                       WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE);
+    int W = wr.right - wr.left, H = wr.bottom - wr.top;
     RECT pr = {}; if (parent) GetWindowRect(parent, &pr);
     int x = (pr.left + pr.right) / 2 - W / 2, y = (pr.top + pr.bottom) / 2 - H / 2;
     if (y < 30) y = 30;
@@ -1549,48 +2033,70 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
     SetWindowLongPtrW(s_hwndFind, GWLP_USERDATA, (LONG_PTR)hf);
 
     RECT rc; GetClientRect(s_hwndFind, &rc);
-    const int P = S(10), LH = S(24), EB = S(22), CB = S(26);
     int y0 = P;
 
     auto mkLbl = [&](const wchar_t* t, int yy) {
-        HWND h = CreateWindowExW(0, L"STATIC", t, WS_CHILD|WS_VISIBLE, P, yy+S(3), S(110), LH, s_hwndFind, NULL, hi, NULL);
-        if (hf) SendMessageW(h, WM_SETFONT, (WPARAM)hf, TRUE);
+        HWND ctrl = CreateWindowExW(0, L"STATIC", t, WS_CHILD | WS_VISIBLE,
+            P, yy + S(4), S(115), LH, s_hwndFind, NULL, hi, NULL);
+        if (hf) SendMessageW(ctrl, WM_SETFONT, (WPARAM)hf, TRUE);
     };
-    auto mkEdit = [&](int id, int yy) {
-        HWND h = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD|WS_VISIBLE|ES_AUTOHSCROLL,
-            P+S(115), yy, rc.right - P*2 - S(115), EB, s_hwndFind, (HMENU)(UINT_PTR)id, hi, NULL);
-        if (hf) SendMessageW(h, WM_SETFONT, (WPARAM)hf, TRUE);
-        return h;
+    auto mkEdit = [&](int id, int yy) -> HWND {
+        HWND ctrl = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
+            P + S(115), yy, rc.right - P * 2 - S(115), EB,
+            s_hwndFind, (HMENU)(UINT_PTR)id, hi, NULL);
+        if (hf) SendMessageW(ctrl, WM_SETFONT, (WPARAM)hf, TRUE);
+        return ctrl;
     };
-    auto mkCheck = [&](int id, const wchar_t* t, int xx, int yy) {
-        HWND h = CreateWindowExW(0, L"BUTTON", t, WS_CHILD|WS_VISIBLE|BS_AUTOCHECKBOX,
-            xx, yy, S(130), LH, s_hwndFind, (HMENU)(UINT_PTR)id, hi, NULL);
-        if (hf) SendMessageW(h, WM_SETFONT, (WPARAM)hf, TRUE);
-    };
-    auto mkBtn = [&](int id, const wchar_t* t, int xx, int yy, int bw, bool def_) {
-        DWORD sty = WS_CHILD|WS_VISIBLE|(def_ ? BS_DEFPUSHBUTTON : BS_PUSHBUTTON);
-        HWND h = CreateWindowExW(0, L"BUTTON", t, sty, xx, yy, bw, CB, s_hwndFind, (HMENU)(UINT_PTR)id, hi, NULL);
-        if (hf) SendMessageW(h, WM_SETFONT, (WPARAM)hf, TRUE);
+    auto mkCustomCheck = [&](int id, const wchar_t* t, int xx, int yy) -> HWND {
+        HWND ctrl = CreateCustomCheckbox(s_hwndFind, id, t, false,
+            xx, yy, S(130), LH, hi);
+        if (ctrl && hf) SendMessageW(ctrl, WM_SETFONT, (WPARAM)hf, TRUE);
+        return ctrl;
     };
 
     mkLbl(Ls(L"DLG_FIND_WHAT"), y0);
-    HWND hFW = mkEdit(IDC_NE_DLG_FIND_WHAT, y0); y0 += EB + P;
+    // Find edit is narrower — leave room for the "3 / 14" counter on the right.
+    {
+        const int COUNT_W = S(72);
+        int editW = rc.right - P * 2 - S(115) - COUNT_W - S(6);
+        HWND hFW = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
+            P + S(115), y0, editW, EB,
+            s_hwndFind, (HMENU)(UINT_PTR)IDC_NE_DLG_FIND_WHAT, hi, NULL);
+        if (hf) SendMessageW(hFW, WM_SETFONT, (WPARAM)hf, TRUE);
+        HWND hCount = CreateWindowExW(0, L"STATIC", L"",
+            WS_CHILD | WS_VISIBLE | SS_CENTER,
+            rc.right - P - COUNT_W, y0 + S(4), COUNT_W, EB - S(4),
+            s_hwndFind, (HMENU)(UINT_PTR)IDC_NE_DLG_FIND_COUNT, hi, NULL);
+        if (hf) SendMessageW(hCount, WM_SETFONT, (WPARAM)hf, TRUE);
+        SetFocus(hFW);
+    }
+    y0 += EB + P;
 
     mkLbl(Ls(L"DLG_REPL_WITH"), y0);
     mkEdit(IDC_NE_DLG_REPL_WITH, y0); y0 += EB + P;
 
-    mkCheck(IDC_NE_DLG_MATCHCASE, Ls(L"CHK_MATCHCASE"), P,           y0);
-    mkCheck(IDC_NE_DLG_WHOLEWORD, Ls(L"CHK_WHOLEWORD"), P + S(145),  y0);
+    // Single row: MatchCase | WholeWord | Regex  (custom theme-aware checkboxes)
+    mkCustomCheck(IDC_NE_DLG_MATCHCASE, Ls(L"CHK_MATCHCASE"), P,          y0);
+    mkCustomCheck(IDC_NE_DLG_WHOLEWORD, Ls(L"CHK_WHOLEWORD"), P + S(140), y0);
+    mkCustomCheck(IDC_NE_DLG_REGEX,     Ls(L"CHK_REGEX"),     P + S(280), y0);
     y0 += LH + P;
 
-    int bw = S(110), bx = rc.right - P - bw;
-    mkBtn(IDCANCEL,                L"Close",                 bx, y0, bw, false); bx -= bw + S(6);
-    mkBtn(IDC_NE_DLG_REPLACE_ALL, Ls(L"BTN_REPLACE_ALL"),   bx, y0, bw, false); bx -= bw + S(6);
-    mkBtn(IDC_NE_DLG_REPLACE,     Ls(L"BTN_REPLACE"),       bx, y0, bw, false); bx -= bw + S(6);
-    mkBtn(IDC_NE_DLG_FIND_NEXT,   Ls(L"BTN_FIND_NEXT"),     bx, y0, bw, true);
-
-    SetFocus(hFW);
+    // Owner-draw buttons, centred horizontally.
+    int bx = (rc.right - totalBtnW) / 2;
+    for (int i = 0; i < 4; i++) {
+        auto& b = s_findBtnDD.buttons[i];
+        DWORD sty = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW;
+        if (b.id == IDC_NE_DLG_FIND_NEXT) sty |= BS_DEFPUSHBUTTON;
+        HWND hBtn = CreateWindowExW(0, L"BUTTON", b.text.c_str(), sty,
+            bx, y0, b.width, CB, s_hwndFind, (HMENU)(UINT_PTR)b.id, hi, NULL);
+        if (hBtn) {
+            WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+            SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+        }
+        bx += b.width + S(6);
+    }
 }
 
 // ── Insert Link dialog ────────────────────────────────────────────────────────
@@ -3701,53 +4207,111 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
     if (!hEdit || !doc) return false;
 
     bool isRtf = Ne_IsRtf(bytes);
-    std::string streamBytes = bytes;
 
     if (!isRtf) {
-        const unsigned char* p = (const unsigned char*)bytes.data();
-        size_t n = bytes.size();
-        std::wstring wide;
-
-        if (n >= 2 && p[0] == 0xFF && p[1] == 0xFE) {
-            // UTF-16LE BOM — already correct, pass through as-is.
-            streamBytes = bytes;
-        } else {
-            // Determine whether to decode as UTF-8 or ANSI.
+        // ── Non-RTF file: use Scintilla ─────────────────────────────────────
+        // Convert bytes to UTF-8 for Scintilla.
+        std::string utf8;
+        {
+            const unsigned char* p = (const unsigned char*)bytes.data();
+            size_t n = bytes.size();
+            // Already UTF-8 (with or without BOM)?
             size_t offset = (n >= 3 && p[0]==0xEF && p[1]==0xBB && p[2]==0xBF) ? 3 : 0;
             int wlen = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
-                                           bytes.data() + offset, (int)(n - offset),
-                                           NULL, 0);
-            if (wlen > 0) {
+                                           bytes.data() + offset, (int)(n - offset), NULL, 0);
+            std::wstring wide;
+            if (n >= 2 && p[0]==0xFF && p[1]==0xFE) {
+                // UTF-16LE BOM
+                const wchar_t* wp = reinterpret_cast<const wchar_t*>(bytes.data() + 2);
+                int wn = (int)((n - 2) / sizeof(wchar_t));
+                wide.assign(wp, wn);
+            } else if (wlen > 0) {
                 wide.resize(wlen);
                 MultiByteToWideChar(CP_UTF8, 0, bytes.data() + offset, (int)(n - offset),
                                     wide.data(), wlen);
             } else {
-                // Fallback: ANSI (system codepage).
                 wlen = MultiByteToWideChar(CP_ACP, 0, bytes.data(), (int)n, NULL, 0);
                 if (wlen > 0) {
                     wide.resize(wlen);
                     MultiByteToWideChar(CP_ACP, 0, bytes.data(), (int)n, wide.data(), wlen);
                 }
             }
-            // Repack wide chars as raw bytes for SF_TEXT|SF_UNICODE.
-            streamBytes.assign(reinterpret_cast<const char*>(wide.data()),
-                               wide.size() * sizeof(wchar_t));
+            // Wide → UTF-8
+            if (!wide.empty()) {
+                int u8len = WideCharToMultiByte(CP_UTF8, 0, wide.data(), (int)wide.size(),
+                                                NULL, 0, NULL, NULL);
+                if (u8len > 0) {
+                    utf8.resize(u8len);
+                    WideCharToMultiByte(CP_UTF8, 0, wide.data(), (int)wide.size(),
+                                        utf8.data(), u8len, NULL, NULL);
+                }
+            }
         }
+
+        // Create Scintilla window if this tab doesn't have one yet.
+        if (!doc->hSci) {
+            RECT rcEdit; GetWindowRect(hEdit, &rcEdit);
+            POINT pt = { rcEdit.left, rcEdit.top };
+            ScreenToClient(hwnd, &pt);
+            int w = rcEdit.right - rcEdit.left;
+            int h = rcEdit.bottom - rcEdit.top;
+            doc->hSci = Ne_CreateScintilla(hwnd, pt.x, pt.y, w, h);
+        }
+
+        if (!doc->hSci) return false;
+
+        // Detect language from extension (unless user has overridden it).
+        if (!doc->langUserSet)
+            doc->langId = Ne_LangFromExt(path);
+
+        Ne_SetScintillaLexer(doc->hSci, s_langs[doc->langId].lexer);
+
+        // Load text (UTF-8 is Scintilla's native encoding).
+        SendMessageW(doc->hSci, SCI_SETTEXT, 0, (LPARAM)utf8.c_str());
+        SendMessageW(doc->hSci, SCI_EMPTYUNDOBUFFER, 0, 0);
+        SendMessageW(doc->hSci, SCI_SETSAVEPOINT, 0, 0);
+
+        // Hide the RichEdit, show Scintilla, focus it.
+        ShowWindow(hEdit, SW_HIDE);
+        ShowWindow(doc->hSci, SW_SHOW);
+        SetFocus(doc->hSci);
+
+        doc->path = path;
+        doc->modified = false;
+        Ne_DetectEncoding(doc, bytes);
+        Ne_RememberDiskStamp(doc);
+        NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
+        Ne_UpdateTitle(hwnd);
+        Ne_UpdateStatusText(hwnd);
+        Ne_UpdateLangMenuCheck(doc->langId);
+        return true;
     }
 
+    // ── RTF file: use RichEdit ────────────────────────────────────────────────
+    // If the tab was previously a Scintilla tab, destroy it.
+    if (doc->hSci) {
+        DestroyWindow(doc->hSci);
+        doc->hSci = NULL;
+        doc->langId = -1;
+        doc->langUserSet = false;
+    }
+    ShowWindow(hEdit, SW_SHOW);
+
+    std::string streamBytes = bytes;
     doc->suppressChange = true;
-    Ne_StreamIn(hEdit, streamBytes, isRtf);
+    Ne_StreamIn(hEdit, streamBytes, true);
     doc->suppressChange = false;
-    Ne_RebuildHRList(hEdit);   // pick up any HR paragraphs in the loaded file
+    Ne_RebuildHRList(hEdit);
     InvalidateRect(hEdit, NULL, FALSE);
     doc->path = path;
     doc->modified = false;
-    Ne_DetectEncoding(doc, bytes);   // sets doc->encoding from raw file bytes
+    Ne_DetectEncoding(doc, bytes);
     Ne_RememberDiskStamp(doc);
 
     NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
     Ne_UpdateTitle(hwnd);
     Ne_UpdateStatusText(hwnd);
+    Ne_UpdateLangMenuCheck(-1);
     return true;
 }
 
@@ -3777,6 +4341,31 @@ static void Ne_Open(HWND hwnd)
 
 static bool Ne_SaveToPath(HWND hwnd, const std::wstring& path)
 {
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!doc) return false;
+
+    // ── Scintilla tab: save UTF-8 directly ───────────────────────────────────
+    if (doc->hSci) {
+        std::string utf8 = Ne_SciGetText(doc->hSci);
+        FILE* f = nullptr;
+        if (_wfopen_s(&f, path.c_str(), L"wb") != 0 || !f) {
+            MessageBoxW(hwnd, Ls(L"MSG_SAVE_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
+            return false;
+        }
+        fwrite(utf8.data(), 1, utf8.size(), f);
+        fclose(f);
+        doc->path = path;
+        doc->modified = false;
+        doc->encoding = (int)NeEncoding::UTF8;
+        SendMessageW(doc->hSci, SCI_SETSAVEPOINT, 0, 0);
+        Ne_RememberDiskStamp(doc);
+        NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
+        Ne_UpdateTitle(hwnd);
+        Ne_UpdateStatusText(hwnd);
+        return true;
+    }
+
+    // ── RichEdit tab: existing save logic ────────────────────────────────────
     HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (!hEdit) return false;
 
@@ -4221,6 +4810,7 @@ static LRESULT CALLBACK NsbAboutEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
 }
 
 static void ShowNsbLicenseDialog(HWND parent); // forward declaration
+static void ShowNsbCreditsDialog(HWND parent); // forward declaration
 
 static LRESULT CALLBACK NsbAboutWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -4230,9 +4820,18 @@ static LRESULT CALLBACK NsbAboutWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             ShowNsbLicenseDialog(hwnd);
             return 0;
         }
+        if (LOWORD(wParam) == 1002) {
+            ShowNsbCreditsDialog(hwnd);
+            return 0;
+        }
         if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
             PostMessageW(hwnd, WM_CLOSE, 0, 0);
         return 0;
+    case WM_DRAWITEM: {
+        NeDialogData* dd = (NeDialogData*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+        if (dd) Ne_DrawDialogButton((const DRAWITEMSTRUCT*)lParam, dd);
+        return TRUE;
+    }
     case WM_CLOSE:
         PostQuitMessage(0);
         DestroyWindow(hwnd);
@@ -4340,11 +4939,21 @@ static void ShowNsbLicenseDialog(HWND parent)
     SendMessageW(hEdit, EM_SETSEL, 0, 0);
     SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
 
-    int bx = (rcC.right - S(80)) / 2, by = rcC.bottom - PAD - BTN_H;
-    HWND hBtn = CreateWindowExW(0, L"BUTTON", L"OK",
-        WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON,
-        bx, by, S(80), BTN_H, dlg, (HMENU)IDOK, hi, NULL);
-    SendMessageW(hBtn, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    NeDialogData licDD = {};
+    licDD.buttonCount = 1;
+    licDD.buttons[0] = { IDOK, Ls(L"BTN_CLOSE"), NeBtnTone::Red, IDI_ERROR,
+                         Ne_MeasureButtonWidth(Ls(L"BTN_CLOSE")) };
+    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&licDD);
+
+    int bw = licDD.buttons[0].width;
+    int bx = (rcC.right - bw) / 2, by = rcC.bottom - PAD - BTN_H;
+    HWND hBtn = CreateWindowExW(0, L"BUTTON", licDD.buttons[0].text.c_str(),
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
+        bx, by, bw, BTN_H, dlg, (HMENU)IDOK, hi, NULL);
+    {
+        WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+        SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+    }
 
     if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
     SetFocus(hBtn);
@@ -4353,6 +4962,125 @@ static void ShowNsbLicenseDialog(HWND parent)
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     }
     if (hBmp) DeleteObject(hBmp);
+    if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
+}
+
+static void ShowNsbCreditsDialog(HWND parent)
+{
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc2 = {}; wc2.lpfnWndProc = NsbAboutWndProc; wc2.hInstance = hi;
+    wc2.hbrBackground = (HBRUSH)(COLOR_WINDOW+1); wc2.lpszClassName = L"NsbCreditsClass";
+    if (!GetClassInfoW(hi, wc2.lpszClassName, &wc2)) RegisterClassW(&wc2);
+
+    const int W = S(480), H = S(500);
+    RECT pr = {}; if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
+    int x = (pr.left+pr.right)/2 - W/2, y = (pr.top+pr.bottom)/2 - H/2;
+    if (y < 30) y = 30;
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_WINDOWEDGE,
+        L"NsbCreditsClass", L"Credits",
+        WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_VISIBLE,
+        x, y, W, H, parent, NULL, hi, NULL);
+    if (!dlg) return;
+
+    HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
+    if (hIco) { SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+                SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco); }
+
+    LoadLibraryW(L"Msftedit.dll");
+    RECT rcC; GetClientRect(dlg, &rcC);
+    const int PAD = S(10), BTN_H = S(30);
+    int editH = rcC.bottom - 2*PAD - BTN_H - PAD;
+
+    HWND hEdit = CreateWindowExW(0, L"RICHEDIT50W", NULL,
+        WS_CHILD|WS_VISIBLE|ES_MULTILINE|ES_READONLY|ES_AUTOVSCROLL|WS_VSCROLL,
+        PAD, PAD, rcC.right-2*PAD, editH, dlg, (HMENU)200, hi, NULL);
+    if (!hEdit) { DestroyWindow(dlg); return; }
+    SendMessageW(hEdit, EM_SETTARGETDEVICE, 0, 0);
+
+    // ── Scintilla ─────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit,
+        L"=================================================\r\n",
+        false, RGB(100,100,100), 9, true);
+    AppendNsbRich(hEdit, L"SCINTILLA\r\n",  true,  RGB(0,128,64),  18, true);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(0,128,64), 0, true);
+    AppendNsbRich(hEdit,
+        L"Scintilla is a free, open-source source code editing component "
+        L"by Neil Hodgson. NSBEdit uses Scintilla for syntax-highlighted "
+        L"code editing.\r\n\r\n",
+        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, L"https://www.scintilla.org/\r\n", false, RGB(0,80,160), 0, false);
+
+    // ── Lexilla ───────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit,
+        L"\r\n=================================================\r\n",
+        false, RGB(100,100,100), 9, true);
+    AppendNsbRich(hEdit, L"LEXILLA\r\n",    true,  RGB(0,80,160),  18, true);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(0,80,160), 0, true);
+    AppendNsbRich(hEdit,
+        L"Lexilla is a library of lexers for Scintilla, also by Neil Hodgson. "
+        L"NSBEdit uses Lexilla to provide syntax highlighting for over 20 "
+        L"programming languages.\r\n\r\n",
+        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, L"https://www.scintilla.org/Lexilla.html\r\n", false, RGB(0,80,160), 0, false);
+
+    // ── GDI+ ─────────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit,
+        L"\r\n=================================================\r\n",
+        false, RGB(100,100,100), 9, true);
+    AppendNsbRich(hEdit, L"GDI+\r\n",       true,  RGB(0,70,140),  18, true);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(0,70,140), 0, true);
+    AppendNsbRich(hEdit,
+        L"GDI+ is part of the Windows platform SDK. NSBEdit uses it to render "
+        L"the NSBEdit logo in the About dialog.\r\n",
+        false, RGB(40,40,40), 0, false);
+
+    // ── MinGW-W64 ─────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit,
+        L"\r\n=================================================\r\n",
+        false, RGB(100,100,100), 9, true);
+    AppendNsbRich(hEdit, L"MINGW-W64\r\n", true, RGB(160,82,45), 18, true);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(160,82,45), 0, true);
+    AppendNsbRich(hEdit,
+        L"The MinGW-W64 project provides a complete runtime environment for "
+        L"GCC and LLVM/Clang toolchains on Windows. NSBEdit is compiled with "
+        L"MinGW-W64 GCC 15.2.0.\r\n\r\n",
+        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, L"https://www.mingw-w64.org/\r\n", false, RGB(0,80,160), 0, false);
+
+    SendMessageW(hEdit, EM_SETSEL, 0, 0);
+    SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
+
+    NeDialogData credDD = {};
+    credDD.buttonCount = 1;
+    credDD.buttons[0] = { IDOK, Ls(L"BTN_CLOSE"), NeBtnTone::Red, IDI_ERROR,
+                          Ne_MeasureButtonWidth(Ls(L"BTN_CLOSE")) };
+    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&credDD);
+
+    int bw = credDD.buttons[0].width;
+    int bx = (rcC.right - bw) / 2, by = rcC.bottom - PAD - BTN_H;
+    HWND hBtn = CreateWindowExW(0, L"BUTTON", credDD.buttons[0].text.c_str(),
+        WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
+        bx, by, bw, BTN_H, dlg, (HMENU)IDOK, hi, NULL);
+    {
+        WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+        SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+    }
+
+    if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
+    SetFocus(hBtn);
+    MSG m;
+    while (GetMessageW(&m, NULL, 0, 0)) {
+        if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
+    }
     if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
 }
 
@@ -4452,23 +5180,34 @@ static void ShowNsbAboutDialog(HWND parent)
     SendMessageW(hEdit, EM_SETSEL, 0, 0);
     SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
 
-    // Buttons: View License | Close
-    int totalBW = S(110) + S(10) + S(80);
-    int bx = (rcC.right - totalBW) / 2, by = rcC.bottom - PAD - BTN_H;
-    HWND hLic = CreateWindowExW(0, L"BUTTON", Ls(L"ABOUT_BTN_LICENSE"),
-        WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON,
-        bx, by, S(110), BTN_H, dlg, (HMENU)1001, hi, NULL);
-    HWND hClose = CreateWindowExW(0, L"BUTTON", Ls(L"ABOUT_BTN_CLOSE"),
-        WS_CHILD|WS_VISIBLE|BS_DEFPUSHBUTTON,
-        bx+S(110)+S(10), by, S(80), BTN_H, dlg, (HMENU)IDOK, hi, NULL);
-    HFONT hf = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
-    SendMessageW(hLic,   WM_SETFONT, (WPARAM)hf, TRUE);
-    SendMessageW(hClose, WM_SETFONT, (WPARAM)hf, TRUE);
+    // Buttons: View License | Credits | Close  (all owner-drawn)
+    NeDialogData abtDD = {};
+    abtDD.buttonCount = 3;
+    abtDD.buttons[0] = { 1001, Ls(L"ABOUT_BTN_LICENSE"), NeBtnTone::Blue,  IDI_INFORMATION,
+                         Ne_MeasureButtonWidth(Ls(L"ABOUT_BTN_LICENSE")) };
+    abtDD.buttons[1] = { 1002, Ls(L"ABOUT_BTN_CREDITS"), NeBtnTone::Green, IDI_INFORMATION,
+                         Ne_MeasureButtonWidth(Ls(L"ABOUT_BTN_CREDITS")) };
+    abtDD.buttons[2] = { IDOK, Ls(L"ABOUT_BTN_CLOSE"),   NeBtnTone::Red,   IDI_ERROR,
+                         Ne_MeasureButtonWidth(Ls(L"ABOUT_BTN_CLOSE")) };
+    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&abtDD);
 
-    // Override WM_COMMAND to handle License button here via subclass trick —
-    // we use a simple local message loop and intercept 1001 manually.
+    const int BG = S(8);
+    int totalBW = abtDD.buttons[0].width + BG + abtDD.buttons[1].width + BG + abtDD.buttons[2].width;
+    int bx = (rcC.right - totalBW) / 2, by = rcC.bottom - PAD - BTN_H;
+    HWND btnHwnds[3] = {};
+    int bxCur = bx;
+    for (int i = 0; i < 3; ++i) {
+        btnHwnds[i] = CreateWindowExW(0, L"BUTTON", abtDD.buttons[i].text.c_str(),
+            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
+            bxCur, by, abtDD.buttons[i].width, BTN_H,
+            dlg, (HMENU)(UINT_PTR)abtDD.buttons[i].id, hi, NULL);
+        WNDPROC prev = (WNDPROC)SetWindowLongPtrW(btnHwnds[i], GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+        SetPropW(btnHwnds[i], L"NePrevProc", (HANDLE)prev);
+        bxCur += abtDD.buttons[i].width + BG;
+    }
+
     if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
-    SetFocus(hClose);
+    SetFocus(btnHwnds[2]); // Close button
     MSG m;
     while (GetMessageW(&m, NULL, 0, 0)) {
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
@@ -4559,6 +5298,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         Ne_AppendMenuOD(hConv, MF_POPUP | MF_STRING,
                         (UINT_PTR)hEncSub, Ls(L"MENU_ENCODING"));
         Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hConv, Ls(L"MENU_CONVERT"), true);
+        // ── Language menu ─────────────────────────────────────────────────────
+        s_hLangMenu = CreatePopupMenu();
+        for (int li = 0; li < NE_LANG_COUNT; ++li)
+            Ne_AppendMenuOD(s_hLangMenu, MF_STRING, IDM_LANG_BASE + li, s_langs[li].name);
+        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hLangMenu, L"Language", true);
         // ── Help menu ─────────────────────────────────────────────────────────
         HMENU hHelp = CreatePopupMenu();
         Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_SHORTCUTS, Ls(L"MENU_SHORTCUTS"));
@@ -4572,6 +5316,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             s_neRtfDll = LoadLibraryW(L"Msftedit.dll");
             if (!s_neRtfDll) s_neRtfDll = LoadLibraryW(L"Riched20.dll");
         }
+        // ── Register Scintilla window class ───────────────────────────────────
+        Scintilla_RegisterClasses(hInst);
+
         WNDCLASSEXW wce = {}; wce.cbSize = sizeof(wce);
         const wchar_t* reClass =
             (s_neRtfDll && GetClassInfoExW(s_neRtfDll, L"RICHEDIT50W", &wce))
@@ -4921,6 +5668,19 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (wmId == IDM_EXIT)       { PostMessageW(hwnd, WM_CLOSE, 0, 0); return 0; }
         if (wmId == IDM_PRINT)      { Ne_Print(hwnd);             return 0; }
         if (wmId == IDM_EXPORT_PDF) { Ne_ExportPdf(hwnd);         return 0; }
+        // ── Language menu ─────────────────────────────────────────────────────
+        if (wmId >= IDM_LANG_BASE && wmId < IDM_LANG_BASE + NE_LANG_COUNT) {
+            int newLang = wmId - IDM_LANG_BASE;
+            NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+            if (doc && doc->hSci) {
+                doc->langId = newLang;
+                doc->langUserSet = true;
+                Ne_SetScintillaLexer(doc->hSci, s_langs[newLang].lexer);
+                Ne_UpdateLangMenuCheck(newLang);
+                Ne_UpdateStatusText(hwnd);
+            }
+            return 0;
+        }
         // ── Convert menu ──────────────────────────────────────────────────────
         if (wmId == IDM_CONV_TO_PLAIN) {
             HWND hEd = NeTabs_GetActiveEdit(hwnd);
@@ -5178,8 +5938,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (wmEv == EN_SETFOCUS) {
                 Ne_CheckExternalFileChangeOnFocus(hwnd);
             }
-            if (wmEv == EN_SELCHANGE && hSrcEdit == NeTabs_GetActiveEdit(hwnd))
+            if (wmEv == EN_SELCHANGE && hSrcEdit == NeTabs_GetActiveEdit(hwnd)) {
                 Ne_SyncToolbar(hwnd, hSrcEdit);
+                Ne_UpdateStatusText(hwnd);
+            }
         }
         break;
     }
@@ -5215,13 +5977,52 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (nh && nh->idFrom == IDC_NE_TABCTRL && nh->code == TCN_SELCHANGE) {
             int idx = TabCtrl_GetCurSel(NeTabs_GetTabHwnd(hwnd));
             if (NeTabs_SetActive(hwnd, idx)) {
-                HWND hEdit = NeTabs_GetActiveEdit(hwnd);
-                if (hEdit) Ne_SyncToolbar(hwnd, hEdit);
+                HWND hEditA = NeTabs_GetActiveEdit(hwnd);
+                if (hEditA) Ne_SyncToolbar(hwnd, hEditA);
                 Ne_SyncScrollbarVisibility(hwnd);
                 Ne_UpdateStatusText(hwnd);
                 Ne_UpdateTitle(hwnd);
+                NeTabDoc* docA = NeTabs_GetActiveDoc(hwnd);
+                Ne_UpdateLangMenuCheck(docA ? docA->langId : -1);
             }
             return 0;
+        }
+        // Scintilla notifications (WM_NOTIFY from child Scintilla window)
+        if (nh) {
+            SCNotification* scn = (SCNotification*)lParam;
+            if (scn->nmhdr.code == SCN_UPDATEUI) {
+                // Caret moved in the active Scintilla tab — refresh Line/Col
+                HWND hSciActive = NeTabs_GetActiveScintilla(hwnd);
+                if (scn->nmhdr.hwndFrom == hSciActive)
+                    Ne_UpdateStatusText(hwnd);
+            } else if (scn->nmhdr.code == SCN_SAVEPOINTLEFT) {
+                // Document was modified after save point
+                NeTabDoc* docSci = NULL;
+                int n = NeTabs_GetCount(hwnd);
+                for (int i = 0; i < n; ++i) {
+                    NeTabDoc* d = NeTabs_GetDocByIndex(hwnd, i);
+                    if (d && d->hSci == scn->nmhdr.hwndFrom) { docSci = d; break; }
+                }
+                if (docSci && !docSci->modified) {
+                    docSci->modified = true;
+                    NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
+                    Ne_UpdateTitle(hwnd);
+                    Ne_UpdateStatusText(hwnd);
+                }
+            } else if (scn->nmhdr.code == SCN_SAVEPOINTREACHED) {
+                NeTabDoc* docSci = NULL;
+                int n = NeTabs_GetCount(hwnd);
+                for (int i = 0; i < n; ++i) {
+                    NeTabDoc* d = NeTabs_GetDocByIndex(hwnd, i);
+                    if (d && d->hSci == scn->nmhdr.hwndFrom) { docSci = d; break; }
+                }
+                if (docSci && docSci->modified) {
+                    docSci->modified = false;
+                    NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
+                    Ne_UpdateTitle(hwnd);
+                    Ne_UpdateStatusText(hwnd);
+                }
+            }
         }
         break;
     }

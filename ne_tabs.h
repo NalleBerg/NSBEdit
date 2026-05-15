@@ -18,6 +18,10 @@ struct NeTabDoc {
     ULONGLONG diskFileSize = 0;
     int encoding = 0; // NeEncoding cast to int; 0 = Unknown
     std::wstring prevPlainPath; // set when converting plain→RTF; cleared after save
+    HWND hSci = NULL;       // Scintilla editor (NULL = use hEdit/RichEdit)
+    int  langId = -1;       // index into s_langs[] in NSBEdit.cpp
+    bool langUserSet = false; // user manually overrode auto-detect
+    bool lineNumsVisible = true; // whether the line-number margin is shown
 };
 
 struct NeTabsCreateParams {
@@ -65,3 +69,5 @@ void NeTabs_UpdateAllTitles(HWND hwndParent);
 void NeTabs_SetRects(HWND hwndParent,
     int tabX, int tabY, int tabW, int tabH,
     int editX, int editY, int editW, int editH);
+
+HWND NeTabs_GetActiveScintilla(HWND hwndParent);

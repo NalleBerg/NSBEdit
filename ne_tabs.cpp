@@ -64,7 +64,14 @@ static std::wstring NeTabs_TitleFor(const NeTabDoc& d, const std::wstring& untit
 static void NeTabs_ShowOnlyActive()
 {
     for (int i = 0; i < (int)g_tabs.docs.size(); ++i) {
-        ShowWindow(g_tabs.docs[i].hEdit, i == g_tabs.activeIndex ? SW_SHOW : SW_HIDE);
+        bool active = (i == g_tabs.activeIndex);
+        auto& d = g_tabs.docs[i];
+        if (d.hSci) {
+            ShowWindow(d.hSci,  active ? SW_SHOW : SW_HIDE);
+            ShowWindow(d.hEdit, SW_HIDE);
+        } else {
+            ShowWindow(d.hEdit, active ? SW_SHOW : SW_HIDE);
+        }
     }
 }
 
@@ -296,7 +303,9 @@ void NeTabs_Destroy(HWND hwndParent)
     HideTooltip();
     for (auto& d : g_tabs.docs) {
         if (d.hEdit && IsWindow(d.hEdit)) DestroyWindow(d.hEdit);
+        if (d.hSci  && IsWindow(d.hSci))  DestroyWindow(d.hSci);
         d.hEdit = NULL;
+        d.hSci  = NULL;
     }
     g_tabs.docs.clear();
     if (g_tabs.hBtnNew && IsWindow(g_tabs.hBtnNew)) DestroyWindow(g_tabs.hBtnNew);
@@ -330,7 +339,8 @@ bool NeTabs_SetActive(HWND hwndParent, int index)
     g_tabs.activeIndex = index;
     TabCtrl_SetCurSel(g_tabs.hTab, index);
     NeTabs_ShowOnlyActive();
-    SetFocus(g_tabs.docs[index].hEdit);
+    HWND focusTarget = g_tabs.docs[index].hSci ? g_tabs.docs[index].hSci : g_tabs.docs[index].hEdit;
+    SetFocus(focusTarget);
     return true;
 }
 
@@ -398,6 +408,8 @@ bool NeTabs_CloseTab(HWND hwndParent, int index)
 
     if (g_tabs.docs[index].hEdit && IsWindow(g_tabs.docs[index].hEdit))
         DestroyWindow(g_tabs.docs[index].hEdit);
+    if (g_tabs.docs[index].hSci && IsWindow(g_tabs.docs[index].hSci))
+        DestroyWindow(g_tabs.docs[index].hSci);
 
     g_tabs.docs.erase(g_tabs.docs.begin() + index);
     TabCtrl_DeleteItem(g_tabs.hTab, index);
@@ -499,5 +511,13 @@ void NeTabs_SetRects(HWND hwndParent,
     for (auto& d : g_tabs.docs) {
         if (d.hEdit)
             SetWindowPos(d.hEdit, NULL, editX, editY, std::max(1, editW), std::max(1, editH), SWP_NOZORDER | SWP_NOACTIVATE);
+        if (d.hSci)
+            SetWindowPos(d.hSci,  NULL, editX, editY, std::max(1, editW), std::max(1, editH), SWP_NOZORDER | SWP_NOACTIVATE);
     }
+}
+
+HWND NeTabs_GetActiveScintilla(HWND hwndParent)
+{
+    NeTabDoc* d = NeTabs_GetActiveDoc(hwndParent);
+    return d ? d->hSci : NULL;
 }

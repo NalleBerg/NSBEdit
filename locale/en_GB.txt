@@ -53,7 +53,7 @@ MSG_ENC_LOSSY   = Some characters may not be representable in the chosen encodin
 MSG_DEL_PLAIN_FILE = The document has been saved as an RTF file.\n\nDelete the original plain text file?
 
 # ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
-FILTER_OPEN   = Supported files (*.rtf;*.txt;*.md)|*.rtf;*.txt;*.md|RTF files (*.rtf)|*.rtf|Text files (*.txt)|*.txt|Markdown files (*.md)|*.md|All files (*.*)|*.*
+FILTER_OPEN   = All supported files|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF files (*.rtf)|*.rtf|Text files (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Config (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|All files (*.*)|*.*
 FILTER_SAVEAS = RTF files (*.rtf)|*.rtf|Text files (*.txt)|*.txt|All files (*.*)|*.*
 FILTER_IMAGE  = Image files|*.png;*.jpg;*.jpeg|PNG files (*.png)|*.png|JPEG files (*.jpg;*.jpeg)|*.jpg;*.jpeg
 
@@ -132,10 +132,12 @@ DLG_FIND            = Find / Replace
 DLG_FIND_WHAT       = Find:
 DLG_REPL_WITH       = Replace with:
 BTN_FIND_NEXT       = Find Next
+BTN_CLOSE           = Close
 BTN_REPLACE         = Replace
 BTN_REPLACE_ALL     = Replace All
 CHK_MATCHCASE       = Match case
 CHK_WHOLEWORD       = Whole word
+CHK_REGEX           = Regex
 MSG_FIND_NOT_FOUND  = Text not found.
 
 # ── Insert Link dialog ────────────────────────────────────────────────────────
@@ -206,4 +208,5 @@ ABOUT_VERSION     = Version:
 ABOUT_DESC        = A lightweight, standalone RTF editor built on Win32.\nSupports bold, italic, underline, strikethrough, superscript, subscript,\nfont face/size/colour, alignment, bullet and numbered lists, and image insertion.\n\n
 ABOUT_LICENSE     = Licensed under the GNU General Public License v2.\n
 ABOUT_BTN_LICENSE = View License
+ABOUT_BTN_CREDITS = Credits
 ABOUT_BTN_CLOSE   = Close

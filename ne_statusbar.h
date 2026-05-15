@@ -25,3 +25,10 @@ void NeStatusBar_SetLabels(HWND hBar,
 
 // Set the centre info string (encoding / file type). Pass NULL to clear.
 void NeStatusBar_SetInfo(HWND hBar, const wchar_t* info);
+
+// Set the current caret position shown between centre and Saved/Unsaved.
+// line and col are 1-based. Pass 0/0 to hide.
+void NeStatusBar_SetLineCol(HWND hBar, int line, int col);
+
+// Set the localised labels for line/col (e.g. L"Ln", L"Col").
+void NeStatusBar_SetLineColLabels(HWND hBar, const wchar_t* lineLabel, const wchar_t* colLabel);

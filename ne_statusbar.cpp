@@ -9,10 +9,14 @@ struct NeStatusBarState {
     int  words    = 0;
     int  chars    = 0;
     bool modified = false;
+    int  line     = 0;  // 1-based; 0 = hidden
+    int  col      = 0;  // 1-based
     std::wstring wordsLabel   = L"Words";
     std::wstring charsLabel   = L"Chars";
     std::wstring savedLabel   = L"Saved";
     std::wstring unsavedLabel = L"Unsaved";
+    std::wstring lineLabel    = L"Ln";
+    std::wstring colLabel     = L"Col";
     std::wstring infoLabel;   // centre: encoding / file type
     HFONT hFont      = NULL;
     HICON hIconSaved   = NULL;
@@ -101,12 +105,11 @@ static LRESULT CALLBACK NeStatusBar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, 
                       DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         }
 
-        // Right side: icon + Saved / Unsaved
+        // Right side: icon + Saved / Unsaved (pinned to far right)
         const std::wstring& stateText = st->modified ? st->unsavedLabel : st->savedLabel;
         COLORREF stateColor = st->modified ? RGB(185, 90, 20) : RGB(40, 130, 40);
         HICON hStateIcon = st->modified ? st->hIconUnsaved : st->hIconSaved;
 
-        // Measure text width to place icon+text as a unit pinned to the right
         int iconSz = S(14);
         int gap    = S(4);
         SIZE tsz = {};
@@ -115,6 +118,21 @@ static LRESULT CALLBACK NeStatusBar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, 
         int unitW   = (hStateIcon ? iconSz + gap : 0) + tsz.cx;
         int unitX   = rc.right - S(10) - unitW;
         int midY    = rc.top + (rc.bottom - rc.top) / 2;
+
+        // Line/Col displayed to the left of Saved/Unsaved
+        int lineColRight = unitX - S(8);
+        if (st->line > 0) {
+            wchar_t lcbuf[64];
+            swprintf_s(lcbuf, L"%s: %d    %s: %d",
+                st->lineLabel.c_str(), st->line,
+                st->colLabel.c_str(),  st->col);
+            SIZE lcsz = {};
+            GetTextExtentPoint32W(hdc, lcbuf, (int)wcslen(lcbuf), &lcsz);
+            RECT lcRc = { lineColRight - lcsz.cx, rc.top + 1, lineColRight, rc.bottom };
+            SetTextColor(hdc, RGB(60, 60, 60));
+            DrawTextW(hdc, lcbuf, -1, &lcRc,
+                      DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+        }
 
         if (hStateIcon)
             DrawIconEx(hdc, unitX, midY - iconSz / 2, hStateIcon,
@@ -203,5 +221,26 @@ void NeStatusBar_SetInfo(HWND hBar, const wchar_t* info)
     NeStatusBarState* st = (NeStatusBarState*)GetWindowLongPtrW(hBar, GWLP_USERDATA);
     if (!st) return;
     st->infoLabel = info ? info : L"";
+    InvalidateRect(hBar, NULL, FALSE);
+}
+
+void NeStatusBar_SetLineCol(HWND hBar, int line, int col)
+{
+    if (!hBar) return;
+    NeStatusBarState* st = (NeStatusBarState*)GetWindowLongPtrW(hBar, GWLP_USERDATA);
+    if (!st) return;
+    if (st->line == line && st->col == col) return;
+    st->line = line;
+    st->col  = col;
+    InvalidateRect(hBar, NULL, FALSE);
+}
+
+void NeStatusBar_SetLineColLabels(HWND hBar, const wchar_t* lineLabel, const wchar_t* colLabel)
+{
+    if (!hBar) return;
+    NeStatusBarState* st = (NeStatusBarState*)GetWindowLongPtrW(hBar, GWLP_USERDATA);
+    if (!st) return;
+    if (lineLabel) st->lineLabel = lineLabel;
+    if (colLabel)  st->colLabel  = colLabel;
     InvalidateRect(hBar, NULL, FALSE);
 }
