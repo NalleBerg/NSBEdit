@@ -1,0 +1,88 @@
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>setlocal
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>taskkill /F /IM NSBEdit.exe  2>&1 
+ERROR: The process "NSBEdit.exe" not found.
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>timeout /T 1 /NOBREAK  1>nul 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>windres NSBEdit.rc -o NSBEdit.res --output-format=coff 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>if 0 NEQ 0 (echo [ERROR] windres failed   & pause   & exit /b 1  ) 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>gcc -O2 -DSQLITE_THREADSAFE=0 -DSQLITE_DEFAULT_MEMSTATUS=0 -c sqlite3\sqlite3.c -o sqlite3\sqlite3.o 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>if 0 NEQ 0 (echo [ERROR] sqlite3 compile failed   & pause   & exit /b 1  ) 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>gcc -O2 -c curl\lib\quic_stubs.c -o curl\lib\quic_stubs.o 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>if 0 NEQ 0 (echo [ERROR] quic_stubs compile failed   & pause   & exit /b 1  ) 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>g++ -std=c++17 -O2 -mwindows -municode     -I. -Isqlite3 -Icurl\include     -DCURL_STATICLIB     -Iscintilla_src\scintilla\include -Ilexilla_src\lexilla\include     NSBEdit.cpp ne_tabs.cpp ne_statusbar.cpp dpi.cpp tooltip\tooltip.cpp scroll\my_scrollbar_vscroll.cpp     highlight\highlight.cpp checkbox.cpp     ne_crypto.cpp ne_profiles.cpp ne_ftp.cpp ne_autocomplete\ne_autocomplete.cpp     rtf2html\ne_rtf2html_lib.cpp     sqlite3\sqlite3.o curl\lib\quic_stubs.o NSBEdit.res     -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid -luser32 -lgdi32 -lgdiplus -lwinspool     -Lscintilla_src\scintilla\bin -Llexilla_src\lexilla\bin -lscintilla -llexilla     -limm32 -loleaut32 -ladvapi32 -lole32 -luuid     -Lcurl\lib -lcurl -lssh2 -lssl -lcrypto -lz -lnghttp2 -lbrotlidec -lbrotlicommon -lpsl -lzstd     -lws2_32 -lcrypt32 -lbcrypt -lwinhttp -lwldap32 -lsecur32 -liphlpapi -lntdll     -static -static-libgcc -static-libstdc++     -o NSBEdit.exe 
+In file included from rtf2html\ne_rtf2html_lib.cpp:18:
+rtf2html\rtf_table.cpp: In member function 'std::string table::make()':
+rtf2html\rtf_table.cpp:92:48: warning: 'std::mem_fun1_t<_Ret, _Tp, _Arg> std::mem_fun(_Ret (_Tp::*)(_Arg)) [with _Ret = bool; _Tp = table_cell_def; _Arg = int]' is deprecated: use 'std::mem_fn' instead [-Wdeprecated-declarations]
+   92 |                                    std::mem_fun(&table_cell_def::right_equals),
+      |                                    ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/string:51,
+                 from rtf2html\rtf_keyword.h:5,
+                 from rtf2html\rtf_keyword.cpp:1,
+                 from rtf2html\ne_rtf2html_lib.cpp:17:
+C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/bits/stl_function.h:1392:5: note: declared here
+ 1392 |     mem_fun(_Ret (_Tp::*__f)(_Arg))
+      |     ^~~~~~~
+rtf2html\rtf_table.cpp:91:45: warning: 'std::binder2nd<_Operation> std::bind2nd(const _Operation&, const _Tp&) [with _Operation = mem_fun1_t<bool, table_cell_def, int>; _Tp = int]' is deprecated: use 'std::bind' instead [-Wdeprecated-declarations]
+   91 |                                 std::bind2nd(
+      |                                 ~~~~~~~~~~~~^
+   92 |                                    std::mem_fun(&table_cell_def::right_equals),
+      |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+   93 |                                                 (*cell_def)->Right));
+      |                                                 ~~~~~~~~~~~~~~~~~~~
+In file included from C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/bits/stl_function.h:1441:
+C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward/binders.h:172:5: note: declared here
+  172 |     bind2nd(const _Operation& __fn, const _Tp& __x)
+      |     ^~~~~~~
+rtf2html\rtf_table.cpp:143:48: warning: 'std::mem_fun1_t<_Ret, _Tp, _Arg> std::mem_fun(_Ret (_Tp::*)(_Arg)) [with _Ret = bool; _Tp = table_cell_def; _Arg = int]' is deprecated: use 'std::mem_fn' instead [-Wdeprecated-declarations]
+  143 |                                    std::mem_fun(&table_cell_def::right_equals),
+      |                                    ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/bits/stl_function.h:1392:5: note: declared here
+ 1392 |     mem_fun(_Ret (_Tp::*__f)(_Arg))
+      |     ^~~~~~~
+rtf2html\rtf_table.cpp:142:45: warning: 'std::binder2nd<_Operation> std::bind2nd(const _Operation&, const _Tp&) [with _Operation = mem_fun1_t<bool, table_cell_def, int>; _Tp = int]' is deprecated: use 'std::bind' instead [-Wdeprecated-declarations]
+  142 |                                 std::bind2nd(
+      |                                 ~~~~~~~~~~~~^
+  143 |                                    std::mem_fun(&table_cell_def::right_equals),
+      |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  144 |                                                 left));
+      |                                                 ~~~~~
+C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward/binders.h:172:5: note: declared here
+  172 |     bind2nd(const _Operation& __fn, const _Tp& __x)
+      |     ^~~~~~~
+rtf2html\rtf_table.cpp:153:48: warning: 'std::mem_fun1_t<_Ret, _Tp, _Arg> std::mem_fun(_Ret (_Tp::*)(_Arg)) [with _Ret = bool; _Tp = table_cell_def; _Arg = int]' is deprecated: use 'std::mem_fn' instead [-Wdeprecated-declarations]
+  153 |                                    std::mem_fun(&table_cell_def::left_equals),
+      |                                    ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/bits/stl_function.h:1392:5: note: declared here
+ 1392 |     mem_fun(_Ret (_Tp::*__f)(_Arg))
+      |     ^~~~~~~
+rtf2html\rtf_table.cpp:152:45: warning: 'std::binder2nd<_Operation> std::bind2nd(const _Operation&, const _Tp&) [with _Operation = mem_fun1_t<bool, table_cell_def, int>; _Tp = int]' is deprecated: use 'std::bind' instead [-Wdeprecated-declarations]
+  152 |                                 std::bind2nd(
+      |                                 ~~~~~~~~~~~~^
+  153 |                                    std::mem_fun(&table_cell_def::left_equals),
+      |                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  154 |                                                 right));
+      |                                                 ~~~~~~
+C:/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward/binders.h:172:5: note: declared here
+  172 |     bind2nd(const _Operation& __fn, const _Tp& __x)
+      |     ^~~~~~~
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>if 0 NEQ 0 (echo.   & echo BUILD FAILED   & pause   & exit /b 1  ) 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>copy /Y NSB.png NSB.png  1>nul 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>copy /Y curver.txt curver.txt  1>nul 2>&1 
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>echo.
+
+
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit>echo Done - NSBEdit.exe updated 
+Done - NSBEdit.exe updated

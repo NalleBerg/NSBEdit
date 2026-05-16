@@ -31,6 +31,10 @@ MENU_ABOUT      = &About NSBEdit
 MENU_CONVERT        = Con&vert
 MENU_CONV_TO_PLAIN  = Strip formatting — save as plain text
 MENU_CONV_TO_RTF    = Add &formatting — make RTF
+MENU_CONV_TO_HTML5  = Export as &HTML 5...
+MSG_HTML5_ERR       = HTML conversion failed.
+MSG_HTML5_SAVE_ERR  = Could not write HTML file.
+DLG_SAVE_HTML5      = Save as HTML 5
 MENU_ENCODING       = &Encoding
 MENU_ENC_UTF8       = UTF-8
 MENU_ENC_UTF16LE    = UTF-16 LE
@@ -122,6 +126,11 @@ TIP_WORDWRAP    = Toggle word wrap
 TIP_CASE        = Toggle case  (UPPER / lower / Title)
 TIP_LINENUM     = Toggle line numbers
 TIP_PARSPACE    = Paragraph spacing...
+TIP_SAVE        = Save  (Ctrl+S)
+TIP_SAVE_FTP    = Save to FTP server
+TIP_LANG_UI     = UI language
+TIP_COMMENT     = Comment / Uncomment selected lines
+LANG_UI_ENGLISH = English
 
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF files (*.pdf)|*.pdf

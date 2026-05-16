@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.16.14 - 16.05.2026 14:32
+
+- **Export as HTML 5…** (Convert menu, RTF only): converts active RTF to self-contained HTML5 with base64-embedded images. Uses `rtf2html/ne_rtf2html_lib.cpp` wrapper. Fixes: `\*\picprop` groups inside `\pict` are now skipped (their property names contain hex-like letters that were corrupting image data); `char_by_code()` in `rtf_tools.h` now emits proper UTF-8 (CP1252 → Unicode → UTF-8) instead of raw bytes — Norwegian/non-ASCII characters now render correctly. Menu item greyed for non-RTF tabs.
+- **RTF toolbar on startup**: `Ne_DocIsRtf()` returns `true` for untitled RichEdit tabs; `Ne_UpdateToolbarMode` uses `Ne_DocIsRtf` — Rich Text toolbar shows immediately on launch without opening a file first.
+- **File → Open reuses untitled tab**: if the active tab is an untouched untitled RichEdit tab, the opened file loads into it directly instead of creating a new blank tab.
+
 ## v2026.05.16.11 - 16.05.2026 11:41
 
 - MSB custom scrollbars now on Scintilla code tabs in addition to RichEdit: `s_sciSbV`/`s_sciSbH` maps, `Ne_AttachSciScrollbars`, `Ne_DetachSciScrollbars`. `SCN_UPDATEUI` → `msb_sync` keeps the thumb in sync during keyboard scrolling. Bug fix: `Ne_AttachScrollbars` was missing from the RTF branch of `Ne_LoadPathIntoEditor` — added.

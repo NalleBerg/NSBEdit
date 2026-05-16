@@ -1,6 +1,14 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 16 May 2026 &mdash; v2026.05.16.11 (11:41)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 16 May 2026 &mdash; v2026.05.16.14 (14:32)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.16.14</span></h3>
+<p><strong>HTML5 export, RTF toolbar on startup, open-in-same-tab (16.05.2026, 14:32):</strong></p>
+<ul>
+<li><strong>Export as HTML 5&hellip; (Convert menu, RTF documents only):</strong> Converts the active RTF document to a self-contained HTML5 file with all images embedded as base64 data URIs. Uses a bundled <code>rtf2html</code> library (<code>rtf2html/ne_rtf2html_lib.cpp</code>) with several fixes: <code>\*\picprop</code> groups inside <code>\pict</code> are now correctly skipped so their property-name text (containing hex-like letters) cannot corrupt the image data; <code>char_by_code()</code> in <code>rtf_tools.h</code> now converts Windows-1252 code points to proper UTF-8 (2- or 3-byte sequences) instead of emitting raw bytes, so all Norwegian and other non-ASCII characters render correctly. The output is <code>&lt;!DOCTYPE html&gt;</code> UTF-8 with a <code>&lt;meta viewport&gt;</code>, inline CSS from the RTF style table, and <code>img { max-width:100%; height:auto; }</code>. Menu item is greyed when the active tab is not RTF.</li>
+<li><strong>App opens with RTF toolbar on startup:</strong> <code>Ne_DocIsRtf()</code> now returns <code>true</code> for untitled tabs that have a RichEdit window and no Scintilla window, so the Rich Text formatting toolbar is visible and all RTF-only Convert menu items are enabled as soon as the app launches &mdash; before any file is opened or saved.</li>
+<li><strong>File &rarr; Open reuses untitled tab:</strong> When <em>File &rarr; Open</em> is used and the active tab is an untouched untitled RichEdit tab (no path, not modified, no Scintilla), the file loads directly into that tab instead of creating an extra blank tab first.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.16.11</span></h3>
 <p><strong>MSB scrollbars on Scintilla, auto-close pairs, FTP profile picker (16.05.2026, 11:41):</strong></p>

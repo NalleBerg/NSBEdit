@@ -92,7 +92,7 @@
                                                 Ne_LoadLocale(). Tooltip subclass:
                                                 Ne_SetTip/Ne_TipSubclassProc.
                                                 Control ID range: 201–230.
-                                                IDM range: 107–133.
+                                                IDM range: 101–133 (core), 600+ (langs), 700+ (FTP profiles).
                                                 Ne_ApplyLang(hSci, langIdx) — sends
                                                 SCI_SETKEYWORDS from s_langKws[] and
                                                 applies per-lexer style overrides (e.g.
@@ -125,6 +125,25 @@
                                                 WM_CHAR in Ne_EditCaretProc (RichEdit) —
                                                 same logic; non-empty selection wraps
                                                 selected text in the pair.
+                                                IDM_CONV_TO_HTML5 (127): Convert > Export
+                                                as HTML 5... — Ne_ExportHtml5 converts
+                                                the active RTF document to a self-contained
+                                                HTML5 file via rtf2html/ne_rtf2html_lib.
+                                                Images (pngblip/jpegblip) embedded as
+                                                base64 data URIs; CP1252 chars encoded
+                                                as UTF-8. Menu item greyed for non-RTF
+                                                tabs (Ne_DocIsRtf check in WM_INITMENUPOPUP).
+                                                Ne_DocIsRtf — returns true for .rtf paths
+                                                and also for untitled tabs that have a
+                                                RichEdit but no Scintilla window, so the
+                                                RTF toolbar and Convert menu are active
+                                                from startup before any file is opened.
+                                                Ne_UpdateToolbarMode uses Ne_DocIsRtf
+                                                instead of checking encoding directly.
+                                                Ne_Open — reuses the active tab if it is
+                                                an untouched untitled RichEdit tab (path
+                                                empty, not modified, no Scintilla) instead
+                                                of creating a new blank tab first.
 
   ne_tabs.h / ne_tabs.cpp                       Tabbed editor module — SysTabControl32
                                                 strip + per-tab RichEdit HWND ownership.
@@ -179,6 +198,24 @@
                                                 # comments, \n CRLF \t tab \\ backslash.
                                                 Loaded by Ne_LoadLocale() at startup.
                                                 Never read from disk at runtime.
+
+  rtf2html\ne_rtf2html_lib.h /                  RTF-to-HTML5 conversion wrapper around
+  rtf2html\ne_rtf2html_lib.cpp                  the rtf2html library (LGPL-2.1, Valentin
+                                                Lavrinenko). Single-TU: includes all
+                                                rtf2html source files directly. Public
+                                                function: Ne_ConvertRtfToHtml5(rtfBytes,
+                                                htmlOut) — converts RTF bytes to a
+                                                self-contained UTF-8 HTML5 string with
+                                                inline CSS and base64-embedded images.
+                                                ne_parse_pict(): collects \pict hex data
+                                                and emits <img src="data:image/png;base64,...">
+                                                or image/jpeg; skips \*-marked groups
+                                                (e.g. \picprop) so shape property names
+                                                containing hex-like letters cannot corrupt
+                                                image data. char_by_code() in rtf_tools.h
+                                                patched to emit proper UTF-8 (CP1252 →
+                                                Unicode → UTF-8 2/3-byte sequences) for
+                                                code points ≥ 0x80.
 
   ── Reference material (API_INTERNALS — carried over from toolbox) ───────────
 

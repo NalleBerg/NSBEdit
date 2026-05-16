@@ -33,6 +33,7 @@
 #include "ne_crypto.h"
 #include "ne_profiles.h"
 #include "ne_ftp.h"
+#include "rtf2html/ne_rtf2html_lib.h"
 // Scintilla + Lexilla (statically linked)
 #include "ILexer.h"
 #include "Scintilla.h"
@@ -68,6 +69,7 @@
 #define IDM_ENC_WIN1252     124
 #define IDM_ENC_ISO8859_1   125
 #define IDM_CONV_TO_RTF     126
+#define IDM_CONV_TO_HTML5   127
 
 enum class NeEncoding {
     Unknown  = 0,
@@ -140,6 +142,10 @@ enum class NeEncoding {
 #define IDC_NE_DLG_PAR_BEF      252
 #define IDC_NE_DLG_PAR_AFT      253
 #define IDC_BTN_LINENUM         262   // line-number toggle button (▸/◂)
+#define IDC_NE_SAVE             263   // toolbar Save button
+#define IDC_NE_SAVE_FTP         264   // toolbar Save to FTP button
+#define IDC_NE_LANG_UI          265   // UI language combobox
+#define IDC_NE_COMMENT          266   // Comment / Uncomment  (Scintilla only)
 
 // ── Internal state ─────────────────────────────────────────────────────────────
 // ── Per-tab custom scrollbar handles (keyed by hEdit / hSci HWND) ────────────
@@ -223,8 +229,12 @@ static void Ne_SyncScrollbarVisibility(HWND hwnd)
     }
 }
 
+// ── Toolbar mode — controls which button set is visible ──────────────────────
+enum class NeToolbarMode { Rich, Txt, Prog };
+
 struct NeState {
-    bool  updatingToolbar = false;
+    bool          updatingToolbar = false;
+    NeToolbarMode toolbarMode     = NeToolbarMode::Rich;
     int   tabY            = 0;
     int   tabH            = 0;
     int   editY           = 0;
@@ -1167,6 +1177,10 @@ static COLORREF Ne_BtnTextColor(int id)
     case IDC_NE_WORDWRAP:    return RGB(0,   140, 105); // teal green
     case IDC_NE_CASE:        return RGB(105, 0,   165); // purple
     case IDC_BTN_LINENUM:    return RGB(60,  120, 160); // steel blue
+    // Save / FTP / comment
+    case IDC_NE_SAVE:        return RGB(0,   130, 50);  // forest green
+    case IDC_NE_SAVE_FTP:    return RGB(0,   100, 165); // ocean blue
+    case IDC_NE_COMMENT:     return RGB(90,  90,  90);  // grey
     default:                 return RGB(30,  30,  30);  // near-black
     }
 }
@@ -4483,7 +4497,9 @@ static bool Ne_IsRtf(const std::string& bytes)
 // True when the active doc's path has a .rtf extension.
 static bool Ne_DocIsRtf(NeTabDoc* doc)
 {
-    if (!doc || doc->path.empty()) return false;
+    if (!doc) return false;
+    // Untitled RichEdit tab (no path yet) — it's an RTF document
+    if (doc->path.empty()) return doc->hEdit && !doc->hSci;
     size_t dot = doc->path.rfind(L'.');
     if (dot == std::wstring::npos) return false;
     std::wstring ext = doc->path.substr(dot + 1);
@@ -5048,7 +5064,16 @@ static void Ne_Open(HWND hwnd)
     ofn.lpstrTitle  = Ls(L"DLG_OPEN");
     if (!GetOpenFileNameW(&ofn)) return;
 
-    if (!NeTabs_AddUntitled(hwnd)) return;
+    // If the active tab is an untouched untitled RichEdit, reuse it instead of
+    // opening a new tab.
+    NeTabDoc* existingDoc = NeTabs_GetActiveDoc(hwnd);
+    bool reuseTab = existingDoc &&
+                    existingDoc->path.empty() &&
+                    !existingDoc->modified &&
+                    existingDoc->hEdit && !existingDoc->hSci;
+    if (!reuseTab) {
+        if (!NeTabs_AddUntitled(hwnd)) return;
+    }
 
     if (!Ne_LoadPathIntoEditor(hwnd, path)) {
         MessageBoxW(hwnd, Ls(L"MSG_OPEN_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
@@ -5431,13 +5456,19 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
         // ── Zoom / wrap / case
         { IDC_NE_ZOOM,        S(72), bG },
         { IDC_NE_WORDWRAP,    wXs,   bG },
-        { IDC_NE_CASE,        wXs,   0  },
+        { IDC_NE_CASE,        wXs,   sG },
+        // ── Common: comment / save / FTP / UI language
+        { IDC_NE_COMMENT,     wXs,   sG },
+        { IDC_NE_SAVE,        wCol,  bG },
+        { IDC_NE_SAVE_FTP,    wCol,  sG },
+        { IDC_NE_LANG_UI,     S(90), 0  },
     };
     const int N = (int)(sizeof(ctrls) / sizeof(ctrls[0]));
 
     // ── Pass 1: assign each control to a row ─────────────────────────────────
+    // Skips controls that are currently hidden (visibility-based toolbar modes).
     // Row changes when adding the next control would push x past cW - pad.
-    int rowOf[N];        // which row each control belongs to
+    int rowOf[N];        // which row each control belongs to (-1 = hidden, skip)
     int rowCount[32] = {};  // number of controls per row (unlikely > 32 rows)
     int numRows = 0;
     {
@@ -5445,6 +5476,8 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
         int row = 0;
         rowCount[0] = 0;
         for (int i = 0; i < N; ++i) {
+            HWND h = GetDlgItem(hwnd, ctrls[i].id);
+            if (!h || !IsWindowVisible(h)) { rowOf[i] = -1; continue; }
             int needed = ctrls[i].w + (i + 1 < N ? ctrls[i].gap : 0);
             if (rowCount[row] > 0 && x + needed > cW - pad) {
                 // wrap to next row
@@ -5464,6 +5497,7 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
     int curRow = 0;
     int y   = topY;
     for (int i = 0; i < N; ++i) {
+        if (rowOf[i] < 0) continue;   // hidden — skip
         if (rowOf[i] != curRow) {
             curRow = rowOf[i];
             x = pad;
@@ -5476,14 +5510,14 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
 
     // ── Compute minimum client width ──────────────────────────────────────────
     // Allow narrowing until at most 3 controls fit per row.
-    // Minimum = padding + (3 widest controls + their inter-gaps).
+    // Minimum = padding + (3 widest visible controls + their inter-gaps).
     NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (st) {
-        // Collect the 3 largest widths (including their right-gap so the
-        // greedy packing check is consistent).
+        // Collect the 3 largest widths of VISIBLE controls.
         int top3w[3] = {0, 0, 0};
         int top3g[3] = {0, 0, 0};
         for (int i = 0; i < N; ++i) {
+            if (rowOf[i] < 0) continue; // hidden
             int w = ctrls[i].w;
             int g = ctrls[i].gap;
             if (w > top3w[0]) { top3w[2]=top3w[1]; top3g[2]=top3g[1]; top3w[1]=top3w[0]; top3g[1]=top3g[0]; top3w[0]=w; top3g[0]=g; }
@@ -5497,6 +5531,158 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
     }
 
     return topY + numRows * rowH + S(2);
+}
+
+// ── Toolbar mode helpers ──────────────────────────────────────────────────────
+
+// Show/hide buttons according to the active toolbar mode.
+static void Ne_ShowToolbarButtons(HWND hwnd, NeToolbarMode mode)
+{
+    static const int allIds[] = {
+        IDC_NE_BOLD, IDC_NE_ITALIC, IDC_NE_UNDERLINE, IDC_NE_STRIKE,
+        IDC_NE_SUBSCRIPT, IDC_NE_SUPERSCRIPT, IDC_NE_FONTFACE, IDC_NE_FONTSIZE,
+        IDC_NE_ALIGN_L, IDC_NE_ALIGN_C, IDC_NE_ALIGN_R, IDC_NE_ALIGN_J,
+        IDC_NE_BULLET, IDC_NE_NUMBERED, IDC_NE_COLOR, IDC_NE_HIGHLIGHT, IDC_NE_IMAGE,
+        IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT, IDC_NE_LINESPACE, IDC_NE_PARSPACE,
+        IDC_NE_FIND, IDC_NE_LINK, IDC_NE_TABLE, IDC_NE_TABLE_DROP, IDC_NE_HLINE,
+        IDC_NE_CLEARFMT, IDC_NE_PRINT_BTN, IDC_NE_ZOOM, IDC_NE_WORDWRAP, IDC_NE_CASE,
+        IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_LANG_UI, IDC_NE_COMMENT,
+    };
+    // Rich: all except COMMENT.
+    static const int richHide[]  = { IDC_NE_COMMENT, 0 };
+    // Txt: find, print, zoom, wordwrap, case, save, save_ftp, lang_ui.
+    static const int txtShow[]   = { IDC_NE_FIND, IDC_NE_PRINT_BTN, IDC_NE_ZOOM,
+                                     IDC_NE_WORDWRAP, IDC_NE_CASE,
+                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_LANG_UI, 0 };
+    // Prog: find, indent in/out, comment, zoom, wordwrap, case, print, save, ftp, lang.
+    static const int progShow[]  = { IDC_NE_FIND, IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT,
+                                     IDC_NE_COMMENT, IDC_NE_ZOOM, IDC_NE_WORDWRAP,
+                                     IDC_NE_CASE, IDC_NE_PRINT_BTN,
+                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_LANG_UI, 0 };
+
+    auto inList = [](const int* list, int id) {
+        for (; *list; ++list) if (*list == id) return true;
+        return false;
+    };
+
+    const int allCount = (int)(sizeof(allIds) / sizeof(allIds[0]));
+    for (int i = 0; i < allCount; ++i) {
+        HWND h = GetDlgItem(hwnd, allIds[i]);
+        if (!h) continue;
+        bool vis;
+        if      (mode == NeToolbarMode::Rich) vis = !inList(richHide, allIds[i]);
+        else if (mode == NeToolbarMode::Txt)  vis = inList(txtShow,   allIds[i]);
+        else                                  vis = inList(progShow,  allIds[i]);
+        ShowWindow(h, vis ? SW_SHOWNA : SW_HIDE);
+    }
+}
+
+// Determine the mode from the active doc, apply it, and re-layout.
+static void Ne_UpdateToolbarMode(HWND hwnd)
+{
+    NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (!st) return;
+
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    NeToolbarMode mode;
+    if (!doc || doc->encoding == (int)NeEncoding::RichText || Ne_DocIsRtf(doc))
+        mode = NeToolbarMode::Rich;
+    else if (doc->hSci)
+        mode = NeToolbarMode::Prog;
+    else
+        mode = NeToolbarMode::Txt;
+
+    Ne_ShowToolbarButtons(hwnd, mode);
+    st->toolbarMode = mode;
+
+    RECT rc; GetClientRect(hwnd, &rc);
+    int cW = rc.right;
+    int toolbarTop = st->tabY + st->tabH + S(4);
+    int newEditY   = Ne_LayoutToolbar(hwnd, cW, toolbarTop);
+    st->editY      = newEditY;
+    int editH = rc.bottom - newEditY - st->statusH - S(2);
+    if (editH > 0) {
+        st->editH = editH;
+        NeTabs_SetRects(hwnd,
+            st->pad, st->tabY, cW - 2 * st->pad, st->tabH,
+            st->editX, newEditY, st->editW, editH);
+        Ne_SyncRichGutters(hwnd);
+        Ne_SyncScrollbarVisibility(hwnd);
+    }
+}
+
+// Return the line-comment prefix for a language, or nullptr if none applies.
+static const char* Ne_GetLineComment(int langId)
+{
+    if (langId < 0 || langId >= NE_LANG_COUNT) return "//";
+    const char* lex = s_langs[langId].lexer;
+    if (!lex) return nullptr;                    // Plain Text — no lexer
+    if (strcmp(lex, "cpp")        == 0) return "//";
+    if (strcmp(lex, "rust")       == 0) return "//";
+    if (strcmp(lex, "pascal")     == 0) return "//";
+    if (strcmp(lex, "phpscript")  == 0) return "//";
+    if (strcmp(lex, "lua")        == 0) return "--";
+    if (strcmp(lex, "sql")        == 0) return "--";
+    if (strcmp(lex, "python")     == 0) return "#";
+    if (strcmp(lex, "ruby")       == 0) return "#";
+    if (strcmp(lex, "perl")       == 0) return "#";
+    if (strcmp(lex, "makefile")   == 0) return "#";
+    if (strcmp(lex, "yaml")       == 0) return "#";
+    if (strcmp(lex, "powershell") == 0) return "#";
+    if (strcmp(lex, "props")      == 0) return ";";
+    if (strcmp(lex, "vbscript")   == 0) return "'";
+    if (strcmp(lex, "batch")      == 0) return "rem ";
+    // css, hypertext, xml, json, markdown — no line-comment convention
+    return nullptr;
+}
+
+// Toggle comment/uncomment on the selected lines in a Scintilla editor.
+static void Ne_SciToggleComment(HWND hSci, int langId)
+{
+    const char* comment = Ne_GetLineComment(langId);
+    if (!comment) return;
+    int commentLen = (int)strlen(comment);
+
+    int selStart  = (int)SendMessageW(hSci, SCI_GETSELECTIONSTART, 0, 0);
+    int selEnd    = (int)SendMessageW(hSci, SCI_GETSELECTIONEND,   0, 0);
+    int lineStart = (int)SendMessageW(hSci, SCI_LINEFROMPOSITION, selStart, 0);
+    int lineEnd   = (int)SendMessageW(hSci, SCI_LINEFROMPOSITION, selEnd,   0);
+    // Don't include a line whose start is exactly at selEnd.
+    if (selEnd > selStart) {
+        int les = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, lineEnd, 0);
+        if (les == selEnd) lineEnd--;
+    }
+
+    // Check whether all non-empty lines already start with the comment.
+    bool allCommented = true;
+    for (int ln = lineStart; ln <= lineEnd && allCommented; ln++) {
+        int pos    = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, ln, 0);
+        int endPos = (int)SendMessageW(hSci, SCI_GETLINEENDPOSITION, ln, 0);
+        if (pos == endPos) continue; // empty line — don't count
+        for (int ci = 0; ci < commentLen; ci++) {
+            char ch = (char)SendMessageW(hSci, SCI_GETCHARAT, pos + ci, 0);
+            if (ch != comment[ci]) { allCommented = false; break; }
+        }
+    }
+
+    SendMessageW(hSci, SCI_BEGINUNDOACTION, 0, 0);
+    for (int ln = lineEnd; ln >= lineStart; ln--) {
+        int pos    = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, ln, 0);
+        int endPos = (int)SendMessageW(hSci, SCI_GETLINEENDPOSITION, ln, 0);
+        if (pos == endPos) continue; // skip empty lines
+        if (allCommented) {
+            // Verify this line still starts with the comment before removing.
+            bool ok = true;
+            for (int ci = 0; ci < commentLen; ci++) {
+                char ch = (char)SendMessageW(hSci, SCI_GETCHARAT, pos + ci, 0);
+                if (ch != comment[ci]) { ok = false; break; }
+            }
+            if (ok) SendMessageW(hSci, SCI_DELETERANGE, pos, commentLen);
+        } else {
+            SendMessageW(hSci, SCI_INSERTTEXT, pos, (LPARAM)comment);
+        }
+    }
+    SendMessageW(hSci, SCI_ENDUNDOACTION, 0, 0);
 }
 
 // ── About dialog ──────────────────────────────────────────────────────────────
@@ -7434,6 +7620,22 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit, L"https://curl.se/\r\n", false, RGB(0,80,160), 0, false);
     AppendNsbRich(hEdit, L"https://libssh2.org/\r\n", false, RGB(0,80,160), 0, false);
 
+    // ── rtf2html ──────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit,
+        L"\r\n=================================================\r\n",
+        false, RGB(100,100,100), 9, true);
+    AppendNsbRich(hEdit, L"RTF2HTML\r\n", true, RGB(140,60,0), 18, true);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(140,60,0), 0, true);
+    AppendNsbRich(hEdit,
+        L"rtf2html is an open-source RTF to HTML converter library "
+        L"by Valentyn Lavrinenko. NSBEdit uses it to export Rich Text "
+        L"documents as HTML5. Licensed under the GNU Lesser General "
+        L"Public License v2.1 (LGPLv2.1).\r\n\r\n",
+        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, L"https://github.com/lvu/rtf2html\r\n", false, RGB(0,80,160), 0, false);
+
     SendMessageW(hEdit, EM_SETSEL, 0, 0);
     SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
 
@@ -7690,6 +7892,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         HMENU hConv = CreatePopupMenu();
         Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_PLAIN, Ls(L"MENU_CONV_TO_PLAIN"));
         Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_RTF,   Ls(L"MENU_CONV_TO_RTF"));
+        Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_HTML5, Ls(L"MENU_CONV_TO_HTML5"));
         Ne_AppendMenuOD(hConv, MF_SEPARATOR, 0,                NULL);
         Ne_AppendMenuOD(hConv, MF_POPUP | MF_STRING,
                         (UINT_PTR)hEncSub, Ls(L"MENU_ENCODING"));
@@ -7894,6 +8097,25 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_PARSPACE, hInst, NULL);
 
+        // ── Save / Save-to-FTP / UI Language / Comment ────────────────────────
+        HWND hSaveBtn = CreateWindowExW(0, L"BUTTON", L"\U0001F4BE",
+            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
+            0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_SAVE, hInst, NULL);
+
+        HWND hSaveFtpBtn = CreateWindowExW(0, L"BUTTON", L"\U0001F4E4",
+            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
+            0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_SAVE_FTP, hInst, NULL);
+
+        HWND hLangUi = CreateWindowExW(0, L"COMBOBOX", L"",
+            WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL,
+            0, 0, S(90), S(200), hwnd, (HMENU)(UINT_PTR)IDC_NE_LANG_UI, hInst, NULL);
+        SendMessageW(hLangUi, CB_ADDSTRING, 0, (LPARAM)Ls(L"LANG_UI_ENGLISH"));
+        SendMessageW(hLangUi, CB_SETCURSEL, 0, 0);
+
+        HWND hCommentBtn = CreateWindowExW(0, L"BUTTON", L"//",
+            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
+            0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_COMMENT, hInst, NULL);
+
         // ── Status bar ────────────────────────────────────────────────────────
         HWND hSb = NeStatusBar_Create(hwnd, IDC_NE_STATUSBAR, hInst);
         NeStatusBar_SetLabels(hSb,
@@ -8016,10 +8238,15 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         Ne_SetTip(hWrapBtn,                                 Ls(L"TIP_WORDWRAP"));
         Ne_SetTip(hCaseBtn,                                 Ls(L"TIP_CASE"));
         Ne_SetTip(hParSpBtn,                                Ls(L"TIP_PARSPACE"));
+        Ne_SetTip(hSaveBtn,                                 Ls(L"TIP_SAVE"));
+        Ne_SetTip(hSaveFtpBtn,                              Ls(L"TIP_SAVE_FTP"));
+        Ne_SetTip(hLangUi,                                  Ls(L"TIP_LANG_UI"));
+        Ne_SetTip(hCommentBtn,                              Ls(L"TIP_COMMENT"));
 
         if (hEdit) SetFocus(hEdit);
         if (hEdit) Ne_SyncToolbar(hwnd, hEdit);
         NeTabs_UpdateAllTitles(hwnd);
+        Ne_UpdateToolbarMode(hwnd);
         return 0;
     }
 
@@ -8062,6 +8289,25 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         HWND     hEdit = NeTabs_GetActiveEdit(hwnd);
         int wmId  = LOWORD(wParam);
         int wmEv  = HIWORD(wParam);
+
+        // ── Toolbar buttons that forward to menu commands ─────────────────────
+        if (wmId == IDC_NE_SAVE)    { Ne_Save(hwnd); return 0; }
+        if (wmId == IDC_NE_SAVE_FTP) { wmId = IDM_SAVE_TO_FTP; } // fall through to IDM_SAVE_TO_FTP handler
+
+        // ── UI language combobox ──────────────────────────────────────────────
+        if (wmId == IDC_NE_LANG_UI && wmEv == CBN_SELCHANGE) {
+            // Future: switch UI locale based on selection.
+            // Only "English" exists for now — no-op.
+            return 0;
+        }
+
+        // ── Comment / Uncomment (Scintilla only) ──────────────────────────────
+        if (wmId == IDC_NE_COMMENT) {
+            HWND     hSci = NeTabs_GetActiveScintilla(hwnd);
+            NeTabDoc* docC = NeTabs_GetActiveDoc(hwnd);
+            if (hSci && docC) Ne_SciToggleComment(hSci, docC->langId);
+            return 0;
+        }
 
         // ── File menu ─────────────────────────────────────────────────────────
         if (wmId == IDM_CTX_TABLE_PROPS) {
@@ -8236,6 +8482,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
             Ne_UpdateTitle(hwnd);
             Ne_UpdateStatusText(hwnd);
+            Ne_UpdateToolbarMode(hwnd);
             return 0;
         }
         if (wmId == IDM_CONV_TO_RTF) {
@@ -8252,6 +8499,49 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
             Ne_UpdateTitle(hwnd);
             Ne_UpdateStatusText(hwnd);
+            Ne_UpdateToolbarMode(hwnd);
+            return 0;
+        }
+        if (wmId == IDM_CONV_TO_HTML5) {
+            HWND hEd = NeTabs_GetActiveEdit(hwnd);
+            NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+            if (!hEd || !doc || !Ne_DocIsRtf(doc)) return 0;
+            std::string rtf  = Ne_StreamOut(hEd, true);
+            std::string html = Ne_RtfToHtml5(rtf);
+            if (html.empty()) {
+                MessageBoxW(hwnd, Ls(L"MSG_HTML5_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
+                return 0;
+            }
+            // Build a suggested save path based on the document's current path.
+            wchar_t path[MAX_PATH] = {};
+            if (!doc->path.empty()) {
+                size_t dot = doc->path.rfind(L'.');
+                std::wstring base = (dot != std::wstring::npos)
+                    ? doc->path.substr(0, dot) : doc->path;
+                wcsncpy_s(path, (base + L".html").c_str(), MAX_PATH - 1);
+            }
+            static const wchar_t kHtmlFilter[] =
+                L"HTML Files (*.html)\0*.html\0All Files\0*.*\0\0";
+            OPENFILENAMEW ofn = {};
+            ofn.lStructSize  = sizeof(ofn);
+            ofn.hwndOwner    = hwnd;
+            ofn.lpstrFilter  = kHtmlFilter;
+            ofn.lpstrFile    = path;
+            ofn.nMaxFile     = MAX_PATH;
+            ofn.lpstrDefExt  = L"html";
+            ofn.Flags        = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+            ofn.lpstrTitle   = Ls(L"DLG_SAVE_HTML5");
+            if (!GetSaveFileNameW(&ofn)) return 0;
+            HANDLE hf = CreateFileW(path, GENERIC_WRITE, 0, NULL,
+                                    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+            if (hf == INVALID_HANDLE_VALUE) {
+                MessageBoxW(hwnd, Ls(L"MSG_HTML5_SAVE_ERR"), Ls(L"APP_NAME"),
+                            MB_OK | MB_ICONERROR);
+                return 0;
+            }
+            DWORD written;
+            WriteFile(hf, html.c_str(), (DWORD)html.size(), &written, NULL);
+            CloseHandle(hf);
             return 0;
         }
         if (wmId >= IDM_ENC_UTF8 && wmId <= IDM_ENC_ISO8859_1) {
@@ -8583,6 +8873,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 Ne_UpdateTitle(hwnd);
                 NeTabDoc* docA = NeTabs_GetActiveDoc(hwnd);
                 Ne_UpdateLangMenuCheck(docA ? docA->langId : -1);
+                Ne_UpdateToolbarMode(hwnd);
             }
             return 0;
         }
@@ -8961,6 +9252,8 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             // "Add formatting" is only useful when the doc is currently plain text.
             EnableMenuItem(hPop, IDM_CONV_TO_RTF,
                            MF_BYCOMMAND | (!isRtfDoc ? MF_ENABLED : MF_GRAYED));
+            EnableMenuItem(hPop, IDM_CONV_TO_HTML5,
+                           MF_BYCOMMAND | (isRtfDoc ? MF_ENABLED : MF_GRAYED));
             return 0;
         }
 

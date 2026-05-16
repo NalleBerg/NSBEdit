@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.16.11**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.16.14**
 
 ## Download
 
@@ -36,11 +36,14 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - Full i18n — all UI strings through embedded locale (en_GB)
 - DPI-aware (PerMonitorV2), statically linked — no external DLLs beyond Windows system ones
 - Hover tooltips on all toolbar controls
-- Credits dialog (About → Credits): Scintilla, Lexilla, GDI+, MinGW-W64 sections with links
+- Credits dialog (About → Credits): Scintilla, Lexilla, GDI+, MinGW-W64, SQLite3, libcurl/libssh2, rtf2html sections with links
 - **Syntax highlighting** — 25 languages (PHP, Python, C/C++, JavaScript, HTML, CSS, SQL, and more); choose via Language menu. Selecting a language on a plain-text tab instantly converts it to the Scintilla code editor with full colour coding
 - **Typeahead autocomplete** — custom popup (yellow/green, matching tooltip style) for both keyword and phrase completion. Type part of a keyword or a phrase already in the document and pick from the list with ↑/↓/Tab/Enter or mouse click
 - **Auto-close bracket and quote pairs** — typing `{`, `[`, `(`, `"`, `'`, or `«` inserts the matching closer and places the caret between them; typing a closing character when the same closer already follows the caret jumps over it. Works in both RichEdit and Scintilla editors
 - **Save to FTP** (File → Save to FTP…) — upload the active document to any connected FTP server; a profile-picker list lets you choose any connected server explicitly (useful to deploy a file to a different server). Browse the remote tree, enter a filename, click Save here. Connection stays open after upload
+- **Export as HTML 5** (Convert → Export as HTML 5…, RTF documents only) — converts the active RTF document to a self-contained HTML5 file with all images embedded as base64 data URIs. Norwegian and other non-ASCII characters are encoded correctly as UTF-8
+- **RTF formatting toolbar shown on startup** — the app opens with the Rich Text toolbar active without needing to open a file first
+- **File → Open reuses blank tab** — opening a file when the only open tab is a fresh untitled one loads into that tab rather than creating an extra blank alongside it
 
 ## Building from source
 
