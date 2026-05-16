@@ -1,5 +1,19 @@
 # Changelog
 
+## v2026.05.16.10 - 16.05.2026 10:47
+
+- Custom autocomplete popup component (`ne_autocomplete/`): `NsbAutoComplete` window class, `CS_DROPSHADOW`, `WS_EX_NOACTIVATE | WS_EX_TOPMOST`. Appearance matches the tooltip style — system tooltip yellow background, dark amber border `RGB(120,100,20)`, muted sage green selection `RGB(80,160,110)` with white text. DPI-aware 12pt Segoe UI font via `GetDpiForWindow` + `MulDiv`.
+- Replaces `SCI_AUTOCSHOW` for both keyword and phrase-completion modes. Scintilla's built-in popup cancelled itself when the entered text contained non-word characters (spaces, `=`, `$`); the custom popup has no such restriction.
+- Phrase completion: when the line-prefix (trimmed) contains a space, all matching whole lines from the document are collected as candidates (case-insensitive prefix match, deduplicated with `unordered_set`, up to 30 results, sorted).
+- Keyword completion: same custom popup as phrase mode — consistent yellow/green look, same keyboard and mouse behaviour.
+- Popup shows up to 9 items; scrollable with ▲/▼ arrows and mouse wheel when list is longer.
+- Keyboard: ↑/↓ navigate; Tab/Enter accept; Escape dismiss; Backspace/Delete dismiss and pass through to Scintilla. Tab/Enter acceptance: `WM_KEYDOWN` consumed via `pendingAccept` flag; next `WM_CHAR` swallowed so no stray character is inserted into the document.
+- Mouse click acceptance: `WM_MOUSEACTIVATE → MA_NOACTIVATE` + `WM_KILLFOCUS` guard (skip dismiss if focus went to popup window) ensures item clicks always work.
+- Scintilla HWND subclassed while popup is visible; restored on every dismiss path. `g_acInserting` flag prevents autocomplete re-triggering during `SCI_REPLACESEL` insertion.
+- Popup positioned below caret line; flips above if it would extend past the monitor bottom edge.
+- `makeit.bat`: taskkill output now shown (was suppressed); 1-second `timeout` added after kill so the linker never fails with "Permission denied" on `NSBEdit.exe` when the app was still running.
+- New files: `ne_autocomplete/ne_autocomplete.h`, `ne_autocomplete/ne_autocomplete.cpp`, `API_INTERNALS/API/ne_autocomplete_API.txt`.
+
 ## v2026.05.16.09 - 16.05.2026 09:58
 
 - RichEdit line-number gutter (`NsbLineGutter`): custom child window class that renders line numbers alongside RichEdit tabs. Always present as a thin strip (S(20)) even when numbers are off; expands to full width (S(44)) when on.

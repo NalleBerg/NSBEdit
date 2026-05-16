@@ -142,6 +142,21 @@
                                                 API_INTERNALS\API\tooltip_API.txt for
                                                 full documentation.
 
+  ne_autocomplete/ne_autocomplete.h /           Custom owner-draw autocomplete popup —
+  ne_autocomplete/ne_autocomplete.cpp           see API_INTERNALS\API\ne_autocomplete_API.txt
+                                                for full documentation. Replaces
+                                                SCI_AUTOCSHOW for both keyword and
+                                                phrase-completion modes. Appearance:
+                                                system tooltip yellow background, dark
+                                                amber border, sage green selection.
+                                                WS_EX_NOACTIVATE popup; Scintilla HWND
+                                                subclassed while visible. pendingAccept
+                                                flag swallows stray WM_CHAR after Tab/
+                                                Enter. g_acInserting flag prevents re-
+                                                entry during SCI_REPLACESEL insertion.
+                                                Mouse click acceptance guarded by
+                                                WM_MOUSEACTIVATE + WM_KILLFOCUS check.
+
   locale\en_GB.txt                              Embedded locale (RCDATA 10). All user-
                                                 visible strings. Format: KEY = value,
                                                 # comments, \n CRLF \t tab \\ backslash.

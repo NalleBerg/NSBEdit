@@ -18,10 +18,12 @@
 #include <sstream>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <regex>
 #include <stdio.h>
 #include "dpi.h"
 #include "tooltip/tooltip.h"
+#include "ne_autocomplete/ne_autocomplete.h"
 #include "ne_tabs.h"
 #include "ne_statusbar.h"
 #include "scroll/my_scrollbar_vscroll.h"
@@ -248,7 +250,8 @@ static HMENU s_hLangMenu = NULL;
 static HMENU s_hFtpMenu  = NULL;
 // Forward declaration — defined near WM_CREATE.
 static HFONT g_hMenuFont;
-static bool  s_lineNumsOn = false; // persists across tabs; toggled by gutter click
+static bool  s_lineNumsOn    = false; // persists across tabs; toggled by gutter click
+static bool  g_acInserting   = false; // true while SCI_REPLACESEL is inserting a completion
 
 // Returns the language index matching the given lowercase extension, or 0 (Plain Text).
 static int Ne_LangFromExt(const std::wstring& path)
@@ -714,19 +717,99 @@ static void Ne_ApplyLang(HWND hSci, int langIdx)
     }
 }
 
-// Show Scintilla keyword autocomplete for the current word prefix.
+// Show Scintilla autocomplete — phrase completion from document + keyword fallback.
+// Phase 1: if the typed text from the start of the line contains a space (multi-token),
+//          scan all document lines for those starting with that phrase prefix.
+// Phase 2: fall back to keyword-list word completion when no phrase matches.
 static void Ne_SciAutoComplete(HWND hSci, int langIdx)
 {
+    if (g_acInserting) return; // prevent re-entry during SCI_REPLACESEL insertion
+
+    Sci_Position pos = (Sci_Position)SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0);
+
+    // ── Phase 1: phrase completion from existing document lines ──────────────
+    // Uses custom NeAutoComplete popup — Scintilla's built-in SCI_AUTOCSHOW
+    // cancels itself when lenEntered spans non-word characters like spaces.
+    int curLine   = (int)SendMessageW(hSci, SCI_LINEFROMPOSITION, (WPARAM)pos, 0);
+    Sci_Position lineStart = (Sci_Position)SendMessageW(hSci, SCI_POSITIONFROMLINE, (WPARAM)curLine, 0);
+    int rawPrefixLen = (int)(pos - lineStart);
+
+    if (rawPrefixLen >= 2) {
+        std::string rawPrefix(rawPrefixLen + 1, '\0');
+        Sci_TextRange trp{};
+        trp.chrg.cpMin = (Sci_PositionCR)lineStart;
+        trp.chrg.cpMax = (Sci_PositionCR)pos;
+        trp.lpstrText  = rawPrefix.data();
+        SendMessageW(hSci, SCI_GETTEXTRANGE, 0, (LPARAM)&trp);
+        rawPrefix.resize(rawPrefixLen);
+
+        // Trim leading whitespace to get the phrase prefix
+        size_t wsLen = 0;
+        while (wsLen < rawPrefix.size() && (rawPrefix[wsLen] == ' ' || rawPrefix[wsLen] == '\t'))
+            ++wsLen;
+        std::string phrasePrefix = rawPrefix.substr(wsLen);
+
+        // Only enter phrase mode when there is at least one space in the prefix
+        if (phrasePrefix.size() >= 2 && phrasePrefix.find(' ') != std::string::npos) {
+            Sci_Position docLen = (Sci_Position)SendMessageW(hSci, SCI_GETLENGTH, 0, 0);
+            std::string docText(docLen + 1, '\0');
+            SendMessageW(hSci, SCI_GETTEXT, (WPARAM)(docLen + 1), (LPARAM)docText.data());
+            docText.resize(docLen);
+
+            std::unordered_set<std::string> seen;
+            std::vector<std::string> matches;
+            int lineCount = (int)SendMessageW(hSci, SCI_GETLINECOUNT, 0, 0);
+            size_t lp = 0;
+            for (int li = 0; li < lineCount && matches.size() < 30; ++li) {
+                size_t le = docText.find('\n', lp);
+                if (le == std::string::npos) le = docText.size();
+                if (li != curLine) {
+                    // trim leading whitespace of this document line
+                    size_t lws = lp;
+                    while (lws < le && (docText[lws] == ' ' || docText[lws] == '\t')) ++lws;
+                    size_t lineLen = le - lws;
+                    // strip trailing \r
+                    if (lineLen > 0 && docText[lws + lineLen - 1] == '\r') --lineLen;
+                    if (lineLen > phrasePrefix.size() &&
+                        _strnicmp(docText.c_str() + lws, phrasePrefix.c_str(), phrasePrefix.size()) == 0) {
+                        std::string candidate(docText.c_str() + lws, lineLen);
+                        if (seen.insert(candidate).second)
+                            matches.push_back(candidate);
+                    }
+                }
+                lp = le + 1;
+            }
+
+            if (!matches.empty()) {
+                std::sort(matches.begin(), matches.end(),
+                    [](const std::string& a, const std::string& b){ return _stricmp(a.c_str(), b.c_str()) < 0; });
+                SendMessageW(hSci, SCI_AUTOCCANCEL, 0, 0); // cancel built-in if open
+                int plen = (int)phrasePrefix.size();
+                NeAutoComplete_Show(hSci, matches, plen,
+                    [hSci](const std::string& item, int pl) {
+                        g_acInserting = true;
+                        Sci_Position p = (Sci_Position)SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0);
+                        SendMessageW(hSci, SCI_SETSEL, (WPARAM)(p - pl), (LPARAM)p);
+                        SendMessageW(hSci, SCI_REPLACESEL, 0, (LPARAM)item.c_str());
+                        g_acInserting = false;
+                    });
+                return;
+            }
+            // No phrase matches — dismiss any open custom popup and fall through
+            NeAutoComplete_Hide();
+        }
+    }
+
+    // ── Phase 2: keyword word completion (Scintilla built-in popup) ───────────
+    NeAutoComplete_Hide(); // ensure custom popup is gone
     if (langIdx < 0 || langIdx >= NE_LANG_COUNT) return;
     const char* kws = s_langKws[langIdx];
     if (!kws || !*kws) return;
 
-    Sci_Position pos       = (Sci_Position)SendMessageW(hSci, SCI_GETCURRENTPOS,      0,    0);
     Sci_Position wordStart = (Sci_Position)SendMessageW(hSci, SCI_WORDSTARTPOSITION, (WPARAM)pos, TRUE);
     int prefixLen = (int)(pos - wordStart);
     if (prefixLen < 2) { SendMessageW(hSci, SCI_AUTOCCANCEL, 0, 0); return; }
 
-    // Extract the typed prefix
     std::string prefix(prefixLen + 1, '\0');
     Sci_TextRange tr{};
     tr.chrg.cpMin = (Sci_PositionCR)wordStart;
@@ -735,8 +818,7 @@ static void Ne_SciAutoComplete(HWND hSci, int langIdx)
     SendMessageW(hSci, SCI_GETTEXTRANGE, 0, (LPARAM)&tr);
     prefix.resize(prefixLen);
 
-    // Collect keywords that start with the typed prefix
-    std::vector<std::string> matches;
+    std::vector<std::string> kwMatches;
     const char* p = kws;
     while (*p) {
         while (*p == ' ') ++p;
@@ -746,24 +828,27 @@ static void Ne_SciAutoComplete(HWND hSci, int langIdx)
             size_t kwLen = (size_t)(end - p);
             if (kwLen >= (size_t)prefixLen &&
                 _strnicmp(p, prefix.c_str(), (size_t)prefixLen) == 0)
-                matches.emplace_back(p, kwLen);
+                kwMatches.emplace_back(p, kwLen);
         }
         p = end;
     }
-    if (matches.empty()) { SendMessageW(hSci, SCI_AUTOCCANCEL, 0, 0); return; }
-
-    // Dismiss if the only match is the exact word already typed
-    if (matches.size() == 1 && _stricmp(matches[0].c_str(), prefix.c_str()) == 0) {
+    if (kwMatches.empty()) { SendMessageW(hSci, SCI_AUTOCCANCEL, 0, 0); return; }
+    if (kwMatches.size() == 1 && _stricmp(kwMatches[0].c_str(), prefix.c_str()) == 0) {
         SendMessageW(hSci, SCI_AUTOCCANCEL, 0, 0); return;
     }
 
-    std::sort(matches.begin(), matches.end(),
+    std::sort(kwMatches.begin(), kwMatches.end(),
         [](const std::string& a, const std::string& b){ return _stricmp(a.c_str(), b.c_str()) < 0; });
 
-    std::string list;
-    for (auto& m : matches) { if (!list.empty()) list += ' '; list += m; }
-
-    SendMessageW(hSci, SCI_AUTOCSHOW, (WPARAM)prefixLen, (LPARAM)list.c_str());
+    SendMessageW(hSci, SCI_AUTOCCANCEL, 0, 0); // close built-in if open
+    NeAutoComplete_Show(hSci, kwMatches, prefixLen,
+        [hSci](const std::string& item, int pl) {
+            g_acInserting = true;
+            Sci_Position p = (Sci_Position)SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0);
+            SendMessageW(hSci, SCI_SETSEL, (WPARAM)(p - pl), (LPARAM)p);
+            SendMessageW(hSci, SCI_REPLACESEL, 0, (LPARAM)item.c_str());
+            g_acInserting = false;
+        });
 }
 
 // Update the Language menu checkmarks to reflect the active tab's langId.
@@ -7168,6 +7253,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // ── Tooltip system ────────────────────────────────────────────────────
         InitTooltipSystem(hInst);
 
+        // ── Autocomplete popup ───────────────────────────────────────────────
+        NeAutoComplete_Register(hInst);
+
         // ── App icon from embedded resource ──────────────────────────────────
         {
             st->hIconLarge = (HICON)LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APPICON), IMAGE_ICON,
@@ -8123,6 +8211,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         }
         if (nh && nh->idFrom == IDC_NE_TABCTRL && nh->code == TCN_SELCHANGE) {
+            NeAutoComplete_Hide();
             int idx = TabCtrl_GetCurSel(NeTabs_GetTabHwnd(hwnd));
             if (NeTabs_SetActive(hwnd, idx)) {
                 HWND hEditA = NeTabs_GetActiveEdit(hwnd);

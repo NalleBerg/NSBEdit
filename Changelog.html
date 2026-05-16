@@ -1,6 +1,20 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 16 May 2026 &mdash; v2026.05.16.09 (09:58)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 16 May 2026 &mdash; v2026.05.16.10 (10:47)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.16.10</span></h3>
+<p><strong>Custom autocomplete popup, phrase &amp; keyword completion, makeit.bat fix (16.05.2026, 10:47):</strong></p>
+<ul>
+<li><strong>Custom autocomplete popup (<code>ne_autocomplete/</code>):</strong> A new <code>NsbAutoComplete</code> window class (<code>CS_DROPSHADOW</code>, <code>WS_EX_NOACTIVATE | WS_EX_TOPMOST</code>) replaces Scintilla&rsquo;s built-in <code>SCI_AUTOCSHOW</code> for all completion modes. The popup matches the NSBEdit tooltip style &mdash; system tooltip yellow background, dark amber border, muted sage green selection highlight with white text. Font is DPI-aware 12pt Segoe UI via <code>GetDpiForWindow</code> and <code>MulDiv</code>.</li>
+<li><strong>Phrase completion working:</strong> Scintilla&rsquo;s built-in autocomplete cancelled itself whenever the entered text contained non-word characters (spaces, <code>=</code>, <code>$</code>, etc.). The custom popup has no such restriction. When the trimmed line prefix contains a space, the whole document is scanned for lines that begin with the same prefix (case-insensitive), deduplicated, sorted, and shown &mdash; up to 30 candidates.</li>
+<li><strong>Keyword completion:</strong> Keywords and language built-ins now also appear in the same custom popup, giving a consistent look for both completion modes.</li>
+<li><strong>Up to 9 visible items</strong> with ▲/▼ scroll arrows and mouse wheel scrolling when the list is longer.</li>
+<li><strong>Keyboard:</strong> &uarr;/&darr; navigate; Tab or Enter accept; Escape dismiss; Backspace/Delete dismiss and pass through to Scintilla. Tab/Enter acceptance uses a <code>pendingAccept</code> flag &mdash; the <code>WM_KEYDOWN</code> is consumed and the next <code>WM_CHAR</code> is swallowed before it reaches Scintilla, so no stray tab character or newline is ever inserted.</li>
+<li><strong>Mouse click acceptance:</strong> <code>WM_MOUSEACTIVATE &rarr; MA_NOACTIVATE</code> in the popup proc, plus a <code>WM_KILLFOCUS</code> guard in the Scintilla subclass (skip dismiss if focus went to the popup itself), ensures that clicking a list item always inserts the completion correctly.</li>
+<li><strong>Insertion guard:</strong> <code>g_acInserting</code> flag prevents autocomplete from re-triggering on each <code>SCN_CHARADDED</code> notification fired during <code>SCI_REPLACESEL</code> insertion.</li>
+<li><strong>Position and layout:</strong> Popup appears below the caret line and flips above if it would extend past the bottom of the monitor work area.</li>
+<li><strong><code>makeit.bat</code> fix:</strong> <code>taskkill</code> output is now shown so build failures are visible. A 1-second <code>timeout /NOBREAK</code> added after the kill prevents the linker from failing with &ldquo;Permission denied&rdquo; when the running <code>NSBEdit.exe</code> has not yet released its file handle.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.16.09</span></h3>
 <p><strong>RichEdit line-number gutter, autocomplete fix (16.05.2026, 09:58):</strong></p>

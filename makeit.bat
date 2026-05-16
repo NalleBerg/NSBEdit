@@ -2,7 +2,8 @@
 setlocal
 
 :: Kill running instance so exe can be replaced
-taskkill /F /IM NSBEdit.exe >nul 2>&1
+taskkill /F /IM NSBEdit.exe 2>&1
+timeout /T 1 /NOBREAK >nul
 
 :: Compile resource
 windres NSBEdit.rc -o NSBEdit.res --output-format=coff
@@ -23,7 +24,7 @@ g++ -std=c++17 -O2 -mwindows -municode ^
     -Iscintilla_src\scintilla\include -Ilexilla_src\lexilla\include ^
     NSBEdit.cpp ne_tabs.cpp ne_statusbar.cpp dpi.cpp tooltip\tooltip.cpp scroll\my_scrollbar_vscroll.cpp ^
     highlight\highlight.cpp checkbox.cpp ^
-    ne_crypto.cpp ne_profiles.cpp ne_ftp.cpp ^
+    ne_crypto.cpp ne_profiles.cpp ne_ftp.cpp ne_autocomplete\ne_autocomplete.cpp ^
     sqlite3\sqlite3.o curl\lib\quic_stubs.o NSBEdit.res ^
     -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid -luser32 -lgdi32 -lgdiplus -lwinspool ^
     -Lscintilla_src\scintilla\bin -Llexilla_src\lexilla\bin -lscintilla -llexilla ^
