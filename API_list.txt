@@ -104,10 +104,27 @@
                                                 skips when VK_RMENU held so AltGr+0/7
                                                 etc. reach the editor.
                                                 IDM_SAVE_TO_FTP (133): File > Save to
-                                                FTP... — saves active doc to temp file,
-                                                opens Ne_ShowFtpBrowserSave, uploads via
+                                                FTP... — Ne_ShowFtpSelectDialog shows
+                                                all connected profiles as a vertical
+                                                owner-draw button list (Ne_FtpSelectDlgProc,
+                                                no 3-server cap). Chosen profile passed to
+                                                Ne_ShowFtpBrowserSave, uploads via
                                                 NeFtp_Upload, marks tab FTP-linked,
                                                 keeps connection open.
+                                                MSB custom scrollbars on Scintilla:
+                                                s_sciSbV / s_sciSbH maps; Ne_AttachSci-
+                                                Scrollbars / Ne_DetachSciScrollbars;
+                                                SCN_UPDATEUI -> msb_sync keeps thumb in
+                                                sync. Ne_AttachScrollbars also called in
+                                                RTF branch of Ne_LoadPathIntoEditor.
+                                                Auto-close bracket/quote pairs:
+                                                Ne_SciAutoPair (called from SCN_CHARADDED)
+                                                — opener {[('"« inserts closer, caret
+                                                between; closer typed when same char
+                                                follows caret jumps over it.
+                                                WM_CHAR in Ne_EditCaretProc (RichEdit) —
+                                                same logic; non-empty selection wraps
+                                                selected text in the pair.
 
   ne_tabs.h / ne_tabs.cpp                       Tabbed editor module — SysTabControl32
                                                 strip + per-tab RichEdit HWND ownership.

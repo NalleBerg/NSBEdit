@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.16.10**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.16.11**
 
 ## Download
 
@@ -39,7 +39,8 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - Credits dialog (About → Credits): Scintilla, Lexilla, GDI+, MinGW-W64 sections with links
 - **Syntax highlighting** — 25 languages (PHP, Python, C/C++, JavaScript, HTML, CSS, SQL, and more); choose via Language menu. Selecting a language on a plain-text tab instantly converts it to the Scintilla code editor with full colour coding
 - **Typeahead autocomplete** — custom popup (yellow/green, matching tooltip style) for both keyword and phrase completion. Type part of a keyword or a phrase already in the document and pick from the list with ↑/↓/Tab/Enter or mouse click
-- **Save to FTP** (File → Save to FTP…) — upload the active document to any connected FTP server; browse the remote tree, enter a filename, click Save here. Connection stays open after upload
+- **Auto-close bracket and quote pairs** — typing `{`, `[`, `(`, `"`, `'`, or `«` inserts the matching closer and places the caret between them; typing a closing character when the same closer already follows the caret jumps over it. Works in both RichEdit and Scintilla editors
+- **Save to FTP** (File → Save to FTP…) — upload the active document to any connected FTP server; a profile-picker list lets you choose any connected server explicitly (useful to deploy a file to a different server). Browse the remote tree, enter a filename, click Save here. Connection stays open after upload
 
 ## Building from source
 

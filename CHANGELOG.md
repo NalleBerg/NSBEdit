@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.05.16.11 - 16.05.2026 11:41
+
+- MSB custom scrollbars now on Scintilla code tabs in addition to RichEdit: `s_sciSbV`/`s_sciSbH` maps, `Ne_AttachSciScrollbars`, `Ne_DetachSciScrollbars`. `SCN_UPDATEUI` → `msb_sync` keeps the thumb in sync during keyboard scrolling. Bug fix: `Ne_AttachScrollbars` was missing from the RTF branch of `Ne_LoadPathIntoEditor` — added.
+- Auto-close bracket/quote pairs (both RichEdit and Scintilla): typing `{`, `[`, `(`, `"`, `'`, `«` inserts the matching closer and leaves the caret between them. Typing a closing char when the same char already follows the caret jumps over it instead of inserting a duplicate. `Ne_SciAutoPair` (called from `SCN_CHARADDED`) handles Scintilla; a `WM_CHAR` handler in `Ne_EditCaretProc` handles RichEdit. The RichEdit handler also wraps selected text when an opener is typed with a non-empty selection.
+- Save to FTP — profile list picker (`Ne_ShowFtpSelectDialog` / `Ne_FtpSelectDlgProc`): connected profiles shown as a vertically-stacked list of full-width blue owner-draw buttons, no server cap (old code was limited to 3). Even a single connected profile requires explicit selection. Not-connected dialog message corrected: was showing `FTP_STATUS` = "Connected:", now shows `FTP_NOT_CONNECTED`.
+- Locale: `FTP_NOT_CONNECTED`, `FTP_PICK_PROFILE` added to `locale/en_GB.txt`.
+
 ## v2026.05.16.10 - 16.05.2026 10:47
 
 - Custom autocomplete popup component (`ne_autocomplete/`): `NsbAutoComplete` window class, `CS_DROPSHADOW`, `WS_EX_NOACTIVATE | WS_EX_TOPMOST`. Appearance matches the tooltip style — system tooltip yellow background, dark amber border `RGB(120,100,20)`, muted sage green selection `RGB(80,160,110)` with white text. DPI-aware 12pt Segoe UI font via `GetDpiForWindow` + `MulDiv`.

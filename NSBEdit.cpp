@@ -142,8 +142,9 @@ enum class NeEncoding {
 #define IDC_BTN_LINENUM         262   // line-number toggle button (▸/◂)
 
 // ── Internal state ─────────────────────────────────────────────────────────────
-// ── Per-tab custom scrollbar handles (keyed by hEdit HWND) ──────────────────
-static std::map<HWND, HMSB> s_sbV, s_sbH;
+// ── Per-tab custom scrollbar handles (keyed by hEdit / hSci HWND) ────────────
+static std::map<HWND, HMSB> s_sbV,    s_sbH;     // RichEdit bars
+static std::map<HWND, HMSB> s_sciSbV, s_sciSbH;  // Scintilla bars
 
 static void Ne_AttachScrollbars(HWND hEdit)
 {
@@ -162,12 +163,30 @@ static void Ne_DetachScrollbars(HWND hEdit)
     if (ih != s_sbH.end()) { msb_detach(ih->second); s_sbH.erase(ih); }
 }
 
+static void Ne_AttachSciScrollbars(HWND hSci)
+{
+    if (!hSci) return;
+    if (s_sciSbV.count(hSci)) return; // already attached
+    s_sciSbV[hSci] = msb_attach(hSci, MSB_VERTICAL);
+    s_sciSbH[hSci] = msb_attach(hSci, MSB_HORIZONTAL);
+}
+
+static void Ne_DetachSciScrollbars(HWND hSci)
+{
+    if (!hSci) return;
+    auto iv = s_sciSbV.find(hSci);
+    if (iv != s_sciSbV.end()) { msb_detach(iv->second); s_sciSbV.erase(iv); }
+    auto ih = s_sciSbH.find(hSci);
+    if (ih != s_sciSbH.end()) { msb_detach(ih->second); s_sciSbH.erase(ih); }
+}
+
 static void Ne_DetachAllScrollbars()
 {
-    for (auto& kv : s_sbV) msb_detach(kv.second);
-    for (auto& kv : s_sbH) msb_detach(kv.second);
-    s_sbV.clear();
-    s_sbH.clear();
+    for (auto& kv : s_sbV)    msb_detach(kv.second);
+    for (auto& kv : s_sbH)    msb_detach(kv.second);
+    for (auto& kv : s_sciSbV) msb_detach(kv.second);
+    for (auto& kv : s_sciSbH) msb_detach(kv.second);
+    s_sbV.clear(); s_sbH.clear(); s_sciSbV.clear(); s_sciSbH.clear();
 }
 
 // Show or hide each custom scrollbar bar window to match its edit's visibility,
@@ -177,18 +196,30 @@ static void Ne_SyncScrollbarVisibility(HWND hwnd)
     int n = NeTabs_GetCount(hwnd);
     for (int i = 0; i < n; ++i) {
         NeTabDoc* doc = NeTabs_GetDocByIndex(hwnd, i);
-        if (!doc || !doc->hEdit) continue;
-        bool vis = IsWindowVisible(doc->hEdit) != FALSE;
-        int sw = vis ? SW_SHOWNOACTIVATE : SW_HIDE;
-        auto syncBar = [&](std::map<HWND,HMSB>& m) {
-            auto it = m.find(doc->hEdit);
+        if (!doc) continue;
+
+        // Helper: hide bar window for a non-visible target, or reposition+sync for visible.
+        auto syncBar = [](std::map<HWND,HMSB>& m, HWND hWin) {
+            auto it = m.find(hWin);
             if (it == m.end() || !it->second) return;
+            bool vis = IsWindowVisible(hWin) != FALSE;
             HWND hBar = msb_get_bar_hwnd(it->second);
-            if (hBar) ShowWindow(hBar, sw);
-            if (vis) msb_reposition(it->second);
+            if (!vis) {
+                if (hBar) ShowWindow(hBar, SW_HIDE);
+            } else {
+                msb_reposition(it->second);
+                msb_sync(it->second);
+            }
         };
-        syncBar(s_sbV);
-        syncBar(s_sbH);
+
+        if (doc->hEdit) {
+            syncBar(s_sbV, doc->hEdit);
+            syncBar(s_sbH, doc->hEdit);
+        }
+        if (doc->hSci) {
+            syncBar(s_sciSbV, doc->hSci);
+            syncBar(s_sciSbH, doc->hSci);
+        }
     }
 }
 
@@ -721,6 +752,51 @@ static void Ne_ApplyLang(HWND hSci, int langIdx)
 // Phase 1: if the typed text from the start of the line contains a space (multi-token),
 //          scan all document lines for those starting with that phrase prefix.
 // Phase 2: fall back to keyword-list word completion when no phrase matches.
+// Auto-close bracket/quote pairs for Scintilla.
+// Called from SCN_CHARADDED after the character has been inserted.
+static void Ne_SciAutoPair(HWND hSci, int ch)
+{
+    int pos = (int)SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0);
+
+    // Jump-over: closing char was typed but the same closer already follows the caret.
+    // Behaviour: delete the just-typed char and advance the caret past the existing one.
+    const char* jumpCloser = nullptr;
+    int jumpLen = 1, typedLen = 1;
+    if      (ch == '}')    { jumpCloser = "}";         }
+    else if (ch == ']')    { jumpCloser = "]";         }
+    else if (ch == ')')    { jumpCloser = ")";         }
+    else if (ch == '"')    { jumpCloser = "\"";        }
+    else if (ch == '\'')   { jumpCloser = "'";         }
+    else if (ch == 0xBB)   { jumpCloser = "\xC2\xBB"; jumpLen = 2; typedLen = 2; } // »
+
+    if (jumpCloser) {
+        bool matches = true;
+        for (int i = 0; i < jumpLen; ++i)
+            if ((unsigned char)SendMessageW(hSci, SCI_GETCHARAT, pos + i, 0) != (unsigned char)jumpCloser[i])
+                { matches = false; break; }
+        if (matches) {
+            for (int i = 0; i < typedLen; ++i)
+                SendMessageW(hSci, SCI_DELETEBACK, 0, 0);
+            SendMessageW(hSci, SCI_SETEMPTYSELECTION, pos - typedLen + jumpLen, 0);
+            return;
+        }
+    }
+
+    // Auto-close: opening char → insert matching closer, leave caret between the pair.
+    const char* autoCloser = nullptr;
+    if      (ch == '{')    autoCloser = "}";
+    else if (ch == '[')    autoCloser = "]";
+    else if (ch == '(')    autoCloser = ")";
+    else if (ch == '"')    autoCloser = "\"";
+    else if (ch == '\'')   autoCloser = "'";
+    else if (ch == 0xAB)   autoCloser = "\xC2\xBB";  // « → »
+
+    if (autoCloser) {
+        SendMessageW(hSci, SCI_INSERTTEXT, pos, (LPARAM)autoCloser);
+        SendMessageW(hSci, SCI_SETEMPTYSELECTION, pos, 0);
+    }
+}
+
 static void Ne_SciAutoComplete(HWND hSci, int langIdx)
 {
     if (g_acInserting) return; // prevent re-entry during SCI_REPLACESEL insertion
@@ -4723,6 +4799,66 @@ static LRESULT CALLBACK Ne_EditCaretProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
         RemovePropW(hwnd, L"NeEditCaretPrev");
         SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)prev);
     }
+    if (msg == WM_CHAR && !(GetWindowLongW(hwnd, GWL_STYLE) & ES_READONLY)) {
+        wchar_t ch = (wchar_t)wParam;
+
+        CHARRANGE cr = {};
+        SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&cr);
+        bool hasSelection = (cr.cpMin != cr.cpMax);
+
+        // Jump-over: closing char typed and the same closer already follows the caret.
+        wchar_t jumpCloser = 0;
+        if (ch == L'}' || ch == L']' || ch == L')' || ch == L'"' || ch == L'\'' || ch == L'\x00BB')
+            jumpCloser = ch;
+        if (jumpCloser && !hasSelection) {
+            wchar_t buf[2] = {};
+            TEXTRANGEW tr = {};
+            tr.chrg.cpMin = cr.cpMin;
+            tr.chrg.cpMax = cr.cpMin + 1;
+            tr.lpstrText = buf;
+            SendMessageW(hwnd, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
+            if (buf[0] == jumpCloser) {
+                CHARRANGE crNew = { cr.cpMin + 1, cr.cpMin + 1 };
+                SendMessageW(hwnd, EM_EXSETSEL, 0, (LPARAM)&crNew);
+                return 0;
+            }
+        }
+
+        // Auto-close: opening char → insert pair, leave caret between them.
+        wchar_t closing = 0;
+        if      (ch == L'{')     closing = L'}';
+        else if (ch == L'[')     closing = L']';
+        else if (ch == L'(')     closing = L')';
+        else if (ch == L'"')     closing = L'"';
+        else if (ch == L'\'')    closing = L'\'';
+        else if (ch == L'\x00AB') closing = L'\x00BB';  // « → »
+
+        if (closing) {
+            if (!hasSelection) {
+                // Insert opener+closer as one undo step, caret between them.
+                wchar_t pair[3] = { ch, closing, L'\0' };
+                SendMessageW(hwnd, EM_REPLACESEL, TRUE, (LPARAM)pair);
+                CHARRANGE crBetween = { cr.cpMin + 1, cr.cpMin + 1 };
+                SendMessageW(hwnd, EM_EXSETSEL, 0, (LPARAM)&crBetween);
+                return 0;
+            } else {
+                // Wrap selection: opener + selected text + closer.
+                int len = cr.cpMax - cr.cpMin;
+                std::wstring sel(len + 1, L'\0');
+                TEXTRANGEW tr2 = {};
+                tr2.chrg = cr;
+                tr2.lpstrText = &sel[0];
+                SendMessageW(hwnd, EM_GETTEXTRANGE, 0, (LPARAM)&tr2);
+                sel.resize(len);
+                std::wstring wrapped;
+                wrapped += ch;
+                wrapped += sel;
+                wrapped += closing;
+                SendMessageW(hwnd, EM_REPLACESEL, TRUE, (LPARAM)wrapped.c_str());
+                return 0;
+            }
+        }
+    }
     return CallWindowProcW(prev, hwnd, msg, wParam, lParam);
 }
 
@@ -4828,6 +4964,7 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
             int w = rcEdit.right - rcEdit.left;
             int h = rcEdit.bottom - rcEdit.top;
             doc->hSci = Ne_CreateScintilla(hwnd, pt.x, pt.y, w, h);
+            Ne_AttachSciScrollbars(doc->hSci);
         }
 
         if (!doc->hSci) return false;
@@ -4860,17 +4997,20 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
         Ne_UpdateTitle(hwnd);
         Ne_UpdateStatusText(hwnd);
         Ne_UpdateLangMenuCheck(doc->langId);
+        Ne_SyncScrollbarVisibility(hwnd);
         return true;
     }
 
     // ── RTF file: use RichEdit ────────────────────────────────────────────────
     // If the tab was previously a Scintilla tab, destroy it.
     if (doc->hSci) {
+        Ne_DetachSciScrollbars(doc->hSci);
         DestroyWindow(doc->hSci);
         doc->hSci = NULL;
         doc->langId = -1;
         doc->langUserSet = false;
     }
+    Ne_AttachScrollbars(hEdit);
     ShowWindow(hEdit, SW_SHOW);
     // Apply saved zoom to the RTF tab.
     SendMessageW(hEdit, EM_SETZOOM, (WPARAM)g_zoomRtf, 100);
@@ -5148,9 +5288,11 @@ static bool Ne_CloseTabAt(HWND hwnd, int index)
 
     if (!Ne_PromptSaveIfModified(hwnd)) return false;
 
-    // Detach scrollbars before the edit HWND is destroyed
+    // Detach scrollbars before the edit HWNDs are destroyed
     HWND hEditPre = NeTabs_GetActiveEdit(hwnd);
     Ne_DetachScrollbars(hEditPre);
+    NeTabDoc* docPre = NeTabs_GetActiveDoc(hwnd);
+    if (docPre && docPre->hSci) Ne_DetachSciScrollbars(docPre->hSci);
 
     if (!NeTabs_CloseTab(hwnd, index)) return false;
 
@@ -6790,6 +6932,236 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
     }
 }
 
+// ── FTP profile selection dialog ──────────────────────────────────────────────
+// Shows a vertical list of connected FTP profiles; returns the chosen profile
+// id, or -1 if the user cancelled.
+
+struct NeFtpSelectDlgData {
+    std::wstring title;
+    std::wstring message;
+    const std::vector<NeProfile>* profiles = nullptr;
+    int textH = 0;
+    int64_t result = -1;
+    HFONT hDlgFont = NULL;
+};
+
+static LRESULT CALLBACK Ne_FtpSelectDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    NeFtpSelectDlgData* dd = (NeFtpSelectDlgData*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    switch (msg) {
+    case WM_CREATE: {
+        CREATESTRUCTW* cs = (CREATESTRUCTW*)lParam;
+        dd = (NeFtpSelectDlgData*)cs->lpCreateParams;
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)dd);
+
+        HINSTANCE hi = GetModuleHandleW(NULL);
+        HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
+        if (hIco) {
+            SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+            SendMessageW(hwnd, WM_SETICON, ICON_BIG,   (LPARAM)hIco);
+        }
+        dd->hDlgFont = Ne_CreateDialogFont(false);
+
+        RECT rc = {}; GetClientRect(hwnd, &rc);
+        const int padH = S(20), padT = S(18), padB = S(15);
+        const int gapTB = S(14), btnH = S(34), listGap = S(6);
+
+        // Message label
+        HWND hTxt = CreateWindowExW(0, L"STATIC", dd->message.c_str(),
+            WS_CHILD | WS_VISIBLE | SS_CENTER,
+            padH, padT, rc.right - 2 * padH, dd->textH,
+            hwnd, (HMENU)(UINT_PTR)IDC_NE_DLG_TEXT, hi, NULL);
+        if (hTxt) SendMessageW(hTxt, WM_SETFONT, (WPARAM)dd->hDlgFont, TRUE);
+
+        // One blue button per profile (full-width, vertically stacked)
+        int by = padT + dd->textH + gapTB;
+        int btnW = rc.right - 2 * padH;
+        int n = dd->profiles ? (int)dd->profiles->size() : 0;
+        for (int i = 0; i < n; ++i) {
+            DWORD style = WS_CHILD | WS_VISIBLE | BS_OWNERDRAW;
+            if (i == 0) style |= BS_DEFPUSHBUTTON;
+            HWND hBtn = CreateWindowExW(0, L"BUTTON",
+                (*dd->profiles)[i].friendlyName.c_str(),
+                style, padH, by, btnW, btnH,
+                hwnd, (HMENU)(UINT_PTR)(3000 + i), hi, NULL);
+            if (hBtn) {
+                SendMessageW(hBtn, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+                WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+                SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+            }
+            by += btnH + listGap;
+        }
+        // Cancel button centred below the list
+        by += gapTB - listGap;
+        int cancelW = Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL"));
+        HWND hCancel = CreateWindowExW(0, L"BUTTON", Ls(L"BTN_CANCEL"),
+            WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+            (rc.right - cancelW) / 2, by, cancelW, btnH,
+            hwnd, (HMENU)(UINT_PTR)IDCANCEL, hi, NULL);
+        if (hCancel) {
+            SendMessageW(hCancel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+            WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hCancel, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+            SetPropW(hCancel, L"NePrevProc", (HANDLE)prev);
+        }
+        return 0;
+    }
+    case WM_NCDESTROY:
+        if (dd && dd->hDlgFont) { DeleteObject(dd->hDlgFont); dd->hDlgFont = NULL; }
+        break;
+    case WM_DRAWITEM: {
+        const DRAWITEMSTRUCT* dis = (const DRAWITEMSTRUCT*)lParam;
+        int id = dis->CtlID;
+        int idx = id - 3000;
+        bool isProfile = (dd && dd->profiles && idx >= 0 && idx < (int)dd->profiles->size());
+        bool isCancel  = (id == IDCANCEL);
+        if (!isProfile && !isCancel) return FALSE;
+
+        RECT rc2 = dis->rcItem;
+        HDC hdc = dis->hDC;
+        bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+        bool hover   = (GetPropW(dis->hwndItem, L"NeHover") != NULL);
+        NeBtnTone tone = isCancel ? NeBtnTone::Red : NeBtnTone::Blue;
+
+        HBRUSH hb = CreateSolidBrush(Ne_ToneColor(tone, pressed, hover));
+        FillRect(hdc, &rc2, hb);
+        DeleteObject(hb);
+        FrameRect(hdc, &rc2, GetSysColorBrush(COLOR_3DSHADOW));
+
+        HFONT hf  = Ne_CreateDialogFont(true);
+        HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
+
+        std::wstring label = isCancel ? std::wstring(Ls(L"BTN_CANCEL"))
+                                      : (*dd->profiles)[idx].friendlyName;
+        const wchar_t* iconRes = isCancel ? IDI_ERROR : IDI_INFORMATION;
+
+        SIZE ts = {};
+        GetTextExtentPoint32W(hdc, label.c_str(), (int)label.size(), &ts);
+        int contentW = S(16) + S(8) + ts.cx;
+        int startX   = rc2.left + ((rc2.right - rc2.left) - contentW) / 2;
+        int iconY    = rc2.top  + ((rc2.bottom - rc2.top) - S(16)) / 2;
+
+        HICON hIcon = LoadIconW(NULL, iconRes);
+        if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
+
+        RECT tr = rc2;
+        tr.left = startX + S(16) + S(8);
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, RGB(25, 25, 25));
+        DrawTextW(hdc, label.c_str(), -1, &tr, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX);
+
+        if (dis->itemState & ODS_FOCUS) {
+            RECT fr = rc2;
+            InflateRect(&fr, -S(4), -S(4));
+            DrawFocusRect(hdc, &fr);
+        }
+        if (old) SelectObject(hdc, old);
+        if (hf)  DeleteObject(hf);
+        return TRUE;
+    }
+    case WM_COMMAND:
+        if (HIWORD(wParam) == BN_CLICKED) {
+            int id = LOWORD(wParam);
+            if (id == IDCANCEL) {
+                if (dd) dd->result = -1;
+                DestroyWindow(hwnd);
+                return 0;
+            }
+            int idx = id - 3000;
+            if (dd && dd->profiles && idx >= 0 && idx < (int)dd->profiles->size()) {
+                dd->result = (*dd->profiles)[idx].id;
+                DestroyWindow(hwnd);
+                return 0;
+            }
+        }
+        break;
+    case WM_CLOSE:
+        if (dd) dd->result = -1;
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_CTLCOLORSTATIC: {
+        HDC hdc = (HDC)wParam;
+        SetBkColor(hdc, RGB(255, 255, 255));
+        SetTextColor(hdc, RGB(20, 20, 20));
+        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+    }
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+// Returns chosen profile id, or -1 if cancelled.
+static int64_t Ne_ShowFtpSelectDialog(HWND parent, const std::vector<NeProfile>& profiles)
+{
+    if (profiles.empty()) return -1;
+
+    const int padH = S(20), padT = S(18), padB = S(15);
+    const int gapTB = S(14), btnH = S(34), listGap = S(6);
+
+    std::wstring msg = Ls(L"FTP_PICK_PROFILE");
+    int contW = S(420);
+    int textH = Ne_MeasureDialogTextHeight(msg, contW);
+    int n = (int)profiles.size();
+    int profilesH = n * btnH + (n > 1 ? (n - 1) * listGap : 0);
+    int cancelW   = Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL"));
+    int clientW   = std::max(contW + 2 * padH, cancelW + 2 * padH);
+    int clientH   = padT + textH + gapTB + profilesH + gapTB + btnH + padB;
+
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME);
+    int winW = wr.right - wr.left;
+    int winH = wr.bottom - wr.top;
+
+    RECT pr = {};
+    if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
+    int x = pr.left + ((pr.right - pr.left) - winW) / 2;
+    int y = pr.top  + ((pr.bottom - pr.top) - winH) / 2;
+
+    RECT wa = {};
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+    if (x < wa.left) x = wa.left;
+    if (y < wa.top)  y = wa.top;
+    if (x + winW > wa.right)  x = wa.right  - winW;
+    if (y + winH > wa.bottom) y = wa.bottom - winH;
+
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc   = Ne_FtpSelectDlgProc;
+    wc.hInstance     = hi;
+    wc.hCursor       = LoadCursorW(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszClassName = L"NSBEditFtpSelectDlgClass";
+    if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
+
+    NeFtpSelectDlgData dd = {};
+    dd.title    = Ls(L"FTP_SAVE_BROWSER");
+    dd.message  = msg;
+    dd.profiles = &profiles;
+    dd.textH    = textH;
+    dd.result   = -1;
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME,
+        wc.lpszClassName, dd.title.c_str(),
+        WS_POPUP | WS_CAPTION | WS_SYSMENU,
+        x, y, winW, winH, parent, NULL, hi, &dd);
+    if (!dlg) return -1;
+
+    if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
+    ShowWindow(dlg, SW_SHOW);
+    SetForegroundWindow(dlg);
+
+    MSG m;
+    while (IsWindow(dlg) && GetMessageW(&m, NULL, 0, 0)) {
+        if (!IsDialogMessageW(dlg, &m)) {
+            TranslateMessage(&m);
+            DispatchMessageW(&m);
+        }
+    }
+    if (parent && IsWindow(parent)) {
+        EnableWindow(parent, TRUE);
+        SetForegroundWindow(parent);
+    }
+    return dd.result;
+}
+
 // Opens the FTP browser in "save" mode. Returns the chosen remote path, or
 // empty string if the user cancelled. Does NOT close the connection.
 static std::wstring Ne_ShowFtpBrowserSave(HWND parent, int64_t profileId,
@@ -7716,27 +8088,14 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (connected.empty()) {
                 NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 };
                 Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"),
-                                    Ls(L"FTP_STATUS"), &btn, 1, IDOK);
+                                    Ls(L"FTP_NOT_CONNECTED"), &btn, 1, IDOK);
                 return 0;
             }
 
-            // If exactly one connected server, use it; otherwise ask which one
-            int64_t chosenId = connected[0].id;
-            if (connected.size() > 1) {
-                // Build a simple choice dialog listing server names
-                // (Use at most 3 servers to fit the dialog button limit)
-                int n = std::min((int)connected.size(), 3);
-                NeDialogButtonSpec btns[3];
-                for (int i = 0; i < n; ++i)
-                    btns[i] = { 2000 + i, connected[i].friendlyName, NeBtnTone::Blue,
-                                IDI_INFORMATION, Ne_MeasureButtonWidth(connected[i].friendlyName) };
-                int r = Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_SAVE_BROWSER"),
-                                            Ls(L"FTP_SAVE_BROWSER"), btns, n, IDCANCEL);
-                bool found = false;
-                for (int i = 0; i < n; ++i)
-                    if (r == 2000 + i) { chosenId = connected[i].id; found = true; break; }
-                if (!found) return 0;
-            }
+            // Show a scrollable list so the user can pick any connected profile
+            // (even when only one is connected, the explicit choice is intentional).
+            int64_t chosenId = Ne_ShowFtpSelectDialog(hwnd, connected);
+            if (chosenId < 0) return 0;  // cancelled
 
             // 2. Save doc to temp file
             NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
@@ -7835,6 +8194,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 int w = rcEdit.right - rcEdit.left;
                 int h = rcEdit.bottom - rcEdit.top;
                 doc->hSci = Ne_CreateScintilla(hwnd, pt.x, pt.y, w, h);
+                Ne_AttachSciScrollbars(doc->hSci);
                 if (!doc->hSci) return 0;
                 SendMessageW(doc->hSci, SCI_SETTEXT, 0, (LPARAM)utf8.c_str());
                 SendMessageW(doc->hSci, SCI_EMPTYUNDOBUFFER, 0, 0);
@@ -7843,6 +8203,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 ShowWindow(hEdit, SW_HIDE);
                 ShowWindow(doc->hSci, SW_SHOW);
                 SetFocus(doc->hSci);
+                Ne_SyncScrollbarVisibility(hwnd);
             }
 
             doc->langId = newLang;
@@ -8233,6 +8594,14 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 HWND hSciActive = NeTabs_GetActiveScintilla(hwnd);
                 if (scn->nmhdr.hwndFrom == hSciActive)
                     Ne_UpdateStatusText(hwnd);
+                // Sync custom scrollbar thumb with current scroll position/content
+                {
+                    HWND hSciFrom = (HWND)scn->nmhdr.hwndFrom;
+                    auto iv = s_sciSbV.find(hSciFrom);
+                    if (iv != s_sciSbV.end() && iv->second) msb_sync(iv->second);
+                    auto ih = s_sciSbH.find(hSciFrom);
+                    if (ih != s_sciSbH.end() && ih->second) msb_sync(ih->second);
+                }
             } else if (scn->nmhdr.code == SCN_SAVEPOINTLEFT) {
                 // Document was modified after save point
                 NeTabDoc* docSci = NULL;
@@ -8266,6 +8635,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     NeTabDoc* docAC = NeTabs_GetActiveDoc(hwnd);
                     if (docAC && docAC->hSci == hSciActive)
                         Ne_SciAutoComplete(hSciActive, docAC->langId);
+                    Ne_SciAutoPair(hSciActive, scn->ch);
                 }
             } else if (scn->nmhdr.code == SCN_ZOOM) {
                 // Ctrl+scroll on Scintilla: save new zoom level.
