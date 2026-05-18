@@ -46,6 +46,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **RTF formatting toolbar shown on startup** — the app opens with the Rich Text toolbar active without needing to open a file first
 - **File → Open reuses blank tab** — opening a file when the only open tab is a fresh untitled one loads into that tab rather than creating an extra blank alongside it
 - **Paragraph Spacing dialog** — set space before/after a paragraph in points (Format → Paragraph Spacing); owner-draw blue/red buttons, white background, fully i18n
+- **Line Spacing dialog** — choose Single, 1.5 lines, or Double line spacing (Format → Line Spacing); same owner-draw style, white background, radio buttons, fully i18n
 
 ## Building from source
 
