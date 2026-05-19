@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.19.11 - 19.05.2026 11:27
+
+- **FTP Preview Online**: A violet *Preview online* toolbar button (`IDC_NE_PREVIEW` 265) and `FTP > Preview online.` menu item (`IDM_PREVIEW_FTP` 134) appear when a Scintilla/plain-text tab is FTP-linked. Clicking uploads the current buffer to the remote server and opens a preview dialog with the resolved URL pre-filled. *Open in browser* launches the URL; closing (or *Revert & close*) re-uploads the backup to restore the original. The FTP profile editor gains a **Web URL root** field (`FTP_WEB_URL` locale key, stored in profile) that maps the server root to its public URL. New: `NePreviewDlgData`, `Ne_PreviewDlgProc`. New locale keys: `TIP_PREVIEW`, `FTP_WEB_URL`, `MENU_PREVIEW_FTP`, `FTP_PREVIEW_LOCKED`, `FTP_PREVIEW_URL`, `BTN_OPEN_BROWSER`, `BTN_REVERT`, `FTP_PREVIEW_UP_FAIL`, `FTP_PREVIEW_REV_FAIL`.
+- **FTP upload success auto-close**: The "File saved and uploaded successfully" dialog closes itself after 2½ seconds. `Ne_ShowChoiceDialog` gains optional `int autoCloseMs = 0`; `Ne_DialogWndProc` handles `WM_TIMER` id 1 → posts `WM_CLOSE`. `NeDialogData` gains `int autoCloseMs = 0`.
+- **About — Edition 1 RC**: About dialog now shows `Edition: 1 RC`.
+
 ## v2026.05.19.09 - 19.05.2026 09:20
 
 - **FTP browser — Rename**: Right-clicking any file or folder (index > 0) now shows a Rename… item in the context menu. An input dialog pre-filled with the current name appears; confirming sends `RNFR`/`RNTO` commands (FTP) or a `rename` command (SFTP) via `NeFtp_Rename(oldPath, newPath)` (new function in `ne_ftp.h/cpp`). The parent folder reloads on success. `FTP_CTX_RENAME` and `FTP_INPUT_RENAME` added to `locale/en_GB.txt`. `Ne_ShowInputDialog` gains an optional `initialValue` parameter for pre-filling the edit control.

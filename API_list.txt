@@ -180,6 +180,25 @@
                                                 an untouched untitled RichEdit tab (path
                                                 empty, not modified, no Scintilla) instead
                                                 of creating a new blank tab first.
+                                                Ne_ShowChoiceDialog — optional
+                                                autoCloseMs parameter (default 0 = no
+                                                auto-close); if > 0 a WM_TIMER (id 1) is
+                                                set in WM_CREATE and Ne_DialogWndProc
+                                                posts WM_CLOSE on expiry. NeDialogData
+                                                gains int autoCloseMs = 0.
+                                                FTP Preview Online: IDM_PREVIEW_FTP
+                                                (134) / IDC_NE_PREVIEW (265, violet).
+                                                Button shown only when active tab is
+                                                FTP-linked and not Rich mode.
+                                                Ne_PreviewDlgProc / NePreviewDlgData —
+                                                upload buffer to remote, show URL edit,
+                                                Open in browser via ShellExecuteW;
+                                                Revert & close re-uploads backup to
+                                                restore original remote file.
+                                                FTP profile editor: webUrl field
+                                                (FTP_WEB_URL locale key); used to
+                                                construct the public preview URL from
+                                                the file's remote path.
 
   ne_tabs.h / ne_tabs.cpp                       Tabbed editor module — SysTabControl32
                                                 strip + per-tab RichEdit HWND ownership.

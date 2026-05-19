@@ -11,11 +11,73 @@
   this project is published, API_list.txt will be a complete, accurate index
   of every reusable tool and architectural pattern, ready to seed the skeleton.
 
+  ── Publication trigger ───────────────────────────────────────────────────────
+
+  When both NSBEdit and SetupCraft reach published Edition 1, this file drives
+  two deliverables:
+
+    1. The skeleton repo — a stripped copy of the proven source tree with all
+       project-specific code removed (see "What to include" checklist below).
+
+    2. new_project.ps1 (or similar) — an interactive script that:
+         • asks for a project name, root folder, and app-icon slot
+         • copies the skeleton into a new directory
+         • renames files, replaces placeholder strings (APPNAME, APPGUID, etc.)
+         • initialises a git repo and makes the first commit
+       This file (skeleton_idea.txt) is the specification for that script — every
+       checked item in the checklist below is something the script must copy or
+       patch; every note in the "Notes & decisions" section is knowledge the
+       script author (or a future AI assistant) will need.
+
   ── What to include ──────────────────────────────────────────────────────────
 
   Build system
     [ ] makeit.bat          — one-shot build script (MinGW/GCC, resource
-                              compilation, manifest embedding, strip)
+                              compilation, manifest embedding, strip).
+                              Verbose-log trick: the script re-invokes itself
+                              with a sentinel argument (__logged__); the inner
+                              run uses "echo on" and pipes all stdout+stderr
+                              through GnuWin32 tee to makeit.log (overwrites
+                              each run).  Compiler command lines are prefixed
+                              with @ so "echo on" echoes the descriptive label
+                              above each step but not the 200-char g++ line.
+                              Flags: -v -Wall on all gcc/g++ calls so every
+                              driver search-path and every warning is captured.
+                              Skeleton structure:
+                                @echo off
+                                if "%1" neq "__logged__" (
+                                    call "%~f0" __logged__ 2>&1 | tee makeit.log
+                                    exit /b !ERRORLEVEL!
+                                )
+                                echo on
+                                :: [1/N] label
+                                @windres ...
+                                :: [2/N] label
+                                @gcc -v -O2 ...
+                                :: [N/N] label
+                                @g++ -v -std=c++17 -O2 -Wall -mwindows ...
+    [ ] follow.bat          — one-liner launcher: starts follow.ps1 in the
+                              current PowerShell host without a new window.
+                                @echo off
+                                pwsh -NoProfile -File "%~dp0follow.ps1"
+    [ ] follow.ps1          — live colour log viewer for makeit.log.
+                              Polls the file every 150 ms by byte position.
+                              New-run detection: if current file size < last
+                              read position, the file was truncated (new build
+                              started) → Clear-Host + print a coloured header
+                                  === RUN #N  «yyyy-MM-dd HH:mm:ss» ===
+                              RUN counter increments per session; stays in
+                              memory so each follow.ps1 invocation starts at
+                              RUN #1 again (intentional — a new terminal
+                              session is a fresh context).
+                              Line colouring:
+                                Red       — "error:" or "FAILED"
+                                Yellow    — "warning:"
+                                DarkCyan  — "note:"
+                                Green     — "Done." or "BUILD SUCCEEDED"
+                                White     — "[N/N]" step headers
+                                DarkGray  — prompt lines (^[A-Z]:\\.*>)
+                                default   — everything else
     [ ] CMakeLists.txt      — CMake alternative, already battle-tested here
     [ ] app.manifest        — DPI awareness, ComCtl v6, UAC level
 
@@ -121,6 +183,16 @@
       ReleaseCapture();              // WM_CAPTURECHANGED fires here; now harmless
       if (dropIdx >= 0 && dropIdx != srcIdx && dropIdx != srcIdx+1)
           MoveItem(srcIdx, dropIdx); // use the saved locals, not the reset statics
+
+  Auto-dismissing notification dialog pattern
+    Ne_ShowChoiceDialog has an optional autoCloseMs parameter (default 0).
+    When > 0, WM_CREATE calls SetTimer(hwnd, 1, autoCloseMs, NULL).
+    The dialog proc handles WM_TIMER id 1: KillTimer then PostMessage WM_CLOSE.
+    WM_CLOSE already sets dd->result = dd->closeResult and calls DestroyWindow.
+    The message loop exits when IsWindow(dlg) returns false (unchanged).
+    Result: a timed notification that the user can still dismiss early by
+    clicking OK — no busy-wait, no thread, no extra state.
+    Useful for: FTP upload success, auto-save confirmations, brief info toasts.
 
   Localisation stub
     [ ] languages.h / languages.cpp  — locale loading, key lookup, ExpandEscapes

@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.19.09**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.19.11**
 
 ## Download
 
@@ -54,6 +54,9 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **FTP browser — remember last folder**: reopens in the folder you were last in (per profile); tree always roots at `/` so you can navigate anywhere
 - **Auto-indent on Enter** in code (Scintilla) tabs — new lines inherit the indentation of the line above, preserving tabs and spaces exactly
 - **Smart backspace unindent** in code tabs — Backspace in leading whitespace removes one full indent level
+- **FTP Preview Online** — when a code/plain-text tab is FTP-linked, a violet *Preview online* button appears in the toolbar and under the FTP menu. Clicking uploads the current buffer and opens a dialog with the resolved URL; *Open in browser* launches it; closing reverts the remote file to its original. FTP profile editor gains a **Web URL root** field
+- **FTP upload success auto-close** — the "File saved and uploaded successfully" notification closes itself after 2½ seconds
+- **Edition 1 RC** — About dialog shows Edition: 1 RC
 
 ## Building from source
 

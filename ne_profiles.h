@@ -15,6 +15,7 @@ struct NeProfile {
     std::wstring password;          // decrypted in memory; empty if !rememberPassword
     bool         rememberPassword  = false;
     std::wstring initialPath;       // e.g. L"/"
+    std::wstring webUrl;             // web root, e.g. L"http://mysite.com" (no trailing slash)
 };
 
 // Call NeProfiles_Init() after NeCrypto_Init().

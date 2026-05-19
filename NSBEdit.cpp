@@ -116,6 +116,7 @@ enum class NeEncoding {
 #define IDM_FTP_DISCONNECT  131   // FTP menu: "Disconnect"
 #define IDM_FTP_BROWSE      132   // FTP menu: "Browse files..."
 #define IDM_SAVE_TO_FTP     133   // File menu: "Save to FTP..."
+#define IDM_PREVIEW_FTP     134   // File/FTP menu + toolbar: "Preview online."
 #define IDM_LANG_BASE       600   // Language menu: 600..600+NE_LANG_COUNT-1
 #define IDM_FTP_CONNECT_BASE 700  // FTP menu: profile entries 700..799
 #define IDC_NE_CLEARFMT     227
@@ -145,6 +146,7 @@ enum class NeEncoding {
 #define IDC_BTN_LINENUM         262   // line-number toggle button (▸/◂)
 #define IDC_NE_SAVE             263   // toolbar Save button
 #define IDC_NE_SAVE_FTP         264   // toolbar Save to FTP button
+#define IDC_NE_PREVIEW          265   // toolbar Preview online button
 #define IDC_NE_LANG_UI          265   // UI language combobox
 #define IDC_NE_COMMENT          266   // Comment / Uncomment  (Scintilla only)
 
@@ -667,6 +669,9 @@ static HWND Ne_CreateScintilla(HWND hwndParent, int x, int y, int w, int h)
     // Enable save-point + caret notifications
     SendMessageW(hSci, SCI_SETMODEVENTMASK,
         SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT, 0);
+    // Disable Scintilla's built-in right-click popup so we handle it ourselves
+    // (SCN_CONTEXTMENU notification will be sent instead).
+    SendMessageW(hSci, SCI_USEPOPUP, SC_POPUP_NEVER, 0);
     // SCN_UPDATEUI is always sent on selection/caret change — no extra mask needed.
     return hSci;
 }
@@ -1216,6 +1221,7 @@ static COLORREF Ne_BtnTextColor(int id)
     // Save / FTP / comment
     case IDC_NE_SAVE:        return RGB(0,   130, 50);  // forest green
     case IDC_NE_SAVE_FTP:    return RGB(0,   100, 165); // ocean blue
+    case IDC_NE_PREVIEW:     return RGB(100,  0, 160); // violet
     case IDC_NE_COMMENT:     return RGB(90,  90,  90);  // grey
     default:                 return RGB(30,  30,  30);  // near-black
     }
@@ -1780,6 +1786,7 @@ struct NeDialogData {
     NeDialogButtonSpec buttons[4];
     HICON hMsgIcon = NULL;   // optional left-side icon (e.g. IDI_WARNING)
     HFONT hDlgFont = NULL;   // created in WM_CREATE, deleted in WM_NCDESTROY
+    int autoCloseMs = 0;     // if > 0, dialog auto-closes after this many ms
 };
 
 static bool Ne_PromptSaveIfModified(HWND hwnd); // forward
@@ -2005,11 +2012,15 @@ static LRESULT CALLBACK Ne_DialogWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
             }
             bx += dd->buttons[i].width + btnGap;
         }
+        if (dd->autoCloseMs > 0) SetTimer(hwnd, 1, (UINT)dd->autoCloseMs, NULL);
         return 0;
     }
     case WM_NCDESTROY:
         if (dd && dd->hDlgFont) { DeleteObject(dd->hDlgFont); dd->hDlgFont = NULL; }
         break;
+    case WM_TIMER:
+        if (wParam == 1) { KillTimer(hwnd, 1); PostMessageW(hwnd, WM_CLOSE, 0, 0); }
+        return 0;
     case WM_DRAWITEM:
         Ne_DrawDialogButton((const DRAWITEMSTRUCT*)lParam, dd);
         return TRUE;
@@ -2040,7 +2051,7 @@ static LRESULT CALLBACK Ne_DialogWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
 
 static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wstring& message,
                                NeDialogButtonSpec* buttons, int buttonCount, int closeResult,
-                               HICON hMsgIcon = NULL)
+                               HICON hMsgIcon = NULL, int autoCloseMs = 0)
 {
     if (buttonCount <= 0 || buttonCount > 3) return closeResult;
 
@@ -2093,6 +2104,7 @@ static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wst
     dd.buttonCount = buttonCount;
     for (int i = 0; i < buttonCount; ++i) dd.buttons[i] = buttons[i];
     dd.hMsgIcon = hMsgIcon;
+    dd.autoCloseMs = autoCloseMs;
 
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME,
         wc.lpszClassName, dd.title.c_str(),
@@ -5817,7 +5829,7 @@ static bool Ne_Save(HWND hwnd)
         NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Green,
                                      IDI_INFORMATION, 0 };
         Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_STATUS"),
-                            Ls(L"MSG_FTP_UPLOAD_OK"), &okBtn, 1, IDOK);
+                            Ls(L"MSG_FTP_UPLOAD_OK"), &okBtn, 1, IDOK, NULL, 2500);
         return true;
     }
 
@@ -6004,6 +6016,7 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
         { IDC_NE_COMMENT,     wXs,   sG },
         { IDC_NE_SAVE,        wCol,  bG },
         { IDC_NE_SAVE_FTP,    wCol,  sG },
+        { IDC_NE_PREVIEW,     wCol,  sG },
         { IDC_NE_LANG_UI,     S(90), 0  },
     };
     const int N = (int)(sizeof(ctrls) / sizeof(ctrls[0]));
@@ -6089,19 +6102,21 @@ static void Ne_ShowToolbarButtons(HWND hwnd, NeToolbarMode mode)
         IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT, IDC_NE_LINESPACE, IDC_NE_PARSPACE,
         IDC_NE_FIND, IDC_NE_LINK, IDC_NE_TABLE, IDC_NE_TABLE_DROP, IDC_NE_HLINE,
         IDC_NE_CLEARFMT, IDC_NE_PRINT_BTN, IDC_NE_ZOOM, IDC_NE_WORDWRAP, IDC_NE_CASE,
-        IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_LANG_UI, IDC_NE_COMMENT,
+        IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, IDC_NE_LANG_UI, IDC_NE_COMMENT,
     };
     // Rich: all except COMMENT.
     static const int richHide[]  = { IDC_NE_COMMENT, 0 };
     // Txt: find, print, zoom, wordwrap, case, save, save_ftp, lang_ui.
     static const int txtShow[]   = { IDC_NE_FIND, IDC_NE_PRINT_BTN, IDC_NE_ZOOM,
                                      IDC_NE_WORDWRAP, IDC_NE_CASE,
-                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_LANG_UI, 0 };
-    // Prog: find, indent in/out, comment, zoom, wordwrap, case, print, save, ftp, lang.
+                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW,
+                                     IDC_NE_LANG_UI, 0 };
+    // Prog: find, indent in/out, comment, zoom, wordwrap, case, print, save, ftp, preview, lang.
     static const int progShow[]  = { IDC_NE_FIND, IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT,
                                      IDC_NE_COMMENT, IDC_NE_ZOOM, IDC_NE_WORDWRAP,
                                      IDC_NE_CASE, IDC_NE_PRINT_BTN,
-                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_LANG_UI, 0 };
+                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW,
+                                     IDC_NE_LANG_UI, 0 };
 
     auto inList = [](const int* list, int id) {
         for (; *list; ++list) if (*list == id) return true;
@@ -6137,6 +6152,10 @@ static void Ne_UpdateToolbarMode(HWND hwnd)
 
     Ne_ShowToolbarButtons(hwnd, mode);
     st->toolbarMode = mode;
+    // Preview button: only shown when the active tab is FTP-linked (regardless of mode).
+    { HWND hPrev = GetDlgItem(hwnd, IDC_NE_PREVIEW);
+      if (hPrev) ShowWindow(hPrev,
+          (doc && doc->isFtpFile && mode != NeToolbarMode::Rich) ? SW_SHOWNA : SW_HIDE); }
     // Keep wrap button in sync with current state.
     { HWND hWBtn = GetDlgItem(hwnd, IDC_NE_WORDWRAP);
       if (hWBtn) { SendMessageW(hWBtn, BM_SETCHECK, s_wordWrapOn ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -6312,8 +6331,10 @@ static void Ne_RebuildFtpMenu(HWND hwnd)
     Ne_AppendMenuOD(s_hFtpMenu, MF_STRING, IDM_FTP_ADD_SITE, Ls(L"FTP_ADD_SITE"));
     NeTabDoc* aDoc = NeTabs_GetActiveDoc(hwnd);
     int64_t activeTabProfileId = (aDoc && aDoc->isFtpFile) ? aDoc->ftpProfileId : 0;
-    if (activeTabProfileId && NeFtp_IsConnected(activeTabProfileId))
+    if (activeTabProfileId && NeFtp_IsConnected(activeTabProfileId)) {
+        Ne_AppendMenuOD(s_hFtpMenu, MF_STRING, IDM_PREVIEW_FTP,    Ls(L"MENU_PREVIEW_FTP"));
         Ne_AppendMenuOD(s_hFtpMenu, MF_STRING, IDM_FTP_DISCONNECT, Ls(L"FTP_DISCONNECT"));
+    }
     Ne_AppendMenuOD(s_hFtpMenu, MF_SEPARATOR, 0, NULL);
     std::vector<NeProfile> ftpProfiles;
     NeProfiles_List(ftpProfiles);
@@ -6678,6 +6699,7 @@ static LRESULT CALLBACK Ne_FtpSiteProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             d->profile.rememberPassword =
                 (SendMessageW(d->hChkRemember, BM_GETCHECK, 0, 0) == BST_CHECKED);
             GetWindowTextW(GetDlgItem(hwnd, 1028), buf, 512); d->profile.initialPath = buf;
+            GetWindowTextW(GetDlgItem(hwnd, 1031), buf, 512); d->profile.webUrl = buf;
             if (d->profile.friendlyName.empty() || d->profile.host.empty()) break;
             d->saved = true;
             PostMessageW(hwnd, WM_CLOSE, 0, 0);
@@ -6733,7 +6755,7 @@ static void Ne_ShowFtpSiteDialog(HWND parent, NeProfile* existing)
     if (existing) d.profile = *existing;
     else { d.profile.protocol = L"FTP"; d.profile.port = 21; d.profile.initialPath = L"/"; }
 
-    const int W = S(460), H = S(490);
+    const int W = S(460), H = S(534);
     RECT pr = {}; if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
     int x = (pr.left+pr.right)/2 - W/2, y = (pr.top+pr.bottom)/2 - H/2;
     if (y < 30) y = 30;
@@ -6827,6 +6849,11 @@ static void Ne_ShowFtpSiteDialog(HWND parent, NeProfile* existing)
     // Initial folder
     AddLabel(L"FTP_INITIAL_PATH", y0);
     AddEdit(1028, d.profile.initialPath.c_str(), y0);
+    y0 += ROW;
+
+    // Web URL root (used for "Preview online")
+    AddLabel(L"FTP_WEB_URL", y0);
+    AddEdit(1031, d.profile.webUrl.c_str(), y0);
     y0 += ROW;
 
     // Buttons
@@ -7106,6 +7133,227 @@ static LRESULT CALLBACK Ne_InputDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         return (LRESULT)GetStockObject(WHITE_BRUSH);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+// ── Preview online dialog ─────────────────────────────────────────────────────
+struct NePreviewDlgData {
+    std::wstring backupPath;   // local temp file — the original remote content
+    std::wstring remotePath;   // remote path to restore on revert
+    int64_t      profileId = -1;
+    HWND         hUrlEdit  = NULL;
+    NeDialogData dd        = {};
+};
+
+static LRESULT CALLBACK Ne_PreviewDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    NePreviewDlgData* d = (NePreviewDlgData*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    switch (msg) {
+    case WM_COMMAND: {
+        int id = LOWORD(wParam);
+        if (id == 1001) {                          // Open in Browser
+            wchar_t buf[2048] = {};
+            GetWindowTextW(d->hUrlEdit, buf, 2047);
+            if (buf[0]) ShellExecuteW(NULL, L"open", buf, NULL, NULL, SW_SHOWNORMAL);
+            return 0;
+        }
+        if (id == IDCANCEL || id == IDOK) {        // Revert & Close
+            // Re-upload the backup to restore the original remote file.
+            NeFtp_SetActiveConn(d->profileId);
+            SetCursor(LoadCursorW(NULL, IDC_WAIT));
+            bool ok = NeFtp_Upload(d->backupPath, d->remotePath);
+            SetCursor(LoadCursorW(NULL, IDC_ARROW));
+            if (!ok) {
+                std::wstring msg2 = std::wstring(Ls(L"FTP_PREVIEW_REV_FAIL"))
+                                  + L"\n" + NeFtp_GetLastError();
+                NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red,
+                                          IDI_ERROR, 0 };
+                Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"), msg2.c_str(),
+                                    &btn, 1, IDOK);
+                return 0;
+            }
+            DeleteFileW(d->backupPath.c_str());
+            PostQuitMessage(0);
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        return 0;
+    }
+    case WM_DRAWITEM:
+        if (d) Ne_DrawDialogButton((const DRAWITEMSTRUCT*)lParam, &d->dd);
+        return TRUE;
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLOREDIT:
+        SetBkColor((HDC)wParam, RGB(255,255,255));
+        return (LRESULT)GetStockObject(WHITE_BRUSH);
+    case WM_CLOSE:
+        // Closing via X = same as Revert & Close
+        SendMessageW(hwnd, WM_COMMAND, IDCANCEL, 0);
+        return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static void Ne_ShowPreviewOnFtp(HWND hwnd)
+{
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!doc || !doc->isFtpFile || doc->ftpRemotePath.empty()) return;
+
+    // 1. Make sure we're connected to the right profile.
+    if (!NeFtp_SetActiveConn(doc->ftpProfileId)) {
+        NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 };
+        Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"),
+                            Ls(L"FTP_NOT_CONNECTED"), &btn, 1, IDOK);
+        return;
+    }
+
+    // 2. Save document to a local temp file.
+    wchar_t tmpDir[MAX_PATH] = {};
+    GetTempPathW(MAX_PATH, tmpDir);
+    std::wstring saveDir = std::wstring(tmpDir) + L"NSBEdit_preview";
+    CreateDirectoryW(saveDir.c_str(), NULL);
+    std::wstring fname;
+    { size_t sl = doc->ftpRemotePath.rfind(L'/');
+      fname = (sl != std::wstring::npos) ? doc->ftpRemotePath.substr(sl+1)
+                                         : doc->ftpRemotePath; }
+    std::wstring localSavePath = saveDir + L"\\" + fname;
+    if (!Ne_SaveToPath(hwnd, localSavePath)) return;
+
+    // 3. Download the current remote file as backup.
+    std::wstring backupPath;
+    SetCursor(LoadCursorW(NULL, IDC_WAIT));
+    bool dlOk = NeFtp_DownloadToTemp(doc->ftpRemotePath, backupPath);
+    if (!dlOk) {
+        SetCursor(LoadCursorW(NULL, IDC_ARROW));
+        NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 };
+        Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"),
+                            NeFtp_GetLastError(), &btn, 1, IDOK);
+        return;
+    }
+
+    // 4. Upload the local (edited) file to the remote path.
+    bool upOk = NeFtp_Upload(localSavePath, doc->ftpRemotePath);
+    SetCursor(LoadCursorW(NULL, IDC_ARROW));
+    if (!upOk) {
+        DeleteFileW(backupPath.c_str());
+        std::wstring errmsg = std::wstring(Ls(L"FTP_PREVIEW_UP_FAIL"))
+                            + L"\n" + NeFtp_GetLastError();
+        NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 };
+        Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"), errmsg.c_str(),
+                            &btn, 1, IDOK);
+        return;
+    }
+
+    // 5. Build preview URL: webUrl (profile) + remotePath, fallback to https://host + remotePath
+    const NeProfile& prof = NeFtp_GetActiveProfile();
+    std::wstring base = prof.webUrl;
+    while (!base.empty() && base.back() == L'/') base.pop_back(); // strip trailing slash
+    std::wstring previewUrl = base.empty()
+        ? (L"https://" + prof.host + doc->ftpRemotePath)
+        : (base + doc->ftpRemotePath);
+
+    // 6. Lock the editor tab while preview is active.
+    HWND hEditor = doc->hSci ? doc->hSci : doc->hEdit;
+    if (hEditor) {
+        if (doc->hSci) SendMessageW(hEditor, SCI_SETREADONLY, TRUE, 0);
+        else           SendMessageW(hEditor, EM_SETREADONLY,  TRUE, 0);
+    }
+
+    // 7. Show the modal preview dialog.
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc = {}; wc.lpfnWndProc = Ne_PreviewDlgProc; wc.hInstance = hi;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1); wc.lpszClassName = L"NePreviewDlgClass";
+    if (!GetClassInfoW(hi, L"NePreviewDlgClass", &wc)) RegisterClassW(&wc);
+
+    NePreviewDlgData pd;
+    pd.backupPath = backupPath;
+    pd.remotePath = doc->ftpRemotePath;
+    pd.profileId  = doc->ftpProfileId;
+
+    const int W = S(500), H = S(200);
+    RECT pr = {}; GetWindowRect(hwnd, &pr);
+    int x = (pr.left+pr.right)/2 - W/2, y = (pr.top+pr.bottom)/2 - H/2;
+    if (y < 30) y = 30;
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_WINDOWEDGE,
+        L"NePreviewDlgClass", Ls(L"MENU_PREVIEW_FTP"),
+        WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_VISIBLE,
+        x, y, W, H, hwnd, NULL, hi, NULL);
+    if (!dlg) {
+        // Rollback: restore original file
+        NeFtp_Upload(backupPath, doc->ftpRemotePath);
+        DeleteFileW(backupPath.c_str());
+        if (hEditor) {
+            if (doc->hSci) SendMessageW(hEditor, SCI_SETREADONLY, FALSE, 0);
+            else           SendMessageW(hEditor, EM_SETREADONLY,  FALSE, 0);
+        }
+        return;
+    }
+
+    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&pd);
+    HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
+    if (hIco) { SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+                SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco); }
+
+    HFONT hFont = Ne_CreateDialogFont(false);
+    RECT rc; GetClientRect(dlg, &rc);
+    const int PAD = S(14), BTN_H = S(32);
+
+    // Info label
+    HWND hInfo = CreateWindowExW(0, L"STATIC", Ls(L"FTP_PREVIEW_LOCKED"),
+        WS_CHILD|WS_VISIBLE|SS_LEFT,
+        PAD, PAD, rc.right - 2*PAD, S(22), dlg, NULL, hi, NULL);
+    SendMessageW(hInfo, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+    // URL label
+    HWND hLbl = CreateWindowExW(0, L"STATIC", Ls(L"FTP_PREVIEW_URL"),
+        WS_CHILD|WS_VISIBLE|SS_LEFT,
+        PAD, PAD + S(28), rc.right - 2*PAD, S(20), dlg, NULL, hi, NULL);
+    SendMessageW(hLbl, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+    // URL edit
+    pd.hUrlEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", previewUrl.c_str(),
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,
+        PAD, PAD + S(50), rc.right - 2*PAD, S(26), dlg, (HMENU)4010, hi, NULL);
+    SendMessageW(pd.hUrlEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
+    SendMessageW(pd.hUrlEdit, EM_SETSEL, 0, -1);
+
+    // Buttons: Open in Browser (green) | Revert & Close (red)
+    pd.dd.buttonCount = 2;
+    pd.dd.buttons[0] = { 1001,    Ls(L"BTN_OPEN_BROWSER"), NeBtnTone::Green, IDI_INFORMATION,
+                         Ne_MeasureButtonWidth(Ls(L"BTN_OPEN_BROWSER")) };
+    pd.dd.buttons[1] = { IDCANCEL, Ls(L"BTN_REVERT"),      NeBtnTone::Red,  IDI_ERROR,
+                         Ne_MeasureButtonWidth(Ls(L"BTN_REVERT")) };
+
+    int totalBW = pd.dd.buttons[0].width + S(8) + pd.dd.buttons[1].width;
+    int bx = (rc.right - totalBW) / 2, by = rc.bottom - PAD - BTN_H;
+    for (int i = 0; i < 2; ++i) {
+        HWND hBtn = CreateWindowExW(0, L"BUTTON", pd.dd.buttons[i].text.c_str(),
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,
+            bx, by, pd.dd.buttons[i].width, BTN_H,
+            dlg, (HMENU)(UINT_PTR)pd.dd.buttons[i].id, hi, NULL);
+        SendMessageW(hBtn, WM_SETFONT, (WPARAM)hFont, TRUE);
+        WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+        SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+        bx += pd.dd.buttons[i].width + S(8);
+    }
+    // Update userdata ptr (stack address, must be set again after pd is fully built)
+    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&pd);
+    SetFocus(pd.hUrlEdit);
+
+    EnableWindow(hwnd, FALSE);
+    MSG m;
+    while (GetMessageW(&m, NULL, 0, 0)) {
+        if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
+    }
+    EnableWindow(hwnd, TRUE);
+    SetForegroundWindow(hwnd);
+    DeleteObject(hFont);
+
+    // 8. Unlock the editor.
+    if (hEditor) {
+        if (doc->hSci) SendMessageW(hEditor, SCI_SETREADONLY, FALSE, 0);
+        else           SendMessageW(hEditor, EM_SETREADONLY,  FALSE, 0);
+    }
 }
 
 static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out,
@@ -8397,7 +8645,7 @@ static void ShowNsbAboutDialog(HWND parent)
     AppendNsbRich(hEdit, Ls(L"ABOUT_VERSION"),   true,  RGB(0,0,0), 0, true);
     AppendNsbRich(hEdit, (version   + L"\r\n").c_str(), false, RGB(0,0,0), 0, true);
     AppendNsbRich(hEdit, Ls(L"ABOUT_EDITION"),   true,  RGB(0,0,0), 0, true);
-    AppendNsbRich(hEdit, L"1\r\n",                false, RGB(0,0,0), 0, true);
+    AppendNsbRich(hEdit, L"1 RC\r\n",             false, RGB(0,0,0), 0, true);
     AppendNsbRich(hEdit, L"\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\r\n\r\n", false, RGB(180,20,20), 0, true);
     AppendNsbRich(hEdit, Ls(L"ABOUT_DESC"),    false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, Ls(L"ABOUT_LICENSE"), true,  RGB(0,70,140), 0, false);
@@ -8751,6 +8999,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_SAVE_FTP, hInst, NULL);
 
+        HWND hPreviewBtn = CreateWindowExW(0, L"BUTTON", L"\U0001F9D0",
+            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
+            0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_PREVIEW, hInst, NULL);
+        ShowWindow(hPreviewBtn, SW_HIDE); // shown only when tab is FTP-linked
+
         HWND hLangUi = CreateWindowExW(0, L"COMBOBOX", L"",
             WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL,
             0, 0, S(90), S(200), hwnd, (HMENU)(UINT_PTR)IDC_NE_LANG_UI, hInst, NULL);
@@ -8886,6 +9139,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         Ne_SetTip(hParSpBtn,                                Ls(L"TIP_PARSPACE"));
         Ne_SetTip(hSaveBtn,                                 Ls(L"TIP_SAVE"));
         Ne_SetTip(hSaveFtpBtn,                              Ls(L"TIP_SAVE_FTP"));
+        Ne_SetTip(hPreviewBtn,                              Ls(L"TIP_PREVIEW"));
         Ne_SetTip(hLangUi,                                  Ls(L"TIP_LANG_UI"));
         Ne_SetTip(hCommentBtn,                              Ls(L"TIP_COMMENT"));
 
@@ -8940,6 +9194,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // ── Toolbar buttons that forward to menu commands ─────────────────────
         if (wmId == IDC_NE_SAVE)    { Ne_Save(hwnd); return 0; }
         if (wmId == IDC_NE_SAVE_FTP) { wmId = IDM_SAVE_TO_FTP; } // fall through to IDM_SAVE_TO_FTP handler
+        if (wmId == IDC_NE_PREVIEW)  { wmId = IDM_PREVIEW_FTP; } // fall through to IDM_PREVIEW_FTP handler
 
         // ── UI language combobox ──────────────────────────────────────────────
         if (wmId == IDC_NE_LANG_UI && wmEv == CBN_SELCHANGE) {
@@ -9053,6 +9308,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         }
         if (wmId == IDM_EXIT)       { PostMessageW(hwnd, WM_CLOSE, 0, 0); return 0; }
+        if (wmId == IDM_PREVIEW_FTP){ Ne_ShowPreviewOnFtp(hwnd); return 0; }
         if (wmId == IDM_PRINT)      { Ne_Print(hwnd);             return 0; }
         if (wmId == IDM_EXPORT_PDF) { Ne_ExportPdf(hwnd);         return 0; }
         // ── Language menu ─────────────────────────────────────────────────────
@@ -9642,6 +9898,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_CONTEXTMENU: {
         HWND hSrc  = (HWND)wParam;
         HWND hEdit = NeTabs_GetActiveEdit(hwnd);
+        NeTabDoc* ctxSciDoc = NULL;
+        { NeTabDoc* d = NeTabs_GetActiveDoc(hwnd);
+          if (d && d->hSci == hSrc) ctxSciDoc = d; }
+
         HWND hTab  = NeTabs_GetTabHwnd(hwnd);
 
         // ── Right-click on the tab bar area (including [+] and empty space) ──
@@ -9679,10 +9939,32 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
 
         // ── Right-click on the editor ──────────────────────────────────────────
-        if (hSrc != hEdit) break;
+        if (hSrc != hEdit && !ctxSciDoc) break;
 
         HMENU hCtx = CreatePopupMenu();
-        // Grey Undo/Redo based on whether the operation is available.
+        // Preview online — shown at top only when the tab is FTP-linked.
+        NeTabDoc* ctxDocFtp = ctxSciDoc ? ctxSciDoc : NeTabs_GetActiveDoc(hwnd);
+        if (ctxDocFtp && ctxDocFtp->isFtpFile) {
+            AppendMenuW(hCtx, MF_STRING, IDM_PREVIEW_FTP, Ls(L"MENU_PREVIEW_FTP"));
+            AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
+        }
+        if (ctxSciDoc) {
+            // Scintilla editor — use SCI_ messages.
+            HWND hS = ctxSciDoc->hSci;
+            bool canUndo = (bool)SendMessageW(hS, SCI_CANUNDO, 0, 0);
+            bool canRedo = (bool)SendMessageW(hS, SCI_CANREDO, 0, 0);
+            AppendMenuW(hCtx, MF_STRING|(canUndo?0:MF_GRAYED), IDM_UNDO, Ls(L"MENU_UNDO"));
+            AppendMenuW(hCtx, MF_STRING|(canRedo?0:MF_GRAYED), IDM_REDO, Ls(L"MENU_REDO"));
+            AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
+            Sci_Position ss = SendMessageW(hS, SCI_GETSELECTIONSTART, 0, 0);
+            Sci_Position se = SendMessageW(hS, SCI_GETSELECTIONEND,   0, 0);
+            bool hasSel = (ss != se);
+            AppendMenuW(hCtx, MF_STRING|(hasSel?0:MF_GRAYED), IDM_CUT,   Ls(L"MENU_CUT"));
+            AppendMenuW(hCtx, MF_STRING|(hasSel?0:MF_GRAYED), IDM_COPY,  Ls(L"MENU_COPY"));
+            AppendMenuW(hCtx, MF_STRING,                       IDM_PASTE, Ls(L"MENU_PASTE"));
+            AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
+            AppendMenuW(hCtx, MF_STRING, IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
+        } else {
         DWORD canUndo = (DWORD)SendMessageW(hEdit, EM_CANUNDO, 0, 0);
         DWORD canRedo = (DWORD)SendMessageW(hEdit, EM_CANREDO, 0, 0);
         AppendMenuW(hCtx, MF_STRING | (canUndo ? 0 : MF_GRAYED), IDM_UNDO, Ls(L"MENU_UNDO"));
@@ -9696,26 +9978,34 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         AppendMenuW(hCtx, MF_STRING, IDM_PASTE, Ls(L"MENU_PASTE"));
         AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
         AppendMenuW(hCtx, MF_STRING, IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
-        // Table properties — shown only when caret is inside a table
+        // Table/hrule properties — RichEdit only.
         if (Ne_CaretInTable(hEdit)) {
             AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
             AppendMenuW(hCtx, MF_STRING, IDM_CTX_TABLE_PROPS, Ls(L"CTX_TABLE_PROPS"));
         }
-        // Horizontal rule properties — shown only when caret is on a rule paragraph
         if (Ne_CaretOnHRule(hEdit)) {
             AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
             AppendMenuW(hCtx, MF_STRING, IDM_CTX_HRULE_PROPS, L"Horizontal Rule Properties...");
         }
+        } // end else (RichEdit branch)
 
         int sx = GET_X_LPARAM(lParam), sy = GET_Y_LPARAM(lParam);
         if (sx == -1 && sy == -1) {
             // Keyboard context-menu key: show near caret.
-            POINT pt = {}; SendMessageW(hEdit, EM_GETSCROLLPOS, 0, (LPARAM)&pt);
-            POINTL caret = {};
-            SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&caret, cr.cpMax);
-            POINT scr = { (int)caret.x, (int)caret.y };
-            ClientToScreen(hEdit, &scr);
-            sx = scr.x; sy = scr.y;
+            if (ctxSciDoc) {
+                Sci_Position pos = SendMessageW(ctxSciDoc->hSci, SCI_GETCURRENTPOS, 0, 0);
+                POINT pt = { (int)SendMessageW(ctxSciDoc->hSci, SCI_POINTXFROMPOSITION, 0, pos),
+                             (int)SendMessageW(ctxSciDoc->hSci, SCI_POINTYFROMPOSITION, 0, pos) };
+                ClientToScreen(ctxSciDoc->hSci, &pt);
+                sx = pt.x; sy = pt.y;
+            } else if (hEdit) {
+                CHARRANGE cr2 = {}; SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr2);
+                POINTL caret = {};
+                SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&caret, cr2.cpMax);
+                POINT scr = { (int)caret.x, (int)caret.y };
+                ClientToScreen(hEdit, &scr);
+                sx = scr.x; sy = scr.y;
+            }
         }
         TrackPopupMenu(hCtx, TPM_RIGHTBUTTON, sx, sy, 0, hwnd, NULL);
         DestroyMenu(hCtx);

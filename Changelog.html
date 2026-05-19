@@ -1,6 +1,14 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 19 May 2026 &mdash; v2026.05.19.09 (09:20)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 19 May 2026 &mdash; v2026.05.19.11 (11:27)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.19.11</span></h3>
+<p><strong>FTP Preview Online, upload-success auto-close, Edition 1 RC (19.05.2026, 11:27):</strong></p>
+<ul>
+<li><strong>FTP Preview Online:</strong> A new <em>Preview online</em> toolbar button (violet) and <code>FTP &gt; Preview online.</code> menu item appears when a Scintilla/plain-text tab is FTP-linked. Clicking it uploads the current unsaved buffer to the remote server and opens a preview dialog with the resolved URL pre-filled. Clicking <em>Open in browser</em> launches the URL in the default browser; closing the dialog (or clicking <em>Revert &amp; close</em>) re-uploads the backup to restore the original remote file. The FTP profile editor gains a <em>Web URL root</em> field that maps the server&rsquo;s root path to its public URL; the preview URL is constructed from that root plus the file&rsquo;s remote path. New locale keys: <code>TIP_PREVIEW</code>, <code>FTP_WEB_URL</code>, <code>MENU_PREVIEW_FTP</code>, <code>FTP_PREVIEW_LOCKED</code>, <code>FTP_PREVIEW_URL</code>, <code>BTN_OPEN_BROWSER</code>, <code>BTN_REVERT</code>, <code>FTP_PREVIEW_UP_FAIL</code>, <code>FTP_PREVIEW_REV_FAIL</code>. New structs/procs: <code>NePreviewDlgData</code>, <code>Ne_PreviewDlgProc</code>. Control/command IDs: <code>IDC_NE_PREVIEW</code>&nbsp;265, <code>IDM_PREVIEW_FTP</code>&nbsp;134.</li>
+<li><strong>FTP upload success auto-close:</strong> The &ldquo;File saved and uploaded successfully&rdquo; notification dialog now closes itself automatically after 2&frac12; seconds if the user does not click OK first. Implemented by adding an optional <code>autoCloseMs</code> parameter to <code>Ne_ShowChoiceDialog</code> and a <code>WM_TIMER</code> handler in <code>Ne_DialogWndProc</code> that posts <code>WM_CLOSE</code> on expiry. <code>NeDialogData</code> gains <code>int autoCloseMs = 0</code>.</li>
+<li><strong>About &mdash; Edition 1 RC:</strong> The About dialog now shows <code>Edition: 1 RC</code>. Will change to <code>Edition: 1</code> on full publication.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.19.09</span></h3>
 <p><strong>FTP Rename, remember last folder, auto-indent, smart backspace (19.05.2026, 09:20):</strong></p>

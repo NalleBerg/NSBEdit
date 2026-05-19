@@ -80,6 +80,7 @@ bool NeProfiles_Init()
         "  password      BLOB,"
         "  remember_pwd  INTEGER NOT NULL DEFAULT 0,"
         "  initial_path  TEXT    NOT NULL DEFAULT '/',"
+        "  web_url       TEXT    NOT NULL DEFAULT '',"
         "  created       INTEGER NOT NULL DEFAULT 0,"
         "  modified      INTEGER NOT NULL DEFAULT 0"
         ");"
@@ -94,6 +95,9 @@ bool NeProfiles_Init()
         s_db = nullptr;
         return false;
     }
+    // Migration: add web_url to existing databases (ignore error if column already exists).
+    sqlite3_exec(s_db, "ALTER TABLE profiles ADD COLUMN web_url TEXT NOT NULL DEFAULT ''",
+                 NULL, NULL, NULL);
     return true;
 }
 
@@ -192,7 +196,7 @@ static std::wstring Np_DecryptPw(const void* blob, int len)
 
 // ── Row → NeProfile ───────────────────────────────────────────────────────────
 // Column order: id, friendly_name, protocol, host, port, username,
-//               password, remember_pwd, initial_path
+//               password, remember_pwd, initial_path, web_url
 static NeProfile Np_RowToProfile(sqlite3_stmt* st)
 {
     NeProfile p;
@@ -204,6 +208,8 @@ static NeProfile Np_RowToProfile(sqlite3_stmt* st)
     p.username       = Np_U2W((const char*)sqlite3_column_text(st, 5));
     p.rememberPassword = (sqlite3_column_int(st, 7) != 0);
     p.initialPath    = Np_U2W((const char*)sqlite3_column_text(st, 8));
+    const char* wu   = (const char*)sqlite3_column_text(st, 9);
+    p.webUrl         = wu ? Np_U2W(wu) : L"";
     if (p.rememberPassword)
         p.password = Np_DecryptPw(sqlite3_column_blob(st, 6),
                                    sqlite3_column_bytes(st, 6));
@@ -220,8 +226,8 @@ bool NeProfiles_Add(NeProfile& p)
 
     const char* sql =
         "INSERT INTO profiles"
-        " (friendly_name,protocol,host,port,username,password,remember_pwd,initial_path,created,modified)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?);";
+        " (friendly_name,protocol,host,port,username,password,remember_pwd,initial_path,web_url,created,modified)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?);";
     sqlite3_stmt* st = nullptr;
     if (sqlite3_prepare_v2(s_db, sql, -1, &st, NULL) != SQLITE_OK) return false;
 
@@ -237,8 +243,9 @@ bool NeProfiles_Add(NeProfile& p)
         sqlite3_bind_null(st, 6);
     sqlite3_bind_int  (st, 7, p.rememberPassword ? 1 : 0);
     sqlite3_bind_text (st, 8, Np_W2U(p.initialPath).c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int64(st, 9, now);
+    sqlite3_bind_text (st, 9, Np_W2U(p.webUrl).c_str(),      -1, SQLITE_TRANSIENT);
     sqlite3_bind_int64(st,10, now);
+    sqlite3_bind_int64(st,11, now);
 
     bool ok = (sqlite3_step(st) == SQLITE_DONE);
     if (ok) p.id = sqlite3_last_insert_rowid(s_db);
@@ -255,7 +262,7 @@ bool NeProfiles_Update(const NeProfile& p)
 
     const char* sql =
         "UPDATE profiles SET friendly_name=?,protocol=?,host=?,port=?,username=?,"
-        "password=?,remember_pwd=?,initial_path=?,modified=? WHERE id=?;";
+        "password=?,remember_pwd=?,initial_path=?,web_url=?,modified=? WHERE id=?;";
     sqlite3_stmt* st = nullptr;
     if (sqlite3_prepare_v2(s_db, sql, -1, &st, NULL) != SQLITE_OK) return false;
 
@@ -271,8 +278,9 @@ bool NeProfiles_Update(const NeProfile& p)
         sqlite3_bind_null(st, 6);
     sqlite3_bind_int  (st, 7, p.rememberPassword ? 1 : 0);
     sqlite3_bind_text (st, 8, Np_W2U(p.initialPath).c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int64(st, 9, now);
-    sqlite3_bind_int64(st,10, p.id);
+    sqlite3_bind_text (st, 9, Np_W2U(p.webUrl).c_str(),      -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(st,10, now);
+    sqlite3_bind_int64(st,11, p.id);
 
     bool ok = (sqlite3_step(st) == SQLITE_DONE);
     sqlite3_finalize(st);
@@ -296,7 +304,7 @@ bool NeProfiles_List(std::vector<NeProfile>& out)
     out.clear();
     if (!s_db) return false;
     const char* sql =
-        "SELECT id,friendly_name,protocol,host,port,username,password,remember_pwd,initial_path"
+        "SELECT id,friendly_name,protocol,host,port,username,password,remember_pwd,initial_path,web_url"
         " FROM profiles ORDER BY friendly_name COLLATE NOCASE;";
     sqlite3_stmt* st = nullptr;
     if (sqlite3_prepare_v2(s_db, sql, -1, &st, NULL) != SQLITE_OK) return false;
@@ -310,7 +318,7 @@ bool NeProfiles_GetById(int64_t id, NeProfile& out)
 {
     if (!s_db) return false;
     const char* sql =
-        "SELECT id,friendly_name,protocol,host,port,username,password,remember_pwd,initial_path"
+        "SELECT id,friendly_name,protocol,host,port,username,password,remember_pwd,initial_path,web_url"
         " FROM profiles WHERE id=?;";
     sqlite3_stmt* st = nullptr;
     if (sqlite3_prepare_v2(s_db, sql, -1, &st, NULL) != SQLITE_OK) return false;
