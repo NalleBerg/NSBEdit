@@ -359,6 +359,7 @@ static void Ne_SetupScintillaStyle(HWND hSci)
     sci(SCI_SETSCROLLWIDTHTRACKING, TRUE, 0);
     sci(SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
     sci(SCI_SETTABWIDTH, 4, 0);
+    sci(SCI_SETBACKSPACEUNINDENTS, TRUE, 0);
     // Line number margin (margin 0)
     sci(SCI_SETMARGINTYPEN,  0, SC_MARGIN_NUMBER);
     sci(SCI_SETMARGINWIDTHN, 0, s_lineNumsOn ? S(44) : 0);
@@ -763,6 +764,40 @@ static void Ne_ApplyLang(HWND hSci, int langIdx)
 // Phase 1: if the typed text from the start of the line contains a space (multi-token),
 //          scan all document lines for those starting with that phrase prefix.
 // Phase 2: fall back to keyword-list word completion when no phrase matches.
+// Auto-indent: on newline, copy leading whitespace from the previous line.
+// Called from SCN_CHARADDED after the character has been inserted.
+static void Ne_SciAutoIndent(HWND hSci, int ch)
+{
+    if (ch != '\n') return;
+
+    int curPos  = (int)SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0);
+    int curLine = (int)SendMessageW(hSci, SCI_LINEFROMPOSITION, (WPARAM)curPos, 0);
+    if (curLine <= 0) return;
+
+    int prevLine      = curLine - 1;
+    int prevLineStart = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE,   (WPARAM)prevLine, 0);
+    int prevLineEnd   = (int)SendMessageW(hSci, SCI_GETLINEENDPOSITION, (WPARAM)prevLine, 0);
+    int len = prevLineEnd - prevLineStart;
+    if (len <= 0) return;
+
+    std::string prevContent(len + 1, '\0');
+    Sci_TextRange tr{};
+    tr.chrg.cpMin = prevLineStart;
+    tr.chrg.cpMax = prevLineEnd;
+    tr.lpstrText  = prevContent.data();
+    SendMessageW(hSci, SCI_GETTEXTRANGE, 0, (LPARAM)&tr);
+
+    int indent = 0;
+    while (indent < len && (prevContent[indent] == ' ' || prevContent[indent] == '\t'))
+        ++indent;
+
+    if (indent == 0) return;
+
+    std::string ws = prevContent.substr(0, indent);
+    SendMessageW(hSci, SCI_INSERTTEXT,     (WPARAM)curPos,                (LPARAM)ws.c_str());
+    SendMessageW(hSci, SCI_SETEMPTYSELECTION, curPos + (int)ws.size(), 0);
+}
+
 // Auto-close bracket/quote pairs for Scintilla.
 // Called from SCN_CHARADDED after the character has been inserted.
 static void Ne_SciAutoPair(HWND hSci, int ch)
@@ -7073,7 +7108,8 @@ static LRESULT CALLBACK Ne_InputDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 
-static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out)
+static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out,
+                               const std::wstring& initialValue = L"")
 {
     HINSTANCE hi = GetModuleHandleW(NULL);
     WNDCLASSW wc = {}; wc.lpfnWndProc = Ne_InputDlgProc; wc.hInstance = hi;
@@ -7111,6 +7147,10 @@ static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t*
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,
         PAD, PAD + S(28), rc.right - 2*PAD, S(26), dlg, (HMENU)4001, hi, NULL);
     SendMessageW(hEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
+    if (!initialValue.empty()) {
+        SetWindowTextW(hEdit, initialValue.c_str());
+        SendMessageW(hEdit, EM_SETSEL, 0, -1);
+    }
 
     d.dd.buttonCount = 2;
     d.dd.buttons[0] = { IDOK,     Ls(L"BTN_OK"),     NeBtnTone::Green, IDI_INFORMATION,
@@ -7166,6 +7206,8 @@ struct NeFtpBrowserData {
     bool                       saveMode           = false;
     HWND                       hFilenameEdit      = NULL;  // filename input (save mode)
     std::wstring               pendingSaveRemotePath;      // set when user confirms save
+    // ── Navigation state ──────────────────────────────────────────────────────
+    std::wstring               lastVisitedDir;             // updated on folder expand; saved on close
 };
 
 static HTREEITEM Ne_FtpTreeAddItem(HWND hTree, HTREEITEM hParent,
@@ -7324,8 +7366,10 @@ static LRESULT CALLBACK Ne_FtpBrowserProc(HWND hwnd, UINT msg, WPARAM wParam, LP
             NMTREEVIEWW* nm = (NMTREEVIEWW*)lParam;
             if (nm->action == TVE_EXPAND) {
                 int idx = (int)(INT_PTR)nm->itemNew.lParam;
-                if (idx >= 0 && idx < (int)d->nodes.size() && d->nodes[idx].isDir)
+                if (idx >= 0 && idx < (int)d->nodes.size() && d->nodes[idx].isDir) {
                     Ne_FtpTreeLoadChildren(hwnd, nm->itemNew.hItem, d, idx);
+                    d->lastVisitedDir = d->nodes[idx].fullPath;
+                }
             }
             break;
         }
@@ -7383,8 +7427,10 @@ static LRESULT CALLBACK Ne_FtpBrowserProc(HWND hwnd, UINT msg, WPARAM wParam, LP
                 if (!d->nodes[selIdx].isDir && !d->saveMode)
                     AppendMenuW(hCtx, MF_STRING, 5010, Ls(L"FTP_CTX_OPEN"));
                 AppendMenuW(hCtx, MF_STRING, 5011, Ls(L"FTP_CTX_CHMOD"));
-                if (selIdx > 0)
+                if (selIdx > 0) {
                     AppendMenuW(hCtx, MF_STRING, 5012, Ls(L"FTP_CTX_DELETE"));
+                    AppendMenuW(hCtx, MF_STRING, 5013, Ls(L"FTP_CTX_RENAME"));
+                }
             }
 
             int cmd = TrackPopupMenuEx(hCtx, TPM_RETURNCMD|TPM_RIGHTBUTTON|TPM_NONOTIFY,
@@ -7475,6 +7521,28 @@ static LRESULT CALLBACK Ne_FtpBrowserProc(HWND hwnd, UINT msg, WPARAM wParam, LP
                         Ne_FtpTreeReloadItem(hwnd, d, hCtxDirItem, ctxDirIdx);
                     }
                 }
+            } else if (cmd == 5013 && hasItem && selIdx > 0) {
+                std::wstring newName;
+                if (Ne_ShowInputDialog(hwnd, Ls(L"FTP_CTX_RENAME"), Ls(L"FTP_INPUT_RENAME"),
+                                       newName, d->nodes[selIdx].name)) {
+                    newName.erase(0, newName.find_first_not_of(L" \t"));
+                    if (!newName.empty() && newName != d->nodes[selIdx].name) {
+                        // Build new full path: same parent directory, new name
+                        std::wstring oldPath = d->nodes[selIdx].fullPath;
+                        size_t sl = oldPath.rfind(L'/');
+                        std::wstring newPath = (sl != std::wstring::npos)
+                            ? (oldPath.substr(0, sl + 1) + newName)
+                            : (L"/" + newName);
+                        SetCursor(LoadCursorW(NULL, IDC_WAIT));
+                        bool ok = NeFtp_Rename(oldPath, newPath);
+                        SetCursor(LoadCursorW(NULL, IDC_ARROW));
+                        if (!ok) {
+                            MessageBoxW(hwnd, NeFtp_GetLastError().c_str(), Ls(L"FTP_CTX_RENAME"), MB_ICONERROR|MB_OK);
+                        } else if (hCtxDirItem) {
+                            Ne_FtpTreeReloadItem(hwnd, d, hCtxDirItem, ctxDirIdx);
+                        }
+                    }
+                }
             }
             break;
         }
@@ -7489,6 +7557,11 @@ static LRESULT CALLBACK Ne_FtpBrowserProc(HWND hwnd, UINT msg, WPARAM wParam, LP
         return FALSE;
     }
     case WM_CLOSE:
+        if (d && !d->lastVisitedDir.empty()) {
+            std::string key = "ftp_lastdir_" + std::to_string(d->profileId);
+            std::string utf8Dir = Ne_WideToCodepage(d->lastVisitedDir, CP_UTF8);
+            NeProfiles_SetStrSetting(key.c_str(), utf8Dir);
+        }
         PostQuitMessage(0);
         DestroyWindow(hwnd);
         return 0;
@@ -7498,6 +7571,45 @@ static LRESULT CALLBACK Ne_FtpBrowserProc(HWND hwnd, UINT msg, WPARAM wParam, LP
         return (LRESULT)GetStockObject(WHITE_BRUSH);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+// Walks the loaded tree and expands each folder component of targetPath in
+// order, making FTP requests as needed (TVN_ITEMEXPANDINGW fires synchronously).
+// Call this before the message loop.
+static void Ne_FtpTreeExpandToPath(NeFtpBrowserData* d, const std::wstring& targetPath)
+{
+    if (targetPath.empty() || targetPath == L"/") return;
+    // Split into path components, skipping leading '/'
+    std::vector<std::wstring> parts;
+    size_t i = (targetPath[0] == L'/') ? 1 : 0;
+    while (i < targetPath.size()) {
+        size_t j = targetPath.find(L'/', i);
+        if (j == std::wstring::npos) j = targetPath.size();
+        if (j > i) parts.push_back(targetPath.substr(i, j - i));
+        if (j >= targetPath.size()) break;
+        i = j + 1;
+    }
+    HTREEITEM hCurrent = d->htiRoot;
+    for (const auto& part : parts) {
+        HTREEITEM hChild = TreeView_GetChild(d->hwndTree, hCurrent);
+        HTREEITEM hMatch = nullptr;
+        while (hChild) {
+            TVITEMW ti = {}; ti.hItem = hChild; ti.mask = TVIF_PARAM;
+            TreeView_GetItem(d->hwndTree, &ti);
+            int idx = (int)(INT_PTR)ti.lParam;
+            if (idx >= 0 && idx < (int)d->nodes.size()
+                    && d->nodes[idx].isDir && d->nodes[idx].name == part) {
+                hMatch = hChild;
+                break;
+            }
+            hChild = TreeView_GetNextSibling(d->hwndTree, hChild);
+        }
+        if (!hMatch) break;
+        TreeView_Expand(d->hwndTree, hMatch, TVE_EXPAND);
+        hCurrent = hMatch;
+    }
+    TreeView_SelectItem(d->hwndTree, hCurrent);
+    TreeView_EnsureVisible(d->hwndTree, hCurrent);
 }
 
 static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
@@ -7590,23 +7702,33 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
         SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
     }
 
-    // Seed root node
+    // Seed root node at server root (/), then expand to last visited (or initialPath)
     {
-        std::wstring rootPath = NeFtp_GetActiveProfile().initialPath;
-        if (rootPath.empty()) rootPath = L"/";
         NeFtpTreeNode rootNode;
-        rootNode.name     = rootPath;
-        rootNode.fullPath = rootPath;
+        rootNode.name     = L"/";
+        rootNode.fullPath = L"/";
         rootNode.isDir    = true;
         rootNode.loaded   = false;
         d.nodes.push_back(rootNode);
-        d.htiRoot = Ne_FtpTreeAddItem(d.hwndTree, TVI_ROOT, rootPath, true, 0,
+        d.htiRoot = Ne_FtpTreeAddItem(d.hwndTree, TVI_ROOT, L"/", true, 0,
                                        d.iFolderClosed, d.iFolderOpen);
-        // Expand root immediately
         TreeView_Expand(d.hwndTree, d.htiRoot, TVE_EXPAND);
-    }
 
-    if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
+        // Determine target folder: saved last dir, or profile's initial path
+        std::wstring expandTo = NeFtp_GetActiveProfile().initialPath;
+        if (expandTo.empty()) expandTo = L"/";
+        std::string key = "ftp_lastdir_" + std::to_string(profileId);
+        std::string savedUtf8;
+        if (NeProfiles_GetStrSetting(key.c_str(), "", savedUtf8) && !savedUtf8.empty()) {
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, savedUtf8.c_str(), -1, NULL, 0);
+            if (wlen > 1) {
+                std::wstring saved(wlen - 1, L'\0');
+                MultiByteToWideChar(CP_UTF8, 0, savedUtf8.c_str(), -1, &saved[0], wlen);
+                expandTo = saved;
+            }
+        }
+        Ne_FtpTreeExpandToPath(&d, expandTo);
+    }
     MSG m;
     while (GetMessageW(&m, NULL, 0, 0)) {
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
@@ -7982,19 +8104,31 @@ static std::wstring Ne_ShowFtpBrowserSave(HWND parent, int64_t profileId,
         SetPropW(hCancel, L"NePrevProc", (HANDLE)p2);
     }
 
-    // Seed root node
+    // Seed root node at server root (/), then expand to last visited (or initialPath)
     {
-        std::wstring rootPath = NeFtp_GetActiveProfile().initialPath;
-        if (rootPath.empty()) rootPath = L"/";
         NeFtpTreeNode rootNode;
-        rootNode.name     = rootPath;
-        rootNode.fullPath = rootPath;
+        rootNode.name     = L"/";
+        rootNode.fullPath = L"/";
         rootNode.isDir    = true;
         rootNode.loaded   = false;
         d.nodes.push_back(rootNode);
-        d.htiRoot = Ne_FtpTreeAddItem(d.hwndTree, TVI_ROOT, rootPath, true, 0,
+        d.htiRoot = Ne_FtpTreeAddItem(d.hwndTree, TVI_ROOT, L"/", true, 0,
                                        d.iFolderClosed, d.iFolderOpen);
         TreeView_Expand(d.hwndTree, d.htiRoot, TVE_EXPAND);
+
+        std::wstring expandTo = NeFtp_GetActiveProfile().initialPath;
+        if (expandTo.empty()) expandTo = L"/";
+        std::string key = "ftp_lastdir_" + std::to_string(profileId);
+        std::string savedUtf8;
+        if (NeProfiles_GetStrSetting(key.c_str(), "", savedUtf8) && !savedUtf8.empty()) {
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, savedUtf8.c_str(), -1, NULL, 0);
+            if (wlen > 1) {
+                std::wstring saved(wlen - 1, L'\0');
+                MultiByteToWideChar(CP_UTF8, 0, savedUtf8.c_str(), -1, &saved[0], wlen);
+                expandTo = saved;
+            }
+        }
+        Ne_FtpTreeExpandToPath(&d, expandTo);
     }
 
     if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
@@ -9453,6 +9587,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     NeTabDoc* docAC = NeTabs_GetActiveDoc(hwnd);
                     if (docAC && docAC->hSci == hSciActive)
                         Ne_SciAutoComplete(hSciActive, docAC->langId);
+                    Ne_SciAutoIndent(hSciActive, scn->ch);
                     Ne_SciAutoPair(hSciActive, scn->ch);
                 }
             } else if (scn->nmhdr.code == SCN_ZOOM) {

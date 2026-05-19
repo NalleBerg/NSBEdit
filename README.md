@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.18.12**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.19.09**
 
 ## Download
 
@@ -49,6 +49,11 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Line Spacing dialog** — choose Single, 1.5 lines, or Double line spacing (Format → Line Spacing); same owner-draw style, white background, radio buttons, fully i18n
 - **Word wrap ↵ indicator in code tabs** — a teal-green ↵ glyph marks every wrapped visual sub-line in Scintilla (code) tabs when word wrap is on, drawn to the left of the vertical scrollbar
 - **Edition 1** — About dialog now shows Edition: 1 below the version number
+- **Portable and installed modes** — drop `nsbedit.db` (included in the ZIP) next to the exe for portable operation; installer copies it to `%APPDATA%\NSBEdit\` for installed mode. If neither file is present the app runs with an in-memory database and warns the user
+- **FTP browser — Rename**: right-click any file or folder to rename it in place; input dialog pre-filled with the current name
+- **FTP browser — remember last folder**: reopens in the folder you were last in (per profile); tree always roots at `/` so you can navigate anywhere
+- **Auto-indent on Enter** in code (Scintilla) tabs — new lines inherit the indentation of the line above, preserving tabs and spaces exactly
+- **Smart backspace unindent** in code tabs — Backspace in leading whitespace removes one full indent level
 
 ## Building from source
 

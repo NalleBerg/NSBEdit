@@ -34,3 +34,7 @@ bool NeProfiles_GetById(int64_t id, NeProfile& out);
 // Generic integer settings (key/value store in DB).
 bool NeProfiles_GetIntSetting(const char* key, int defaultValue, int& out);
 bool NeProfiles_SetIntSetting(const char* key, int value);
+
+// Generic string settings (key/value store in DB).
+bool NeProfiles_GetStrSetting(const char* key, const std::string& defaultValue, std::string& out);
+bool NeProfiles_SetStrSetting(const char* key, const std::string& value);

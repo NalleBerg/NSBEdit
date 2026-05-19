@@ -49,6 +49,7 @@ bool NeFtp_Chmod(const std::wstring& remotePath, int mode);
 bool NeFtp_Delete(const std::wstring& remotePath, bool isDir);
 bool NeFtp_MkDir(const std::wstring& remotePath);
 bool NeFtp_CreateEmptyFile(const std::wstring& remotePath);
+bool NeFtp_Rename(const std::wstring& oldPath, const std::wstring& newPath);
 
 // Human-readable description of the last error.
 std::wstring NeFtp_GetLastError();

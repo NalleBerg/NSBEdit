@@ -624,6 +624,53 @@ bool NeFtp_MkDir(const std::wstring& remotePath)
     return true;
 }
 
+bool NeFtp_Rename(const std::wstring& oldPath, const std::wstring& newPath)
+{
+    if (!s_curl) return false;
+
+    struct curl_slist* cmds = nullptr;
+    std::string oldU = Nf_W2U(oldPath);
+    std::string newU = Nf_W2U(newPath);
+
+    if (s_activeProfile.protocol == L"SFTP") {
+        // libssh2 supports rename via CURLOPT_QUOTE with "rename" command
+        std::string cmd = "rename " + oldU + " " + newU;
+        cmds = curl_slist_append(NULL, cmd.c_str());
+    } else {
+        // Standard FTP: RNFR then RNTO
+        std::string rnfr = "RNFR " + oldU;
+        std::string rnto = "RNTO " + newU;
+        cmds = curl_slist_append(NULL, rnfr.c_str());
+        cmds = curl_slist_append(cmds, rnto.c_str());
+    }
+
+    // Use parent dir of old path as URL context
+    std::wstring parent = oldPath;
+    size_t sl = parent.rfind(L'/');
+    if (sl != std::wstring::npos && sl > 0) parent = parent.substr(0, sl);
+    else parent = L"/";
+
+    std::string url = Nf_BuildUrl(parent);
+    if (url.back() != '/') url += '/';
+
+    std::string dummy;
+    Nf_ResetOpOpts(dummy);
+    curl_easy_setopt(s_curl, CURLOPT_URL,           url.c_str());
+    curl_easy_setopt(s_curl, CURLOPT_QUOTE,         cmds);
+    curl_easy_setopt(s_curl, CURLOPT_NOBODY,        1L);
+    curl_easy_setopt(s_curl, CURLOPT_WRITEFUNCTION, Nf_WriteBuf);
+    curl_easy_setopt(s_curl, CURLOPT_WRITEDATA,     &dummy);
+
+    CURLcode rc = curl_easy_perform(s_curl);
+
+    curl_slist_free_all(cmds);
+    curl_easy_setopt(s_curl, CURLOPT_QUOTE,  (struct curl_slist*)NULL);
+    curl_easy_setopt(s_curl, CURLOPT_NOBODY, 0L);
+
+    if (rc != CURLE_OK) { Nf_SetLastError(rc); return false; }
+    return true;
+}
+
 bool NeFtp_CreateEmptyFile(const std::wstring& remotePath)
 {
     if (!s_curl) return false;

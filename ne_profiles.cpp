@@ -139,6 +139,39 @@ bool NeProfiles_SetIntSetting(const char* key, int value)
     return ok;
 }
 
+bool NeProfiles_GetStrSetting(const char* key, const std::string& defaultValue, std::string& out)
+{
+    out = defaultValue;
+    if (!s_db || !key) return false;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(s_db, "SELECT value FROM settings WHERE key=?", -1, &stmt, nullptr) != SQLITE_OK)
+        return false;
+    sqlite3_bind_text(stmt, 1, key, -1, SQLITE_STATIC);
+    bool found = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        const char* v = (const char*)sqlite3_column_text(stmt, 0);
+        if (v) { out = v; found = true; }
+    }
+    sqlite3_finalize(stmt);
+    return found;
+}
+
+bool NeProfiles_SetStrSetting(const char* key, const std::string& value)
+{
+    if (!s_db || !key) return false;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(s_db,
+        "INSERT INTO settings(key,value) VALUES(?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        -1, &stmt, nullptr) != SQLITE_OK)
+        return false;
+    sqlite3_bind_text(stmt, 1, key, -1, SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 2, value.c_str(), -1, SQLITE_STATIC);
+    bool ok = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+    return ok;
+}
+
 // ── Password helpers ──────────────────────────────────────────────────────────
 static void Np_EncryptPw(const std::wstring& pw, std::vector<BYTE>& out)
 {

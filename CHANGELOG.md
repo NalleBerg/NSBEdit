@@ -1,10 +1,19 @@
 # Changelog
 
+## v2026.05.19.09 - 19.05.2026 09:20
+
+- **FTP browser — Rename**: Right-clicking any file or folder (index > 0) now shows a Rename… item in the context menu. An input dialog pre-filled with the current name appears; confirming sends `RNFR`/`RNTO` commands (FTP) or a `rename` command (SFTP) via `NeFtp_Rename(oldPath, newPath)` (new function in `ne_ftp.h/cpp`). The parent folder reloads on success. `FTP_CTX_RENAME` and `FTP_INPUT_RENAME` added to `locale/en_GB.txt`. `Ne_ShowInputDialog` gains an optional `initialValue` parameter for pre-filling the edit control.
+- **FTP browser — remember last visited folder**: The last folder the user expanded is saved per profile to the DB on dialog close (`ftp_lastdir_<id>` key via new `NeProfiles_SetStrSetting`). On reopen the tree always roots at `/` (server root) and auto-expands down to the saved folder; if no saved folder exists it auto-expands to the profile's initial path. New helper `Ne_FtpTreeExpandToPath` walks the tree, expanding each component in turn (each `TreeView_Expand` fires `TVN_ITEMEXPANDINGW` synchronously, loading children on demand before the message loop starts).
+- **`ne_profiles` — string settings**: `NeProfiles_GetStrSetting` / `NeProfiles_SetStrSetting` added to `ne_profiles.h/cpp`. The existing `settings` table already stores values as TEXT so no schema change is needed.
+- **Auto-indent on Enter** (Scintilla tabs): `Ne_SciAutoIndent` (called from `SCN_CHARADDED` alongside `Ne_SciAutoPair`) copies the leading whitespace — tabs or spaces — of the previous line to the new line after pressing Enter.
+- **Smart backspace unindent** (Scintilla tabs): `SCI_SETBACKSPACEUNINDENTS TRUE` set in `Ne_SetupScintillaStyle` — pressing Backspace when the caret is inside the leading whitespace of a line removes one full indent level.
+
 ## v2026.05.18.12 - 18.05.2026 12:19
 
 - **Scintilla word wrap ↵ indicator**: A teal-green ↵ glyph now appears at the right edge of every wrapped visual sub-line in Scintilla (code) tabs when word wrap is on. Implemented via `SCN_PAINTED` — Scintilla's documented post-paint notification — rather than a `WM_PAINT` subclass (Scintilla's own caret/selection repaints were overwriting the subclass overlay). The glyph is drawn to the left of the custom MSB vertical scrollbar; `WS_CLIPSIBLINGS` on the Scintilla window was silently clipping the previous attempt into invisibility. New helper: `Ne_DrawSciWrapIndicators(hSci)` called from `WM_NOTIFY → SCN_PAINTED`.
 - **[+] new-tab button always visible**: `NeTabs_TabProc` `WM_PAINT` now calls `RedrawWindow(hBtnNew, RDW_INVALIDATE | RDW_UPDATENOW)` after painting the tab strip, so the [+] button is never left erased when Windows theming overdraw covers the sibling button area.
 - **Edition 1 in About dialog**: The About dialog now shows `Edition: 1` below the version line. Locale key `ABOUT_EDITION` added to `locale/en_GB.txt`.
+- **Portable/installed/memory DB modes** (`ne_profiles.cpp`): `Np_GetDbPath()` now checks `%APPDATA%\NSBEdit\nsbedit.db` first (installed — file must pre-exist; directory is never auto-created), then `.\nsbedit.db` next to the exe (portable stub from ZIP), then falls back to `:memory:` with a `MessageBoxW` warning so the user knows FTP profiles and settings will be lost on exit. `NeProfiles_IsMemory()` added. Portable stub `nsbedit.db` (0-byte seed file recognised by SQLite3 as a fresh empty database) included in the workspace and in the distributable ZIP via `pack.ps1`.
 
 ## v2026.05.18.09 - 18.05.2026 09:08
 

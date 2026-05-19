@@ -151,6 +151,13 @@
                                                 — opener {[('"« inserts closer, caret
                                                 between; closer typed when same char
                                                 follows caret jumps over it.
+                                                Ne_SciAutoIndent (called from SCN_CHARADDED)
+                                                — on '\n', copies leading whitespace (tabs
+                                                or spaces) from the previous line to the
+                                                new line. SCI_SETBACKSPACEUNINDENTS TRUE
+                                                set in Ne_SetupScintillaStyle: Backspace
+                                                in leading whitespace removes one indent
+                                                level.
                                                 WM_CHAR in Ne_EditCaretProc (RichEdit) —
                                                 same logic; non-empty selection wraps
                                                 selected text in the pair.
@@ -230,6 +237,37 @@
                                                 # comments, \n CRLF \t tab \\ backslash.
                                                 Loaded by Ne_LoadLocale() at startup.
                                                 Never read from disk at runtime.
+
+  ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
+                                                SQLite3 (statically linked). DB lookup order
+                                                at init: (1) %APPDATA%\NSBEdit\nsbedit.db —
+                                                installed mode, file must pre-exist, directory
+                                                never auto-created; (2) .\nsbedit.db next to
+                                                the exe — portable mode, stub shipped in ZIP;
+                                                (3) :memory: — fallback with MessageBoxW
+                                                warning, all data lost on exit.
+                                                NeProfiles_Init() / NeProfiles_Close().
+                                                NeProfiles_IsMemory() — true when running on
+                                                an in-memory DB.
+                                                NeProfiles_Add/Update/Delete/List/GetById —
+                                                CRUD for NeProfile structs.
+                                                NeProfiles_GetIntSetting / SetIntSetting —
+                                                key/value store in settings table.
+                                                NeProfiles_GetStrSetting / SetStrSetting —
+                                                string key/value store in same settings
+                                                table (values already stored as TEXT).
+                                                Used for per-profile last-visited FTP
+                                                folder (key ftp_lastdir_<id>).
+                                                Passwords encrypted at rest via NeCrypto
+                                                (ne_crypto.h); remember_pwd flag controls
+                                                whether password is persisted.
+                                                nsbedit.db: 0-byte seed file; SQLite3
+                                                writes the schema on first use.
+
+  ne_crypto.h / ne_crypto.cpp                   Lightweight password encryption helper.
+                                                NeCrypto_Init() / NeCrypto_Encrypt() /
+                                                NeCrypto_Decrypt() — used by ne_profiles
+                                                to encrypt FTP passwords stored in the DB.
 
   rtf2html\ne_rtf2html_lib.h /                  RTF-to-HTML5 conversion wrapper around
   rtf2html\ne_rtf2html_lib.cpp                  the rtf2html library (LGPL-2.1, Valentin
