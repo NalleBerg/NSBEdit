@@ -31,6 +31,8 @@ void NeFtp_DisconnectAll();
 bool NeFtp_IsConnected();
 // True if the specific profile is connected.
 bool NeFtp_IsConnected(int64_t profileId);
+// Send a NOOP (FTP) or no-op (SFTP) to prevent server idle-timeout during long sessions.
+bool NeFtp_Keepalive();
 // Switch which connection is active; returns false if that profile is not connected.
 bool NeFtp_SetActiveConn(int64_t profileId);
 const NeProfile& NeFtp_GetActiveProfile();

@@ -83,6 +83,9 @@ static void Nf_ApplyCommonOpts()
     curl_easy_setopt(s_curl, CURLOPT_LOW_SPEED_LIMIT, 0L);
     curl_easy_setopt(s_curl, CURLOPT_TIMEOUT, 60L);
     curl_easy_setopt(s_curl, CURLOPT_VERBOSE, 0L);
+    curl_easy_setopt(s_curl, CURLOPT_TCP_KEEPALIVE, 1L);
+    curl_easy_setopt(s_curl, CURLOPT_TCP_KEEPIDLE,  60L);
+    curl_easy_setopt(s_curl, CURLOPT_TCP_KEEPINTVL, 30L);
     if (s_activeProfile.protocol == L"SFTP") {
         curl_easy_setopt(s_curl, CURLOPT_SSH_AUTH_TYPES, (long)CURLSSH_AUTH_PASSWORD);
         // Accept any host key (TOFU-less for user convenience; acceptable in
@@ -382,6 +385,29 @@ bool NeFtp_IsConnected() { return s_curl != nullptr; }
 bool NeFtp_IsConnected(int64_t profileId) { return s_conns.count(profileId) > 0; }
 
 const NeProfile& NeFtp_GetActiveProfile() { return s_activeProfile; }
+
+bool NeFtp_Keepalive()
+{
+    if (!s_curl) return false;
+    // SFTP: the SSH transport handles its own keepalives; no NOOP needed.
+    if (s_activeProfile.protocol == L"SFTP") return true;
+    // FTP: send a NOOP command to prevent the server idle-timeout dropping the
+    // control connection while the user has the preview dialog open.
+    std::wstring pingPath = s_activeProfile.initialPath.empty()
+                          ? L"/" : s_activeProfile.initialPath;
+    std::string url = Nf_BuildUrl(pingPath);
+    if (url.back() != '/') url += '/';
+    std::string dummy;
+    Nf_ResetOpOpts(dummy);
+    curl_easy_setopt(s_curl, CURLOPT_URL,           url.c_str());
+    curl_easy_setopt(s_curl, CURLOPT_NOBODY,        1L);
+    curl_easy_setopt(s_curl, CURLOPT_CUSTOMREQUEST, "NOOP");
+    CURLcode rc = curl_easy_perform(s_curl);
+    curl_easy_setopt(s_curl, CURLOPT_CUSTOMREQUEST, (char*)NULL);
+    curl_easy_setopt(s_curl, CURLOPT_NOBODY,        0L);
+    if (rc != CURLE_OK) Nf_SetLastError(rc);
+    return rc == CURLE_OK;
+}
 
 bool NeFtp_ListDir(const std::wstring& remotePath, std::vector<NeFtpEntry>& out)
 {

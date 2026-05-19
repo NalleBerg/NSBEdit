@@ -1,6 +1,16 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 19 May 2026 &mdash; v2026.05.19.11 (11:27)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 19 May 2026 &mdash; v2026.05.19.14 (14:42)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.19.14</span></h3>
+<p><strong>PHP highlighting fix, FTP profile help, preview extras, FTP keepalive, follow.ps1 persistent counter (19.05.2026, 14:42):</strong></p>
+<ul>
+<li><strong>PHP syntax highlighting fixed:</strong> PHP files now use the <code>hypertext</code> lexer (replacing <code>phpscript</code>) so both embedded HTML tokens (<code>SCE_H_*</code>) and PHP tokens (<code>SCE_HPHP_* 118&ndash;127</code>) are coloured correctly. PHP keywords are passed to slot&nbsp;4 of <code>SCI_SETKEYWORDS</code> (not slot&nbsp;0). Line-comment toggling (<code>//</code>) updated to check the language name instead of the old lexer name.</li>
+<li><strong>FTP Profile Help dialog:</strong> A <code>?</code> owner-draw button (id&nbsp;1032, blue) added to the FTP profile editor. Clicking it opens a rich-text <em>FTP/SFTP Profile &mdash; Field Guide</em> window (<code>Ne_ShowFtpProfileHelp</code>) that explains every field in plain language, including the new <em>Web URL root</em> and a worked example of how <em>Preview online</em> builds the preview URL. New locale key: <code>FTP_HELP_TITLE</code>.</li>
+<li><strong>FTP Preview dialog &mdash; extra buttons:</strong> Two new buttons added to the <em>Preview online</em> dialog: <em>Save backup locally&hellip;</em> (<code>BTN_SAVE_BACKUP</code>) saves a local copy of the buffer before reverting, and <em>Close without reverting</em> (<code>BTN_CLOSE_ANYWAY</code>) lets the user leave the preview file live on the server.</li>
+<li><strong>FTP keepalive:</strong> TCP keepalive options (<code>CURLOPT_TCP_KEEPALIVE</code>, 60&thinsp;s idle, 30&thinsp;s interval) set on the curl handle inside <code>Nf_ApplyCommonOpts</code> to prevent server-side disconnects during long sessions. New <code>NeFtp_Keepalive()</code> function (added to <code>ne_ftp.h</code>&thinsp;/&thinsp;<code>ne_ftp.cpp</code>): sends a <code>NOOP</code> command to FTP servers to keep the control connection alive while the Preview dialog is open; no-op for SFTP (the SSH transport manages its own keepalives).</li>
+<li><strong>follow.ps1 &mdash; persistent run counter:</strong> The <code>RUN&nbsp;#N</code> banner counter is now saved to <code>makeit_count.txt</code> after every new build run and reloaded at startup, so the count persists across PowerShell session restarts. To reset, set the file to <code>0</code> or delete it. <code>skeleton_idea.txt</code> updated to document this file in the skeleton checklist.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.19.11</span></h3>
 <p><strong>FTP Preview Online, upload-success auto-close, Edition 1 RC (19.05.2026, 11:27):</strong></p>

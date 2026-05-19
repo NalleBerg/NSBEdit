@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.05.19.14 - 19.05.2026 14:42
+
+- **PHP syntax highlighting fixed**: PHP files now use the `hypertext` lexer (replacing `phpscript`) so both embedded HTML tokens and PHP tokens are coloured correctly. PHP keywords are passed to keyword slot 4 (not slot 0). Line-comment toggling (`//`) updated to check the language name instead of the old lexer name.
+- **FTP Profile Help dialog**: A `?` owner-draw button in the FTP profile editor opens a rich-text *FTP/SFTP Profile — Field Guide* window explaining every field, including *Web URL root* and how *Preview online* builds the preview URL. New locale key: `FTP_HELP_TITLE`.
+- **FTP Preview dialog — extra buttons**: *Save backup locally…* (`BTN_SAVE_BACKUP`) and *Close without reverting* (`BTN_CLOSE_ANYWAY`) added to the Preview online dialog for cases where the user wants to keep the preview file live or save a local copy before reverting the remote file.
+- **FTP keepalive**: TCP keepalive options set on the curl handle (`CURLOPT_TCP_KEEPALIVE`, 60 s idle, 30 s interval) to prevent server-side disconnects during long sessions. New `NeFtp_Keepalive()` (in `ne_ftp.h/cpp`): sends a NOOP to FTP servers to prevent idle-timeout on the control connection while the Preview dialog is open; no-op for SFTP (SSH transport handles its own keepalives).
+- **follow.ps1 — persistent run counter**: The `RUN #N` counter is now saved to `makeit_count.txt` and persists across PowerShell session restarts. To reset, set the file to `0` or delete it.
+
 ## v2026.05.19.11 - 19.05.2026 11:27
 
 - **FTP Preview Online**: A violet *Preview online* toolbar button (`IDC_NE_PREVIEW` 265) and `FTP > Preview online.` menu item (`IDM_PREVIEW_FTP` 134) appear when a Scintilla/plain-text tab is FTP-linked. Clicking uploads the current buffer to the remote server and opens a preview dialog with the resolved URL pre-filled. *Open in browser* launches the URL; closing (or *Revert & close*) re-uploads the backup to restore the original. The FTP profile editor gains a **Web URL root** field (`FTP_WEB_URL` locale key, stored in profile) that maps the server root to its public URL. New: `NePreviewDlgData`, `Ne_PreviewDlgProc`. New locale keys: `TIP_PREVIEW`, `FTP_WEB_URL`, `MENU_PREVIEW_FTP`, `FTP_PREVIEW_LOCKED`, `FTP_PREVIEW_URL`, `BTN_OPEN_BROWSER`, `BTN_REVERT`, `FTP_PREVIEW_UP_FAIL`, `FTP_PREVIEW_REV_FAIL`.

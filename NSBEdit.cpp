@@ -276,7 +276,7 @@ static const NeLang s_langs[] = {
     { L"Markdown",     "markdown",    L"md|markdown"              },
     { L"Pascal",       "pascal",      L"pas|pp|dpr|lpr"           },
     { L"Perl",         "perl",        L"pl|pm|pod"                },
-    { L"PHP",          "phpscript",   L"php|php3|php4|php5|phtml" },
+    { L"PHP",          "hypertext",   L"php|php3|php4|php5|phtml" },
     { L"PowerShell",   "powershell",  L"ps1|psm1|psd1"            },
     { L"Python",       "python",      L"py|pyw|pyi"               },
     { L"Ruby",         "ruby",        L"rb|rbw|gemspec"           },
@@ -731,26 +731,33 @@ static void Ne_ApplyLang(HWND hSci, int langIdx)
     Ne_SetScintillaLexer(hSci, lexerName);
 
     // Send keyword list so the lexer colours keywords.
+    // For the hypertext lexer (HTML + PHP), PHP keywords go in slot 4.
     const char* kws = s_langKws[langIdx];
-    if (kws && *kws)
-        SendMessageA(hSci, SCI_SETKEYWORDS, 0, (LPARAM)kws);
+    if (kws && *kws) {
+        bool isPhp = wcscmp(s_langs[langIdx].name, L"PHP") == 0;
+        SendMessageA(hSci, SCI_SETKEYWORDS, isPhp ? 4 : 0, (LPARAM)kws);
+    }
 
     if (!lexerName) return;
     auto sc = [hSci](UINT m, WPARAM w, LPARAM l){ SendMessageW(hSci, m, w, l); };
 
-    if (strcmp(lexerName, "phpscript") == 0) {
-        // SCE_HPHP_*: 118=default 119=dqstring 120=sqstring 121=keyword
-        //             122=number  123=$variable 124=/*comment*/ 125=//comment
-        //             126=${var}-in-string  127=operator
-        sc(SCI_STYLESETFORE, 119, RGB(163,21,21));
-        sc(SCI_STYLESETFORE, 120, RGB(163,21,21));
-        sc(SCI_STYLESETFORE, 121, RGB(0,0,200));   sc(SCI_STYLESETBOLD, 121, TRUE);
-        sc(SCI_STYLESETFORE, 122, RGB(9,136,90));
-        sc(SCI_STYLESETFORE, 123, RGB(128,0,128));
-        sc(SCI_STYLESETFORE, 124, RGB(0,128,0));   sc(SCI_STYLESETITALIC, 124, TRUE);
-        sc(SCI_STYLESETFORE, 125, RGB(0,128,0));   sc(SCI_STYLESETITALIC, 125, TRUE);
-        sc(SCI_STYLESETFORE, 126, RGB(163,21,21));
-    } else if (strcmp(lexerName, "hypertext") == 0) {
+    bool isPhpLang = wcscmp(s_langs[langIdx].name, L"PHP") == 0;
+    if (strcmp(lexerName, "hypertext") == 0) {
+        if (isPhpLang) {
+            // PHP files: colour embedded PHP tokens (SCE_HPHP_*)
+            // 118=default 119=dqstring 120=sqstring 121=keyword
+            // 122=number  123=$variable 124=/*comment*/ 125=//comment
+            // 126=${var}-in-string  127=operator
+            sc(SCI_STYLESETFORE, 119, RGB(163,21,21));
+            sc(SCI_STYLESETFORE, 120, RGB(163,21,21));
+            sc(SCI_STYLESETFORE, 121, RGB(0,0,200));   sc(SCI_STYLESETBOLD, 121, TRUE);
+            sc(SCI_STYLESETFORE, 122, RGB(9,136,90));
+            sc(SCI_STYLESETFORE, 123, RGB(128,0,128));
+            sc(SCI_STYLESETFORE, 124, RGB(0,128,0));   sc(SCI_STYLESETITALIC, 124, TRUE);
+            sc(SCI_STYLESETFORE, 125, RGB(0,128,0));   sc(SCI_STYLESETITALIC, 125, TRUE);
+            sc(SCI_STYLESETFORE, 126, RGB(163,21,21));
+        }
+        // HTML tokens (SCE_H_*) — applied for both HTML and PHP files
         // SCE_H_*: 1=tag 2=unknowntag 3=attr 4=unknownattr 5=number
         //          6=dqstring 7=sqstring 9=comment 10=entity
         sc(SCI_STYLESETFORE, 1,  RGB(86,156,214));
@@ -6186,7 +6193,7 @@ static const char* Ne_GetLineComment(int langId)
     if (strcmp(lex, "cpp")        == 0) return "//";
     if (strcmp(lex, "rust")       == 0) return "//";
     if (strcmp(lex, "pascal")     == 0) return "//";
-    if (strcmp(lex, "phpscript")  == 0) return "//";
+    if (wcscmp(s_langs[langId].name, L"PHP") == 0) return "//";
     if (strcmp(lex, "lua")        == 0) return "--";
     if (strcmp(lex, "sql")        == 0) return "--";
     if (strcmp(lex, "python")     == 0) return "#";
@@ -6668,6 +6675,8 @@ struct NeFtpSiteData {
     NeDialogData dd;
 };
 
+static void Ne_ShowFtpProfileHelp(HWND parent);  // forward declaration
+
 static LRESULT CALLBACK Ne_FtpSiteProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     NeFtpSiteData* d = (NeFtpSiteData*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
@@ -6711,10 +6720,31 @@ static LRESULT CALLBACK Ne_FtpSiteProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         }
         // Cancel
         if (id == IDCANCEL) PostMessageW(hwnd, WM_CLOSE, 0, 0);
+        // Help
+        if (id == 1032) { Ne_ShowFtpProfileHelp(hwnd); return 0; }
         return 0;
     }
     case WM_DRAWITEM: {
         DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+        if (dis->CtlID == 1032) {
+            // "?" help button — white text on blue
+            RECT rc = dis->rcItem;
+            bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+            bool hover   = (GetPropW(dis->hwndItem, L"NeHover") != NULL);
+            HBRUSH hb = CreateSolidBrush(
+                pressed ? RGB(30,100,200) : hover ? RGB(60,140,235) : RGB(45,120,215));
+            FillRect(dis->hDC, &rc, hb);
+            DeleteObject(hb);
+            FrameRect(dis->hDC, &rc, GetSysColorBrush(COLOR_3DSHADOW));
+            HFONT hf = Ne_CreateDialogFont(true);
+            HFONT old = hf ? (HFONT)SelectObject(dis->hDC, hf) : NULL;
+            SetBkMode(dis->hDC, TRANSPARENT);
+            SetTextColor(dis->hDC, RGB(255,255,255));
+            DrawTextW(dis->hDC, L"?", -1, &rc, DT_CENTER|DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX);
+            if (old) SelectObject(dis->hDC, old);
+            if (hf)  DeleteObject(hf);
+            return TRUE;
+        }
         if (d) {
             // Let Ne_DrawDialogButton handle all owner-draw buttons (it skips unknown IDs)
             if (Ne_ButtonIndexById(&d->dd, dis->CtlID) >= 0) {
@@ -6741,6 +6771,129 @@ static LRESULT CALLBACK Ne_FtpSiteProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         return (LRESULT)GetStockObject(WHITE_BRUSH);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static void Ne_ShowFtpProfileHelp(HWND parent)
+{
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc = {}; wc.lpfnWndProc = NsbAboutWndProc; wc.hInstance = hi;
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1); wc.lpszClassName = L"NeFtpHelpClass";
+    if (!GetClassInfoW(hi, L"NeFtpHelpClass", &wc)) RegisterClassW(&wc);
+
+    const int W = S(500), H = S(530);
+    RECT pr = {}; if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
+    int x = (pr.left+pr.right)/2 - W/2, y = (pr.top+pr.bottom)/2 - H/2;
+    if (y < 30) y = 30;
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_WINDOWEDGE,
+        L"NeFtpHelpClass", Ls(L"FTP_HELP_TITLE"),
+        WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_VISIBLE,
+        x, y, W, H, parent, NULL, hi, NULL);
+    if (!dlg) return;
+
+    HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
+    if (hIco) { SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+                SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco); }
+
+    LoadLibraryW(L"Msftedit.dll");
+    RECT rcC; GetClientRect(dlg, &rcC);
+    const int PAD = S(10), BTN_H = S(34);
+    int editH = rcC.bottom - 2*PAD - BTN_H - PAD;
+
+    HWND hEdit = CreateWindowExW(0, L"RICHEDIT50W", NULL,
+        WS_CHILD|WS_VISIBLE|ES_MULTILINE|ES_READONLY|ES_AUTOVSCROLL|WS_VSCROLL,
+        PAD, PAD, rcC.right-2*PAD, editH, dlg, (HMENU)200, hi, NULL);
+    if (!hEdit) { DestroyWindow(dlg); return; }
+    SendMessageW(hEdit, EM_SETTARGETDEVICE, 0, 0);
+
+    // ── Title ─────────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit, L"FTP/SFTP Profile Fields\r\n", true, RGB(0,70,140), 16, true);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500"
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(0,70,140), 0, true);
+
+    // ── Fields ────────────────────────────────────────────────────────────────
+    auto Hd = [&](const wchar_t* t) {
+        AppendNsbRich(hEdit, t, true,  RGB(30,100,190), 11, false); };
+    auto Bd = [&](const wchar_t* t) {
+        AppendNsbRich(hEdit, t, false, RGB(40,40,40),   0,  false); };
+
+    Hd(L"\r\nFriendly name\r\n");
+    Bd(L"A label for the profile shown in the connections list. "
+       L"Choose any name you like, e.g. \u201cMy Website\u201d.\r\n");
+
+    Hd(L"\r\nProtocol\r\n");
+    Bd(L"FTP  \u2014 standard File Transfer Protocol (default port 21).\r\n"
+       L"SFTP \u2014 SSH File Transfer Protocol (default port 22). Encrypted. "
+       L"Use SFTP whenever your host supports it.\r\n");
+
+    Hd(L"\r\nServer\r\n");
+    Bd(L"Hostname or IP address of the FTP/SFTP server.\r\n"
+       L"Examples: ftp.mysite.com  \u00b7  192.168.1.1\r\n");
+
+    Hd(L"\r\nPort\r\n");
+    Bd(L"21 for FTP, 22 for SFTP. Change only if your host uses a "
+       L"non-standard port.\r\n");
+
+    Hd(L"\r\nUsername / Password\r\n");
+    Bd(L"Your login credentials for the server account. Tick "
+       L"\u201cRemember password\u201d to save it in the local database.\r\n");
+
+    Hd(L"\r\nInitial folder\r\n");
+    Bd(L"The directory on the server that the file browser opens to. "
+       L"This is typically the web root on the server side.\r\n"
+       L"Examples:  /public_html  \u00b7  /var/www/html  \u00b7  /\r\n");
+
+    Hd(L"\r\nWeb URL root\r\n");
+    Bd(L"The public URL that corresponds to the Initial folder above. "
+       L"No trailing slash.\r\n"
+       L"Example:  https://mysite.com\r\n");
+
+    // ── Preview URL section ───────────────────────────────────────────────────
+    AppendNsbRich(hEdit, L"\r\n", false, RGB(0,0,0), 0, false);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500 How \u201cPreview online\u201d builds the URL "
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(0,100,60), 10, false);
+    Bd(L"NSBEdit strips the Initial folder prefix from the file\u2019s "
+       L"full remote path, then appends the remainder to the Web URL root.\r\n\r\n");
+    AppendNsbRich(hEdit, L"Example:\r\n",                                 true,  RGB(60,60,60),  10, false);
+    AppendNsbRich(hEdit, L"  Initial folder : /public_html\r\n",          false, RGB(100,50,0),  10, false);
+    AppendNsbRich(hEdit, L"  Web URL root   : https://mysite.com\r\n",    false, RGB(0,80,160),  10, false);
+    AppendNsbRich(hEdit, L"  Remote file    : /public_html/blog/post.html\r\n", false, RGB(80,80,80), 10, false);
+    AppendNsbRich(hEdit, L"                          \u2193 strip prefix\r\n", false, RGB(120,120,120), 10, false);
+    AppendNsbRich(hEdit, L"  Preview URL \u2192 https://mysite.com/blog/post.html\r\n", true, RGB(0,130,60), 10, false);
+
+    SendMessageW(hEdit, EM_SETSEL, 0, 0);
+    SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
+
+    // ── OK button ─────────────────────────────────────────────────────────────
+    static NeDialogData helpDD;
+    helpDD = {};
+    helpDD.buttonCount = 1;
+    helpDD.buttons[0] = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION,
+                          Ne_MeasureButtonWidth(Ls(L"BTN_OK")) };
+    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&helpDD);
+
+    int bw = helpDD.buttons[0].width;
+    int bx = (rcC.right - bw) / 2, by = rcC.bottom - PAD - BTN_H;
+    HWND hBtn = CreateWindowExW(0, L"BUTTON", Ls(L"BTN_OK"),
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,
+        bx, by, bw, BTN_H, dlg, (HMENU)IDOK, hi, NULL);
+    HFONT hFont = Ne_CreateDialogFont(true);
+    SendMessageW(hBtn, WM_SETFONT, (WPARAM)hFont, TRUE);
+    WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+    SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+
+    if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
+    SetFocus(hBtn);
+    MSG m;
+    while (GetMessageW(&m, NULL, 0, 0)) {
+        if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
+    }
+    if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
+    DeleteObject(hFont);
 }
 
 static void Ne_ShowFtpSiteDialog(HWND parent, NeProfile* existing)
@@ -6851,9 +7004,24 @@ static void Ne_ShowFtpSiteDialog(HWND parent, NeProfile* existing)
     AddEdit(1028, d.profile.initialPath.c_str(), y0);
     y0 += ROW;
 
-    // Web URL root (used for "Preview online")
+    // Web URL root (used for "Preview online") + "?" help button
     AddLabel(L"FTP_WEB_URL", y0);
-    AddEdit(1031, d.profile.webUrl.c_str(), y0);
+    {
+        const int helpSz = S(28);
+        HWND hUrl = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", d.profile.webUrl.c_str(),
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,
+            editX, y0, editW - helpSz - S(4), EDIT_H,
+            dlg, (HMENU)1031, hi, NULL);
+        SendMessageW(hUrl, WM_SETFONT, (WPARAM)hFont, TRUE);
+
+        HWND hHelp = CreateWindowExW(0, L"BUTTON", L"?",
+            WS_CHILD|WS_VISIBLE|WS_TABSTOP|BS_OWNERDRAW,
+            editX + editW - helpSz, y0, helpSz, EDIT_H,
+            dlg, (HMENU)1032, hi, NULL);
+        SendMessageW(hHelp, WM_SETFONT, (WPARAM)hFont, TRUE);
+        WNDPROC ph = (WNDPROC)SetWindowLongPtrW(hHelp, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+        SetPropW(hHelp, L"NePrevProc", (HANDLE)ph);
+    }
     y0 += ROW;
 
     // Buttons
@@ -7165,10 +7333,29 @@ static LRESULT CALLBACK Ne_PreviewDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
             if (!ok) {
                 std::wstring msg2 = std::wstring(Ls(L"FTP_PREVIEW_REV_FAIL"))
                                   + L"\n" + NeFtp_GetLastError();
-                NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red,
-                                          IDI_ERROR, 0 };
-                Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"), msg2.c_str(),
-                                    &btn, 1, IDOK);
+                NeDialogButtonSpec btns[2] = {
+                    { 1111, Ls(L"BTN_SAVE_BACKUP"),  NeBtnTone::Blue, IDI_INFORMATION, 0 },
+                    { 1112, Ls(L"BTN_CLOSE_ANYWAY"), NeBtnTone::Red,  IDI_ERROR,       0 }
+                };
+                int choice = Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"),
+                                                msg2.c_str(), btns, 2, 1112);
+                if (choice == 1111) {
+                    wchar_t savePath[MAX_PATH] = {};
+                    OPENFILENAMEW ofn = {};
+                    ofn.lStructSize = sizeof(ofn);
+                    ofn.hwndOwner   = hwnd;
+                    ofn.lpstrFile   = savePath;
+                    ofn.nMaxFile    = MAX_PATH;
+                    ofn.lpstrFilter = L"All Files\0*.*\0";
+                    ofn.Flags       = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+                    if (GetSaveFileNameW(&ofn))
+                        CopyFileW(d->backupPath.c_str(), savePath, FALSE);
+                    return 0;  // stay in dialog so user can retry or save again
+                }
+                // Close anyway: abandon revert and exit the dialog
+                DeleteFileW(d->backupPath.c_str());
+                PostQuitMessage(0);
+                DestroyWindow(hwnd);
                 return 0;
             }
             DeleteFileW(d->backupPath.c_str());
@@ -7185,6 +7372,9 @@ static LRESULT CALLBACK Ne_PreviewDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
     case WM_CTLCOLOREDIT:
         SetBkColor((HDC)wParam, RGB(255,255,255));
         return (LRESULT)GetStockObject(WHITE_BRUSH);
+    case WM_TIMER:
+        if (wParam == 1 && d) NeFtp_Keepalive();
+        return 0;
     case WM_CLOSE:
         // Closing via X = same as Revert & Close
         SendMessageW(hwnd, WM_COMMAND, IDCANCEL, 0);
@@ -7247,9 +7437,22 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
     const NeProfile& prof = NeFtp_GetActiveProfile();
     std::wstring base = prof.webUrl;
     while (!base.empty() && base.back() == L'/') base.pop_back(); // strip trailing slash
+
+    // Strip the FTP initialPath prefix from the remote path so it maps correctly
+    // to the web root. E.g. initialPath="/nsbedit", remotePath="/nsbedit/index.php"
+    // → relative path = "/index.php", URL = webUrl + "/index.php".
+    std::wstring relPath = doc->ftpRemotePath;
+    {
+        std::wstring pfx = prof.initialPath;
+        while (!pfx.empty() && pfx.back() == L'/') pfx.pop_back();
+        if (!pfx.empty() && relPath.substr(0, pfx.size()) == pfx)
+            relPath = relPath.substr(pfx.size());
+        if (relPath.empty() || relPath[0] != L'/') relPath = L'/' + relPath;
+    }
+
     std::wstring previewUrl = base.empty()
-        ? (L"https://" + prof.host + doc->ftpRemotePath)
-        : (base + doc->ftpRemotePath);
+        ? (L"https://" + prof.host + relPath)
+        : (base + relPath);
 
     // 6. Lock the editor tab while preview is active.
     HWND hEditor = doc->hSci ? doc->hSci : doc->hEdit;
@@ -7339,6 +7542,7 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
     // Update userdata ptr (stack address, must be set again after pd is fully built)
     SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&pd);
     SetFocus(pd.hUrlEdit);
+    SetTimer(dlg, 1, 45000, NULL);  // 45-second FTP keepalive
 
     EnableWindow(hwnd, FALSE);
     MSG m;
@@ -7346,6 +7550,7 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     }
     EnableWindow(hwnd, TRUE);
+    KillTimer(dlg, 1);
     SetForegroundWindow(hwnd);
     DeleteObject(hFont);
 
@@ -7994,6 +8199,9 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
             doc->ftpRemotePath    = d.pendingOpenRemote;
             doc->ftpFriendlyName  = NeFtp_GetActiveProfile().friendlyName;
         }
+        Ne_UpdateToolbarMode(parent);
+        HWND hEditOpen = NeTabs_GetActiveEdit(parent);
+        if (hEditOpen) SetFocus(hEditOpen);
     }
 }
 
@@ -9300,6 +9508,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 doc->modified        = false;
                 NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
                 Ne_UpdateTitle(hwnd);
+                Ne_UpdateToolbarMode(hwnd);
             }
             NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Green,
                                          IDI_INFORMATION, 0 };
@@ -9361,7 +9570,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             Ne_ApplyLang(doc->hSci, newLang);
             Ne_UpdateLangMenuCheck(newLang);
             Ne_UpdateStatusText(hwnd);
-            Ne_SyncToolbar(hwnd, doc->hSci);
+            Ne_UpdateToolbarMode(hwnd);
             return 0;
         }
         // ── Convert menu ──────────────────────────────────────────────────────

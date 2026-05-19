@@ -66,10 +66,10 @@
                               read position, the file was truncated (new build
                               started) → Clear-Host + print a coloured header
                                   === RUN #N  «yyyy-MM-dd HH:mm:ss» ===
-                              RUN counter increments per session; stays in
-                              memory so each follow.ps1 invocation starts at
-                              RUN #1 again (intentional — a new terminal
-                              session is a fresh context).
+                              RUN counter is PERSISTENT across sessions via
+                              makeit_count.txt (see below). Loaded at startup,
+                              incremented and saved on every new run. To reset,
+                              set makeit_count.txt to 0 (or delete it).
                               Line colouring:
                                 Red       — "error:" or "FAILED"
                                 Yellow    — "warning:"
@@ -78,6 +78,12 @@
                                 White     — "[N/N]" step headers
                                 DarkGray  — prompt lines (^[A-Z]:\\.*>)
                                 default   — everything else
+    [ ] makeit_count.txt    — persistent build run counter. Plain text file
+                              containing a single integer (e.g. "42").
+                              follow.ps1 reads it at startup and writes it
+                              after every new run. Start new projects at 0;
+                              first build will be RUN #1. Never commit this
+                              file (add to .gitignore) — it is local state.
     [ ] CMakeLists.txt      — CMake alternative, already battle-tested here
     [ ] app.manifest        — DPI awareness, ComCtl v6, UAC level
 

@@ -1,6 +1,9 @@
-$log  = Join-Path $PSScriptRoot 'makeit.log'
+$log      = Join-Path $PSScriptRoot 'makeit.log'
+$countFile = Join-Path $PSScriptRoot 'makeit_count.txt'
 $pos  = 0
-$run  = 0
+
+# Load persistent run counter; start at 0 if the file doesn't exist yet.
+$run = if (Test-Path $countFile) { [int](Get-Content $countFile -Raw).Trim() } else { 0 }
 
 function Write-ColoredLine($line) {
     if     ($line -match 'error:')           { Write-Host $line -ForegroundColor Red }
@@ -24,6 +27,7 @@ while ($true) {
         # New run: file was truncated or we see content for the first time
         if ($size -lt $pos -or ($run -eq 0 -and $size -gt 0)) {
             $run++
+            Set-Content $countFile $run   # persist across restarts
             $pos = 0
             Clear-Host
             Write-Host ("=" * 60) -ForegroundColor Cyan

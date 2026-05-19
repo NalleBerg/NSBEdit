@@ -115,8 +115,14 @@
                                                 IDM range: 101–133 (core), 600+ (langs), 700+ (FTP profiles).
                                                 Ne_ApplyLang(hSci, langIdx) — sends
                                                 SCI_SETKEYWORDS from s_langKws[] and
-                                                applies per-lexer style overrides (e.g.
-                                                SCE_HPHP_* 118–127 for phpscript).
+                                                applies per-lexer style overrides.
+                                                PHP uses the hypertext lexer; keywords
+                                                go in slot 4 (not 0). HTML tokens
+                                                (SCE_H_* 1–10) styled for both HTML
+                                                and PHP. PHP tokens (SCE_HPHP_* 118–127)
+                                                styled only when the language is PHP.
+                                                Ne_GetLineComment uses language name
+                                                check for PHP (//).
                                                 Language menu on RichEdit tab converts
                                                 tab to Scintilla on demand (plain text
                                                 extracted, Scintilla created, RichEdit
@@ -199,6 +205,20 @@
                                                 (FTP_WEB_URL locale key); used to
                                                 construct the public preview URL from
                                                 the file's remote path.
+                                                FTP profile editor: ? help button (id
+                                                1032) opens Ne_ShowFtpProfileHelp —
+                                                rich-text guide for every field incl.
+                                                Web URL root and Preview URL formula.
+                                                Locale key: FTP_HELP_TITLE.
+                                                Preview dialog extra buttons:
+                                                BTN_SAVE_BACKUP (save local copy) and
+                                                BTN_CLOSE_ANYWAY (skip revert).
+                                                FTP keepalive: Nf_ApplyCommonOpts sets
+                                                CURLOPT_TCP_KEEPALIVE/IDLE(60)/INTVL(30).
+                                                NeFtp_Keepalive() in ne_ftp.h/cpp —
+                                                sends NOOP (FTP) or no-op (SFTP) to
+                                                prevent idle-timeout during long Preview
+                                                sessions.
 
   ne_tabs.h / ne_tabs.cpp                       Tabbed editor module — SysTabControl32
                                                 strip + per-tab RichEdit HWND ownership.
