@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.19.14**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.20.09**
 
 ## Download
 
@@ -58,6 +58,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **FTP upload success auto-close** — the "File saved and uploaded successfully" notification closes itself after 2½ seconds
 - **Edition 1 RC** — About dialog shows Edition: 1 RC
 - **PHP syntax highlighting fixed** — PHP files now use the `hypertext` lexer so both embedded HTML and PHP tokens are coloured correctly
+- **Zoom via keyboard and scroll** — `Ctrl+[+]` / `Ctrl+[-]` / `Ctrl+0` and `Ctrl+MouseScroll` all work for zooming in both RTF and code (Scintilla) tabs
 - **FTP Profile Help** — a `?` button in the FTP profile editor opens a rich-text field guide explaining every setting, including *Web URL root* and how *Preview online* builds the URL
 - **FTP Preview — extra options** — *Save backup locally…* and *Close without reverting* buttons let you keep the preview live or save a local copy before reverting
 - **FTP keepalive** — TCP keepalive on all connections; `NeFtp_Keepalive()` sends NOOP to FTP servers during long preview sessions to prevent idle timeout

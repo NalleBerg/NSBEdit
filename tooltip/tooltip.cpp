@@ -35,14 +35,6 @@ static std::vector<std::wstring> FindAvailableLocales() {
     return codes;
 }
 
-// Trim whitespace from a string
-static void TrimW(std::wstring &s) {
-    size_t a = s.find_first_not_of(L" \t\r\n");
-    if (a == std::wstring::npos) { s.clear(); return; }
-    size_t b = s.find_last_not_of(L" \t\r\n");
-    s = s.substr(a, b - a + 1);
-}
-
 // Get exe directory
 static std::wstring GetExeDir() {
     wchar_t exePath[MAX_PATH];
@@ -164,7 +156,6 @@ static LRESULT CALLBACK TooltipWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             }
         } else {
             // Multilingual tooltip - two columns, up to 10 rows per column
-            const int startX = S(10);
             const int startY = S(10);
             const int rowHeight = S(22);
             const int leftTextColX = S(80);   // left column text start

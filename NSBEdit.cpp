@@ -9,7 +9,6 @@
 #include <richedit.h>
 #include <commdlg.h>
 #include <gdiplus.h>
-#pragma comment(lib, "gdiplus.lib")
 #include <commctrl.h>
 #include <shellapi.h>
 #include <string>
@@ -1645,7 +1644,7 @@ static void Ne_SyncZoomCombo(HWND hwnd, int pct)
 }
 
 // Apply saved zoom to the given RTF or Scintilla window.
-static void Ne_ApplyZoomToDoc(NeTabDoc* doc)
+[[maybe_unused]] static void Ne_ApplyZoomToDoc(NeTabDoc* doc)
 {
     if (!doc) return;
     if (doc->hSci) {
@@ -1979,7 +1978,7 @@ static LRESULT CALLBACK Ne_DialogWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
         dd->hDlgFont = Ne_CreateDialogFont(false);
 
         RECT rc = {}; GetClientRect(hwnd, &rc);
-        const int padH = S(20), padT = S(18), padB = S(15), gapTB = S(14), btnH = S(34), btnGap = S(10);
+        const int padH = S(20), padT = S(18), padB = S(15), btnH = S(34), btnGap = S(10);
 
         // Optional left-side icon (warning / info)
         int iconW = 0;
@@ -2450,7 +2449,7 @@ static HFONT Ne_MakeDlgFont(HWND hwnd, bool bold = false)
     return CreateFontIndirectW(&ncm.lfMessageFont);
 }
 // Apply font to all child controls of dlg.
-static void Ne_ApplyDlgFont(HWND dlg, HFONT hf)
+[[maybe_unused]] static void Ne_ApplyDlgFont(HWND dlg, HFONT hf)
 {
     EnumChildWindows(dlg, [](HWND h, LPARAM lp) -> BOOL {
         SendMessageW(h, WM_SETFONT, lp, TRUE);
@@ -3536,20 +3535,20 @@ static void Ne_ShowTablePropsDialog(HWND parent, HWND hEdit)
     y0 += EB + S(6);
 
     mkLbl(Ls(L"TBLP_COLS"),    y0);
-    HWND hCols = mkSpin(IDC_TBLP_COLS, y0, props.cols, 1, 50);
+    mkSpin(IDC_TBLP_COLS, y0, props.cols, 1, 50);
     y0 += EB + S(6);
 
     // Column width: show in mm (1 mm ≈ 56.7 twips)
     int cellMm = (int)(props.cellW / 56.7 + 0.5);
     mkLbl(Ls(L"TBLP_CELLW"),   y0);
-    HWND hCellW = mkSpin(IDC_TBLP_CELLW, y0, cellMm, 5, 250);
+    mkSpin(IDC_TBLP_CELLW, y0, cellMm, 5, 250);
     mkUnit(L"mm", y0);
     y0 += EB + S(10);
 
     // ── Borders & padding ──────────────────────────────────────────────────
     // Border width: show in half-points (15 = 0.75 pt is default)
     mkLbl(Ls(L"TBLP_BORDERW"), y0);
-    HWND hBorderW = mkSpin(IDC_TBLP_BORDERW, y0, props.borderW, 0, 200);
+    mkSpin(IDC_TBLP_BORDERW, y0, props.borderW, 0, 200);
     mkUnit(Ls(L"TBLP_UNIT_HP"), y0);
     y0 += EB + S(6);
 
@@ -3560,25 +3559,25 @@ static void Ne_ShowTablePropsDialog(HWND parent, HWND hEdit)
     int padRightPt = (props.padRight + 10) / 20;
 
     mkLbl(Ls(L"TBLP_PAD_TOP"),   y0);
-    HWND hPadTop = mkSpin(IDC_TBLP_PADTOP, y0, padTopPt, 0, 100);
+    mkSpin(IDC_TBLP_PADTOP, y0, padTopPt, 0, 100);
     mkUnit(L"pt", y0); y0 += EB + S(4);
 
     mkLbl(Ls(L"TBLP_PAD_BOTTOM"), y0);
-    HWND hPadBot = mkSpin(IDC_TBLP_PADBOTTOM, y0, padBotPt, 0, 100);
+    mkSpin(IDC_TBLP_PADBOTTOM, y0, padBotPt, 0, 100);
     mkUnit(L"pt", y0); y0 += EB + S(4);
 
     mkLbl(Ls(L"TBLP_PAD_LEFT"),  y0);
-    HWND hPadLeft = mkSpin(IDC_TBLP_PADLEFT, y0, padLeftPt, 0, 100);
+    mkSpin(IDC_TBLP_PADLEFT, y0, padLeftPt, 0, 100);
     mkUnit(L"pt", y0); y0 += EB + S(4);
 
     mkLbl(Ls(L"TBLP_PAD_RIGHT"), y0);
-    HWND hPadRight = mkSpin(IDC_TBLP_PADRIGHT, y0, padRightPt, 0, 100);
+    mkSpin(IDC_TBLP_PADRIGHT, y0, padRightPt, 0, 100);
     mkUnit(L"pt", y0); y0 += EB + S(10);
 
     // ── Row height ────────────────────────────────────────────────────────
     int rowHPt = (int)(props.rowH / 20.0 + 0.5);
     mkLbl(Ls(L"TBLP_ROWH"),    y0);
-    HWND hRowH = mkSpin(IDC_TBLP_ROWH, y0, rowHPt, 0, 1000);
+    mkSpin(IDC_TBLP_ROWH, y0, rowHPt, 0, 1000);
     mkUnit(Ls(L"TBLP_ROWH_UNIT"), y0);
     y0 += EB + S(10);
 
@@ -3728,7 +3727,7 @@ static struct {
 static LRESULT CALLBACK Ne_TablePickerProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     const int MAXC = 8, MAXR = 8;
-    const int CW = S(24), CH = S(20), PAD = S(6), LBLH = S(22);
+    const int CW = S(24), CH = S(20), PAD = S(6);
 
     switch (msg) {
     case WM_PAINT: {
@@ -3867,7 +3866,7 @@ static void Ne_ShowTablePicker(HWND hwndParent, HWND hEdit, HWND hBtn)
 }
 
 // ── Table dialog (kept for programmatic/large-table use) ─────────────────────
-static void Ne_ShowTableDialog(HWND parent, HWND hEdit)
+[[maybe_unused]] static void Ne_ShowTableDialog(HWND parent, HWND hEdit)
 {
     HINSTANCE hi = GetModuleHandleW(NULL);
 
@@ -8236,7 +8235,7 @@ static LRESULT CALLBACK Ne_FtpSelectDlgProc(HWND hwnd, UINT msg, WPARAM wParam, 
         dd->hDlgFont = Ne_CreateDialogFont(false);
 
         RECT rc = {}; GetClientRect(hwnd, &rc);
-        const int padH = S(20), padT = S(18), padB = S(15);
+        const int padH = S(20), padT = S(18);
         const int gapTB = S(14), btnH = S(34), listGap = S(6);
 
         // Message label
@@ -9031,9 +9030,6 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         const int cW  = rcC.right;
         const int pad = st->pad;
         const int bSz = S(26);
-        const int bG  = S(3);
-        const int sG  = S(8);
-
         // ── Toolbar controls — created at (0,0); Ne_LayoutToolbar positions them ──
         const int wXs  = bSz + S(4);
         const int wAl  = bSz + S(4);
@@ -10637,8 +10633,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     NeProfiles_GetIntSetting("zoom_rtf", 100, g_zoomRtf);
     NeProfiles_GetIntSetting("zoom_sci",   0, g_zoomSci);
     // Clamp to valid ranges.
-    if (g_zoomRtf < 10) g_zoomRtf = 10; if (g_zoomRtf > 500) g_zoomRtf = 500;
-    if (g_zoomSci < -10) g_zoomSci = -10; if (g_zoomSci > 20) g_zoomSci = 20;
+    if (g_zoomRtf  <  10) g_zoomRtf  =  10;
+    if (g_zoomRtf  > 500) g_zoomRtf  = 500;
+    if (g_zoomSci < -10)  g_zoomSci = -10;
+    if (g_zoomSci >  20)  g_zoomSci  =  20;
 
     ShowWindow(s_hwndMain, nCmdShow);
     UpdateWindow(s_hwndMain);
@@ -10701,13 +10699,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
                 Ne_StepZoom(s_hwndMain, 0); continue;
             }
         }
-        // Ctrl+WheelScroll on an RTF tab: intercept, apply stepped zoom, save.
+        // Ctrl+WheelScroll — intercept for both RTF and Scintilla tabs.
         if (msg.message == WM_MOUSEWHEEL && (GET_KEYSTATE_WPARAM(msg.wParam) & MK_CONTROL)) {
             NeTabDoc* wdoc = NeTabs_GetActiveDoc(s_hwndMain);
-            if (wdoc && !wdoc->hSci && wdoc->hEdit) {
+            if (wdoc && (wdoc->hSci || wdoc->hEdit)) {
                 int delta = GET_WHEEL_DELTA_WPARAM(msg.wParam);
                 Ne_StepZoom(s_hwndMain, delta > 0 ? +1 : -1);
-                continue; // don't pass to RichEdit's native zoom handler
+                continue; // consume — don't pass to native RichEdit/Scintilla zoom handler
             }
         }
         // F1 → Keyboard Shortcuts dialog

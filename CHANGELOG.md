@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.20.09 - 20.05.2026 09:32
+
+- **Ctrl+scroll zoom fix**: `Ctrl+MouseScroll` now zooms in both RTF and Scintilla (code) tabs. Previously the `WM_MOUSEWHEEL` intercept in the WinMain message loop only triggered for RTF tabs (`hEdit != NULL`); the condition is now `hSci || hEdit` so both tab types call `Ne_StepZoom` and the message is consumed before it reaches the native editor handler. `Ctrl+[+]`, `Ctrl+[-]`, `Ctrl+0` (numpad and regular keys) continue to work in all tabs.
+- **Zero compiler warnings**: All `-Wall` warnings eliminated across `NSBEdit.cpp`, `ne_statusbar.cpp`, `tooltip/tooltip.cpp`, and `checkbox.cpp` — removed unused functions (`Ne_ApplyZoomToDoc`, `Ne_ApplyDlgFont`, `Ne_ShowTableDialog` marked `[[maybe_unused]]`), removed unused variables (`gapTB`, `padB`, `bG`, `sG`, `LBLH`, `hLarge`, `startX`, and 8 unnamed spin-control HWNDs in the Table Properties dialog), removed `#pragma comment` directives not supported by MinGW, and fixed misleading indentation on zoom-clamping lines. Build now produces zero warnings.
+- **zoom_INTERNALS.txt**: New INTERNALS document covering the dual zoom model (RTF percentage preset table vs Scintilla signed-point offset), both trigger paths, DB persistence, startup clamping, and the Ctrl+scroll bug history.
+
 ## v2026.05.19.14 - 19.05.2026 14:42
 
 - **PHP syntax highlighting fixed**: PHP files now use the `hypertext` lexer (replacing `phpscript`) so both embedded HTML tokens and PHP tokens are coloured correctly. PHP keywords are passed to keyword slot 4 (not slot 0). Line-comment toggling (`//`) updated to check the language name instead of the old lexer name.

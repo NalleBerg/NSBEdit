@@ -129,6 +129,25 @@
                                                 hidden). AltGr fix: Ctrl-shortcut loop
                                                 skips when VK_RMENU held so AltGr+0/7
                                                 etc. reach the editor.
+                                                Zoom: Ne_StepZoom(hwnd, dir) — dir
+                                                +1 in / -1 out / 0 reset. Two models:
+                                                RTF uses EM_SETZOOM with a fixed
+                                                preset table {50,75,100,125,150,200}%;
+                                                Scintilla uses SCI_ZOOMIN/OUT/SETZOOM
+                                                (signed pt offset). Globals: g_zoomRtf
+                                                (pct, default 100), g_zoomSci (pt
+                                                offset, default 0). Both persisted via
+                                                NeProfiles_SetIntSetting("zoom_rtf"/
+                                                "zoom_sci"). Keyboard: Ctrl+VK_ADD/
+                                                OEM_PLUS, VK_SUBTRACT/OEM_MINUS,
+                                                '0'/VK_NUMPAD0 — WinMain loop, before
+                                                Dispatch (continue consumes message).
+                                                Mouse: WM_MOUSEWHEEL + MK_CONTROL
+                                                also intercepted in loop (continue
+                                                prevents native double-step). Combo
+                                                IDC_NE_ZOOM (229) synced via
+                                                Ne_SyncZoomCombo after RTF steps.
+                                                See zoom_INTERNALS.txt.
                                                 IDM_SAVE_TO_FTP (133): File > Save to
                                                 FTP... — Ne_ShowFtpSelectDialog shows
                                                 all connected profiles as a vertical
@@ -378,6 +397,14 @@
   API_INTERNALS\API\dragdrop_API.txt            Generic Win32 TreeView/ListView drag-and-drop
                                                 module — subclass-based detection, callbacks,
                                                 parent hooks, and utility functions.
+
+  API_INTERNALS\INTERNALS\zoom_INTERNALS.txt    Editor zoom architecture — dual model (RTF
+                                                percentage preset table vs Scintilla signed
+                                                point offset), Ne_StepZoom flow, keyboard and
+                                                mouse-wheel trigger paths in the WinMain loop,
+                                                DB persistence (zoom_rtf / zoom_sci settings),
+                                                startup clamping, and bug history (Ctrl+scroll
+                                                silently skipping Scintilla tabs).
 
   API_INTERNALS\API\shell32_API.txt             Shell icon loading reference — PrivateExtractIconsW
                                                 vs LoadImageW(MAKEINTRESOURCE), verified

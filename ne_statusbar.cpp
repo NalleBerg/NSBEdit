@@ -29,7 +29,7 @@ static HICON NeSB_LoadShell32Icon(int index)
     UINT n = GetSystemDirectoryW(path, MAX_PATH);
     if (n == 0 || n >= MAX_PATH - 16) return NULL;
     wcscat_s(path, L"\\shell32.dll");
-    HICON hLarge = NULL, hSmall = NULL;
+    HICON hSmall = NULL;
     PrivateExtractIconsW(path, index, 16, 16, &hSmall, NULL, 1, LR_DEFAULTCOLOR);
     return hSmall;
 }

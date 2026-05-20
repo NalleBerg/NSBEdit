@@ -1,6 +1,14 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 19 May 2026 &mdash; v2026.05.19.14 (14:42)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 20 May 2026 &mdash; v2026.05.20.09 (09:32)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.20.09</span></h3>
+<p><strong>Ctrl+scroll zoom fix; zero compiler warnings (20.05.2026, 09:32):</strong></p>
+<ul>
+<li><strong>Ctrl+scroll zoom fix:</strong> <code>Ctrl+MouseScroll</code> now zooms in both RTF and Scintilla (code) tabs. The <code>WM_MOUSEWHEEL</code> intercept in the WinMain message loop previously only triggered for RTF tabs (<code>hEdit != NULL</code>); the condition is now <code>hSci || hEdit</code> so both tab types call <code>Ne_StepZoom</code> and the message is consumed before it reaches the native editor handler. <code>Ctrl+[+]</code>, <code>Ctrl+[-]</code>, <code>Ctrl+0</code> (numpad and regular keys) continue to work in all tabs.</li>
+<li><strong>Zero compiler warnings:</strong> All <code>-Wall</code> warnings eliminated across <code>NSBEdit.cpp</code>, <code>ne_statusbar.cpp</code>, <code>tooltip/tooltip.cpp</code>, and <code>checkbox.cpp</code>. Removed unused functions (<code>Ne_ApplyZoomToDoc</code>, <code>Ne_ApplyDlgFont</code>, <code>Ne_ShowTableDialog</code> &mdash; marked <code>[[maybe_unused]]</code>), removed unused variables (<code>gapTB</code>, <code>padB</code>, <code>bG</code>, <code>sG</code>, <code>LBLH</code>, <code>hLarge</code>, <code>startX</code>, and 8 unnamed spin-control HWNDs in the Table Properties dialog), removed <code>#pragma comment</code> directives ignored by MinGW (GDI+&thinsp;/&thinsp;comctl32), and split double-statement zoom-clamping lines that triggered <code>-Wmisleading-indentation</code>. Build now produces zero warnings.</li>
+<li><strong>zoom_INTERNALS.txt:</strong> New INTERNALS document covering the dual zoom model (RTF percentage preset table vs Scintilla signed-point offset), both trigger paths (keyboard and <code>WM_MOUSEWHEEL</code>), DB persistence, startup clamping, and the full Ctrl+scroll bug history.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.19.14</span></h3>
 <p><strong>PHP highlighting fix, FTP profile help, preview extras, FTP keepalive, follow.ps1 persistent counter (19.05.2026, 14:42):</strong></p>

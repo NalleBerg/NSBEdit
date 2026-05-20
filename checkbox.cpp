@@ -4,8 +4,6 @@
 #include <windowsx.h>
 #include <winreg.h>
 
-#pragma comment(lib, "comctl32.lib")
-
 // Window-property names (string literals used as atoms via SetPropW).
 // CBP_CHECKED  — present (value 1) means checked; absent means unchecked.
 // CBP_HOVERED  — present (value 1) means the cursor is inside the control.
