@@ -32,3 +32,6 @@ void NeStatusBar_SetLineCol(HWND hBar, int line, int col);
 
 // Set the localised labels for line/col (e.g. L"Ln", L"Col").
 void NeStatusBar_SetLineColLabels(HWND hBar, const wchar_t* lineLabel, const wchar_t* colLabel);
+
+// Switch the status bar between light and dark mode.
+void NeStatusBar_SetDarkMode(HWND hBar, bool dark);

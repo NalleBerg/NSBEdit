@@ -11,6 +11,7 @@ struct NeStatusBarState {
     bool modified = false;
     int  line     = 0;  // 1-based; 0 = hidden
     int  col      = 0;  // 1-based
+    bool darkMode = false;
     std::wstring wordsLabel   = L"Words";
     std::wstring charsLabel   = L"Chars";
     std::wstring savedLabel   = L"Saved";
@@ -72,12 +73,12 @@ static LRESULT CALLBACK NeStatusBar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, 
         RECT rc; GetClientRect(hwnd, &rc);
 
         // Background
-        HBRUSH hbg = CreateSolidBrush(RGB(240, 240, 240));
+        HBRUSH hbg = CreateSolidBrush(st->darkMode ? RGB(25, 26, 27) : RGB(240, 240, 240));
         FillRect(hdc, &rc, hbg);
         DeleteObject(hbg);
 
         // Top border
-        HPEN hpen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+        HPEN hpen = CreatePen(PS_SOLID, 1, st->darkMode ? RGB(60, 60, 60) : RGB(200, 200, 200));
         HPEN oldpen = (HPEN)SelectObject(hdc, hpen);
         MoveToEx(hdc, rc.left, rc.top, NULL);
         LineTo(hdc, rc.right, rc.top);
@@ -93,21 +94,23 @@ static LRESULT CALLBACK NeStatusBar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, 
             st->wordsLabel.c_str(), st->words,
             st->charsLabel.c_str(), st->chars);
         RECT leftRc = { rc.left + S(10), rc.top + 1, rc.right / 3, rc.bottom };
-        SetTextColor(hdc, RGB(60, 60, 60));
+        SetTextColor(hdc, st->darkMode ? RGB(180, 180, 180) : RGB(60, 60, 60));
         DrawTextW(hdc, buf, -1, &leftRc,
                   DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 
         // Centre: encoding / file-type info
         if (!st->infoLabel.empty()) {
             RECT centreRc = { rc.right / 3, rc.top + 1, rc.right * 2 / 3, rc.bottom };
-            SetTextColor(hdc, RGB(70, 80, 150));
+            SetTextColor(hdc, st->darkMode ? RGB(120, 150, 220) : RGB(70, 80, 150));
             DrawTextW(hdc, st->infoLabel.c_str(), -1, &centreRc,
                       DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         }
 
         // Right side: icon + Saved / Unsaved (pinned to far right)
         const std::wstring& stateText = st->modified ? st->unsavedLabel : st->savedLabel;
-        COLORREF stateColor = st->modified ? RGB(185, 90, 20) : RGB(40, 130, 40);
+        COLORREF stateColor = st->modified
+            ? (st->darkMode ? RGB(220, 140,  60) : RGB(185,  90,  20))
+            : (st->darkMode ? RGB( 80, 200,  80) : RGB( 40, 130,  40));
         HICON hStateIcon = st->modified ? st->hIconUnsaved : st->hIconSaved;
 
         int iconSz = S(14);
@@ -129,7 +132,7 @@ static LRESULT CALLBACK NeStatusBar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, 
             SIZE lcsz = {};
             GetTextExtentPoint32W(hdc, lcbuf, (int)wcslen(lcbuf), &lcsz);
             RECT lcRc = { lineColRight - lcsz.cx, rc.top + 1, lineColRight, rc.bottom };
-            SetTextColor(hdc, RGB(60, 60, 60));
+            SetTextColor(hdc, st->darkMode ? RGB(180, 180, 180) : RGB(60, 60, 60));
             DrawTextW(hdc, lcbuf, -1, &lcRc,
                       DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
         }
@@ -242,5 +245,14 @@ void NeStatusBar_SetLineColLabels(HWND hBar, const wchar_t* lineLabel, const wch
     if (!st) return;
     if (lineLabel) st->lineLabel = lineLabel;
     if (colLabel)  st->colLabel  = colLabel;
+    InvalidateRect(hBar, NULL, FALSE);
+}
+
+void NeStatusBar_SetDarkMode(HWND hBar, bool dark)
+{
+    if (!hBar) return;
+    NeStatusBarState* st = (NeStatusBarState*)GetWindowLongPtrW(hBar, GWLP_USERDATA);
+    if (!st || st->darkMode == dark) return;
+    st->darkMode = dark;
     InvalidateRect(hBar, NULL, FALSE);
 }

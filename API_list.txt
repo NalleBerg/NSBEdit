@@ -238,6 +238,34 @@
                                                 sends NOOP (FTP) or no-op (SFTP) to
                                                 prevent idle-timeout during long Preview
                                                 sessions.
+                                                Dark mode: g_darkMode (bool, DB key
+                                                "dark_mode") / g_darkEditor (bool, DB
+                                                key "dark_editor"). Ne_ApplyDarkFrame —
+                                                DwmSetWindowAttribute(DWMWA_USE_IMMERSIVE
+                                                _DARK_MODE) on hWnd; links -ldwmapi.
+                                                Ne_DlgBgBrush() — returns cached HBRUSH
+                                                for RGB(25,26,27) dialog background.
+                                                Ne_DlgCtlColor(hdc) — sets bg/text for
+                                                WM_CTLCOLORSTATIC/EDIT/LISTBOX in dark
+                                                mode dialogs. Ne_RethemeAll(hWnd) —
+                                                re-applies full theme (DWM frame,
+                                                toolbar/dialog redraws, Scintilla style,
+                                                status bar) when mode changes live.
+                                                Ne_PrefsDlgProc / Ne_ShowPrefsDialog —
+                                                Preferences modal dialog: Appearance
+                                                section (IDC_PREFS_DARK 263,
+                                                IDC_PREFS_LIGHT 267); Editor background
+                                                sub-section visible in light mode only
+                                                (IDC_PREFS_SEC_EDITOR 1001,
+                                                IDC_PREFS_EDITOR_LIGHT 1002,
+                                                IDC_PREFS_EDITOR_DARK 1003); show/hide
+                                                + dialog resize via SetWindowPos;
+                                                WM_DESTROY no PostQuitMessage (inner
+                                                loop exits via IsWindow sentinel).
+                                                Ne_SetupScintillaStyle: bool darkEd =
+                                                g_darkMode || g_darkEditor — all palette
+                                                decisions use darkEd so g_darkEditor
+                                                applies dark Scintilla colors in light UI.
 
   ne_tabs.h / ne_tabs.cpp                       Tabbed editor module — SysTabControl32
                                                 strip + per-tab RichEdit HWND ownership.
@@ -265,6 +293,11 @@
                                                 Height: S(22). Registered as window class
                                                 "NSBEditStatusBar". Labels fully localized
                                                 via NeStatusBar_SetLabels().
+                                                NeStatusBar_SetDarkMode(hBar, bool dark)
+                                                — switches status bar between light
+                                                (system colors) and dark (RGB(25,26,27)
+                                                bg, RGB(210,210,215) text) and triggers
+                                                an InvalidateRect/UpdateWindow redraw.
 
   dpi.h / dpi.cpp                               DPI scaling utility — g_dpiScale (float,
                                                 initialised from GetDpiForSystem()/96.0f),

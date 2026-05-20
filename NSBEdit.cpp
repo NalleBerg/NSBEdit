@@ -6,6 +6,7 @@
 #include "NSBEdit.h"
 #include <windows.h>
 #include <windowsx.h>
+#include <dwmapi.h>
 #include <richedit.h>
 #include <commdlg.h>
 #include <gdiplus.h>
@@ -116,6 +117,7 @@ enum class NeEncoding {
 #define IDM_FTP_BROWSE      132   // FTP menu: "Browse files..."
 #define IDM_SAVE_TO_FTP     133   // File menu: "Save to FTP..."
 #define IDM_PREVIEW_FTP     134   // File/FTP menu + toolbar: "Preview online."
+#define IDM_PREFS           135   // Edit menu: Preferences
 #define IDM_LANG_BASE       600   // Language menu: 600..600+NE_LANG_COUNT-1
 #define IDM_FTP_CONNECT_BASE 700  // FTP menu: profile entries 700..799
 #define IDC_NE_CLEARFMT     227
@@ -143,6 +145,11 @@ enum class NeEncoding {
 #define IDC_NE_DLG_PAR_BEF      252
 #define IDC_NE_DLG_PAR_AFT      253
 #define IDC_BTN_LINENUM         262   // line-number toggle button (▸/◂)
+#define IDC_PREFS_DARK          263   // dark-mode radio button in Preferences dialog
+#define IDC_PREFS_LIGHT         267   // light-mode radio button in Preferences dialog
+#define IDC_PREFS_SEC_EDITOR   1001   // "Editor background" label in Preferences dialog
+#define IDC_PREFS_EDITOR_LIGHT 1002   // editor light-background radio
+#define IDC_PREFS_EDITOR_DARK  1003   // editor dark-background radio
 #define IDC_NE_SAVE             263   // toolbar Save button
 #define IDC_NE_SAVE_FTP         264   // toolbar Save to FTP button
 #define IDC_NE_PREVIEW          265   // toolbar Preview online button
@@ -326,37 +333,58 @@ static int Ne_LangFromExt(const std::wstring& path)
 }
 
 // Apply a light-theme color scheme to a Scintilla window.
+// g_darkMode controls palette selection (see dark-mode section below).
+static bool g_darkMode   = false;  // persisted as "dark_mode" in DB
+static bool g_darkEditor = false;  // persisted as "dark_editor": dark Scintilla in light UI
+
 static void Ne_SetupScintillaStyle(HWND hSci)
 {
     auto sci = [hSci](UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
         return SendMessageW(hSci, msg, wp, lp);
     };
+
+    // ── Theme-dependent palette ───────────────────────────────────────────────
+    // g_darkEditor allows a dark Scintilla viewport even when the UI is light.
+    bool darkEd = g_darkMode || g_darkEditor;
+    COLORREF bg   = darkEd ? RGB( 30, 30, 30) : RGB(255,255,255);
+    COLORREF fg   = darkEd ? RGB(212,212,212) : RGB(  0,  0,  0);
+    COLORREF cmt  = darkEd ? RGB(106,153, 85) : RGB(  0,128,  0);
+    COLORREF cmt3 = darkEd ? RGB(106,153, 85) : RGB(  0,128,128);
+    COLORREF num  = darkEd ? RGB(181,206,168) : RGB(  9,136, 90);
+    COLORREF kw1  = darkEd ? RGB( 86,156,214) : RGB(  0,  0,200);
+    COLORREF str  = darkEd ? RGB(206,145,120) : RGB(163, 21, 21);
+    COLORREF pre  = darkEd ? RGB(197,134,192) : RGB(128, 64,  0);
+    COLORREF kw2  = darkEd ? RGB( 86,156,214) : RGB(  0,  0,160);
+    COLORREF sel  = darkEd ? RGB( 38, 79,120) : RGB(179,215,255);
+    COLORREF lnbg = darkEd ? RGB( 37, 37, 38) : RGB(240,240,240);
+    COLORREF lnfg = darkEd ? RGB(133,133,133) : RGB(100,100,100);
+
     // Set STYLE_DEFAULT then propagate to all styles
     sci(SCI_STYLESETFONT, STYLE_DEFAULT, (LPARAM)"Consolas");
     sci(SCI_STYLESETSIZE, STYLE_DEFAULT, 10);
-    sci(SCI_STYLESETBACK, STYLE_DEFAULT, RGB(255,255,255));
-    sci(SCI_STYLESETFORE, STYLE_DEFAULT, RGB(0,0,0));
+    sci(SCI_STYLESETBACK, STYLE_DEFAULT, bg);
+    sci(SCI_STYLESETFORE, STYLE_DEFAULT, fg);
     sci(SCI_STYLECLEARALL, 0, 0);
 
     // Common style indices used across most Scintilla lexers
     // 1 = block comment,  2 = line comment,  3 = doc comment
-    sci(SCI_STYLESETFORE, 1, RGB(0,128,0));
-    sci(SCI_STYLESETFORE, 2, RGB(0,128,0));
-    sci(SCI_STYLESETFORE, 3, RGB(0,128,128));
+    sci(SCI_STYLESETFORE, 1, cmt);
+    sci(SCI_STYLESETFORE, 2, cmt);
+    sci(SCI_STYLESETFORE, 3, cmt3);
     // 4 = number,  5 = keyword1,  6 = string,  7 = char
-    sci(SCI_STYLESETFORE, 4, RGB(9,136,90));
-    sci(SCI_STYLESETFORE, 5, RGB(0,0,200));
+    sci(SCI_STYLESETFORE, 4, num);
+    sci(SCI_STYLESETFORE, 5, kw1);
     sci(SCI_STYLESETBOLD, 5, TRUE);
-    sci(SCI_STYLESETFORE, 6, RGB(163,21,21));
-    sci(SCI_STYLESETFORE, 7, RGB(163,21,21));
+    sci(SCI_STYLESETFORE, 6, str);
+    sci(SCI_STYLESETFORE, 7, str);
     // 8 = UUID/script,  9 = preprocessor,  10 = keyword2 / operator
-    sci(SCI_STYLESETFORE, 9, RGB(128,64,0));
-    sci(SCI_STYLESETFORE, 10, RGB(0,0,160));
+    sci(SCI_STYLESETFORE, 9, pre);
+    sci(SCI_STYLESETFORE, 10, kw2);
     sci(SCI_STYLESETBOLD, 10, TRUE);
 
     // Editor-level settings
-    sci(SCI_SETCARETFORE, RGB(0,0,0), 0);
-    sci(SCI_SETSELBACK, TRUE, RGB(179,215,255));
+    sci(SCI_SETCARETFORE, fg, 0);
+    sci(SCI_SETSELBACK, TRUE, sel);
     sci(SCI_SETSCROLLWIDTHTRACKING, TRUE, 0);
     sci(SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
     sci(SCI_SETTABWIDTH, 4, 0);
@@ -364,8 +392,8 @@ static void Ne_SetupScintillaStyle(HWND hSci)
     // Line number margin (margin 0)
     sci(SCI_SETMARGINTYPEN,  0, SC_MARGIN_NUMBER);
     sci(SCI_SETMARGINWIDTHN, 0, s_lineNumsOn ? S(44) : 0);
-    sci(SCI_STYLESETBACK, STYLE_LINENUMBER, RGB(240,240,240));
-    sci(SCI_STYLESETFORE, STYLE_LINENUMBER, RGB(100,100,100));
+    sci(SCI_STYLESETBACK, STYLE_LINENUMBER, lnbg);
+    sci(SCI_STYLESETFORE, STYLE_LINENUMBER, lnfg);
     sci(SCI_STYLESETSIZE, STYLE_LINENUMBER, 8);
     sci(SCI_STYLESETFONT, STYLE_LINENUMBER, (LPARAM)"Consolas");
     // Autocomplete settings
@@ -474,7 +502,7 @@ static LRESULT CALLBACK NsbLineGutterProc(HWND hWnd, UINT msg,
         int btnSz = S(18);
 
         // Background
-        HBRUSH hbr = CreateSolidBrush(RGB(240, 240, 240));
+        HBRUSH hbr = CreateSolidBrush(g_darkMode ? RGB(25, 26, 27) : RGB(240, 240, 240));
         FillRect(hdc, &rc, hbr);
         DeleteObject(hbr);
 
@@ -488,18 +516,18 @@ static LRESULT CALLBACK NsbLineGutterProc(HWND hWnd, UINT msg,
 
         if (thinStrip) {
             if (hover) {
-                HBRUSH hHov = CreateSolidBrush(RGB(210, 230, 245));
+                HBRUSH hHov = CreateSolidBrush(g_darkMode ? RGB(55, 60, 75) : RGB(210, 230, 245));
                 FillRect(hdc, &rc, hHov);
                 DeleteObject(hHov);
             }
             const wchar_t* glyph = s_lineNumsOn ? L"\u25C2" : L"\u25B8";
             RECT rcBtn = { 0, S(2), rc.right, S(2) + btnSz };
-            SetTextColor(hdc, RGB(60, 100, 140));
+            SetTextColor(hdc, g_darkMode ? RGB(115, 150, 180) : RGB(60, 100, 140));
             DrawTextW(hdc, glyph, -1, &rcBtn,
                       DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOCLIP);
         } else {
             // Full gutter (RichEdit, numbers ON): separator + numbers + ◂ header
-            HPEN hpen = CreatePen(PS_SOLID, 1, RGB(200, 200, 200));
+            HPEN hpen = CreatePen(PS_SOLID, 1, g_darkMode ? RGB(55, 55, 58) : RGB(200, 200, 200));
             HPEN hOldPen = (HPEN)SelectObject(hdc, hpen);
             MoveToEx(hdc, rc.right - 1, rc.top, NULL);
             LineTo(hdc, rc.right - 1, rc.bottom);
@@ -508,7 +536,7 @@ static LRESULT CALLBACK NsbLineGutterProc(HWND hWnd, UINT msg,
 
             // Line numbers — right-aligned
             if (hEdit) {
-                SetTextColor(hdc, RGB(100, 100, 100));
+                SetTextColor(hdc, g_darkMode ? RGB(100, 110, 120) : RGB(100, 100, 100));
                 int firstLine  = (int)SendMessageW(hEdit, EM_GETFIRSTVISIBLELINE, 0, 0);
                 int totalLines = (int)SendMessageW(hEdit, EM_GETLINECOUNT,        0, 0);
                 for (int ln = firstLine; ln < totalLines; ++ln) {
@@ -532,12 +560,12 @@ static LRESULT CALLBACK NsbLineGutterProc(HWND hWnd, UINT msg,
             if (hover) {
                 POINT mpt; GetCursorPos(&mpt); ScreenToClient(hWnd, &mpt);
                 if (PtInRect(&btnRc, mpt)) {
-                    HBRUSH hHov = CreateSolidBrush(RGB(210, 230, 245));
+                    HBRUSH hHov = CreateSolidBrush(g_darkMode ? RGB(55, 60, 75) : RGB(210, 230, 245));
                     FillRect(hdc, &btnRc, hHov);
                     DeleteObject(hHov);
                 }
             }
-            SetTextColor(hdc, RGB(60, 100, 140));
+            SetTextColor(hdc, g_darkMode ? RGB(115, 150, 180) : RGB(60, 100, 140));
             DrawTextW(hdc, L"\u25C2", -1, &btnRc,
                       DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOCLIP);
         }
@@ -742,32 +770,49 @@ static void Ne_ApplyLang(HWND hSci, int langIdx)
 
     bool isPhpLang = wcscmp(s_langs[langIdx].name, L"PHP") == 0;
     if (strcmp(lexerName, "hypertext") == 0) {
+        // ── Theme-dependent HTML/PHP palette ─────────────────────────────────
+        COLORREF hTag  = RGB( 86,156,214);                              // always bright
+        COLORREF hAttr = RGB(156,220,254);                              // always bright
+        COLORREF hStr  = g_darkMode ? RGB(206,145,120) : RGB(163, 21, 21);
+        COLORREF hNum  = g_darkMode ? RGB(181,206,168) : RGB(  9,136, 90);
+        COLORREF hCmt  = g_darkMode ? RGB(106,153, 85) : RGB(  0,128,  0);
+        COLORREF hEnt  = g_darkMode ? RGB(206,145,120) : RGB(163,100,  0);
+        COLORREF hXml  = g_darkMode ? RGB(128,128,128) : RGB(128, 64,  0);
+
         if (isPhpLang) {
             // PHP files: colour embedded PHP tokens (SCE_HPHP_*)
             // 118=default 119=dqstring 120=sqstring 121=keyword
             // 122=number  123=$variable 124=/*comment*/ 125=//comment
             // 126=${var}-in-string  127=operator
-            sc(SCI_STYLESETFORE, 119, RGB(163,21,21));
-            sc(SCI_STYLESETFORE, 120, RGB(163,21,21));
-            sc(SCI_STYLESETFORE, 121, RGB(0,0,200));   sc(SCI_STYLESETBOLD, 121, TRUE);
-            sc(SCI_STYLESETFORE, 122, RGB(9,136,90));
-            sc(SCI_STYLESETFORE, 123, RGB(128,0,128));
-            sc(SCI_STYLESETFORE, 124, RGB(0,128,0));   sc(SCI_STYLESETITALIC, 124, TRUE);
-            sc(SCI_STYLESETFORE, 125, RGB(0,128,0));   sc(SCI_STYLESETITALIC, 125, TRUE);
-            sc(SCI_STYLESETFORE, 126, RGB(163,21,21));
+            COLORREF pStr = g_darkMode ? RGB(206,145,120) : RGB(163, 21, 21);
+            COLORREF pKw  = g_darkMode ? RGB( 86,156,214) : RGB(  0,  0,200);
+            COLORREF pNum = g_darkMode ? RGB(181,206,168) : RGB(  9,136, 90);
+            COLORREF pVar = g_darkMode ? RGB(156,220,254) : RGB(128,  0,128);
+            COLORREF pCmt = g_darkMode ? RGB(106,153, 85) : RGB(  0,128,  0);
+            sc(SCI_STYLESETFORE, 119, pStr);
+            sc(SCI_STYLESETFORE, 120, pStr);
+            sc(SCI_STYLESETFORE, 121, pKw);  sc(SCI_STYLESETBOLD, 121, TRUE);
+            sc(SCI_STYLESETFORE, 122, pNum);
+            sc(SCI_STYLESETFORE, 123, pVar);
+            sc(SCI_STYLESETFORE, 124, pCmt); sc(SCI_STYLESETITALIC, 124, TRUE);
+            sc(SCI_STYLESETFORE, 125, pCmt); sc(SCI_STYLESETITALIC, 125, TRUE);
+            sc(SCI_STYLESETFORE, 126, pStr);
         }
         // HTML tokens (SCE_H_*) — applied for both HTML and PHP files
         // SCE_H_*: 1=tag 2=unknowntag 3=attr 4=unknownattr 5=number
         //          6=dqstring 7=sqstring 9=comment 10=entity
-        sc(SCI_STYLESETFORE, 1,  RGB(86,156,214));
-        sc(SCI_STYLESETFORE, 2,  RGB(86,156,214));
-        sc(SCI_STYLESETFORE, 3,  RGB(156,220,254));
-        sc(SCI_STYLESETFORE, 4,  RGB(156,220,254));
-        sc(SCI_STYLESETFORE, 5,  RGB(9,136,90));
-        sc(SCI_STYLESETFORE, 6,  RGB(163,21,21));
-        sc(SCI_STYLESETFORE, 7,  RGB(163,21,21));
-        sc(SCI_STYLESETFORE, 9,  RGB(0,128,0));  sc(SCI_STYLESETITALIC, 9, TRUE);
-        sc(SCI_STYLESETFORE, 10, RGB(163,100,0));
+        //          12=SCE_H_XMLSTART (<?  ?>)  13=SCE_H_XMLEND
+        sc(SCI_STYLESETFORE, 1,  hTag);
+        sc(SCI_STYLESETFORE, 2,  hTag);
+        sc(SCI_STYLESETFORE, 3,  hAttr);
+        sc(SCI_STYLESETFORE, 4,  hAttr);
+        sc(SCI_STYLESETFORE, 5,  hNum);
+        sc(SCI_STYLESETFORE, 6,  hStr);
+        sc(SCI_STYLESETFORE, 7,  hStr);
+        sc(SCI_STYLESETFORE, 9,  hCmt);  sc(SCI_STYLESETITALIC, 9, TRUE);
+        sc(SCI_STYLESETFORE, 10, hEnt);
+        sc(SCI_STYLESETFORE, 12, hXml);
+        sc(SCI_STYLESETFORE, 13, hXml);
     }
 }
 
@@ -1188,6 +1233,42 @@ static void Ne_ToggleNumbered(HWND hEdit)
 // ── Per-button text colours ───────────────────────────────────────────────────
 static COLORREF Ne_BtnTextColor(int id)
 {
+    if (g_darkMode) {
+        switch (id) {
+        case IDC_NE_BOLD:        return RGB(110, 145, 255); // bright navy
+        case IDC_NE_ITALIC:      return RGB(110, 165, 255); // bright blue
+        case IDC_NE_UNDERLINE:   return RGB(65,  185, 255); // bright cobalt
+        case IDC_NE_STRIKE:      return RGB(255, 95,  95);  // bright crimson
+        case IDC_NE_SUBSCRIPT:   return RGB(55,  215, 190); // bright teal
+        case IDC_NE_SUPERSCRIPT: return RGB(55,  215, 190); // bright teal
+        case IDC_NE_ALIGN_L:
+        case IDC_NE_ALIGN_C:
+        case IDC_NE_ALIGN_R:
+        case IDC_NE_ALIGN_J:     return RGB(140, 160, 255); // bright slate blue
+        case IDC_NE_BULLET:
+        case IDC_NE_NUMBERED:    return RGB(85,  215, 85);  // bright green
+        case IDC_NE_COLOR:       return RGB(255, 90,  90);  // bright red
+        case IDC_NE_INDENT_IN:
+        case IDC_NE_INDENT_OUT:  return RGB(110, 175, 240); // bright steel blue
+        case IDC_NE_LINESPACE:   return RGB(205, 110, 255); // bright violet
+        case IDC_NE_PARSPACE:    return RGB(205, 110, 255); // bright violet
+        case IDC_NE_FIND:        return RGB(255, 175, 50);  // bright amber
+        case IDC_NE_LINK:        return RGB(85,  175, 255); // bright hyperlink
+        case IDC_NE_TABLE:       return RGB(55,  205, 180); // bright teal
+        case IDC_NE_HLINE:       return RGB(170, 170, 185); // light slate
+        case IDC_NE_CLEARFMT:    return RGB(255, 90,  90);  // bright red
+        case IDC_NE_PRINT_BTN:   return RGB(65,  215, 65);  // bright green
+        case IDC_NE_IMAGE:       return RGB(105, 170, 255); // bright blue
+        case IDC_NE_WORDWRAP:    return RGB(55,  215, 175); // bright teal
+        case IDC_NE_CASE:        return RGB(195, 90,  255); // bright purple
+        case IDC_BTN_LINENUM:    return RGB(115, 185, 220); // bright steel blue
+        case IDC_NE_SAVE:        return RGB(55,  215, 105); // bright green
+        case IDC_NE_SAVE_FTP:    return RGB(55,  180, 255); // bright ocean blue
+        case IDC_NE_PREVIEW:     return RGB(190, 65,  255); // bright violet
+        case IDC_NE_COMMENT:     return RGB(160, 160, 165); // light grey
+        default:                 return RGB(210, 210, 215); // near-white
+        }
+    }
     switch (id) {
     // Character formatting
     case IDC_NE_BOLD:        return RGB(15,  30,  140); // deep navy
@@ -1623,6 +1704,44 @@ static void Ne_SyncToolbar(HWND hwnd, HWND hEdit)
     st->updatingToolbar = false;
 }
 
+// ── Dark mode ─────────────────────────────────────────────────────────────────
+// (g_darkMode declared near top of file, before Ne_SetupScintillaStyle)
+
+// Returns a cached solid-colour brush for dialog backgrounds.
+static HBRUSH Ne_DlgBgBrush()
+{
+    static HBRUSH s_dark  = NULL;
+    static HBRUSH s_light = NULL;
+    if (g_darkMode) {
+        if (!s_dark)  s_dark  = CreateSolidBrush(RGB(25, 26, 27));  // dark dialog bg
+        return s_dark;
+    }
+    if (!s_light) s_light = CreateSolidBrush(RGB(255, 255, 255));
+    return s_light;
+}
+
+// Apply DWM dark/light frame (title bar) to the given window.
+static void Ne_ApplyDarkFrame(HWND hwnd)
+{
+    BOOL dark = g_darkMode ? TRUE : FALSE;
+    // DWMWA_USE_IMMERSIVE_DARK_MODE = 20 (Windows 10 build 18985+ / Windows 11)
+    DwmSetWindowAttribute(hwnd, 20, &dark, sizeof(dark));
+}
+
+// Shared WM_CTLCOLOR* handler for all custom dialogs.
+// Call as: return Ne_DlgCtlColor((HDC)wParam);
+static LRESULT Ne_DlgCtlColor(HDC hdc)
+{
+    if (g_darkMode) {
+        SetBkColor  (hdc, RGB(25, 26, 27));  // matches Ne_DlgBgBrush
+        SetTextColor(hdc, RGB(220, 220, 220));
+    } else {
+        SetBkColor  (hdc, RGB(255, 255, 255));
+        SetTextColor(hdc, RGB(20,  20,  20));
+    }
+    return (LRESULT)Ne_DlgBgBrush();
+}
+
 // ── Zoom helpers ──────────────────────────────────────────────────────────────
 static int g_zoomRtf = 100; // RTF: percentage (50/75/100/125/150/200)
 static int g_zoomSci = 0;   // Scintilla: point offset (-10..+20)
@@ -2045,12 +2164,11 @@ static LRESULT CALLBACK Ne_DialogWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
         if (dd) dd->result = dd->closeResult;
         DestroyWindow(hwnd);
         return 0;
-    case WM_CTLCOLORSTATIC: {
-        HDC hdc = (HDC)wParam;
-        SetBkColor(hdc, RGB(255, 255, 255));
-        SetTextColor(hdc, RGB(20, 20, 20));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
-    }
+    case WM_ERASEBKGND:
+        if (g_darkMode) { RECT r; GetClientRect(hwnd, &r); FillRect((HDC)wParam, &r, Ne_DlgBgBrush()); return 1; }
+        break;
+    case WM_CTLCOLORSTATIC:
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -2785,12 +2903,8 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
         OnCheckboxSettingChange(h);
         break;
     case WM_CTLCOLORSTATIC:
-        SetBkColor((HDC)w, GetSysColor(COLOR_WINDOW));
-        SetTextColor((HDC)w, RGB(20, 20, 20));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
     case WM_CTLCOLORBTN:
-        SetBkColor((HDC)w, GetSysColor(COLOR_WINDOW));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+        return Ne_DlgCtlColor((HDC)w);
     case WM_CLOSE:
         DestroyWindow(h);
         return 0;
@@ -3018,9 +3132,7 @@ static LRESULT CALLBACK Ne_LinkDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         }
         break;
     case WM_CTLCOLORSTATIC:
-        SetBkColor((HDC)wParam, GetSysColor(COLOR_WINDOW));
-        SetTextColor((HDC)wParam, RGB(20, 20, 20));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+        return Ne_DlgCtlColor((HDC)wParam);
     case WM_CLOSE:
         s_linkDD.result = IDCANCEL;
         DestroyWindow(hwnd);
@@ -3397,12 +3509,8 @@ static LRESULT CALLBACK Ne_TblPropsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, L
             return TRUE;
         }
         break;
-    case WM_CTLCOLORSTATIC: {
-        HDC hdc = (HDC)wParam;
-        SetBkColor(hdc, GetSysColor(COLOR_WINDOW));
-        SetTextColor(hdc, RGB(20, 20, 20));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
-    }
+    case WM_CTLCOLORSTATIC:
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -4059,9 +4167,7 @@ static LRESULT CALLBACK Ne_HRulePropsDlgProc(HWND hwnd, UINT msg, WPARAM wParam,
             SetBkColor((HDC)wParam, col);
             return (LRESULT)brush;
         }
-        SetBkColor((HDC)wParam, GetSysColor(COLOR_WINDOW));
-        SetTextColor((HDC)wParam, RGB(20, 20, 20));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
@@ -4449,9 +4555,7 @@ static LRESULT CALLBACK Ne_LineSpaceDlgProc(HWND hwnd, UINT msg, WPARAM wParam, 
         break;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLORBTN:
-        SetBkColor((HDC)wParam, GetSysColor(COLOR_WINDOW));
-        SetTextColor((HDC)wParam, RGB(20, 20, 20));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -4593,9 +4697,7 @@ static LRESULT CALLBACK Ne_ParSpaceDlgProc(HWND hwnd, UINT msg, WPARAM wParam, L
         }
         break;
     case WM_CTLCOLORSTATIC:
-        SetBkColor((HDC)wParam, GetSysColor(COLOR_WINDOW));
-        SetTextColor((HDC)wParam, RGB(20, 20, 20));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -6381,9 +6483,15 @@ static LRESULT CALLBACK NsbAboutWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         PostQuitMessage(0);
         DestroyWindow(hwnd);
         return 0;
+    case WM_ERASEBKGND:
+        if (g_darkMode) { RECT r; GetClientRect(hwnd, &r); FillRect((HDC)wParam, &r, Ne_DlgBgBrush()); return 1; }
+        break;
     case WM_CTLCOLORSTATIC:
+        return Ne_DlgCtlColor((HDC)wParam);
     case WM_CTLCOLOREDIT:
+        // RichEdit50W ignores this; kept white for WYSIWYG viewport
         SetBkColor((HDC)wParam, RGB(255,255,255));
+        SetTextColor((HDC)wParam, RGB(0,0,0));
         return (LRESULT)GetStockObject(WHITE_BRUSH);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
@@ -6579,8 +6687,7 @@ static LRESULT CALLBACK Ne_PwPromptProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         return 0;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
-        SetBkColor((HDC)wParam, RGB(255,255,255));
-        return (LRESULT)GetStockObject(WHITE_BRUSH);
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -6766,8 +6873,7 @@ static LRESULT CALLBACK Ne_FtpSiteProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         return 0;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
-        SetBkColor((HDC)wParam, RGB(255,255,255));
-        return (LRESULT)GetStockObject(WHITE_BRUSH);
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -7140,8 +7246,7 @@ static LRESULT CALLBACK Ne_ChmodProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM 
         return 0;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
-        SetBkColor((HDC)wParam, RGB(255,255,255));
-        return (LRESULT)GetStockObject(WHITE_BRUSH);
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -7296,8 +7401,7 @@ static LRESULT CALLBACK Ne_InputDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         return 0;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
-        SetBkColor((HDC)wParam, RGB(255,255,255));
-        return (LRESULT)GetStockObject(WHITE_BRUSH);
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -7369,8 +7473,7 @@ static LRESULT CALLBACK Ne_PreviewDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
         return TRUE;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
-        SetBkColor((HDC)wParam, RGB(255,255,255));
-        return (LRESULT)GetStockObject(WHITE_BRUSH);
+        return Ne_DlgCtlColor((HDC)wParam);
     case WM_TIMER:
         if (wParam == 1 && d) NeFtp_Keepalive();
         return 0;
@@ -8019,8 +8122,7 @@ static LRESULT CALLBACK Ne_FtpBrowserProc(HWND hwnd, UINT msg, WPARAM wParam, LP
         return 0;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
-        SetBkColor((HDC)wParam, RGB(255,255,255));
-        return (LRESULT)GetStockObject(WHITE_BRUSH);
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -8350,12 +8452,8 @@ static LRESULT CALLBACK Ne_FtpSelectDlgProc(HWND hwnd, UINT msg, WPARAM wParam, 
         if (dd) dd->result = -1;
         DestroyWindow(hwnd);
         return 0;
-    case WM_CTLCOLORSTATIC: {
-        HDC hdc = (HDC)wParam;
-        SetBkColor(hdc, RGB(255, 255, 255));
-        SetTextColor(hdc, RGB(20, 20, 20));
-        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
-    }
+    case WM_CTLCOLORSTATIC:
+        return Ne_DlgCtlColor((HDC)wParam);
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -8898,6 +8996,241 @@ static void ShowNsbAboutDialog(HWND parent)
     Gdiplus::GdiplusShutdown(gdipToken);
 }
 
+// ── Dark-mode retheme ─────────────────────────────────────────────────────────
+// Re-applies the current colour theme to every open Scintilla tab and repaints
+// gutter + status bar.
+static void Ne_RethemeAll(HWND hwnd)
+{
+    int n = NeTabs_GetCount(hwnd);
+    for (int i = 0; i < n; ++i) {
+        NeTabDoc* d = NeTabs_GetDocByIndex(hwnd, i);
+        if (!d || !d->hSci) continue;
+        Ne_SetupScintillaStyle(d->hSci);
+        Ne_ApplyLang(d->hSci, d->langId);
+        if (d->hLineGutter) InvalidateRect(d->hLineGutter, NULL, FALSE);
+    }
+    HWND hBar = GetDlgItem(hwnd, IDC_NE_STATUSBAR);
+    if (hBar) {
+        NeStatusBar_SetDarkMode(hBar, g_darkMode);
+        InvalidateRect(hBar, NULL, FALSE);
+    }
+    Ne_ApplyDarkFrame(hwnd);
+    InvalidateRect(hwnd, NULL, TRUE);
+}
+
+// ── Preferences dialog ────────────────────────────────────────────────────────
+static LRESULT CALLBACK Ne_PrefsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    NeDialogData* dd = (NeDialogData*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    switch (msg) {
+    case WM_CREATE: {
+        CREATESTRUCTW* cs = (CREATESTRUCTW*)lParam;
+        dd = (NeDialogData*)cs->lpCreateParams;
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)dd);
+        dd->hDlgFont = Ne_CreateDialogFont(false);
+
+        HINSTANCE hi = GetModuleHandleW(NULL);
+        RECT rc; GetClientRect(hwnd, &rc);
+        const int P = S(16), LH = S(18), RH = S(22), BH = S(34);
+        int y = P;
+
+        // ── Appearance section ───────────────────────────────────────────────
+        HWND hSecApp = CreateWindowExW(0, L"STATIC", Ls(L"PREF_SEC_APPEARANCE"),
+            WS_CHILD | WS_VISIBLE | SS_LEFT,
+            P, y, rc.right - 2*P, LH, hwnd, NULL, hi, NULL);
+        if (hSecApp && dd->hDlgFont) SendMessageW(hSecApp, WM_SETFONT, (WPARAM)dd->hDlgFont, TRUE);
+        y += LH + S(6);
+
+        // Theme: two radio buttons side-by-side on one row
+        int halfW = (rc.right - 2*P - S(8)) / 2;
+        HWND hRdDark = CreateWindowExW(0, L"BUTTON", Ls(L"PREF_DARK_MODE"),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTORADIOBUTTON | WS_GROUP,
+            P, y, halfW, RH,
+            hwnd, (HMENU)(UINT_PTR)IDC_PREFS_DARK, hi, NULL);
+        HWND hRdLight = CreateWindowExW(0, L"BUTTON", Ls(L"PREF_LIGHT_MODE"),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_AUTORADIOBUTTON,
+            P + halfW + S(8), y, halfW, RH,
+            hwnd, (HMENU)(UINT_PTR)IDC_PREFS_LIGHT, hi, NULL);
+        if (hRdDark  && dd->hDlgFont) SendMessageW(hRdDark,  WM_SETFONT, (WPARAM)dd->hDlgFont, TRUE);
+        if (hRdLight && dd->hDlgFont) SendMessageW(hRdLight, WM_SETFONT, (WPARAM)dd->hDlgFont, TRUE);
+        SendMessageW(g_darkMode ? hRdDark : hRdLight, BM_SETCHECK, BST_CHECKED, 0);
+        y += RH;
+
+        // ── Editor background section ─────────────────────────────────────────
+        // Hidden in dark mode (dark editor is implicit). edSectionH stored as
+        // a window property so the radio-toggle handler can resize the dialog.
+        const int edSectionH = S(8) + LH + S(4) + RH + RH;
+        SetPropW(hwnd, L"EdSH", (HANDLE)(INT_PTR)edSectionH);
+        DWORD edVis = g_darkMode ? 0u : WS_VISIBLE;
+        int   ey    = y + S(8);   // position of editor section (gap above)
+        HWND hSecEd = CreateWindowExW(0, L"STATIC", Ls(L"PREF_SEC_EDITOR"),
+            WS_CHILD | edVis | SS_LEFT,
+            P, ey, rc.right - 2*P, LH,
+            hwnd, (HMENU)(UINT_PTR)IDC_PREFS_SEC_EDITOR, hi, NULL);
+        if (hSecEd && dd->hDlgFont) SendMessageW(hSecEd, WM_SETFONT, (WPARAM)dd->hDlgFont, TRUE);
+        ey += LH + S(4);
+
+        HWND hRdEdLight = CreateWindowExW(0, L"BUTTON", Ls(L"PREF_EDITOR_LIGHT_BG"),
+            WS_CHILD | edVis | WS_TABSTOP | BS_AUTORADIOBUTTON | WS_GROUP,
+            P + S(16), ey, rc.right - 2*P - S(16), RH,
+            hwnd, (HMENU)(UINT_PTR)IDC_PREFS_EDITOR_LIGHT, hi, NULL);
+        if (hRdEdLight && dd->hDlgFont) SendMessageW(hRdEdLight, WM_SETFONT, (WPARAM)dd->hDlgFont, TRUE);
+        ey += RH;
+
+        HWND hRdEdDark = CreateWindowExW(0, L"BUTTON", Ls(L"PREF_EDITOR_DARK_BG"),
+            WS_CHILD | edVis | WS_TABSTOP | BS_AUTORADIOBUTTON,
+            P + S(16), ey, rc.right - 2*P - S(16), RH,
+            hwnd, (HMENU)(UINT_PTR)IDC_PREFS_EDITOR_DARK, hi, NULL);
+        if (hRdEdDark && dd->hDlgFont) SendMessageW(hRdEdDark, WM_SETFONT, (WPARAM)dd->hDlgFont, TRUE);
+        SendMessageW(g_darkEditor ? hRdEdDark : hRdEdLight, BM_SETCHECK, BST_CHECKED, 0);
+
+        // Buttons sit below editor section in light mode, directly below theme radios in dark.
+        y += (g_darkMode ? 0 : edSectionH) + P;
+
+        // ── OK / Cancel buttons ──────────────────────────────────────────────
+        int totalBtnW = dd->buttons[0].width + S(8) + dd->buttons[1].width;
+        int bx = (rc.right - totalBtnW) / 2;
+        for (int i = 0; i < 2; ++i) {
+            DWORD sty = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW;
+            if (i == 0) sty |= BS_DEFPUSHBUTTON;
+            HWND hBtn = CreateWindowExW(0, L"BUTTON", dd->buttons[i].text.c_str(),
+                sty, bx, y, dd->buttons[i].width, BH,
+                hwnd, (HMENU)(UINT_PTR)dd->buttons[i].id, hi, NULL);
+            if (hBtn) {
+                WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC,
+                                                          (LONG_PTR)Ne_BtnHoverProc);
+                SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+            }
+            bx += dd->buttons[i].width + S(8);
+        }
+        return 0;
+    }
+    case WM_COMMAND: {
+        int id = LOWORD(wParam);
+        // Show/hide editor section and resize dialog when mode radio changes.
+        if (HIWORD(wParam) == BN_CLICKED && (id == IDC_PREFS_DARK || id == IDC_PREFS_LIGHT)) {
+            bool showEd = (id == IDC_PREFS_LIGHT);
+            int  edSH   = (int)(INT_PTR)GetPropW(hwnd, L"EdSH");
+            int  delta  = showEd ? edSH : -edSH;
+            // Show/hide the editor section controls
+            ShowWindow(GetDlgItem(hwnd, IDC_PREFS_SEC_EDITOR),   showEd ? SW_SHOW : SW_HIDE);
+            ShowWindow(GetDlgItem(hwnd, IDC_PREFS_EDITOR_LIGHT), showEd ? SW_SHOW : SW_HIDE);
+            ShowWindow(GetDlgItem(hwnd, IDC_PREFS_EDITOR_DARK),  showEd ? SW_SHOW : SW_HIDE);
+            // Resize the dialog window
+            RECT wr; GetWindowRect(hwnd, &wr);
+            SetWindowPos(hwnd, NULL, 0, 0,
+                wr.right - wr.left, wr.bottom - wr.top + delta,
+                SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+            // Move OK / Cancel buttons accordingly
+            HWND btnHwnds[] = { GetDlgItem(hwnd, IDOK), GetDlgItem(hwnd, IDCANCEL) };
+            for (HWND hBtn : btnHwnds) {
+                if (!hBtn) continue;
+                RECT br; GetWindowRect(hBtn, &br);
+                MapWindowPoints(HWND_DESKTOP, hwnd, (LPPOINT)&br, 2);
+                SetWindowPos(hBtn, NULL, br.left, br.top + delta, 0, 0,
+                    SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            InvalidateRect(hwnd, NULL, TRUE);
+        }
+        if (id == IDOK) {
+            HWND hRd   = GetDlgItem(hwnd, IDC_PREFS_DARK);
+            HWND hRdEd = GetDlgItem(hwnd, IDC_PREFS_EDITOR_DARK);
+            bool newDark       = (hRd   && SendMessageW(hRd,   BM_GETCHECK, 0, 0) == BST_CHECKED);
+            bool newDarkEditor = (hRdEd && SendMessageW(hRdEd, BM_GETCHECK, 0, 0) == BST_CHECKED);
+            bool changed = (newDark != g_darkMode) || (newDarkEditor != g_darkEditor);
+            g_darkMode   = newDark;
+            g_darkEditor = newDarkEditor;
+            NeProfiles_SetIntSetting("dark_mode",   g_darkMode   ? 1 : 0);
+            NeProfiles_SetIntSetting("dark_editor", g_darkEditor ? 1 : 0);
+            if (changed) {
+                HWND hwndMain = GetParent(hwnd);
+                Ne_RethemeAll(hwndMain);
+            }
+            DestroyWindow(hwnd);
+        }
+        if (id == IDCANCEL) DestroyWindow(hwnd);
+        break;
+    }
+    case WM_DRAWITEM: {
+        LPDRAWITEMSTRUCT dis = (LPDRAWITEMSTRUCT)lParam;
+        if (dd && dis->CtlType == ODT_BUTTON) {
+            Ne_DrawDialogButton(dis, dd);
+            return TRUE;
+        }
+        break;
+    }
+    case WM_ERASEBKGND:
+        if (g_darkMode) { RECT r; GetClientRect(hwnd, &r); FillRect((HDC)wParam, &r, Ne_DlgBgBrush()); return 1; }
+        break;
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLORBTN:
+        return Ne_DlgCtlColor((HDC)wParam);
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_DESTROY:
+        break;
+    case WM_NCDESTROY:
+        if (dd && dd->hDlgFont) { DeleteObject(dd->hDlgFont); dd->hDlgFont = NULL; }
+        break;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static void Ne_ShowPrefsDialog(HWND parent)
+{
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    static bool registered = false;
+    if (!registered) {
+        WNDCLASSW wc = {};
+        wc.lpfnWndProc   = Ne_PrefsDlgProc;
+        wc.hInstance     = hi;
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wc.lpszClassName = L"NsbPrefsClass";
+        RegisterClassW(&wc);
+        registered = true;
+    }
+
+    const int P = S(16), LH = S(18), RH = S(22), BH = S(34);
+    int clientW = S(340);
+    // Dark mode: no editor section  |  Light mode: editor section included
+    int clientH = g_darkMode
+        ? P + LH + S(6) + RH + P + BH + P
+        : P + LH + S(6) + RH + S(8) + LH + S(4) + RH + RH + P + BH + P;
+
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME);
+    int W = wr.right - wr.left, H = wr.bottom - wr.top;
+
+    RECT pr = {}; if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
+    int x = (pr.left + pr.right) / 2 - W / 2;
+    int y = (pr.top  + pr.bottom) / 2 - H / 2;
+    if (y < 30) y = 30;
+
+    NeDialogData dd = {};
+    dd.buttonCount = 2;
+    dd.buttons[0] = { IDOK,     Ls(L"BTN_SAVE"),   NeBtnTone::Blue, IDI_INFORMATION,
+                      Ne_MeasureButtonWidth(Ls(L"BTN_SAVE")) };
+    dd.buttons[1] = { IDCANCEL, Ls(L"BTN_CANCEL"), NeBtnTone::Red,  IDI_ERROR,
+                      Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL")) };
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME,
+        L"NsbPrefsClass", Ls(L"PREF_TITLE"),
+        WS_POPUP | WS_CAPTION | WS_SYSMENU,
+        x, y, W, H, parent, NULL, hi, &dd);
+    if (!dlg) return;
+
+    if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
+    ShowWindow(dlg, SW_SHOW);
+    SetForegroundWindow(dlg);
+
+    MSG m;
+    while (IsWindow(dlg) && GetMessageW(&m, NULL, 0, 0)) {
+        if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
+    }
+    if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
+}
+
 // ── Window procedure ───────────────────────────────────────────────────────────
 static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -8980,6 +9313,8 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PASTE,     Ls(L"MENU_PASTE"));
         Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
         Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
+        Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
+        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PREFS,     Ls(L"MENU_PREFS"));
         Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hEdit2, Ls(L"MENU_EDIT"), true);
         // ── Convert menu ──────────────────────────────────────────────────────
         HMENU hEncSub = CreatePopupMenu();
@@ -9355,6 +9690,17 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         return 0;
     }
 
+    // ── WM_ERASEBKGND — paint main window background dark in dark mode ────────
+    case WM_ERASEBKGND:
+        if (g_darkMode) {
+            RECT r; GetClientRect(hwnd, &r);
+            HBRUSH hbr = CreateSolidBrush(RGB(25, 26, 27)); // toolbar/tab area bg
+            FillRect((HDC)wParam, &r, hbr);
+            DeleteObject(hbr);
+            return 1;
+        }
+        break;
+
     // ── WM_SIZE ───────────────────────────────────────────────────────────────
     case WM_SIZE: {
         NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
@@ -9683,6 +10029,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (wmId == IDM_COPY)      { if (hEdit) SendMessageW(hEdit, WM_COPY, 0, 0);                  SetFocus(hEdit); return 0; }
         if (wmId == IDM_PASTE)     { if (hEdit) SendMessageW(hEdit, WM_PASTE, 0, 0);                 SetFocus(hEdit); return 0; }
         if (wmId == IDM_SELECTALL) { if (hEdit) SendMessageW(hEdit, EM_SETSEL, 0, -1);               SetFocus(hEdit); return 0; }
+        if (wmId == IDM_PREFS)     { Ne_ShowPrefsDialog(hwnd); return 0; }
         // ── Help menu ─────────────────────────────────────────────────────────
         if (wmId == IDM_SHORTCUTS) { Ne_ShowShortcuts(hwnd);      return 0; }
         if (wmId == IDM_ABOUT)     { ShowNsbAboutDialog(hwnd);     return 0; }
@@ -10262,7 +10609,19 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
             // Background.
             COLORREF bg;
-            if (id == IDC_NE_WORDWRAP) {
+            if (g_darkMode) {
+                if (id == IDC_NE_WORDWRAP) {
+                    if      (pressed && checked) bg = RGB(30,  95,  65);
+                    else if (pressed)            bg = RGB(40,  70, 110);
+                    else if (checked)            bg = RGB(22,  75,  52);
+                    else                         bg = RGB(50,  50,  54);
+                } else {
+                    if      (pressed && checked) bg = RGB(55,  95, 150);
+                    else if (pressed)            bg = RGB(45,  75, 120);
+                    else if (checked)            bg = RGB(32,  58,  98);
+                    else                         bg = RGB(50,  50,  54);
+                }
+            } else if (id == IDC_NE_WORDWRAP) {
                 if      (pressed && checked) bg = RGB(100, 195, 145);
                 else if (pressed)            bg = RGB(185, 215, 250);
                 else if (checked)            bg = RGB(175, 235, 205);
@@ -10279,7 +10638,20 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             DeleteObject(hbr);
 
             // Border: sunken when pressed/checked, raised otherwise.
-            DrawEdge(dis->hDC, &rc, (pressed || checked) ? EDGE_SUNKEN : EDGE_RAISED, BF_RECT);
+            // In dark mode use a subtle flat border instead of the system 3-D edge.
+            if (g_darkMode) {
+                COLORREF bord = (pressed || checked) ? RGB(80, 110, 155) : RGB(65, 65, 70);
+                HPEN hp = CreatePen(PS_SOLID, 1, bord);
+                HPEN op = (HPEN)SelectObject(dis->hDC, hp);
+                MoveToEx(dis->hDC, rc.left,     rc.top,      NULL); LineTo(dis->hDC, rc.right - 1, rc.top);
+                LineTo  (dis->hDC, rc.right - 1, rc.bottom - 1);    LineTo(dis->hDC, rc.left,       rc.bottom - 1);
+                LineTo  (dis->hDC, rc.left,      rc.top);
+                SelectObject(dis->hDC, op); DeleteObject(hp);
+                // Shrink draw rect by 1px so text doesn't overlap border
+                InflateRect(&rc, -1, -1);
+            } else {
+                DrawEdge(dis->hDC, &rc, (pressed || checked) ? EDGE_SUNKEN : EDGE_RAISED, BF_RECT);
+            }
 
             // ── Special: TABLE_DROP button — draw just a tiny ▼ centred ──────
             if (id == IDC_NE_TABLE_DROP) {
@@ -10296,7 +10668,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             // ── Special: Highlight button gets a yellow colour swatch ─────────
             if (id == IDC_NE_HIGHLIGHT) {
                 // Draw "H" in normal text colour above a yellow bar.
-                SetTextColor(dis->hDC, disabled ? GetSysColor(COLOR_GRAYTEXT) : RGB(30, 30, 30));
+                COLORREF hlFg = disabled ? GetSysColor(COLOR_GRAYTEXT)
+                              : g_darkMode ? RGB(230, 230, 230) : RGB(30, 30, 30);
+                SetTextColor(dis->hDC, hlFg);
                 SetBkMode(dis->hDC, TRANSPARENT);
                 HFONT hf = (HFONT)SendMessageW(dis->hwndItem, WM_GETFONT, 0, 0);
                 if (!hf) hf = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
@@ -10315,8 +10689,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             // ── Special: Word wrap — render ↵ larger and bold ─────────────────
             if (id == IDC_NE_WORDWRAP) {
                 COLORREF fg = disabled ? GetSysColor(COLOR_GRAYTEXT)
-                            : checked  ? RGB(0, 120, 80)
-                            :            RGB(80, 80, 80);
+                            : g_darkMode && checked  ? RGB(55,  215, 175)
+                            : g_darkMode             ? RGB(160, 160, 165)
+                            : checked                ? RGB(0,   120,  80)
+                            :                          RGB(80,   80,  80);
                 SetTextColor(dis->hDC, fg);
                 SetBkMode(dis->hDC, TRANSPARENT);
                 int ht = -(MulDiv(16, GetDeviceCaps(dis->hDC, LOGPIXELSY), 72));
@@ -10369,21 +10745,22 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         bool grayed   = (dis->itemState & ODS_GRAYED)   != 0;
         RECT rc = dis->rcItem;
         // Background
-        COLORREF bg = selected ? GetSysColor(COLOR_HIGHLIGHT) : RGB(255, 255, 255);
+        COLORREF bg = selected ? GetSysColor(COLOR_HIGHLIGHT)
+                    : g_darkMode ? RGB(25, 26, 27) : RGB(255, 255, 255);
         HBRUSH hbr = CreateSolidBrush(bg); FillRect(dis->hDC, &rc, hbr); DeleteObject(hbr);
         // Separator
         if (d->isSeparator) {
             int y = (rc.top + rc.bottom) / 2;
-            HPEN hp = CreatePen(PS_SOLID, 1, RGB(220, 220, 220));
+            HPEN hp = CreatePen(PS_SOLID, 1, g_darkMode ? RGB(65, 65, 68) : RGB(220, 220, 220));
             HPEN op = (HPEN)SelectObject(dis->hDC, hp);
             MoveToEx(dis->hDC, rc.left + S(4), y, NULL); LineTo(dis->hDC, rc.right - S(4), y);
             SelectObject(dis->hDC, op); DeleteObject(hp);
             return TRUE;
         }
         // Text
-        COLORREF fg = grayed   ? RGB(160, 160, 160)            :
+        COLORREF fg = grayed   ? (g_darkMode ? RGB(105, 105, 108) : RGB(160, 160, 160)) :
                       selected ? GetSysColor(COLOR_HIGHLIGHTTEXT)  :
-                                 RGB(30, 30, 30);
+                      g_darkMode ? RGB(210, 210, 215) : RGB(30, 30, 30);
         SetTextColor(dis->hDC, fg);
         SetBkMode(dis->hDC, TRANSPARENT);
         // Draw gutter icon if present
@@ -10492,7 +10869,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 if (rcFill.left < rcFill.right) {
                     HDC hdc = GetWindowDC(hwnd);
                     if (hdc) {
-                        HBRUSH hbr = CreateSolidBrush(RGB(255, 255, 255));
+                        HBRUSH hbr = CreateSolidBrush(g_darkMode ? RGB(25, 26, 27) : RGB(255, 255, 255));
                         FillRect(hdc, &rcFill, hbr);
                         DeleteObject(hbr);
                         ReleaseDC(hwnd, hdc);
@@ -10507,6 +10884,13 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_CTLCOLORBTN:
     case WM_CTLCOLORSTATIC: {
         HDC hdc = (HDC)wParam;
+        if (g_darkMode) {
+            SetBkColor  (hdc, RGB(50, 50, 54));
+            SetTextColor(hdc, RGB(210, 210, 215));
+            static HBRUSH s_btnDark = NULL;
+            if (!s_btnDark) s_btnDark = CreateSolidBrush(RGB(50, 50, 54));
+            return (LRESULT)s_btnDark;
+        }
         SetBkColor(hdc, GetSysColor(COLOR_BTNFACE));
         SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
         return (LRESULT)GetSysColorBrush(COLOR_BTNFACE);
@@ -10637,8 +11021,16 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     if (g_zoomRtf  > 500) g_zoomRtf  = 500;
     if (g_zoomSci < -10)  g_zoomSci = -10;
     if (g_zoomSci >  20)  g_zoomSci  =  20;
+    // Load dark mode preference.
+    int darkVal = 0;
+    NeProfiles_GetIntSetting("dark_mode", 0, darkVal);
+    g_darkMode = (darkVal != 0);
+    int darkEdVal = 0;
+    NeProfiles_GetIntSetting("dark_editor", 0, darkEdVal);
+    g_darkEditor = (darkEdVal != 0);
 
     ShowWindow(s_hwndMain, nCmdShow);
+    Ne_ApplyDarkFrame(s_hwndMain);
     UpdateWindow(s_hwndMain);
 
     MSG msg;
