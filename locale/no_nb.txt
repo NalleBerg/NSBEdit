@@ -1,0 +1,331 @@
+# NSBEdit locale file — no_nb (Norsk bokmål)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Uten tittel
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Fil
+MENU_NEW        = &Ny\tCtrl+N
+MENU_OPEN       = &Åpne...\tCtrl+O
+MENU_SAVE       = &Lagre\tCtrl+S
+MENU_SAVEAS     = Lagre &som...\tCtrl+Shift+S
+MENU_PRINT      = &Skriv ut...\tCtrl+P
+MENU_EXPORT_PDF = &Eksporter som PDF...\tCtrl+Shift+P
+MENU_EXIT       = A&vslutt	Ctrl+W
+MENU_EDIT         = &Rediger
+MENU_UNDO         = &Angre\tCtrl+Z
+MENU_REDO         = &Gjør om\tCtrl+Y
+MENU_CUT          = Klipp u&t\tCtrl+X
+MENU_COPY         = &Kopier\tCtrl+C
+MENU_PASTE        = &Lim inn\tCtrl+V
+MENU_SELECTALL    = Merk &alt\tCtrl+A
+MENU_PREFS        = &Innstillinger...
+PREF_TITLE        = Innstillinger
+PREF_SEC_APPEARANCE = Utseende
+PREF_DARK_MODE         = Mørkt tema
+PREF_LIGHT_MODE        = Lyst tema
+PREF_SEC_EDITOR        = Editorens bakgrunn
+PREF_EDITOR_LIGHT_BG   = Lys bakgrunn for ren tekst og kode
+PREF_EDITOR_DARK_BG    = Mørk bakgrunn for ren tekst og kode
+MENU_HELP       = &Hjelp
+MENU_SHORTCUTS  = &Tastatursnarveier...\tF1
+MENU_ABOUT      = &Om NSBEdit
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = Kon&verter
+MENU_CONV_TO_PLAIN  = Fjern formatering — lagre som ren tekst
+MENU_CONV_TO_RTF    = Legg til &formatering — lag RTF
+MENU_CONV_TO_HTML5  = Eksporter som &HTML 5...
+MSG_HTML5_ERR       = HTML-konvertering mislyktes.
+MSG_HTML5_SAVE_ERR  = Kunne ikke skrive HTML-fil.
+DLG_SAVE_HTML5      = Lagre som HTML 5
+MENU_ENCODING       = &Tegnkoding
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (system)
+MENU_ENC_WIN1252    = Windows-1252 (vesteuropeisk)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = Rik tekst
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Ren tekst
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Fjerning av RTF-formatering vil slette all fet skrift, kursiv, farger og andre formateringseffekter.\n\nFortsett og lagre som ren tekst?
+MSG_ENC_LOSSY   = Noen tegn kan ikke representeres i den valgte tegnkodingen og vil erstattes med «?» eller lignende.\n\nFortsett?
+MSG_DEL_PLAIN_FILE = Dokumentet er lagret som RTF-fil.\n\nSlett den opprinnelige klartekstfilen?
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Alle støttede filer|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-filer (*.rtf)|*.rtf|Tekstfiler (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Konfig (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Alle filer (*.*)|*.*
+FILTER_SAVEAS = RTF-filer (*.rtf)|*.rtf|Tekstfiler (*.txt)|*.txt|Alle filer (*.*)|*.*
+FILTER_IMAGE  = Bildefiler|*.png;*.jpg;*.jpeg|PNG-filer (*.png)|*.png|JPEG-filer (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Åpne
+DLG_SAVEAS = Lagre som
+DLG_IMAGE  = Sett inn bilde
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Kunne ikke åpne filen.
+MSG_SAVE_ERR      = Kunne ikke lagre filen.
+MSG_HAS_FORMATTING = Dette dokumentet inneholder formatering (fet skrift, farger, skriftstørrelser osv.) som ikke kan lagres i en klartekstfil.\n\nKlikk Ja for å lagre som ren tekst og forkaste all formatering.\nKlikk Nei for å lagre som RTF i stedet (filen vil få .rtf-endelse).\nKlikk Avbryt for å gå tilbake uten å lagre.
+MSG_IMG_OPEN_ERR  = Kunne ikke åpne bildefilen.
+MSG_IMG_FMT_ERR   = Format støttes ikke. Bruk PNG eller JPEG.
+MSG_SAVE_PROMPT   = Lagre endringer i «%s»?
+DLG_SAVE_CHANGES  = Lagre endringer
+BTN_SAVE          = Lagre
+BTN_DONT_SAVE     = Ikke lagre
+BTN_CANCEL        = Avbryt
+BTN_OK            = OK
+
+DLG_FILE_CHANGED        = Filen er endret på disk
+MSG_FILE_CHANGED_PROMPT = «%s» ble endret av et annet program mens NSBEdit ikke hadde fokus.\n\nLast inn på nytt fra disk?
+BTN_RELOAD              = Last inn på nytt
+BTN_KEEP                = Behold gjeldende
+
+TAB_CTX_NEW_TAB         = Ny fane
+TAB_CTX_CLOSE_TAB       = Lukk fane
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Ord
+SB_CHARS                = Tegn
+SB_SAVED                = Lagret
+SB_UNSAVED              = Ulagret
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Fet  (Ctrl+B)
+TIP_ITALIC      = Kursiv  (Ctrl+I)
+TIP_UNDERLINE   = Understreking  (Ctrl+U)
+TIP_STRIKE      = Gjennomstreking
+TIP_SUBSCRIPT   = Senket skrift  (f.eks. H₂O)
+TIP_SUPERSCRIPT = Hevet skrift  (f.eks. m²)
+TIP_FONTFACE    = Skrifttype
+TIP_FONTSIZE    = Skriftstørrelse (pt)
+TIP_COLOR       = Tekstfarge
+TIP_HIGHLIGHT   = Merkefarge
+TIP_ALIGN_L     = Venstrejuster
+TIP_ALIGN_C     = Midtstill
+TIP_ALIGN_R     = Høyrejuster
+TIP_ALIGN_J     = Blokkjuster
+TIP_BULLET      = Punktliste
+TIP_NUMBERED    = Nummerert liste
+TIP_IMAGE       = Sett inn bilde  (PNG / JPEG)
+TIP_INDENT_IN   = Øk innrykk
+TIP_INDENT_OUT  = Reduser innrykk
+TIP_LINESPACE   = Linjeavstand...
+TIP_FIND        = Søk / Erstatt  (Ctrl+F)
+TIP_LINK        = Sett inn hyperlenke
+TIP_TABLE       = Tabellegenskaper...
+TIP_TABLE_DROP  = Sett inn tabell (velg størrelse)
+TIP_HLINE       = Sett inn horisontal linje
+TIP_CLEARFMT    = Fjern all formatering
+TIP_PRINT_BTN   = Skriv ut...  (Ctrl+P)
+TIP_ZOOM        = Zoom
+TIP_WORDWRAP    = Slå av/på tekstbryting
+TIP_CASE        = Endre store/små bokstaver  (STORE / små / Tittel)
+TIP_LINENUM     = Slå av/på linjenumre
+TIP_PARSPACE    = Avsnittavstand...
+TIP_SAVE        = Lagre  (Ctrl+S)
+TIP_SAVE_FTP    = Lagre til FTP-server
+TIP_PREVIEW     = Forhåndsvis på nett.
+TIP_LANG_UI     = Språk for brukergrensesnitt
+TIP_COMMENT     = Kommenter / fjern kommentar for markerte linjer
+MENU_GUI_LANG   = Grensesnittspråk
+MENU_LANGUAGE   = &Språk
+LANG_PLAIN_TEXT = Ren tekst
+LANG_UI_ENGLISH = English
+LANG_UI_NORWEGIAN = Norsk (bokmål)
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-filer (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Eksporter som PDF
+MSG_PDF_ERR      = Kunne ikke eksportere PDF. Kontroller at «Microsoft Print to PDF» er installert (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Søk / Erstatt
+DLG_FIND_WHAT       = Søk:
+DLG_REPL_WITH       = Erstatt med:
+BTN_FIND_NEXT       = Finn neste
+BTN_CLOSE           = Lukk
+BTN_REPLACE         = Erstatt
+BTN_REPLACE_ALL     = Erstatt alle
+CHK_MATCHCASE       = Skill mellom store og små bokstaver
+CHK_WHOLEWORD       = Hele ord
+CHK_REGEX           = Regex
+MSG_FIND_NOT_FOUND  = Teksten ble ikke funnet.
+MSG_REGEX_ERR       = Ugyldig regulært uttrykk.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Sett inn hyperlenke
+DLG_LINK_URL    = URL:
+DLG_LINK_TEXT   = Visningstekst:
+LINK_TIP_CTRL   = [Ctrl]+Klikk for å åpne i nettleser
+MSG_LINK_BAD_URL = Skriv inn en gyldig URL.
+
+En URL må starte med et kjent skjema som:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Sett inn tabell
+DLG_TABLE_ROWS  = Rader:
+DLG_TABLE_COLS  = Kolonner:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Velg tabellstørrelse
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Tabellegenskaper
+DLG_TABLE_INSERT    = Sett inn tabell
+TBLP_ROWS           = Rader:
+TBLP_COLS           = Kolonner:
+TBLP_CELLW          = Kolonnebredde:
+TBLP_BORDERW        = Kantlinjetykkelse:
+TBLP_UNIT_HP        = halvpunkt
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Cellepolstring øverst:
+TBLP_PAD_BOTTOM     = Cellepolstring nederst:
+TBLP_PAD_LEFT       = Cellepolstring venstre:
+TBLP_PAD_RIGHT      = Cellepolstring høyre:
+TBLP_ROWH           = Radhøyde (0=auto):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Tabelljustering
+TBLP_ALIGN_L        = Venstre
+TBLP_ALIGN_C        = Midtstilt
+TBLP_ALIGN_R        = Høyre
+BTN_APPLY           = Bruk
+CTX_TABLE_PROPS     = Tabellegenskaper...
+TBLP_MODE_ALTER     = Endre gjeldende tabell
+TBLP_MODE_NESTED    = Tabell i gjeldende celle
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Linjeavstand
+RDO_LINESPACE_S  = Enkel
+RDO_LINESPACE_15 = 1,5 linjer
+RDO_LINESPACE_D  = Dobbel
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Avsnittavstand
+DLG_PARSPACE_BEF = Avstand foran (pt):
+DLG_PARSPACE_AFT = Avstand etter (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Tastatursnarveier
+SHORTCUTS_COL1   = Snarvei
+SHORTCUTS_COL2   = Funksjon
+SHORTCUTS_COL3   = Beskrivelse
+SHORTCUTS_BTN_CLOSE = Lukk
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Om NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF-notisblokk for Windows\n\n
+ABOUT_PUBLISHED   = Utgitt: 
+ABOUT_VERSION     = Versjon: 
+ABOUT_EDITION     = Utgave: 
+ABOUT_DESC        = En lettvekts, frittstående RTF-editor bygget på Win32.\nStøtter fet, kursiv, understreking, gjennomstreking, hevet skrift, senket skrift,\nskrifttype/størrelse/farge, justering, punkt- og nummererte lister og bildeinnsetting.\n\n
+ABOUT_LICENSE     = Lisensiert under GNU General Public License v2.\n
+ABOUT_BTN_LICENSE = Vis lisens
+ABOUT_BTN_CREDITS = Bidragsytere
+ABOUT_BTN_CLOSE   = Lukk
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Legg til nettsted...
+FTP_DISCONNECT       = Koble fra
+FTP_BROWSE           = Bla i filer...
+FTP_DLG_SITE_ADD     = Legg til FTP/SFTP-nettsted
+FTP_DLG_SITE_EDIT    = Rediger FTP/SFTP-nettsted
+FTP_FRIENDLY_NAME    = Visningsnavn:
+FTP_PROTOCOL         = Protokoll:
+FTP_HOST             = Server:
+FTP_PORT             = Port:
+FTP_USERNAME         = Brukernavn:
+FTP_PASSWORD         = Passord:
+FTP_REMEMBER_PWD     = Husk passord
+FTP_INITIAL_PATH     = Startmappe:
+FTP_WEB_URL          = Nett-URL (rot):
+FTP_HELP_TITLE       = FTP/SFTP-profil — feltguide
+FTP_SAVE             = Lagre profil
+FTP_DELETE           = Slett profil
+FTP_DLG_BROWSER      = FTP-filutforsker
+FTP_COL_NAME         = Navn
+FTP_COL_SIZE         = Størrelse
+FTP_COL_PERMS        = Rettigheter
+FTP_CTX_OPEN         = Åpne / Last ned
+FTP_CTX_CHMOD        = Rettigheter...
+FTP_CTX_NEW_FILE     = Ny fil...
+FTP_CTX_NEW_DIR      = Ny mappe...
+FTP_INPUT_FILENAME   = Filnavn:
+FTP_INPUT_DIRNAME    = Mappenavn:
+FTP_CTX_DELETE       = Slett
+FTP_CTX_RENAME       = Gi nytt navn...
+FTP_INPUT_RENAME     = Nytt navn:
+FTP_DLG_CHMOD        = Endre rettigheter (chmod)
+FTP_CHMOD_OWNER      = Eier
+FTP_CHMOD_GROUP      = Gruppe
+FTP_CHMOD_OTHER      = Andre
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Oktal:
+FTP_CHMOD_APPLY      = Bruk
+FTP_CONN_FAILED      = Tilkobling mislyktes
+FTP_STATUS           = Tilkoblet:
+FTP_NOT_CONNECTED    = Koble til en eller flere profiler før du lagrer til FTP.
+FTP_PICK_PROFILE     = Velg en profil å lagre til:
+FTP_PW_PROMPT        = Skriv inn passord
+FTP_PW_FOR           = Passord for
+MSG_FTP_UPLOAD_OK    = Fil lagret og lastet opp.
+MSG_FTP_UPLOAD_FAIL  = Opplasting mislyktes.
+MENU_SAVE_TO_FTP     = Lagre til FTP...
+MENU_PREVIEW_FTP     = Forhåndsvis på nett.
+FTP_PREVIEW_LOCKED   = Fanen er låst mens forhåndsvisning er aktiv.
+FTP_PREVIEW_URL      = Forhåndsvisnings-URL:
+BTN_OPEN_BROWSER     = Åpne i nettleser
+BTN_OPEN_BROWSER_TIP = Snarvei: [Enter] for å åpne i nettleser.
+BTN_REVERT           = Tilbakestill & lukk
+BTN_REVERT_TIP       = Snarvei: [Esc] for å tilbakestille og lukke denne dialogen.
+FTP_PREVIEW_UP_FAIL  = Opplasting mislyktes:
+FTP_PREVIEW_REV_FAIL = Tilbakestilling mislyktes:
+BTN_SAVE_BACKUP      = Lagre sikkerhetskopi lokalt...
+BTN_CLOSE_ANYWAY     = Lukk uten å tilbakestille
+FTP_SAVE_BROWSER     = Lagre til FTP — velg mål
+FTP_FILENAME_PROMPT  = Filnavn:
+FTP_SAVE_HERE        = Lagre her
+FTP_SAVE_TO          = Lagret til FTP
+FTP_SAVED_OK         = Fil lastet opp. Tilkoblingen holdes åpen.
+MSG_FTP_DELETE_WARN  = Slett «%s» fra serveren?\n\nDette kan ikke angres.
+MSG_FTP_CHMOD_OK     = Rettigheter oppdatert.
+MSG_FTP_DELETE_FAIL  = Sletting mislyktes.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Sett inn horisontal linje
+DLG_HRUL_PROPS      = Egenskaper for horisontal linje
+HRP_STYLE           = Stil:
+HRP_THICKNESS       = Tykkelse (pt):
+HRP_SPACE_ABOVE     = Luft over (pt):
+HRP_SPACE_BELOW     = Luft under (pt):
+HRP_WIDTH_PCT       = Bredde (%):
+HRP_ALIGNMENT       = Justering:
+HRP_START_COLOUR    = Startfarge:
+HRP_END_COLOUR      = Sluttfarge (gradient):
+HRP_ALIGN_L         = Venstre
+HRP_ALIGN_C         = Midtstilt
+HRP_ALIGN_R         = Høyre
+HRP_STYLE_SINGLE    = Enkel tynn
+HRP_STYLE_THICK     = Tykk
+HRP_STYLE_DOUBLE    = Dobbel
+HRP_STYLE_DOTTED    = Prikket
+HRP_STYLE_DASHED    = Stiplet
+HRP_STYLE_HAIRLINE  = Hårfin
+BTN_CHOOSE          = Velg…

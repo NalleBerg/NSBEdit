@@ -17,16 +17,24 @@ static const wchar_t* CBP_MARKER  = L"CustomCheckbox";
 
 enum class CbTheme { Light, Dark, HCBlack, HCWhite };
 
+// App-level override set by Checkbox_SetForceDark().
+static bool s_cbForceDarkActive = false;
+static bool s_cbForceDark       = false;
+
+void Checkbox_SetForceDark(bool dark, bool active)
+{
+    s_cbForceDark       = dark;
+    s_cbForceDarkActive = active;
+}
+
 static CbTheme DetectCbTheme()
 {
-    // High-contrast takes priority over light/dark.
+    // High-contrast takes priority over everything.
     HIGHCONTRASTW hc = {};
     hc.cbSize = sizeof(hc);
     if (SystemParametersInfoW(SPI_GETHIGHCONTRAST, sizeof(hc), &hc, 0) &&
         (hc.dwFlags & HCF_HIGHCONTRASTON))
     {
-        // Distinguish black-on-white from white-on-black by the window background
-        // luminance (system colour, not the app preference).
         COLORREF bg   = GetSysColor(COLOR_WINDOW);
         int      luma = (GetRValue(bg) * 299 +
                          GetGValue(bg) * 587 +
@@ -34,8 +42,12 @@ static CbTheme DetectCbTheme()
         return (luma < 128) ? CbTheme::HCBlack : CbTheme::HCWhite;
     }
 
-    // Light vs dark: read the per-user preference written by Windows Settings.
-    DWORD light = 1; // default: light
+    // Application override (set by Checkbox_SetForceDark).
+    if (s_cbForceDarkActive)
+        return s_cbForceDark ? CbTheme::Dark : CbTheme::Light;
+
+    // Fall back to the Windows registry preference.
+    DWORD light = 1;
     HKEY  hKey  = NULL;
     if (RegOpenKeyExW(HKEY_CURRENT_USER,
             L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
@@ -64,10 +76,10 @@ static CbColors GetCbColors(CbTheme t)
 {
     switch (t) {
     case CbTheme::Dark:
-        // Dark pane, dark box, lighter border, bright green tick, light label.
+        // Dark pane matches NSBEdit's dialog background RGB(25,26,27).
         return {
-            RGB( 32,  32,  32),   // paneBg
-            RGB( 45,  45,  45),   // boxBg     — slightly lighter than pane
+            RGB( 25,  26,  27),   // paneBg — matches Ne_DlgBgBrush()
+            RGB( 45,  45,  45),   // boxBg  — slightly lighter than pane
             RGB(150, 150, 150),   // border
             RGB(  0, 150, 255),   // hover     — Windows accent blue works on dark too
             RGB(102, 204, 102),   // tick      — fresh lime-green, readable on dark

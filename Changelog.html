@@ -1,6 +1,16 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 20 May 2026 &mdash; v2026.05.20.11 (11:26)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 21 May 2026 &mdash; v2026.05.21.20 (20:25)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.21.20</span></h3>
+<p><strong>Menu bar system color; instant language switching; Norwegian Bokm&aring;l UI; RTF viewport white background fix (21.05.2026, 20:25):</strong></p>
+<ul>
+<li><strong>Menu bar background matches system color:</strong> The owner-drawn top-level menu bar items (File, Edit, Convert, etc.) now fill their background with <code>GetSysColor(COLOR_MENUBAR)</code> instead of hardcoded white, so the bar blends with the standard Windows toolbar&thinsp;/&thinsp;chrome background. Popup (drop-down) item backgrounds remain white in light mode.</li>
+<li><strong>Instant UI language switching:</strong> Selecting a language from the <em>GUI Language</em> menu now switches the interface immediately &mdash; no restart required. New functions <code>Ne_BuildMainMenu(HWND)</code>, <code>Ne_RefreshTooltips(HWND)</code>, and <code>Ne_RefreshLocale(HWND)</code> rebuild the full menu bar, refresh all toolbar tooltip strings, update tab titles, and update the status bar in one call. <code>WM_CREATE</code> no longer builds the menu or sets tooltips inline; both use these shared helpers.</li>
+<li><strong>Norwegian Bokm&aring;l UI translation:</strong> Full <code>no_nb</code> locale added (<code>locale/no_nb.txt</code>, RCDATA&nbsp;11, <code>IDR_LOCALE_NO_NB</code>). All ~200 UI strings translated. Selectable from <em>GUI Language &rarr; Norsk (bokm&aring;l)</em>. Locale keys <code>LANG_UI_ENGLISH</code> and <code>LANG_UI_NORWEGIAN</code> added to both <code>en_GB.txt</code> and <code>no_nb.txt</code>.</li>
+<li><strong>RTF viewport always white when dark editor is on:</strong> <code>g_darkEditor</code> now only affects the Scintilla (plain-text&thinsp;/&thinsp;code) viewport. The RichEdit control background and default text colour are driven by <code>g_darkMode</code> only, so enabling <em>Dark editor background</em> in Preferences no longer turns the RTF writing area black.</li>
+<li><strong>Convert to RTF restores white background:</strong> The <em>Convert &rarr; Convert to RTF</em> handler now resets the RichEdit background and text colour (white&thinsp;/&thinsp;auto-colour) immediately after conversion, matching the behaviour of a freshly opened RTF tab.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.20.11</span></h3>
 <p><strong>Dark mode; dark editor in light mode; Preferences dialog; crash fix (20.05.2026, 11:26):</strong></p>

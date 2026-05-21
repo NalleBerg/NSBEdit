@@ -85,6 +85,12 @@ inline void MarkCheckboxRequired(HWND hwnd) {
     SetPropW(hwnd, L"CbRequired", (HANDLE)(LONG_PTR)1);
 }
 
+// Override the automatic registry-based dark/light detection with the
+// application's own dark-mode flag.  Call once at startup (and whenever the
+// setting changes) so that all checkboxes follow the app's palette rather
+// than the system theme.  Pass active=false to revert to auto-detection.
+void Checkbox_SetForceDark(bool dark, bool active = true);
+
 // Build a 3-entry HIMAGELIST ([0] blank / [1] unchecked / [2] checked) drawn
 // with GDI using the current theme colours.  Each bitmap is sizePx × sizePx.
 // The caller owns the returned handle; destroy it with ImageList_Destroy().

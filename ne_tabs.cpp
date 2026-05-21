@@ -40,6 +40,7 @@ static NeTabsState g_tabs;
 static bool g_tipTracking = false;
 static HWND g_tipTab = NULL;
 static int g_tipIndex = -1;
+static bool s_darkMode = false;
 
 static void NeTabs_RepositionBtnNew(); // forward declaration
 
@@ -153,7 +154,8 @@ static void NeTabs_DrawCloseGlyphs(HWND hwnd)
         }
 
         // Draw × glyph
-        COLORREF col = hover ? RGB(255, 255, 255) : RGB(100, 100, 100);
+        COLORREF col = hover ? RGB(255, 255, 255)
+                             : (s_darkMode ? RGB(155, 155, 160) : RGB(100, 100, 100));
         HPEN hp = CreatePen(PS_SOLID, S(1) + 1, col);
         HPEN oldpen = (HPEN)SelectObject(hdc, hp);
         int m = S(3);
@@ -171,14 +173,95 @@ static void NeTabs_DrawCloseGlyphs(HWND hwnd)
 static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
+    case WM_ERASEBKGND:
+        if (s_darkMode) {
+            RECT r; GetClientRect(hwnd, &r);
+            HBRUSH hbr = CreateSolidBrush(RGB(25, 26, 27));
+            FillRect((HDC)wParam, &r, hbr);
+            DeleteObject(hbr);
+            return 1;
+        }
+        break;
     case WM_PAINT: {
-        // Let the system draw the tabs first, then overlay × glyphs.
-        LRESULT r = CallWindowProcW(g_tabs.tabPrevProc, hwnd, msg, wParam, lParam);
+        if (!s_darkMode) {
+            // Light mode: let the system draw, then overlay × glyphs.
+            LRESULT r = CallWindowProcW(g_tabs.tabPrevProc, hwnd, msg, wParam, lParam);
+            NeTabs_DrawCloseGlyphs(hwnd);
+            if (g_tabs.hBtnNew && IsWindowVisible(g_tabs.hBtnNew))
+                RedrawWindow(g_tabs.hBtnNew, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
+            return r;
+        }
+        // ── Dark mode: fully custom paint ────────────────────────────────────
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+        RECT rcClient; GetClientRect(hwnd, &rcClient);
+
+        // Fill entire tab-control area with dark chrome colour.
+        HBRUSH hbgBrush = CreateSolidBrush(RGB(25, 26, 27));
+        FillRect(hdc, &rcClient, hbgBrush);
+        DeleteObject(hbgBrush);
+
+        // Prepare font (use whatever the tab control was given, else system font).
+        HFONT hf = (HFONT)SendMessageW(hwnd, WM_GETFONT, 0, 0);
+        if (!hf) hf = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+        HFONT hfOld = (HFONT)SelectObject(hdc, hf);
+        SetBkMode(hdc, TRANSPARENT);
+
+        int n = (int)g_tabs.docs.size();
+        for (int i = 0; i < n; ++i) {
+            RECT ir = {};
+            if (!TabCtrl_GetItemRect(g_tabs.hTab, i, &ir)) continue;
+            bool active = (i == g_tabs.activeIndex);
+
+            // Tab background.
+            HBRUSH hTbr = CreateSolidBrush(active ? RGB(42, 44, 47) : RGB(30, 31, 33));
+            FillRect(hdc, &ir, hTbr);
+            DeleteObject(hTbr);
+
+            // Tab border (top + sides).
+            HPEN hpBord = CreatePen(PS_SOLID, 1, RGB(58, 60, 63));
+            HPEN hpOld  = (HPEN)SelectObject(hdc, hpBord);
+            MoveToEx(hdc, ir.left,      ir.top,  NULL);
+            LineTo  (hdc, ir.right - 1, ir.top);
+            LineTo  (hdc, ir.right - 1, ir.bottom);
+            if (!active) {
+                MoveToEx(hdc, ir.left, ir.top, NULL);
+                LineTo  (hdc, ir.left, ir.bottom);
+            }
+            SelectObject(hdc, hpOld);
+            DeleteObject(hpBord);
+
+            // Active tab: Windows-blue top accent line.
+            if (active) {
+                HPEN hpAcc  = CreatePen(PS_SOLID, S(2), RGB(0, 120, 212));
+                HPEN hpOldA = (HPEN)SelectObject(hdc, hpAcc);
+                MoveToEx(hdc, ir.left + 1,  ir.top + 1, NULL);
+                LineTo  (hdc, ir.right - 1, ir.top + 1);
+                SelectObject(hdc, hpOldA);
+                DeleteObject(hpAcc);
+            }
+
+            // Tab title — built directly from the doc so we don't get the
+            // trailing padding spaces that NeTabs_TitleFor inserts for the × area.
+            std::wstring dispTxt;
+            if (g_tabs.docs[i].modified) dispTxt += L"* ";
+            dispTxt += NeTabs_BaseName(g_tabs.docs[i].path, g_tabs.untitled);
+
+            SetTextColor(hdc, active ? RGB(230, 230, 235) : RGB(125, 125, 130));
+            RECT rcTxt = ir;
+            rcTxt.left  += S(6);
+            rcTxt.right -= S(18); // leave room for the × close glyph
+            DrawTextW(hdc, dispTxt.c_str(), -1, &rcTxt,
+                      DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS);
+        }
+
+        SelectObject(hdc, hfOld);
+        EndPaint(hwnd, &ps);
+
         NeTabs_DrawCloseGlyphs(hwnd);
-        // Themed tab drawing can overdraw the sibling [+] button; repaint it now.
         if (g_tabs.hBtnNew && IsWindowVisible(g_tabs.hBtnNew))
             RedrawWindow(g_tabs.hBtnNew, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-        return r;
+        return 0;
     }
     case WM_MOUSEMOVE: {
         POINT p = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
@@ -570,4 +653,19 @@ HWND NeTabs_GetActiveScintilla(HWND hwndParent)
 {
     NeTabDoc* d = NeTabs_GetActiveDoc(hwndParent);
     return d ? d->hSci : NULL;
+}
+
+void NeTabs_SetDarkMode(HWND hwndParent, bool dark)
+{
+    s_darkMode = dark;
+    if (!g_tabs.hTab || g_tabs.hwndParent != hwndParent) return;
+    InvalidateRect(g_tabs.hTab, NULL, TRUE);
+    if (g_tabs.hBtnNew) {
+        // Switch the [+] button between BS_PUSHBUTTON (light) and BS_OWNERDRAW
+        // (dark), so the main window's WM_DRAWITEM paints it dark-themed.
+        LONG_PTR style = GetWindowLongPtrW(g_tabs.hBtnNew, GWL_STYLE);
+        style = (style & ~BS_TYPEMASK) | (dark ? BS_OWNERDRAW : BS_PUSHBUTTON);
+        SetWindowLongPtrW(g_tabs.hBtnNew, GWL_STYLE, style);
+        InvalidateRect(g_tabs.hBtnNew, NULL, TRUE);
+    }
 }

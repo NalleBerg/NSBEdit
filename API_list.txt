@@ -33,7 +33,8 @@
                                                 Help menu (Keyboard Shortcuts/About).
                                                 Owner-draw menus at 12pt Segoe UI via
                                                 Ne_AppendMenuOD / WM_MEASUREITEM /
-                                                WM_DRAWITEM — white bg, highlight/grayed
+                                                WM_DRAWITEM — popup bg white, bar items
+                                                bg COLOR_MENUBAR, highlight/grayed
                                                 states, right-aligned accelerators.
                                                 Bar items (File/Edit/Help) also owner-
                                                 drawn (isBar=true, tighter padding).
@@ -266,6 +267,31 @@
                                                 g_darkMode || g_darkEditor — all palette
                                                 decisions use darkEd so g_darkEditor
                                                 applies dark Scintilla colors in light UI.
+                                                RichEdit bg/text colour driven by
+                                                g_darkMode only (NOT g_darkEditor) —
+                                                RTF documents always display on a white
+                                                background in light-UI mode regardless of
+                                                the dark-editor preference. IDM_CONV_TO_RTF
+                                                handler resets EM_SETBKGNDCOLOR + CHARFORMAT
+                                                to white/auto-colour on conversion.
+                                                i18n live-switch: Ne_BuildMainMenu(HWND) —
+                                                destroys the old HMENU, rebuilds from Ls()
+                                                strings, calls SetMenu + DrawMenuBar +
+                                                Ne_RebuildLocaleMenu. Ne_RefreshTooltips(HWND)
+                                                — calls Ne_SetTip(GetDlgItem(hwnd,IDC_*))
+                                                for all ~35 toolbar controls. Ne_RefreshLocale
+                                                (HWND) — calls Ne_LoadLocale, Ne_BuildMainMenu,
+                                                Ne_RefreshTooltips, NeTabs_UpdateAllTitles,
+                                                Ne_UpdateStatusText; invoked from the GUI
+                                                Language WM_COMMAND handler so locale
+                                                switches instantly with no restart.
+                                                locale\no_nb.txt (RCDATA 11,
+                                                IDR_LOCALE_NO_NB): full Norwegian Bokmål
+                                                translation (~200 keys). LANG_UI_ENGLISH /
+                                                LANG_UI_NORWEGIAN keys added to en_GB.txt
+                                                and no_nb.txt for the locale menu labels.
+                                                Ne_RebuildLocaleMenu forward-declared before
+                                                Ne_BuildMainMenu (which calls it).
 
   ne_tabs.h / ne_tabs.cpp                       Tabbed editor module — SysTabControl32
                                                 strip + per-tab RichEdit HWND ownership.
@@ -328,6 +354,15 @@
                                                 # comments, \n CRLF \t tab \\ backslash.
                                                 Loaded by Ne_LoadLocale() at startup.
                                                 Never read from disk at runtime.
+                                                Added keys: LANG_UI_ENGLISH,
+                                                LANG_UI_NORWEGIAN (locale menu labels).
+
+  locale\no_nb.txt                              Norwegian Bokmål translation (RCDATA 11,
+                                                IDR_LOCALE_NO_NB). Full ~200-key
+                                                translation of en_GB.txt. Selected via
+                                                GUI Language → Norsk (bokmål).
+                                                g_localeId = 1 persisted as "locale_id"
+                                                in DB.
 
   ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
                                                 SQLite3 (statically linked). DB lookup order

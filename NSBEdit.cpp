@@ -61,6 +61,7 @@
 #define IDM_FIND            116
 #define IDM_REPLACE         117
 #define IDR_LOCALE_EN_GB    10
+#define IDR_LOCALE_NO_NB    11
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -118,8 +119,9 @@ enum class NeEncoding {
 #define IDM_SAVE_TO_FTP     133   // File menu: "Save to FTP..."
 #define IDM_PREVIEW_FTP     134   // File/FTP menu + toolbar: "Preview online."
 #define IDM_PREFS           135   // Edit menu: Preferences
-#define IDM_LANG_BASE       600   // Language menu: 600..600+NE_LANG_COUNT-1
+#define IDM_LANG_BASE        600  // Language menu: 600..600+NE_LANG_COUNT-1
 #define IDM_FTP_CONNECT_BASE 700  // FTP menu: profile entries 700..799
+#define IDM_LOCALE_BASE      800  // GUI language menu: locale entries 800..899
 #define IDC_NE_CLEARFMT     227
 #define IDC_NE_PRINT_BTN    228
 #define IDC_NE_ZOOM         229
@@ -153,7 +155,6 @@ enum class NeEncoding {
 #define IDC_NE_SAVE             263   // toolbar Save button
 #define IDC_NE_SAVE_FTP         264   // toolbar Save to FTP button
 #define IDC_NE_PREVIEW          265   // toolbar Preview online button
-#define IDC_NE_LANG_UI          265   // UI language combobox
 #define IDC_NE_COMMENT          266   // Comment / Uncomment  (Scintilla only)
 
 // ── Internal state ─────────────────────────────────────────────────────────────
@@ -297,7 +298,8 @@ static const int NE_LANG_COUNT = (int)(sizeof(s_langs) / sizeof(s_langs[0]));
 
 // Menu handle for the Language popup (so we can update checkmarks).
 static HMENU s_hLangMenu = NULL;
-static HMENU s_hFtpMenu  = NULL;
+static HMENU s_hFtpMenu    = NULL;
+static HMENU s_hLocaleMenu = NULL;
 // Forward declaration — defined near WM_CREATE.
 static HFONT g_hMenuFont;
 static bool  s_lineNumsOn    = false; // persists across tabs; toggled by gutter click
@@ -336,8 +338,9 @@ static int Ne_LangFromExt(const std::wstring& path)
 // g_darkMode controls palette selection (see dark-mode section below).
 static bool g_darkMode   = false;  // persisted as "dark_mode" in DB
 static bool g_darkEditor = false;  // persisted as "dark_editor": dark Scintilla in light UI
+static int  g_localeId   = 0;      // persisted as "locale_id" in DB (0 = en_GB)
 
-static void Ne_SetupScintillaStyle(HWND hSci)
+static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
 {
     auto sci = [hSci](UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
         return SendMessageW(hSci, msg, wp, lp);
@@ -345,7 +348,8 @@ static void Ne_SetupScintillaStyle(HWND hSci)
 
     // ── Theme-dependent palette ───────────────────────────────────────────────
     // g_darkEditor allows a dark Scintilla viewport even when the UI is light.
-    bool darkEd = g_darkMode || g_darkEditor;
+    // forceLight=true is used for RTF docs which always display with white bg.
+    bool darkEd = !forceLight && (g_darkMode || g_darkEditor);
     COLORREF bg   = darkEd ? RGB( 30, 30, 30) : RGB(255,255,255);
     COLORREF fg   = darkEd ? RGB(212,212,212) : RGB(  0,  0,  0);
     COLORREF cmt  = darkEd ? RGB(106,153, 85) : RGB(  0,128,  0);
@@ -1047,7 +1051,8 @@ static void Ne_UpdateLangMenuCheck(int langId)
 
 // ── Owner-draw menu support ───────────────────────────────────────────────────
 // g_hMenuFont declared near top of file (needs to be visible to NsbLineGutterProc).
-static HICON g_hFtpMenuIcon = NULL;
+static HICON g_hFtpMenuIcon    = NULL;
+static HICON g_hLocaleMenuIcon = NULL;
 
 struct NeMenuItemData {
     std::wstring   text;         // owned copy — never dangles
@@ -1092,10 +1097,15 @@ static std::wstring Ne_Unescape(const std::wstring& s)
 
 static void Ne_LoadLocale()
 {
-    // Loads the embedded locale resource (RCDATA id IDR_LOCALE_EN_GB).
-    // Add locale-selection logic here when more locales are added.
+    // Loads the locale resource matching g_localeId.
+    // 0 = en_GB (built-in).  Extend the switch when more locales are bundled.
     HINSTANCE hi = GetModuleHandleW(NULL);
-    HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(IDR_LOCALE_EN_GB), RT_RCDATA);
+    int resId = IDR_LOCALE_EN_GB;  // default / fallback
+    switch (g_localeId) {
+        case 1:  resId = IDR_LOCALE_NO_NB; break;
+        default: resId = IDR_LOCALE_EN_GB; break;
+    }
+    HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
     if (!hRes) return;
     HGLOBAL hG = LoadResource(hi, hRes);
     if (!hG) return;
@@ -2238,6 +2248,7 @@ static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wst
 
     if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
     ShowWindow(dlg, SW_SHOW);
+    Ne_ApplyDarkFrame(dlg);
     SetForegroundWindow(dlg);
 
     MSG m;
@@ -2514,6 +2525,7 @@ static const ShortcutRow s_shortcuts[] = {
     { L"[Ctrl]+O",             L"Open",               L"Open a file" },
     { L"[Ctrl]+P",             L"Print",              L"Print the document" },
     { L"[Ctrl]+[Shift]+P",     L"Export as PDF",      L"Export the document as a PDF file" },
+    { L"[Ctrl]+[Shift]+H",     L"Preview online",     L"Upload and preview the FTP-linked file in the browser" },
     // ── Navigation ────────────────────────────────────────────────────────────
     { L"[Ctrl]+[Home]",        L"Go to start",        L"Move cursor to start of document" },
     { L"[Ctrl]+[End]",         L"Go to end",          L"Move cursor to end of document" },
@@ -3511,6 +3523,9 @@ static LRESULT CALLBACK Ne_TblPropsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, L
         break;
     case WM_CTLCOLORSTATIC:
         return Ne_DlgCtlColor((HDC)wParam);
+    case WM_ERASEBKGND:
+        if (g_darkMode) { RECT r; GetClientRect(hwnd, &r); FillRect((HDC)wParam, &r, Ne_DlgBgBrush()); return 1; }
+        break;
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -3583,6 +3598,7 @@ static void Ne_ShowTablePropsDialog(HWND parent, HWND hEdit)
         WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_VISIBLE,
         x, y, W, H, parent, NULL, hi, NULL);
     if (!dlg) return;
+    Ne_ApplyDarkFrame(dlg);
 
     HFONT hf = Ne_MakeDlgFont(dlg);
     RECT rc; GetClientRect(dlg, &rc);
@@ -3650,7 +3666,7 @@ static void Ne_ShowTablePropsDialog(HWND parent, HWND hEdit)
     int cellMm = (int)(props.cellW / 56.7 + 0.5);
     mkLbl(Ls(L"TBLP_CELLW"),   y0);
     mkSpin(IDC_TBLP_CELLW, y0, cellMm, 5, 250);
-    mkUnit(L"mm", y0);
+    mkUnit(Ls(L"TBLP_UNIT_MM"), y0);
     y0 += EB + S(10);
 
     // ── Borders & padding ──────────────────────────────────────────────────
@@ -3668,19 +3684,19 @@ static void Ne_ShowTablePropsDialog(HWND parent, HWND hEdit)
 
     mkLbl(Ls(L"TBLP_PAD_TOP"),   y0);
     mkSpin(IDC_TBLP_PADTOP, y0, padTopPt, 0, 100);
-    mkUnit(L"pt", y0); y0 += EB + S(4);
+    mkUnit(Ls(L"TBLP_UNIT_PT"), y0); y0 += EB + S(4);
 
     mkLbl(Ls(L"TBLP_PAD_BOTTOM"), y0);
     mkSpin(IDC_TBLP_PADBOTTOM, y0, padBotPt, 0, 100);
-    mkUnit(L"pt", y0); y0 += EB + S(4);
+    mkUnit(Ls(L"TBLP_UNIT_PT"), y0); y0 += EB + S(4);
 
     mkLbl(Ls(L"TBLP_PAD_LEFT"),  y0);
     mkSpin(IDC_TBLP_PADLEFT, y0, padLeftPt, 0, 100);
-    mkUnit(L"pt", y0); y0 += EB + S(4);
+    mkUnit(Ls(L"TBLP_UNIT_PT"), y0); y0 += EB + S(4);
 
     mkLbl(Ls(L"TBLP_PAD_RIGHT"), y0);
     mkSpin(IDC_TBLP_PADRIGHT, y0, padRightPt, 0, 100);
-    mkUnit(L"pt", y0); y0 += EB + S(10);
+    mkUnit(Ls(L"TBLP_UNIT_PT"), y0); y0 += EB + S(10);
 
     // ── Row height ────────────────────────────────────────────────────────
     int rowHPt = (int)(props.rowH / 20.0 + 0.5);
@@ -4086,8 +4102,9 @@ struct NeHRuleProps {
     int      align;       // 0=left, 1=center, 2=right
 };
 
-static const wchar_t* s_hrStyleName[6] = {
-    L"Single thin", L"Thick", L"Double", L"Dotted", L"Dashed", L"Hairline",
+static const wchar_t* s_hrStyleKeys[6] = {
+    L"HRP_STYLE_SINGLE", L"HRP_STYLE_THICK", L"HRP_STYLE_DOUBLE",
+    L"HRP_STYLE_DOTTED", L"HRP_STYLE_DASHED", L"HRP_STYLE_HAIRLINE",
 };
 
 static NeDialogData s_hrPropsDD;
@@ -4169,6 +4186,9 @@ static LRESULT CALLBACK Ne_HRulePropsDlgProc(HWND hwnd, UINT msg, WPARAM wParam,
         }
         return Ne_DlgCtlColor((HDC)wParam);
     }
+    case WM_ERASEBKGND:
+        if (g_darkMode) { RECT r; GetClientRect(hwnd, &r); FillRect((HDC)wParam, &r, Ne_DlgBgBrush()); return 1; }
+        break;
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -4282,12 +4302,13 @@ static bool Ne_ShowHRulePropsDialog(HWND parent, HWND hEdit, bool insertMode, Ne
     int x = (pr.left + pr.right) / 2 - W / 2, y = (pr.top + pr.bottom) / 2 - H / 2;
     if (y < 30) y = 30;
 
-    const wchar_t* title = insertMode ? L"Insert Horizontal Rule" : L"Horizontal Rule Properties";
+    const wchar_t* title = insertMode ? Ls(L"DLG_HRUL_INSERT") : Ls(L"DLG_HRUL_PROPS");
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE,
         L"NsbHRulePropsClass", title,
         WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_VISIBLE,
         x, y, W, H, parent, NULL, hi, NULL);
     if (!dlg) return false;
+    Ne_ApplyDarkFrame(dlg);
 
     HFONT hf = Ne_MakeDlgFont(dlg);
     RECT rc; GetClientRect(dlg, &rc);
@@ -4315,44 +4336,45 @@ static bool Ne_ShowHRulePropsDialog(HWND parent, HWND hEdit, bool insertMode, Ne
     };
 
     // Style
-    mkLbl(L"Style:", y0); y0 += LH + S(4);
+    mkLbl(Ls(L"HRP_STYLE"), y0); y0 += LH + S(4);
     HWND hStyleCtrl = CreateWindowExW(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",
         WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
         VX, y0, VW, EB * 8, dlg, (HMENU)(UINT_PTR)IDC_HRP_STYLE, hi, NULL);
     if (hf) SendMessageW(hStyleCtrl, WM_SETFONT, (WPARAM)hf, TRUE);
     for (int i = 0; i < 6; i++)
-        SendMessageW(hStyleCtrl, CB_ADDSTRING, 0, (LPARAM)s_hrStyleName[i]);
+        SendMessageW(hStyleCtrl, CB_ADDSTRING, 0, (LPARAM)Ls(s_hrStyleKeys[i]));
     SendMessageW(hStyleCtrl, CB_SETCURSEL, inout->styleIdx, 0);
+    if (g_darkMode) SetWindowTheme(hStyleCtrl, L"DarkMode_CFD", L"");
     y0 += EB + S(8);
 
     // Thickness
-    mkLbl(L"Thickness (pt):", y0); y0 += LH + S(4);
+    mkLbl(Ls(L"HRP_THICKNESS"), y0); y0 += LH + S(4);
     HWND hThickCtrl = mkSpin(IDC_HRP_THICKNESS, y0, inout->thickness, 1, 20);
     (void)hThickCtrl;
     y0 += EB + S(8);
 
     // Space above
-    mkLbl(L"Space above (pt):", y0); y0 += LH + S(4);
+    mkLbl(Ls(L"HRP_SPACE_ABOVE"), y0); y0 += LH + S(4);
     HWND hAboveCtrl = mkSpin(IDC_HRP_SPACE_ABOVE, y0, inout->spaceBefore / 20, 0, 100);
     (void)hAboveCtrl;
     y0 += EB + S(8);
 
     // Space below
-    mkLbl(L"Space below (pt):", y0); y0 += LH + S(4);
+    mkLbl(Ls(L"HRP_SPACE_BELOW"), y0); y0 += LH + S(4);
     HWND hBelowCtrl = mkSpin(IDC_HRP_SPACE_BELOW, y0, inout->spaceAfter / 20, 0, 100);
     (void)hBelowCtrl;
     y0 += EB + S(8);
 
     // Width
-    mkLbl(L"Width (%):", y0); y0 += LH + S(4);
+    mkLbl(Ls(L"HRP_WIDTH_PCT"), y0); y0 += LH + S(4);
     HWND hWidthCtrl = mkSpin(IDC_HRP_WIDTH, y0, inout->widthPct, 10, 100);
     (void)hWidthCtrl;
     y0 += EB + S(8);
 
     // Alignment
-    mkLbl(L"Alignment:", y0); y0 += LH + S(4);
+    mkLbl(Ls(L"HRP_ALIGNMENT"), y0); y0 += LH + S(4);
     {
-        const wchar_t* aTxt[3] = { L"Left", L"Center", L"Right" };
+        const wchar_t* aTxt[3] = { Ls(L"HRP_ALIGN_L"), Ls(L"HRP_ALIGN_C"), Ls(L"HRP_ALIGN_R") };
         int aIds[3] = { IDC_HRP_ALIGN_L, IDC_HRP_ALIGN_C, IDC_HRP_ALIGN_R };
         int aW = S(70);
         for (int i = 0; i < 3; i++) {
@@ -4367,25 +4389,25 @@ static bool Ne_ShowHRulePropsDialog(HWND parent, HWND hEdit, bool insertMode, Ne
     y0 += EB + S(8);
 
     // Start colour
-    mkLbl(L"Start colour:", y0); y0 += LH + S(4);
+    mkLbl(Ls(L"HRP_START_COLOUR"), y0); y0 += LH + S(4);
     // Swatch — painted via WM_CTLCOLORSTATIC
     HWND hSwatch = CreateWindowExW(WS_EX_STATICEDGE, L"STATIC", L"",
         WS_CHILD | WS_VISIBLE,
         VX, y0, S(36), EB, dlg, (HMENU)(UINT_PTR)IDC_HRP_SWATCH, hi, NULL);
     SetWindowLongPtrW(hSwatch, GWLP_USERDATA, (LONG_PTR)(DWORD_PTR)inout->color);
-    HWND hChooseBtn = CreateWindowExW(0, L"BUTTON", L"Choose\u2026",
+    HWND hChooseBtn = CreateWindowExW(0, L"BUTTON", Ls(L"BTN_CHOOSE"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
         VX + S(44), y0, S(90), EB, dlg, (HMENU)(UINT_PTR)IDC_HRP_COLOR, hi, NULL);
     if (hf) SendMessageW(hChooseBtn, WM_SETFONT, (WPARAM)hf, TRUE);
     y0 += EB + S(8);
 
     // End colour (set same as start = solid line; set different = left-to-right gradient)
-    mkLbl(L"End colour (gradient):", y0); y0 += LH + S(4);
+    mkLbl(Ls(L"HRP_END_COLOUR"), y0); y0 += LH + S(4);
     HWND hSwatchEnd = CreateWindowExW(WS_EX_STATICEDGE, L"STATIC", L"",
         WS_CHILD | WS_VISIBLE,
         VX, y0, S(36), EB, dlg, (HMENU)(UINT_PTR)IDC_HRP_SWATCH_END, hi, NULL);
     SetWindowLongPtrW(hSwatchEnd, GWLP_USERDATA, (LONG_PTR)(DWORD_PTR)inout->colorEnd);
-    HWND hChooseBtnEnd = CreateWindowExW(0, L"BUTTON", L"Choose\u2026",
+    HWND hChooseBtnEnd = CreateWindowExW(0, L"BUTTON", Ls(L"BTN_CHOOSE"),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
         VX + S(44), y0, S(90), EB, dlg, (HMENU)(UINT_PTR)IDC_HRP_COLOR_END, hi, NULL);
     if (hf) SendMessageW(hChooseBtnEnd, WM_SETFONT, (WPARAM)hf, TRUE);
@@ -4813,43 +4835,108 @@ static void Ne_ShowParSpaceDialog(HWND parent, HWND hEdit)
     SetFocus(hEdit);
 }
 
+// Subclass proc: paints the shortcuts-dialog header dark when g_darkMode is on.
+static LRESULT CALLBACK Ne_DarkHeaderProc(
+    HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
+    UINT_PTR uid, DWORD_PTR /*data*/)
+{
+    if (msg == WM_PAINT) {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+        RECT rc; GetClientRect(hwnd, &rc);
+        HBRUSH hBrBg = CreateSolidBrush(RGB(35, 36, 37));
+        FillRect(hdc, &rc, hBrBg); DeleteObject(hBrBg);
+        // Bottom border line
+        HPEN hPen = CreatePen(PS_SOLID, 1, RGB(70, 70, 70));
+        HPEN hOld = (HPEN)SelectObject(hdc, hPen);
+        MoveToEx(hdc, rc.left, rc.bottom - 1, NULL);
+        LineTo(hdc, rc.right, rc.bottom - 1);
+        SelectObject(hdc, hOld); DeleteObject(hPen);
+        // Column labels
+        HFONT hf = (HFONT)SendMessageW(hwnd, WM_GETFONT, 0, 0);
+        HFONT hOldF = (HFONT)SelectObject(hdc, hf);
+        SetTextColor(hdc, RGB(220, 220, 220));
+        SetBkMode(hdc, TRANSPARENT);
+        int count = Header_GetItemCount(hwnd);
+        for (int i = 0; i < count; ++i) {
+            RECT rcItem; Header_GetItemRect(hwnd, i, &rcItem);
+            // Right-edge separator
+            hPen = CreatePen(PS_SOLID, 1, RGB(70, 70, 70));
+            hOld = (HPEN)SelectObject(hdc, hPen);
+            MoveToEx(hdc, rcItem.right - 1, rcItem.top, NULL);
+            LineTo(hdc, rcItem.right - 1, rcItem.bottom);
+            SelectObject(hdc, hOld); DeleteObject(hPen);
+            // Text
+            wchar_t buf[128] = {};
+            HDITEMW hdi = {}; hdi.mask = HDI_TEXT;
+            hdi.pszText = buf; hdi.cchTextMax = 128;
+            Header_GetItem(hwnd, i, &hdi);
+            RECT rcTxt = rcItem; rcTxt.left += S(6); rcTxt.right -= S(4);
+            DrawTextW(hdc, buf, -1, &rcTxt,
+                DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_END_ELLIPSIS);
+        }
+        SelectObject(hdc, hOldF);
+        EndPaint(hwnd, &ps);
+        return 0;
+    }
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
 static void Ne_ShowShortcuts(HWND parent)
 {
-    // Simple modal dialog: title bar, a ListView, and a Close button.
-    // We create it manually (no .rc dialog template needed).
+    // Modal dialog: title bar, a ListView, and a styled Close button.
     HINSTANCE hi = GetModuleHandleW(NULL);
+
+    // Per-window state stored on the heap; freed in WM_DESTROY.
+    struct NsbSCData {
+        HFONT       hfBold    = NULL;
+        HFONT       hDlgFont  = NULL;
+        HMSB        hSV       = NULL;
+        HWND        hLVHeader = NULL;
+        NeDialogData dd       = {};
+    };
 
     // ── Register class (once) ─────────────────────────────────────────────────
     WNDCLASSW wc = {};
-    wc.lpfnWndProc   = [](HWND h, UINT m, WPARAM w, LPARAM l) -> LRESULT {
+    wc.lpfnWndProc = [](HWND h, UINT m, WPARAM w, LPARAM l) -> LRESULT {
+        NsbSCData* sd = (NsbSCData*)GetWindowLongPtrW(h, GWLP_USERDATA);
+
         if (m == WM_COMMAND && (LOWORD(w) == IDOK || LOWORD(w) == IDCANCEL))
             { PostMessageW(h, WM_CLOSE, 0, 0); return 0; }
         if (m == WM_CLOSE)  { DestroyWindow(h); return 0; }
         if (m == WM_DESTROY) {
-            // Free the bold font we created for the Shortcut column.
-            HFONT hf = (HFONT)GetWindowLongPtrW(h, GWLP_USERDATA);
-            if (hf) DeleteObject(hf);
-            PostQuitMessage(0); return 0;
+            if (sd) {
+                if (sd->hfBold)   DeleteObject(sd->hfBold);
+                if (sd->hDlgFont) DeleteObject(sd->hDlgFont);
+                if (sd->hLVHeader) RemoveWindowSubclass(sd->hLVHeader, Ne_DarkHeaderProc, 1);
+                msb_detach(sd->hSV);
+                delete sd;
+            }
+            PostQuitMessage(0);
+            return 0;
         }
-        if (m == WM_KEYDOWN && w == VK_ESCAPE) { PostMessageW(h, WM_CLOSE, 0, 0); return 0; }
-        // ── Custom-draw: bold Shortcut column, royal-blue Description column ──
+        if (m == WM_KEYDOWN && w == VK_ESCAPE)
+            { PostMessageW(h, WM_CLOSE, 0, 0); return 0; }
+        if (m == WM_ERASEBKGND) {
+            if (g_darkMode) { RECT r; GetClientRect(h, &r); FillRect((HDC)w, &r, Ne_DlgBgBrush()); return 1; }
+        }
+        if (m == WM_DRAWITEM) {
+            if (sd) { Ne_DrawDialogButton((const DRAWITEMSTRUCT*)l, &sd->dd); return TRUE; }
+        }
         if (m == WM_NOTIFY) {
             NMHDR* hdr = (NMHDR*)l;
             if (hdr->idFrom == 100 && hdr->code == NM_CUSTOMDRAW) {
                 NMLVCUSTOMDRAW* cd = (NMLVCUSTOMDRAW*)l;
                 switch (cd->nmcd.dwDrawStage) {
-                case CDDS_PREPAINT:
-                    return CDRF_NOTIFYITEMDRAW;
-                case CDDS_ITEMPREPAINT:
-                    return CDRF_NOTIFYSUBITEMDRAW;
+                case CDDS_PREPAINT:      return CDRF_NOTIFYITEMDRAW;
+                case CDDS_ITEMPREPAINT:  return CDRF_NOTIFYSUBITEMDRAW;
                 case CDDS_ITEMPREPAINT | CDDS_SUBITEM: {
                     if (cd->iSubItem == 0) {
-                        HFONT hfBold = (HFONT)GetWindowLongPtrW(h, GWLP_USERDATA);
-                        if (hfBold) SelectObject(cd->nmcd.hdc, hfBold);
+                        if (sd && sd->hfBold) SelectObject(cd->nmcd.hdc, sd->hfBold);
                         return CDRF_NEWFONT;
                     }
                     if (cd->iSubItem == 2) {
-                        cd->clrText = RGB(0, 56, 184);  // dark royal blue
+                        cd->clrText = g_darkMode ? RGB(100, 160, 255) : RGB(0, 56, 184);
                         return CDRF_NEWFONT;
                     }
                     return CDRF_DODEFAULT;
@@ -4860,7 +4947,7 @@ static void Ne_ShowShortcuts(HWND parent)
         return DefWindowProcW(h, m, w, l);
     };
     wc.hInstance     = hi;
-    wc.hbrBackground = (HBRUSH)(COLOR_BTNFACE + 1);
+    wc.hbrBackground = g_darkMode ? Ne_DlgBgBrush() : (HBRUSH)(COLOR_BTNFACE + 1);
     wc.lpszClassName = L"NsbShortcutsClass";
     if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
 
@@ -4875,6 +4962,7 @@ static void Ne_ShowShortcuts(HWND parent)
         WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_VISIBLE,
         x, y, W, H, parent, NULL, hi, NULL);
     if (!dlg) return;
+    Ne_ApplyDarkFrame(dlg);
 
     HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
     if (hIco) {
@@ -4882,9 +4970,13 @@ static void Ne_ShowShortcuts(HWND parent)
         SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco);
     }
 
+    // Allocate per-dialog state and store on the window.
+    NsbSCData* sd = new NsbSCData();
+    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)sd);
+
     RECT rcC; GetClientRect(dlg, &rcC);
     const int PAD   = S(8);
-    const int BTN_H = S(28);
+    const int BTN_H = S(34);
 
     // ── ListView ──────────────────────────────────────────────────────────────
     HWND hLV = CreateWindowExW(WS_EX_CLIENTEDGE, WC_LISTVIEWW, L"",
@@ -4894,23 +4986,34 @@ static void Ne_ShowShortcuts(HWND parent)
         dlg, (HMENU)100, hi, NULL);
     SendMessageW(hLV, LVM_SETEXTENDEDLISTVIEWSTYLE, 0,
         LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
+    sd->hLVHeader = ListView_GetHeader(hLV);
+    if (g_darkMode) {
+        SetWindowTheme(hLV, L"DarkMode_Explorer", NULL);
+        SetWindowTheme(sd->hLVHeader, L"", NULL);
+        SetWindowSubclass(sd->hLVHeader, Ne_DarkHeaderProc, 1, 0);
+        ListView_SetBkColor(hLV, RGB(25, 26, 27));
+        ListView_SetTextBkColor(hLV, RGB(25, 26, 27));
+        ListView_SetTextColor(hLV, RGB(220, 220, 220));
+    }
 
-    // Create a bold font for the Shortcut column; store on the dialog for cleanup.
+    // Custom scrollbar — must attach BEFORE populating (ListView golden rule).
+    sd->hSV = msb_attach(hLV, MSB_VERTICAL);
+
+    // Bold font for the Shortcut column.
     HFONT hfBase = (HFONT)SendMessageW(hLV, WM_GETFONT, 0, 0);
     if (!hfBase) hfBase = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
     LOGFONTW lfBold = {};
     GetObjectW(hfBase, sizeof(lfBold), &lfBold);
     lfBold.lfWeight = FW_BOLD;
-    HFONT hfBold = CreateFontIndirectW(&lfBold);
-    SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)hfBold);
+    sd->hfBold = CreateFontIndirectW(&lfBold);
 
     // Columns
-    auto addCol = [&](int idx, const wchar_t* text, int w) {
+    auto addCol = [&](int idx, const wchar_t* text, int cw) {
         LVCOLUMNW lvc = {};
-        lvc.mask    = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
+        lvc.mask     = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
         lvc.iSubItem = idx;
         lvc.pszText  = (LPWSTR)text;
-        lvc.cx       = w;
+        lvc.cx       = cw;
         ListView_InsertColumn(hLV, idx, &lvc);
     };
     addCol(0, Ls(L"SHORTCUTS_COL1"), S(170));
@@ -4920,8 +5023,8 @@ static void Ne_ShowShortcuts(HWND parent)
     // Rows
     for (int i = 0; i < s_shortcutCount; ++i) {
         LVITEMW lvi = {};
-        lvi.mask    = LVIF_TEXT;
-        lvi.iItem   = i;
+        lvi.mask     = LVIF_TEXT;
+        lvi.iItem    = i;
         lvi.iSubItem = 0;
         lvi.pszText  = (LPWSTR)s_shortcuts[i].key;
         ListView_InsertItem(hLV, &lvi);
@@ -4929,13 +5032,49 @@ static void Ne_ShowShortcuts(HWND parent)
         ListView_SetItemText(hLV, i, 2, (LPWSTR)s_shortcuts[i].desc);
     }
 
-    // ── Close button ──────────────────────────────────────────────────────────
-    int bx = (rcC.right - S(80)) / 2;
+    // Auto-size all columns to fit content/header, then resize the dialog so
+    // the full table is always visible without a horizontal scrollbar.
+    for (int i = 0; i < 3; ++i)
+        ListView_SetColumnWidth(hLV, i, LVSCW_AUTOSIZE_USEHEADER);
+    {
+        int totalColW = 0;
+        for (int i = 0; i < 3; ++i)
+            totalColW += ListView_GetColumnWidth(hLV, i);
+        int lvHBorder  = 2 * GetSystemMetrics(SM_CXEDGE);
+        int lvNeededW  = totalColW + S(MSB_WIDTH_FULL) + lvHBorder;
+        int dlgClientW = lvNeededW + 2 * PAD;
+        RECT rcAdj = { 0, 0, dlgClientW, rcC.bottom };
+        AdjustWindowRectEx(&rcAdj,
+            (DWORD)GetWindowLongPtrW(dlg, GWL_STYLE), FALSE,
+            (DWORD)GetWindowLongPtrW(dlg, GWL_EXSTYLE));
+        int newW = rcAdj.right - rcAdj.left;
+        RECT dlgWR; GetWindowRect(dlg, &dlgWR);
+        int newX = (dlgWR.left + dlgWR.right) / 2 - newW / 2;
+        SetWindowPos(dlg, NULL, newX, dlgWR.top, newW, dlgWR.bottom - dlgWR.top,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+        GetClientRect(dlg, &rcC);
+        SetWindowPos(hLV, NULL, PAD, PAD,
+                     rcC.right - 2*PAD, rcC.bottom - 3*PAD - BTN_H,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
+    // ── Custom Close button ───────────────────────────────────────────────────
+    sd->hDlgFont = Ne_CreateDialogFont(true);
+    sd->dd.hDlgFont    = sd->hDlgFont;
+    sd->dd.buttonCount = 1;
+    sd->dd.buttons[0]  = { IDOK, Ls(L"SHORTCUTS_BTN_CLOSE"), NeBtnTone::Blue,
+                            IDI_INFORMATION,
+                            Ne_MeasureButtonWidth(Ls(L"SHORTCUTS_BTN_CLOSE")) };
+
+    int bw = sd->dd.buttons[0].width;
+    int bx = (rcC.right - bw) / 2;
     int by = rcC.bottom - PAD - BTN_H;
     HWND hBtn = CreateWindowExW(0, L"BUTTON", Ls(L"SHORTCUTS_BTN_CLOSE"),
-        WS_CHILD | WS_VISIBLE | BS_DEFPUSHBUTTON,
-        bx, by, S(80), BTN_H, dlg, (HMENU)IDOK, hi, NULL);
-    SendMessageW(hBtn, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+        WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
+        bx, by, bw, BTN_H, dlg, (HMENU)IDOK, hi, NULL);
+    SendMessageW(hBtn, WM_SETFONT, (WPARAM)sd->hDlgFont, TRUE);
+    WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+    SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
 
     if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
     SetFocus(hBtn);
@@ -5539,12 +5678,13 @@ static void Ne_New(HWND hwnd)
     if (hEdit) {
         CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
         cfD.dwMask    = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
-        cfD.dwEffects = CFE_AUTOCOLOR;
+        cfD.dwEffects = g_darkMode ? 0 : CFE_AUTOCOLOR;
+        cfD.crTextColor = g_darkMode ? RGB(220, 220, 220) : 0;
         cfD.yHeight   = s_neFontSizes[s_neFontDefault] * 20;
         cfD.bCharSet  = DEFAULT_CHARSET;
         wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
         SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
-        SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
+        SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, g_darkMode ? RGB(25, 26, 27) : RGB(255, 255, 255));
         SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
         Ne_SubclassEditForCaret(hEdit);
         SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_SELCHANGE);  // suppress EN_CHANGE during attach
@@ -5894,12 +6034,22 @@ static bool Ne_SaveAs(HWND hwnd)
     ofn.lpstrTitle  = Ls(L"DLG_SAVEAS");
     if (!GetSaveFileNameW(&ofn)) return false;
 
+    // Remember whether the tab was using RichEdit (RTF) before the save.
+    bool wasRtfTab = doc && doc->hEdit && IsWindowVisible(doc->hEdit);
+
     if (!Ne_SaveToPath(hwnd, path)) return false;
     if (doc) {
         doc->path = path;
         doc->modified = false;
         Ne_RememberDiskStamp(doc);
     }
+
+    // If we just saved an RTF doc as a non-RTF file (e.g. strip-format → .txt),
+    // reload the saved file so the tab switches from RichEdit to Scintilla and
+    // picks up the correct dark/light background immediately.
+    if (wasRtfTab && doc && !Ne_DocIsRtf(doc))
+        Ne_LoadPathIntoEditor(hwnd, doc->path);
+
     NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
     Ne_UpdateTitle(hwnd);
     Ne_UpdateStatusText(hwnd);
@@ -6120,12 +6270,11 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
         { IDC_NE_ZOOM,        S(72), bG },
         { IDC_NE_WORDWRAP,    wXs,   bG },
         { IDC_NE_CASE,        wXs,   sG },
-        // ── Common: comment / save / FTP / UI language
+        // ── Common: comment / save / FTP
         { IDC_NE_COMMENT,     wXs,   sG },
         { IDC_NE_SAVE,        wCol,  bG },
         { IDC_NE_SAVE_FTP,    wCol,  sG },
         { IDC_NE_PREVIEW,     wCol,  sG },
-        { IDC_NE_LANG_UI,     S(90), 0  },
     };
     const int N = (int)(sizeof(ctrls) / sizeof(ctrls[0]));
 
@@ -6210,21 +6359,19 @@ static void Ne_ShowToolbarButtons(HWND hwnd, NeToolbarMode mode)
         IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT, IDC_NE_LINESPACE, IDC_NE_PARSPACE,
         IDC_NE_FIND, IDC_NE_LINK, IDC_NE_TABLE, IDC_NE_TABLE_DROP, IDC_NE_HLINE,
         IDC_NE_CLEARFMT, IDC_NE_PRINT_BTN, IDC_NE_ZOOM, IDC_NE_WORDWRAP, IDC_NE_CASE,
-        IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, IDC_NE_LANG_UI, IDC_NE_COMMENT,
+        IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, IDC_NE_COMMENT,
     };
     // Rich: all except COMMENT.
     static const int richHide[]  = { IDC_NE_COMMENT, 0 };
-    // Txt: find, print, zoom, wordwrap, case, save, save_ftp, lang_ui.
+    // Txt: find, print, zoom, wordwrap, case, save, save_ftp, preview.
     static const int txtShow[]   = { IDC_NE_FIND, IDC_NE_PRINT_BTN, IDC_NE_ZOOM,
                                      IDC_NE_WORDWRAP, IDC_NE_CASE,
-                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW,
-                                     IDC_NE_LANG_UI, 0 };
-    // Prog: find, indent in/out, comment, zoom, wordwrap, case, print, save, ftp, preview, lang.
+                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, 0 };
+    // Prog: find, indent in/out, comment, zoom, wordwrap, case, print, save, ftp, preview.
     static const int progShow[]  = { IDC_NE_FIND, IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT,
                                      IDC_NE_COMMENT, IDC_NE_ZOOM, IDC_NE_WORDWRAP,
                                      IDC_NE_CASE, IDC_NE_PRINT_BTN,
-                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW,
-                                     IDC_NE_LANG_UI, 0 };
+                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, 0 };
 
     auto inList = [](const int* list, int id) {
         for (; *list; ++list) if (*list == id) return true;
@@ -6431,6 +6578,138 @@ static void Ne_ShowChmodDialog(HWND parent, const std::wstring& remotePath, int 
 static bool Ne_ShowPasswordPrompt(HWND parent, const std::wstring& siteName, std::wstring& outPw);
 static void Ne_UpdateFtpStatus(HWND hwnd);
 
+// Forward declaration — Ne_BuildMainMenu calls this.
+static void Ne_RebuildLocaleMenu(HWND hwnd);
+
+// Rebuild the entire menu bar from current locale strings.
+// Safe to call after WM_CREATE (replaces and destroys the old menu).
+static void Ne_BuildMainMenu(HWND hwnd)
+{
+    HMENU hMenu  = CreateMenu();
+    // ── File menu ─────────────────────────────────────────────────────────
+    HMENU hFile  = CreatePopupMenu();
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_NEW,        Ls(L"MENU_NEW"));
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_OPEN,       Ls(L"MENU_OPEN"));
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE,       Ls(L"MENU_SAVE"));
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVEAS,     Ls(L"MENU_SAVEAS"));
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE_TO_FTP, Ls(L"MENU_SAVE_TO_FTP"));
+    Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0,              NULL);
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_PRINT,      Ls(L"MENU_PRINT"));
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_EXPORT_PDF, Ls(L"MENU_EXPORT_PDF"));
+    Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0,              NULL);
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_EXIT,       Ls(L"MENU_EXIT"));
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hFile, Ls(L"MENU_FILE"), true);
+    // ── Edit menu ─────────────────────────────────────────────────────────
+    HMENU hEdit2 = CreatePopupMenu();
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_UNDO,      Ls(L"MENU_UNDO"));
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_REDO,      Ls(L"MENU_REDO"));
+    Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_CUT,       Ls(L"MENU_CUT"));
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_COPY,      Ls(L"MENU_COPY"));
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PASTE,     Ls(L"MENU_PASTE"));
+    Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
+    Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PREFS,     Ls(L"MENU_PREFS"));
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hEdit2, Ls(L"MENU_EDIT"), true);
+    // ── Convert menu ──────────────────────────────────────────────────────
+    HMENU hEncSub = CreatePopupMenu();
+    Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_UTF8,      Ls(L"MENU_ENC_UTF8"));
+    Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_UTF16LE,   Ls(L"MENU_ENC_UTF16LE"));
+    Ne_AppendMenuOD(hEncSub, MF_SEPARATOR, 0,              NULL);
+    Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_WIN1252,   Ls(L"MENU_ENC_WIN1252"));
+    Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_ISO8859_1, Ls(L"MENU_ENC_ISO8859_1"));
+    Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_ANSI,      Ls(L"MENU_ENC_ANSI"));
+    HMENU hConv = CreatePopupMenu();
+    Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_PLAIN, Ls(L"MENU_CONV_TO_PLAIN"));
+    Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_RTF,   Ls(L"MENU_CONV_TO_RTF"));
+    Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_HTML5, Ls(L"MENU_CONV_TO_HTML5"));
+    Ne_AppendMenuOD(hConv, MF_SEPARATOR, 0,                NULL);
+    Ne_AppendMenuOD(hConv, MF_POPUP | MF_STRING,
+                    (UINT_PTR)hEncSub, Ls(L"MENU_ENCODING"));
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hConv, Ls(L"MENU_CONVERT"), true);
+    // ── Language menu (text-editing language, not UI locale) ──────────────
+    s_hLangMenu = CreatePopupMenu();
+    for (int li = 0; li < NE_LANG_COUNT; ++li)
+        Ne_AppendMenuOD(s_hLangMenu, MF_STRING, IDM_LANG_BASE + li,
+                        li == 0 ? Ls(L"LANG_PLAIN_TEXT") : s_langs[li].name);
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hLangMenu, Ls(L"MENU_LANGUAGE"), true);
+    // ── FTP menu ──────────────────────────────────────────────────────────
+    s_hFtpMenu = CreatePopupMenu();
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hFtpMenu, Ls(L"MENU_FTP"), true);
+    // ── GUI language menu ─────────────────────────────────────────────────
+    s_hLocaleMenu = CreatePopupMenu();
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hLocaleMenu, Ls(L"MENU_GUI_LANG"), true);
+    // ── Help menu ─────────────────────────────────────────────────────────
+    HMENU hHelp = CreatePopupMenu();
+    Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_SHORTCUTS, Ls(L"MENU_SHORTCUTS"));
+    Ne_AppendMenuOD(hHelp, MF_SEPARATOR, 0,             NULL);
+    Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_ABOUT,     Ls(L"MENU_ABOUT"));
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ls(L"MENU_HELP"), true);
+    SetMenu(hwnd, hMenu);  // Windows destroys the old menu automatically.
+    DrawMenuBar(hwnd);
+    Ne_RebuildLocaleMenu(hwnd);
+}
+
+// Re-apply all tooltip strings from the current locale to toolbar controls.
+static void Ne_RefreshTooltips(HWND hwnd)
+{
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_BOLD),       Ls(L"TIP_BOLD"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ITALIC),     Ls(L"TIP_ITALIC"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_UNDERLINE),  Ls(L"TIP_UNDERLINE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_STRIKE),     Ls(L"TIP_STRIKE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SUBSCRIPT),  Ls(L"TIP_SUBSCRIPT"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SUPERSCRIPT),Ls(L"TIP_SUPERSCRIPT"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_FONTFACE),   Ls(L"TIP_FONTFACE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_FONTSIZE),   Ls(L"TIP_FONTSIZE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_COLOR),      Ls(L"TIP_COLOR"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_HIGHLIGHT),  Ls(L"TIP_HIGHLIGHT"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ALIGN_L),    Ls(L"TIP_ALIGN_L"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ALIGN_C),    Ls(L"TIP_ALIGN_C"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ALIGN_R),    Ls(L"TIP_ALIGN_R"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ALIGN_J),    Ls(L"TIP_ALIGN_J"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_BULLET),     Ls(L"TIP_BULLET"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_NUMBERED),   Ls(L"TIP_NUMBERED"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_IMAGE),      Ls(L"TIP_IMAGE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_INDENT_IN),  Ls(L"TIP_INDENT_IN"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_INDENT_OUT), Ls(L"TIP_INDENT_OUT"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_LINESPACE),  Ls(L"TIP_LINESPACE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_FIND),       Ls(L"TIP_FIND"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_LINK),       Ls(L"TIP_LINK"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_TABLE),      Ls(L"TIP_TABLE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_TABLE_DROP), Ls(L"TIP_TABLE_DROP"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_HLINE),      Ls(L"TIP_HLINE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_CLEARFMT),   Ls(L"TIP_CLEARFMT"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_PRINT_BTN),  Ls(L"TIP_PRINT_BTN"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ZOOM),       Ls(L"TIP_ZOOM"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_WORDWRAP),   Ls(L"TIP_WORDWRAP"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_CASE),       Ls(L"TIP_CASE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_PARSPACE),   Ls(L"TIP_PARSPACE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SAVE),       Ls(L"TIP_SAVE"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SAVE_FTP),   Ls(L"TIP_SAVE_FTP"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_PREVIEW),    Ls(L"TIP_PREVIEW"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_COMMENT),    Ls(L"TIP_COMMENT"));
+}
+
+// Switch UI locale instantly: reload strings, rebuild menu, refresh all tips.
+static void Ne_RefreshLocale(HWND hwnd)
+{
+    Ne_LoadLocale();
+    Ne_BuildMainMenu(hwnd);
+    Ne_RefreshTooltips(hwnd);
+    NeTabs_UpdateAllTitles(hwnd);
+    Ne_UpdateStatusText(hwnd);
+}
+static void Ne_RebuildLocaleMenu(HWND hwnd)
+{
+    while (GetMenuItemCount(s_hLocaleMenu) > 0)
+        RemoveMenu(s_hLocaleMenu, 0, MF_BYPOSITION);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 0,
+                    Ls(L"LANG_UI_ENGLISH"),   false, g_localeId == 0 ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 1,
+                    Ls(L"LANG_UI_NORWEGIAN"), false, g_localeId == 1 ? g_hLocaleMenuIcon : NULL);
+}
+
 // Rebuild the FTP popup from scratch (called in WM_INITMENUPOPUP for s_hFtpMenu).
 static void Ne_RebuildFtpMenu(HWND hwnd)
 {
@@ -6462,6 +6741,9 @@ static void ShowNsbCreditsDialog(HWND parent); // forward declaration
 static LRESULT CALLBACK NsbAboutWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
+    case WM_CREATE:
+        Ne_ApplyDarkFrame(hwnd);
+        return 0;
     case WM_COMMAND:
         if (LOWORD(wParam) == 1001) {
             ShowNsbLicenseDialog(hwnd);
@@ -6484,10 +6766,17 @@ static LRESULT CALLBACK NsbAboutWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
         DestroyWindow(hwnd);
         return 0;
     case WM_ERASEBKGND:
-        if (g_darkMode) { RECT r; GetClientRect(hwnd, &r); FillRect((HDC)wParam, &r, Ne_DlgBgBrush()); return 1; }
-        break;
+        if (g_darkMode) {
+            RECT r; GetClientRect(hwnd, &r);
+            FillRect((HDC)wParam, &r, Ne_DlgBgBrush());
+            return 1;
+        }
+        break;  // light mode: default (white) background
     case WM_CTLCOLORSTATIC:
-        return Ne_DlgCtlColor((HDC)wParam);
+        // Logo STATIC and any labels stay on white background
+        SetBkColor((HDC)wParam, RGB(255, 255, 255));
+        SetTextColor((HDC)wParam, RGB(0, 0, 0));
+        return (LRESULT)GetStockObject(WHITE_BRUSH);
     case WM_CTLCOLOREDIT:
         // RichEdit50W ignores this; kept white for WYSIWYG viewport
         SetBkColor((HDC)wParam, RGB(255,255,255));
@@ -6874,6 +7163,9 @@ static LRESULT CALLBACK Ne_FtpSiteProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
         return Ne_DlgCtlColor((HDC)wParam);
+    case WM_ERASEBKGND:
+        if (g_darkMode) { RECT r; GetClientRect(hwnd, &r); FillRect((HDC)wParam, &r, Ne_DlgBgBrush()); return 1; }
+        break;
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
@@ -7024,6 +7316,7 @@ static void Ne_ShowFtpSiteDialog(HWND parent, NeProfile* existing)
         WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_VISIBLE,
         x, y, W, H, parent, NULL, hi, NULL);
     if (!dlg) return;
+    Ne_ApplyDarkFrame(dlg);
 
     SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&d);
 
@@ -7471,6 +7764,9 @@ static LRESULT CALLBACK Ne_PreviewDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
     case WM_DRAWITEM:
         if (d) Ne_DrawDialogButton((const DRAWITEMSTRUCT*)lParam, &d->dd);
         return TRUE;
+    case WM_ERASEBKGND:
+        if (g_darkMode) { RECT r; GetClientRect(hwnd, &r); FillRect((HDC)wParam, &r, Ne_DlgBgBrush()); return 1; }
+        break;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
         return Ne_DlgCtlColor((HDC)wParam);
@@ -7566,7 +7862,8 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
     // 7. Show the modal preview dialog.
     HINSTANCE hi = GetModuleHandleW(NULL);
     WNDCLASSW wc = {}; wc.lpfnWndProc = Ne_PreviewDlgProc; wc.hInstance = hi;
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1); wc.lpszClassName = L"NePreviewDlgClass";
+    wc.hbrBackground = g_darkMode ? Ne_DlgBgBrush() : (HBRUSH)(COLOR_WINDOW+1);
+    wc.lpszClassName = L"NePreviewDlgClass";
     if (!GetClassInfoW(hi, L"NePreviewDlgClass", &wc)) RegisterClassW(&wc);
 
     NePreviewDlgData pd;
@@ -7595,6 +7892,7 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
     }
 
     SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&pd);
+    Ne_ApplyDarkFrame(dlg);
     HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
     if (hIco) { SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
                 SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco); }
@@ -7641,6 +7939,9 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
         SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
         bx += pd.dd.buttons[i].width + S(8);
     }
+    // Tooltips for the two buttons via the project's custom tooltip system.
+    Ne_SetTip(GetDlgItem(dlg, pd.dd.buttons[0].id), Ls(L"BTN_OPEN_BROWSER_TIP"));
+    Ne_SetTip(GetDlgItem(dlg, pd.dd.buttons[1].id), Ls(L"BTN_REVERT_TIP"));
     // Update userdata ptr (stack address, must be set again after pd is fully built)
     SetWindowLongPtrW(dlg, GWLP_USERDATA, (LONG_PTR)&pd);
     SetFocus(pd.hUrlEdit);
@@ -7649,6 +7950,11 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
     EnableWindow(hwnd, FALSE);
     MSG m;
     while (GetMessageW(&m, NULL, 0, 0)) {
+        // Enter → Open in browser; Esc → Revert & Close (via IsDialogMessageW/IDCANCEL).
+        if (m.message == WM_KEYDOWN && m.wParam == VK_RETURN) {
+            PostMessageW(dlg, WM_COMMAND, 1001, 0);
+            continue;
+        }
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     }
     EnableWindow(hwnd, TRUE);
@@ -7763,11 +8069,30 @@ struct NeFtpBrowserData {
     std::wstring               pendingSaveRemotePath;      // set when user confirms save
     // ── Navigation state ──────────────────────────────────────────────────────
     std::wstring               lastVisitedDir;             // updated on folder expand; saved on close
+    // ── Dark-mode icon remapping ──────────────────────────────────────────────
+    HIMAGELIST                 hSysImgList  = nullptr;     // reference (not owned)
+    HIMAGELIST                 hDarkImgList = nullptr;     // private ILC_COLOR32 list (owned)
+    std::map<int,int>          darkImgMap;                 // sysIdx → private idx
 };
+
+// Extracts icon sysIdx from the system imagelist into the private dark imagelist
+// (creating an entry if needed) and returns the private index.  Falls back to
+// sysIdx when no dark list is present.
+static int Ne_FtpGetDarkIcon(NeFtpBrowserData* d, int sysIdx)
+{
+    if (!d || !d->hDarkImgList || !d->hSysImgList) return sysIdx;
+    auto it = d->darkImgMap.find(sysIdx);
+    if (it != d->darkImgMap.end()) return it->second;
+    HICON hIco = ImageList_GetIcon(d->hSysImgList, sysIdx, ILD_TRANSPARENT);
+    int newIdx = hIco ? ImageList_AddIcon(d->hDarkImgList, hIco) : 0;
+    if (hIco) DestroyIcon(hIco);
+    d->darkImgMap[sysIdx] = newIdx;
+    return newIdx;
+}
 
 static HTREEITEM Ne_FtpTreeAddItem(HWND hTree, HTREEITEM hParent,
     const std::wstring& name, bool isDir, int nodeIdx,
-    int iFolderClosed, int iFolderOpen)
+    int iFolderClosed, int iFolderOpen, NeFtpBrowserData* d = nullptr)
 {
     SHFILEINFOW sfi = {};
     int iImg = iFolderClosed;
@@ -7776,14 +8101,17 @@ static HTREEITEM Ne_FtpTreeAddItem(HWND hTree, HTREEITEM hParent,
             SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON);
         iImg = sfi.iIcon;
     }
+    // In dark mode remap system imagelist indices to the private imagelist
+    int iImgMapped     = Ne_FtpGetDarkIcon(d, iImg);
+    int iFolderOpenMap = Ne_FtpGetDarkIcon(d, iFolderOpen);
     TVINSERTSTRUCTW tvi = {};
     tvi.hParent             = hParent;
     tvi.hInsertAfter        = TVI_LAST;
     tvi.item.mask           = TVIF_TEXT | TVIF_PARAM | TVIF_IMAGE | TVIF_SELECTEDIMAGE;
     tvi.item.pszText        = (LPWSTR)name.c_str();
     tvi.item.lParam         = (LPARAM)(INT_PTR)nodeIdx;
-    tvi.item.iImage         = iImg;
-    tvi.item.iSelectedImage = isDir ? iFolderOpen : iImg;
+    tvi.item.iImage         = iImgMapped;
+    tvi.item.iSelectedImage = isDir ? iFolderOpenMap : iImgMapped;
     HTREEITEM hItem = TreeView_InsertItem(hTree, &tvi);
     if (isDir && hItem) {
         TVINSERTSTRUCTW dummy = {};
@@ -7826,7 +8154,7 @@ static void Ne_FtpTreeLoadChildren(HWND hwnd, HTREEITEM hItem, NeFtpBrowserData*
         child.loaded   = false;
         int idx = (int)d->nodes.size();
         d->nodes.push_back(child);
-        Ne_FtpTreeAddItem(d->hwndTree, hItem, e.name, e.isDir, idx, d->iFolderClosed, d->iFolderOpen);
+        Ne_FtpTreeAddItem(d->hwndTree, hItem, e.name, e.isDir, idx, d->iFolderClosed, d->iFolderOpen, d);
     }
     d->nodes[nodeIdx].loaded = true;
 }
@@ -8120,6 +8448,13 @@ static LRESULT CALLBACK Ne_FtpBrowserProc(HWND hwnd, UINT msg, WPARAM wParam, LP
         PostQuitMessage(0);
         DestroyWindow(hwnd);
         return 0;
+    case WM_ERASEBKGND:
+        if (g_darkMode) {
+            RECT r; GetClientRect(hwnd, &r);
+            FillRect((HDC)wParam, &r, Ne_DlgBgBrush());
+            return 1;
+        }
+        break;
     case WM_CTLCOLORSTATIC:
     case WM_CTLCOLOREDIT:
         return Ne_DlgCtlColor((HDC)wParam);
@@ -8198,6 +8533,7 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
     HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
     if (hIco) { SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
                 SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco); }
+    Ne_ApplyDarkFrame(dlg);
 
     RECT rc; GetClientRect(dlg, &rc);
     const int PAD = S(10), BTN_H = S(32);
@@ -8240,9 +8576,19 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|
         TVS_HASLINES|TVS_HASBUTTONS|TVS_LINESATROOT|TVS_SHOWSELALWAYS,
         PAD, treeY, rc.right - 2*PAD, treeH, dlg, (HMENU)5005, hi, NULL);
-    if (hSysImgList)
-        TreeView_SetImageList(d.hwndTree, hSysImgList, TVSIL_NORMAL);
+    if (g_darkMode && hSysImgList) {
+        d.hSysImgList  = hSysImgList;
+        d.hDarkImgList = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 16, 16);
+    }
+    HIMAGELIST hImgList = d.hDarkImgList ? d.hDarkImgList : hSysImgList;
+    if (hImgList)
+        TreeView_SetImageList(d.hwndTree, hImgList, TVSIL_NORMAL);
     SendMessageW(d.hwndTree, WM_SETFONT, (WPARAM)hFont, TRUE);
+    if (g_darkMode) {
+        TreeView_SetBkColor(d.hwndTree, RGB(25, 26, 27));
+        TreeView_SetTextColor(d.hwndTree, RGB(220, 220, 220));
+        SetWindowTheme(d.hwndTree, L"DarkMode_Explorer", NULL);
+    }
 
     // Close button (bottom-centre)
     {
@@ -8265,7 +8611,7 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
         rootNode.loaded   = false;
         d.nodes.push_back(rootNode);
         d.htiRoot = Ne_FtpTreeAddItem(d.hwndTree, TVI_ROOT, L"/", true, 0,
-                                       d.iFolderClosed, d.iFolderOpen);
+                                       d.iFolderClosed, d.iFolderOpen, &d);
         TreeView_Expand(d.hwndTree, d.htiRoot, TVE_EXPAND);
 
         // Determine target folder: saved last dir, or profile's initial path
@@ -8288,6 +8634,7 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     }
     if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
+    if (d.hDarkImgList) { ImageList_Destroy(d.hDarkImgList); d.hDarkImgList = nullptr; }
     DeleteObject(hFont);
 
     if (!d.pendingOpenLocal.empty()) {
@@ -8568,6 +8915,7 @@ static std::wstring Ne_ShowFtpBrowserSave(HWND parent, int64_t profileId,
     HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
     if (hIco) { SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
                 SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco); }
+    Ne_ApplyDarkFrame(dlg);
 
     RECT rc; GetClientRect(dlg, &rc);
     const int PAD = S(10), BTN_H = S(32), EDIT_H = S(26), LABEL_H = S(18);
@@ -8628,9 +8976,19 @@ static std::wstring Ne_ShowFtpBrowserSave(HWND parent, int64_t profileId,
         WS_CHILD|WS_VISIBLE|WS_TABSTOP|
         TVS_HASLINES|TVS_HASBUTTONS|TVS_LINESATROOT|TVS_SHOWSELALWAYS,
         PAD, treeY, rc.right - 2*PAD, treeH, dlg, (HMENU)5005, hi, NULL);
-    if (hSysImgList)
-        TreeView_SetImageList(d.hwndTree, hSysImgList, TVSIL_NORMAL);
+    if (g_darkMode && hSysImgList) {
+        d.hSysImgList  = hSysImgList;
+        d.hDarkImgList = ImageList_Create(16, 16, ILC_COLOR32 | ILC_MASK, 16, 16);
+    }
+    HIMAGELIST hImgList = d.hDarkImgList ? d.hDarkImgList : hSysImgList;
+    if (hImgList)
+        TreeView_SetImageList(d.hwndTree, hImgList, TVSIL_NORMAL);
     SendMessageW(d.hwndTree, WM_SETFONT, (WPARAM)hFont, TRUE);
+    if (g_darkMode) {
+        TreeView_SetBkColor(d.hwndTree, RGB(25, 26, 27));
+        TreeView_SetTextColor(d.hwndTree, RGB(220, 220, 220));
+        SetWindowTheme(d.hwndTree, L"DarkMode_Explorer", NULL);
+    }
 
     // Bottom buttons: "Save here" and "Cancel" side by side
     {
@@ -8666,7 +9024,7 @@ static std::wstring Ne_ShowFtpBrowserSave(HWND parent, int64_t profileId,
         rootNode.loaded   = false;
         d.nodes.push_back(rootNode);
         d.htiRoot = Ne_FtpTreeAddItem(d.hwndTree, TVI_ROOT, L"/", true, 0,
-                                       d.iFolderClosed, d.iFolderOpen);
+                                       d.iFolderClosed, d.iFolderOpen, &d);
         TreeView_Expand(d.hwndTree, d.htiRoot, TVE_EXPAND);
 
         std::wstring expandTo = NeFtp_GetActiveProfile().initialPath;
@@ -8690,6 +9048,7 @@ static std::wstring Ne_ShowFtpBrowserSave(HWND parent, int64_t profileId,
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     }
     if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
+    if (d.hDarkImgList) { ImageList_Destroy(d.hDarkImgList); d.hDarkImgList = nullptr; }
     DeleteObject(hFont);
 
     return d.pendingSaveRemotePath; // empty = cancelled
@@ -8996,6 +9355,50 @@ static void ShowNsbAboutDialog(HWND parent)
     Gdiplus::GdiplusShutdown(gdipToken);
 }
 
+// ── Dark combo-button subclass ──────────────────────────────────────────────
+// Overdraws the dropdown arrow-button area of a CBS_DROPDOWNLIST combo dark.
+static LRESULT CALLBACK Ne_DarkComboSubProc(
+    HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
+    UINT_PTR uid, DWORD_PTR)
+{
+    if (g_darkMode && msg == WM_PAINT) {
+        // Let default draw the text area (WM_CTLCOLORSTATIC gives dark brush).
+        LRESULT r = DefSubclassProc(hwnd, msg, wParam, lParam);
+        // Overdraw the button area.
+        RECT rc; GetClientRect(hwnd, &rc);
+        int btnW = GetSystemMetrics(SM_CXVSCROLL);
+        RECT rcBtn = { rc.right - btnW, rc.top, rc.right, rc.bottom };
+        HDC hdc = GetDC(hwnd);
+        if (hdc) {
+            HBRUSH hbr = CreateSolidBrush(RGB(45, 47, 51));
+            FillRect(hdc, &rcBtn, hbr);
+            DeleteObject(hbr);
+            // Separator line
+            HPEN hPen = CreatePen(PS_SOLID, 1, RGB(70, 72, 75));
+            HPEN hOldPen = (HPEN)SelectObject(hdc, hPen);
+            MoveToEx(hdc, rcBtn.left, rcBtn.top + 2, NULL);
+            LineTo  (hdc, rcBtn.left, rcBtn.bottom - 2);
+            SelectObject(hdc, hOldPen);
+            DeleteObject(hPen);
+            // Down-arrow triangle
+            int cx = (rcBtn.left + rcBtn.right) / 2;
+            int cy = (rcBtn.top  + rcBtn.bottom) / 2;
+            POINT pts[3] = { {cx - 4, cy - 2}, {cx + 5, cy - 2}, {cx, cy + 3} };
+            HBRUSH hArrow  = CreateSolidBrush(RGB(180, 180, 185));
+            HPEN   hNoPen  = (HPEN)GetStockObject(NULL_PEN);
+            HBRUSH hOldBr  = (HBRUSH)SelectObject(hdc, hArrow);
+            HPEN   hOldPn2 = (HPEN)SelectObject(hdc, hNoPen);
+            Polygon(hdc, pts, 3);
+            SelectObject(hdc, hOldBr);
+            SelectObject(hdc, hOldPn2);
+            DeleteObject(hArrow);
+            ReleaseDC(hwnd, hdc);
+        }
+        return r;
+    }
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+
 // ── Dark-mode retheme ─────────────────────────────────────────────────────────
 // Re-applies the current colour theme to every open Scintilla tab and repaints
 // gutter + status bar.
@@ -9005,7 +9408,7 @@ static void Ne_RethemeAll(HWND hwnd)
     for (int i = 0; i < n; ++i) {
         NeTabDoc* d = NeTabs_GetDocByIndex(hwnd, i);
         if (!d || !d->hSci) continue;
-        Ne_SetupScintillaStyle(d->hSci);
+        Ne_SetupScintillaStyle(d->hSci, Ne_DocIsRtf(d));
         Ne_ApplyLang(d->hSci, d->langId);
         if (d->hLineGutter) InvalidateRect(d->hLineGutter, NULL, FALSE);
     }
@@ -9014,6 +9417,21 @@ static void Ne_RethemeAll(HWND hwnd)
         NeStatusBar_SetDarkMode(hBar, g_darkMode);
         InvalidateRect(hBar, NULL, FALSE);
     }
+    // Strip UxTheme from toolbar combo boxes and subclass to dark-draw
+    // the dropdown arrow-button area.
+    static const int s_comboIds[] = { IDC_NE_FONTFACE, IDC_NE_FONTSIZE, IDC_NE_ZOOM };
+    for (int id : s_comboIds) {
+        HWND hC = GetDlgItem(hwnd, id);
+        if (hC) {
+            SetWindowTheme(hC, g_darkMode ? L"" : NULL, g_darkMode ? L"" : NULL);
+            if (g_darkMode)
+                SetWindowSubclass(hC, Ne_DarkComboSubProc, 1001, 0);
+            else
+                RemoveWindowSubclass(hC, Ne_DarkComboSubProc, 1001);
+            InvalidateRect(hC, NULL, TRUE);
+        }
+    }
+    NeTabs_SetDarkMode(hwnd, g_darkMode);
     Ne_ApplyDarkFrame(hwnd);
     InvalidateRect(hwnd, NULL, TRUE);
 }
@@ -9140,6 +9558,7 @@ static LRESULT CALLBACK Ne_PrefsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPAR
             bool changed = (newDark != g_darkMode) || (newDarkEditor != g_darkEditor);
             g_darkMode   = newDark;
             g_darkEditor = newDarkEditor;
+            Checkbox_SetForceDark(g_darkMode);
             NeProfiles_SetIntSetting("dark_mode",   g_darkMode   ? 1 : 0);
             NeProfiles_SetIntSetting("dark_editor", g_darkEditor ? 1 : 0);
             if (changed) {
@@ -9219,6 +9638,7 @@ static void Ne_ShowPrefsDialog(HWND parent)
         WS_POPUP | WS_CAPTION | WS_SYSMENU,
         x, y, W, H, parent, NULL, hi, &dd);
     if (!dlg) return;
+    Ne_ApplyDarkFrame(dlg);
 
     if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
     ShowWindow(dlg, SW_SHOW);
@@ -9229,6 +9649,42 @@ static void Ne_ShowPrefsDialog(HWND parent)
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     }
     if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
+}
+
+// ── Menu-bar gap helper ────────────────────────────────────────────────────────
+// Fills the space to the right of the last menu item with the dark chrome
+// colour.  Called from WM_NCPAINT and WM_NCACTIVATE so the gap stays dark even
+// after activation changes repaint the non-client area.
+static void Ne_FillMenuBarGap(HWND hwnd)
+{
+    if (!g_darkMode) return;
+    HMENU hMenu = GetMenu(hwnd);
+    if (!hMenu) return;
+    MENUBARINFO mbi = { sizeof(mbi) };
+    if (!GetMenuBarInfo(hwnd, OBJID_MENU, 0, &mbi)) return;
+    if (mbi.rcBar.bottom <= mbi.rcBar.top) return;
+
+    RECT rcWin; GetWindowRect(hwnd, &rcWin);
+    int lastRight = mbi.rcBar.left;
+    int count = GetMenuItemCount(hMenu);
+    if (count > 0) {
+        RECT rcLast = {};
+        if (GetMenuItemRect(hwnd, hMenu, count - 1, &rcLast))
+            lastRight = rcLast.right;
+    }
+    RECT rcFill = {
+        lastRight        - rcWin.left,
+        mbi.rcBar.top    - rcWin.top,
+        rcWin.right      - rcWin.left,
+        mbi.rcBar.bottom - rcWin.top
+    };
+    if (rcFill.left >= rcFill.right) return;
+    HDC hdc = GetWindowDC(hwnd);
+    if (!hdc) return;
+    HBRUSH hbr = CreateSolidBrush(RGB(25, 26, 27));
+    FillRect(hdc, &rcFill, hbr);
+    DeleteObject(hbr);
+    ReleaseDC(hwnd, hdc);
 }
 
 // ── Window procedure ───────────────────────────────────────────────────────────
@@ -9276,9 +9732,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
 
         // ── File menu ─────────────────────────────────────────────────────────
-        HMENU hMenu  = CreateMenu();
-
-        // ── Menu font — created before SetMenu so WM_MEASUREITEM has it ───────
+        // Build menu font/icons first (needed before SetMenu / WM_MEASUREITEM).
         if (!g_hMenuFont) {
             LOGFONTW lf = {};
             lf.lfHeight  = -MulDiv(12, GetDpiForWindow(hwnd), 72);
@@ -9289,64 +9743,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         if (!g_hFtpMenuIcon)
             ExtractIconExW(L"shell32.dll", 150, NULL, &g_hFtpMenuIcon, 1);
-
-        // ── File menu ─────────────────────────────────────────────────────────
-        HMENU hFile  = CreatePopupMenu();
-        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_NEW,        Ls(L"MENU_NEW"));
-        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_OPEN,       Ls(L"MENU_OPEN"));
-        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE,       Ls(L"MENU_SAVE"));
-        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVEAS,     Ls(L"MENU_SAVEAS"));
-        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE_TO_FTP, Ls(L"MENU_SAVE_TO_FTP"));
-        Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0,              NULL);
-        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_PRINT,      Ls(L"MENU_PRINT"));
-        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_EXPORT_PDF, Ls(L"MENU_EXPORT_PDF"));
-        Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0,              NULL);
-        Ne_AppendMenuOD(hFile, MF_STRING,    IDM_EXIT,       Ls(L"MENU_EXIT"));
-        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hFile, Ls(L"MENU_FILE"), true);
-        // ── Edit menu ─────────────────────────────────────────────────────────
-        HMENU hEdit2 = CreatePopupMenu();
-        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_UNDO,      Ls(L"MENU_UNDO"));
-        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_REDO,      Ls(L"MENU_REDO"));
-        Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
-        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_CUT,       Ls(L"MENU_CUT"));
-        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_COPY,      Ls(L"MENU_COPY"));
-        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PASTE,     Ls(L"MENU_PASTE"));
-        Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
-        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
-        Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
-        Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PREFS,     Ls(L"MENU_PREFS"));
-        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hEdit2, Ls(L"MENU_EDIT"), true);
-        // ── Convert menu ──────────────────────────────────────────────────────
-        HMENU hEncSub = CreatePopupMenu();
-        Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_UTF8,      Ls(L"MENU_ENC_UTF8"));
-        Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_UTF16LE,   Ls(L"MENU_ENC_UTF16LE"));
-        Ne_AppendMenuOD(hEncSub, MF_SEPARATOR, 0,              NULL);
-        Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_WIN1252,   Ls(L"MENU_ENC_WIN1252"));
-        Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_ISO8859_1, Ls(L"MENU_ENC_ISO8859_1"));
-        Ne_AppendMenuOD(hEncSub, MF_STRING, IDM_ENC_ANSI,      Ls(L"MENU_ENC_ANSI"));
-        HMENU hConv = CreatePopupMenu();
-        Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_PLAIN, Ls(L"MENU_CONV_TO_PLAIN"));
-        Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_RTF,   Ls(L"MENU_CONV_TO_RTF"));
-        Ne_AppendMenuOD(hConv, MF_STRING,    IDM_CONV_TO_HTML5, Ls(L"MENU_CONV_TO_HTML5"));
-        Ne_AppendMenuOD(hConv, MF_SEPARATOR, 0,                NULL);
-        Ne_AppendMenuOD(hConv, MF_POPUP | MF_STRING,
-                        (UINT_PTR)hEncSub, Ls(L"MENU_ENCODING"));
-        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hConv, Ls(L"MENU_CONVERT"), true);
-        // ── Language menu ─────────────────────────────────────────────────────
-        s_hLangMenu = CreatePopupMenu();
-        for (int li = 0; li < NE_LANG_COUNT; ++li)
-            Ne_AppendMenuOD(s_hLangMenu, MF_STRING, IDM_LANG_BASE + li, s_langs[li].name);
-        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hLangMenu, L"Language", true);
-        // ── FTP menu ──────────────────────────────────────────────────────────
-        s_hFtpMenu = CreatePopupMenu();
-        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hFtpMenu, Ls(L"MENU_FTP"), true);
-        // ── Help menu ─────────────────────────────────────────────────────────
-        HMENU hHelp = CreatePopupMenu();
-        Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_SHORTCUTS, Ls(L"MENU_SHORTCUTS"));
-        Ne_AppendMenuOD(hHelp, MF_SEPARATOR, 0,             NULL);
-        Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_ABOUT,     Ls(L"MENU_ABOUT"));
-        Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ls(L"MENU_HELP"), true);
-        SetMenu(hwnd, hMenu);
+        if (!g_hLocaleMenuIcon)
+            ExtractIconExW(L"shell32.dll", 300, NULL, &g_hLocaleMenuIcon, 1);
+        Ne_BuildMainMenu(hwnd);
 
         // ── Load RichEdit DLL ─────────────────────────────────────────────────
         if (!s_neRtfDll) {
@@ -9378,7 +9777,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, bSz, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_ITALIC, hInst, NULL);
 
-        HWND hUnder = CreateWindowExW(0, L"BUTTON", L"U",
+        CreateWindowExW(0, L"BUTTON", L"U",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, bSz, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_UNDERLINE, hInst, NULL);
 
@@ -9452,7 +9851,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wAl, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_NUMBERED, hInst, NULL);
 
-        HWND hColor = CreateWindowExW(0, L"BUTTON", L"A\u25BC",
+        CreateWindowExW(0, L"BUTTON", L"A\u25BC",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_COLOR, hInst, NULL);
 
@@ -9460,7 +9859,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_HIGHLIGHT, hInst, NULL);
 
-        HWND hImgBtn = CreateWindowExW(0, L"BUTTON", L"\U0001F5BC",
+        CreateWindowExW(0, L"BUTTON", L"\U0001F5BC",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_IMAGE, hInst, NULL);
 
@@ -9473,34 +9872,34 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_INDENT_OUT, hInst, NULL);
 
-        HWND hLineSpBtn = CreateWindowExW(0, L"BUTTON", L"\u2195",
+        CreateWindowExW(0, L"BUTTON", L"\u2195",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_LINESPACE, hInst, NULL);
 
-        HWND hFindBtn = CreateWindowExW(0, L"BUTTON", L"\u2315",
+        CreateWindowExW(0, L"BUTTON", L"\u2315",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_FIND, hInst, NULL);
 
-        HWND hLinkBtn = CreateWindowExW(0, L"BUTTON", L"\U0001F517",
+        CreateWindowExW(0, L"BUTTON", L"\U0001F517",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_LINK, hInst, NULL);
 
-        HWND hTableBtn = CreateWindowExW(0, L"BUTTON", L"\u229E",
+        CreateWindowExW(0, L"BUTTON", L"\u229E",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol - S(13), bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_TABLE, hInst, NULL);
-        HWND hTableDrop = CreateWindowExW(0, L"BUTTON", L"\u25BC",
+        CreateWindowExW(0, L"BUTTON", L"\u25BC",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, S(13), bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_TABLE_DROP, hInst, NULL);
 
-        HWND hHlineBtn = CreateWindowExW(0, L"BUTTON", L"\u2500",
+        CreateWindowExW(0, L"BUTTON", L"\u2500",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_HLINE, hInst, NULL);
 
-        HWND hClearFmtBtn = CreateWindowExW(0, L"BUTTON", L"\u2205",
+        CreateWindowExW(0, L"BUTTON", L"\u2205",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_CLEARFMT, hInst, NULL);
 
-        HWND hPrintBtn = CreateWindowExW(0, L"BUTTON", L"\u2399",
+        CreateWindowExW(0, L"BUTTON", L"\u2399",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_PRINT_BTN, hInst, NULL);
 
@@ -9519,22 +9918,22 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_WORDWRAP, hInst, NULL);
         SendMessageW(hWrapBtn, BM_SETCHECK, BST_CHECKED, 0); // word wrap on by default
 
-        HWND hCaseBtn = CreateWindowExW(0, L"BUTTON", L"Aa",
+        CreateWindowExW(0, L"BUTTON", L"Aa",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_CASE, hInst, NULL);
 
         // IDC_BTN_LINENUM toolbar button removed — toggle lives in the gutter strip
 
-        HWND hParSpBtn = CreateWindowExW(0, L"BUTTON", L"\u00B6\u2195",
+        CreateWindowExW(0, L"BUTTON", L"\u00B6\u2195",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_PARSPACE, hInst, NULL);
 
         // ── Save / Save-to-FTP / UI Language / Comment ────────────────────────
-        HWND hSaveBtn = CreateWindowExW(0, L"BUTTON", L"\U0001F4BE",
+        CreateWindowExW(0, L"BUTTON", L"\U0001F4BE",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_SAVE, hInst, NULL);
 
-        HWND hSaveFtpBtn = CreateWindowExW(0, L"BUTTON", L"\U0001F4E4",
+        CreateWindowExW(0, L"BUTTON", L"\U0001F4E4",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_SAVE_FTP, hInst, NULL);
 
@@ -9543,13 +9942,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             0, 0, wCol, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_PREVIEW, hInst, NULL);
         ShowWindow(hPreviewBtn, SW_HIDE); // shown only when tab is FTP-linked
 
-        HWND hLangUi = CreateWindowExW(0, L"COMBOBOX", L"",
-            WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL,
-            0, 0, S(90), S(200), hwnd, (HMENU)(UINT_PTR)IDC_NE_LANG_UI, hInst, NULL);
-        SendMessageW(hLangUi, CB_ADDSTRING, 0, (LPARAM)Ls(L"LANG_UI_ENGLISH"));
-        SendMessageW(hLangUi, CB_SETCURSEL, 0, 0);
-
-        HWND hCommentBtn = CreateWindowExW(0, L"BUTTON", L"//",
+        CreateWindowExW(0, L"BUTTON", L"//",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_COMMENT, hInst, NULL);
 
@@ -9582,6 +9975,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         tp.untitledLabel = Ls(L"UNTITLED");
         tp.pfnEditCreated = Ne_InstallWrapSubclass;
         NeTabs_Create(tp);
+        NeTabs_SetDarkMode(hwnd, g_darkMode);
         NeTabs_SetContextLabels(hwnd, Ls(L"TAB_CTX_NEW_TAB"), Ls(L"TAB_CTX_CLOSE_TAB"));
         st->editX = pad; st->editW = cW - 2 * pad; st->editH = std::max(1, editH);
         NeTabs_SetRects(hwnd,
@@ -9593,12 +9987,13 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             // Default font: Segoe UI 12pt, auto colour.
             CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
             cfD.dwMask    = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
-            cfD.dwEffects = CFE_AUTOCOLOR;
+            cfD.dwEffects = g_darkMode ? 0 : CFE_AUTOCOLOR;
+            cfD.crTextColor = g_darkMode ? RGB(220, 220, 220) : 0;
             cfD.yHeight   = s_neFontSizes[s_neFontDefault] * 20;
             cfD.bCharSet  = DEFAULT_CHARSET;
             wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
             SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
-            SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
+            SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, g_darkMode ? RGB(25, 26, 27) : RGB(255, 255, 255));
             SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
             Ne_SubclassEditForCaret(hEdit);
             SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_SELCHANGE);  // suppress EN_CHANGE during attach
@@ -9644,43 +10039,8 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             SetPropW(hwnd, L"neFont", hF);
         }
 
-        // ── Tooltips (English only) ───────────────────────────────────────────
-        Ne_SetTip(hBold,                                    Ls(L"TIP_BOLD"));
-        Ne_SetTip(hItalic,                                  Ls(L"TIP_ITALIC"));
-        Ne_SetTip(hUnder,                                   Ls(L"TIP_UNDERLINE"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_STRIKE),         Ls(L"TIP_STRIKE"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SUBSCRIPT),      Ls(L"TIP_SUBSCRIPT"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SUPERSCRIPT),    Ls(L"TIP_SUPERSCRIPT"));
-        Ne_SetTip(hFace,                                    Ls(L"TIP_FONTFACE"));
-        Ne_SetTip(hSzCombo,                                 Ls(L"TIP_FONTSIZE"));
-        Ne_SetTip(hColor,                                   Ls(L"TIP_COLOR"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_HIGHLIGHT),      Ls(L"TIP_HIGHLIGHT"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ALIGN_L),        Ls(L"TIP_ALIGN_L"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ALIGN_C),        Ls(L"TIP_ALIGN_C"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ALIGN_R),        Ls(L"TIP_ALIGN_R"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_ALIGN_J),        Ls(L"TIP_ALIGN_J"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_BULLET),         Ls(L"TIP_BULLET"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_NUMBERED),       Ls(L"TIP_NUMBERED"));
-        Ne_SetTip(hImgBtn,                                  Ls(L"TIP_IMAGE"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_INDENT_IN),      Ls(L"TIP_INDENT_IN"));
-        Ne_SetTip(GetDlgItem(hwnd, IDC_NE_INDENT_OUT),     Ls(L"TIP_INDENT_OUT"));
-        Ne_SetTip(hLineSpBtn,                               Ls(L"TIP_LINESPACE"));
-        Ne_SetTip(hFindBtn,                                 Ls(L"TIP_FIND"));
-        Ne_SetTip(hLinkBtn,                                 Ls(L"TIP_LINK"));
-        Ne_SetTip(hTableBtn,                                Ls(L"TIP_TABLE"));
-        Ne_SetTip(hTableDrop,                               Ls(L"TIP_TABLE_DROP"));
-        Ne_SetTip(hHlineBtn,                                Ls(L"TIP_HLINE"));
-        Ne_SetTip(hClearFmtBtn,                             Ls(L"TIP_CLEARFMT"));
-        Ne_SetTip(hPrintBtn,                                Ls(L"TIP_PRINT_BTN"));
-        Ne_SetTip(hZoom,                                    Ls(L"TIP_ZOOM"));
-        Ne_SetTip(hWrapBtn,                                 Ls(L"TIP_WORDWRAP"));
-        Ne_SetTip(hCaseBtn,                                 Ls(L"TIP_CASE"));
-        Ne_SetTip(hParSpBtn,                                Ls(L"TIP_PARSPACE"));
-        Ne_SetTip(hSaveBtn,                                 Ls(L"TIP_SAVE"));
-        Ne_SetTip(hSaveFtpBtn,                              Ls(L"TIP_SAVE_FTP"));
-        Ne_SetTip(hPreviewBtn,                              Ls(L"TIP_PREVIEW"));
-        Ne_SetTip(hLangUi,                                  Ls(L"TIP_LANG_UI"));
-        Ne_SetTip(hCommentBtn,                              Ls(L"TIP_COMMENT"));
+        // ── Tooltips ─────────────────────────────────────────────────────────
+        Ne_RefreshTooltips(hwnd);
 
         if (hEdit) SetFocus(hEdit);
         if (hEdit) Ne_SyncToolbar(hwnd, hEdit);
@@ -9746,10 +10106,14 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (wmId == IDC_NE_SAVE_FTP) { wmId = IDM_SAVE_TO_FTP; } // fall through to IDM_SAVE_TO_FTP handler
         if (wmId == IDC_NE_PREVIEW)  { wmId = IDM_PREVIEW_FTP; } // fall through to IDM_PREVIEW_FTP handler
 
-        // ── UI language combobox ──────────────────────────────────────────────
-        if (wmId == IDC_NE_LANG_UI && wmEv == CBN_SELCHANGE) {
-            // Future: switch UI locale based on selection.
-            // Only "English" exists for now — no-op.
+        // ── GUI language menu ─────────────────────────────────────────────────
+        if (wmId >= IDM_LOCALE_BASE && wmId < IDM_LOCALE_BASE + 100) {
+            int newLocaleId = wmId - IDM_LOCALE_BASE;
+            if (newLocaleId != g_localeId) {
+                g_localeId = newLocaleId;
+                NeProfiles_SetIntSetting("locale_id", g_localeId);
+                Ne_RefreshLocale(hwnd);
+            }
             return 0;
         }
 
@@ -9927,6 +10291,13 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             doc->suppressChange = true;
             Ne_StreamIn(hEd, plain, false);
             doc->suppressChange = false;
+            { bool darkEd = g_darkMode || g_darkEditor;
+              SendMessageW(hEd, EM_SETBKGNDCOLOR, 0, darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
+              CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
+              cfD.dwMask      = CFM_COLOR | CFM_EFFECTS;
+              cfD.dwEffects   = darkEd ? 0 : CFE_AUTOCOLOR;
+              cfD.crTextColor = darkEd ? RGB(220, 220, 220) : 0;
+              SendMessageW(hEd, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD); }
             doc->encoding = (int)NeEncoding::UTF8;
             // If the file had a .rtf extension, change it to .txt.
             if (Ne_DocIsRtf(doc)) {
@@ -9934,6 +10305,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 doc->path = (dot != std::wstring::npos ? doc->path.substr(0, dot) : doc->path) + L".txt";
             }
             doc->modified = true;
+            // Plain text is not WYSIWYG — turn word wrap off.
+            s_wordWrapOn = false;
+            SendMessageW(hEd, EM_SETTARGETDEVICE, 0, 30000);
+            { HWND hWBtn = GetDlgItem(hwnd, IDC_NE_WORDWRAP);
+              if (hWBtn) { SendMessageW(hWBtn, BM_SETCHECK, BST_UNCHECKED, 0); InvalidateRect(hWBtn, NULL, FALSE); } }
             NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
             Ne_UpdateTitle(hwnd);
             Ne_UpdateStatusText(hwnd);
@@ -9951,6 +10327,18 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (!oldPath.empty()) doc->prevPlainPath = oldPath;
             doc->encoding = (int)NeEncoding::RichText;
             doc->modified = true;
+            // Reset RichEdit background/text to white — RTF docs carry their own colours.
+            { CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
+              cf.dwMask      = CFM_COLOR | CFM_EFFECTS;
+              cf.dwEffects   = g_darkMode ? 0 : CFE_AUTOCOLOR;
+              cf.crTextColor = g_darkMode ? RGB(220,220,220) : 0;
+              SendMessageW(hEd, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cf);
+              SendMessageW(hEd, EM_SETBKGNDCOLOR, 0, g_darkMode ? RGB(25,26,27) : RGB(255,255,255)); }
+            // Switch the Scintilla viewport to white — RTF docs show their own colours.
+            if (doc->hSci) {
+                Ne_SetupScintillaStyle(doc->hSci, true);
+                Ne_ApplyLang(doc->hSci, doc->langId);
+            }
             NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
             Ne_UpdateTitle(hwnd);
             Ne_UpdateStatusText(hwnd);
@@ -10653,15 +11041,15 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 DrawEdge(dis->hDC, &rc, (pressed || checked) ? EDGE_SUNKEN : EDGE_RAISED, BF_RECT);
             }
 
-            // ── Special: TABLE_DROP button — draw just a tiny ▼ centred ──────
+            // ── Special: TABLE_DROP button — draw just a ▼ centred ──────
             if (id == IDC_NE_TABLE_DROP) {
-                SetTextColor(dis->hDC, disabled ? GetSysColor(COLOR_GRAYTEXT) : RGB(80, 80, 80));
+                SetTextColor(dis->hDC, disabled ? GetSysColor(COLOR_GRAYTEXT) : RGB(255, 220, 0));
                 SetBkMode(dis->hDC, TRANSPARENT);
-                HFONT hSmall = CreateFontW(-S(8), 0, 0, 0, FW_NORMAL, 0, 0, 0,
+                HFONT hSmall = CreateFontW(-S(11), 0, 0, 0, FW_BOLD, 0, 0, 0,
                     DEFAULT_CHARSET, 0, 0, CLEARTYPE_QUALITY, 0, L"Segoe UI");
                 HFONT hOld2 = hSmall ? (HFONT)SelectObject(dis->hDC, hSmall) : NULL;
                 RECT rcA = { rc.left + (pressed?1:0), rc.top + (pressed?1:0), rc.right, rc.bottom };
-                DrawTextW(dis->hDC, L"\u25BE", -1, &rcA, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                DrawTextW(dis->hDC, L"\u25BC", -1, &rcA, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 if (hOld2) SelectObject(dis->hDC, hOld2);
                 if (hSmall) DeleteObject(hSmall);
             } else
@@ -10746,7 +11134,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         RECT rc = dis->rcItem;
         // Background
         COLORREF bg = selected ? GetSysColor(COLOR_HIGHLIGHT)
-                    : g_darkMode ? RGB(25, 26, 27) : RGB(255, 255, 255);
+                    : g_darkMode ? RGB(25, 26, 27)
+                    : d->isBar   ? GetSysColor(COLOR_MENUBAR)
+                    : RGB(255, 255, 255);
         HBRUSH hbr = CreateSolidBrush(bg); FillRect(dis->hDC, &rc, hbr); DeleteObject(hbr);
         // Separator
         if (d->isSeparator) {
@@ -10791,6 +11181,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // ── FTP popup — rebuild from DB each time it opens ────────────────────
         if (hPop == s_hFtpMenu) {
             Ne_RebuildFtpMenu(hwnd);
+            return 0;
+        }
+        // ── GUI locale popup ──────────────────────────────────────────────────
+        if (hPop == s_hLocaleMenu) {
+            Ne_RebuildLocaleMenu(hwnd);
             return 0;
         }
 
@@ -10848,35 +11243,19 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         break;
     }
 
-    // ── Fill the menu-bar gap (right of last item) with white ─────────────────
+    // ── Paint menu-bar gap (right of last item) in dark mode ─────────────────
     case WM_NCPAINT: {
+        // Let DefWindowProcW paint everything first (owner-drawn items go dark
+        // via WM_DRAWITEM).  Then fill the gap to the right of the last item.
         LRESULT lr = DefWindowProcW(hwnd, WM_NCPAINT, wParam, 0);
-        HMENU hMenu = GetMenu(hwnd);
-        if (hMenu && g_hMenuFont) {
-            int count = GetMenuItemCount(hMenu);
-            RECT rcLast = {};
-            MENUBARINFO mbi = { sizeof(mbi) };
-            if (count > 0
-                && GetMenuItemRect(hwnd, hMenu, count - 1, &rcLast)
-                && GetMenuBarInfo(hwnd, OBJID_MENU, 0, &mbi))
-            {
-                RECT rcWin; GetWindowRect(hwnd, &rcWin);
-                RECT rcFill;
-                rcFill.left   = rcLast.right  - rcWin.left;
-                rcFill.right  = mbi.rcBar.right - rcWin.left;
-                rcFill.top    = mbi.rcBar.top   - rcWin.top;
-                rcFill.bottom = mbi.rcBar.bottom - rcWin.top;
-                if (rcFill.left < rcFill.right) {
-                    HDC hdc = GetWindowDC(hwnd);
-                    if (hdc) {
-                        HBRUSH hbr = CreateSolidBrush(g_darkMode ? RGB(25, 26, 27) : RGB(255, 255, 255));
-                        FillRect(hdc, &rcFill, hbr);
-                        DeleteObject(hbr);
-                        ReleaseDC(hwnd, hdc);
-                    }
-                }
-            }
-        }
+        Ne_FillMenuBarGap(hwnd);
+        return lr;
+    }
+    case WM_NCACTIVATE: {
+        // DefWindowProc re-paints the NC area on activation changes; re-fill
+        // the menu bar gap afterwards so it stays dark.
+        LRESULT lr = DefWindowProcW(hwnd, WM_NCACTIVATE, wParam, lParam);
+        Ne_FillMenuBarGap(hwnd);
         return lr;
     }
 
@@ -10894,6 +11273,21 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         SetBkColor(hdc, GetSysColor(COLOR_BTNFACE));
         SetTextColor(hdc, GetSysColor(COLOR_BTNTEXT));
         return (LRESULT)GetSysColorBrush(COLOR_BTNFACE);
+    }
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORLISTBOX: {
+        // Dropdown lists of the font-face / font-size / zoom combos.
+        HDC hdc = (HDC)wParam;
+        if (g_darkMode) {
+            SetBkColor  (hdc, RGB(38, 39, 42));
+            SetTextColor(hdc, RGB(210, 210, 215));
+            static HBRUSH s_listDark = NULL;
+            if (!s_listDark) s_listDark = CreateSolidBrush(RGB(38, 39, 42));
+            return (LRESULT)s_listDark;
+        }
+        SetBkColor(hdc, GetSysColor(COLOR_WINDOW));
+        SetTextColor(hdc, GetSysColor(COLOR_WINDOWTEXT));
+        return (LRESULT)GetSysColorBrush(COLOR_WINDOW);
     }
 
     // ── Minimum window size — enforced by Ne_LayoutToolbar's minClientW ───────
@@ -10968,6 +11362,19 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
         ReleaseDC(NULL, hdc);
     }
 
+    // Initialise DB and read all persistent settings BEFORE creating any UI,
+    // so locale and dark mode are correct at window-creation time.
+    NeCrypto_Init();
+    NeProfiles_Init();
+    {
+        int locVal = 0;
+        NeProfiles_GetIntSetting("locale_id",  0, locVal);  g_localeId   = locVal;
+        int dkVal  = 0;
+        NeProfiles_GetIntSetting("dark_mode",  0, dkVal);   g_darkMode   = (dkVal != 0);
+        int dkEdVal = 0;
+        NeProfiles_GetIntSetting("dark_editor",0, dkEdVal); g_darkEditor = (dkEdVal != 0);
+        Checkbox_SetForceDark(g_darkMode);
+    }
     Ne_LoadLocale();
 
     INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_WIN95_CLASSES | ICC_BAR_CLASSES };
@@ -11011,9 +11418,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     }
 
     NeFtp_Init();
-    NeCrypto_Init();
-    NeProfiles_Init();
-    // Load persistent zoom settings.
+    // Load persistent zoom settings (DB already open from early init above).
     NeProfiles_GetIntSetting("zoom_rtf", 100, g_zoomRtf);
     NeProfiles_GetIntSetting("zoom_sci",   0, g_zoomSci);
     // Clamp to valid ranges.
@@ -11021,13 +11426,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     if (g_zoomRtf  > 500) g_zoomRtf  = 500;
     if (g_zoomSci < -10)  g_zoomSci = -10;
     if (g_zoomSci >  20)  g_zoomSci  =  20;
-    // Load dark mode preference.
-    int darkVal = 0;
-    NeProfiles_GetIntSetting("dark_mode", 0, darkVal);
-    g_darkMode = (darkVal != 0);
-    int darkEdVal = 0;
-    NeProfiles_GetIntSetting("dark_editor", 0, darkEdVal);
-    g_darkEditor = (darkEdVal != 0);
+
+    // Dark mode + locale were loaded before window creation; apply theme now
+    // as a safety pass for any controls that don't check g_darkMode at creation.
+    if (g_darkMode) Ne_RethemeAll(s_hwndMain);
 
     ShowWindow(s_hwndMain, nCmdShow);
     Ne_ApplyDarkFrame(s_hwndMain);
@@ -11053,6 +11455,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
             }
             if (msg.wParam == 'P') {
                 SendMessageW(s_hwndMain, WM_COMMAND, shift ? IDM_EXPORT_PDF : IDM_PRINT, 0);
+                continue;
+            }
+            if (msg.wParam == 'H' && shift) {
+                SendMessageW(s_hwndMain, WM_COMMAND, IDM_PREVIEW_FTP, 0);
                 continue;
             }
             if (msg.wParam == 'W') {

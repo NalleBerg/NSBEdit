@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.05.21.20 - 21.05.2026 20:25
+
+- **Menu bar background matches system color**: The owner-drawn top-level menu bar items (File, Edit, Convert, etc.) now fill their background with `GetSysColor(COLOR_MENUBAR)` instead of hardcoded white, so the bar blends with the standard Windows toolbar/chrome background. Popup (drop-down) item backgrounds remain white in light mode.
+- **Instant UI language switching**: Selecting a language from the GUI Language menu now switches the interface immediately — no restart required. New functions `Ne_BuildMainMenu(HWND)`, `Ne_RefreshTooltips(HWND)`, and `Ne_RefreshLocale(HWND)` rebuild the full menu bar, refresh all toolbar tooltip strings, update tab titles, and update the status bar text in one call. WM_CREATE no longer builds the menu or sets tooltips inline; both call the shared helpers.
+- **Norwegian Bokmål UI translation**: Full `no_nb` locale added (`locale/no_nb.txt`, RCDATA 11, `IDR_LOCALE_NO_NB`). All ~200 UI strings translated. Selectable from GUI Language → Norsk (bokmål). `LANG_UI_ENGLISH` / `LANG_UI_NORWEGIAN` locale keys added to `en_GB.txt` and `no_nb.txt`.
+- **RTF viewport always white when dark editor is on**: `g_darkEditor` now only affects the Scintilla (plain-text / code) viewport. The RichEdit control background and default text colour are set from `g_darkMode` only, so switching on *Dark editor background* in Preferences no longer turns the RTF writing area black.
+- **Convert to RTF restores white background**: The *Convert → Convert to RTF* handler now resets the RichEdit background and text colour (white / auto-colour) immediately after conversion, matching the behaviour of a freshly opened RTF tab.
+
 ## v2026.05.20.11 - 20.05.2026 11:26
 
 - **Dark mode**: Full dark UI via `dark_mode` DB setting, toggled live by `Ne_RethemeAll(HWND)`. Title bar darkened with `DwmSetWindowAttribute(DWMWA_USE_IMMERSIVE_DARK_MODE)` (links `-ldwmapi`). Main window, toolbar area, and non-client menu-bar gap fill `RGB(25,26,27)` via `WM_ERASEBKGND` / `WM_NCPAINT`. Dialogs use `Ne_DlgBgBrush()` (cached `HBRUSH`) and `Ne_DlgCtlColor()` for `WM_CTLCOLOR*` messages. Owner-draw toolbar buttons: dark fill (`RGB(50,50,54)` normal, `RGB(45,75,120)` pressed/checked) with flat 1 px border pens. Menu popup items: `WM_DRAWITEM ODT_MENU` dark bg / light text. Status bar: `NeStatusBar_SetDarkMode(hBar, dark)`. Scintilla gutter: `RGB(25,26,27)` bg with matching line-number, fold-margin, caret-line colors. Dark palette: frames/menus/dialogs `RGB(25,26,27)`; toolbar buttons `RGB(50,50,54)`; text `RGB(210,210,215)`.

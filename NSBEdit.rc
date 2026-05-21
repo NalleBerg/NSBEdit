@@ -1,3 +1,4 @@
 1 ICON "NSBEdit.ico"
 1 RT_MANIFEST "app.manifest"
 10 RCDATA "locale/en_GB.txt"
+11 RCDATA "locale/no_nb.txt"

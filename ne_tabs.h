@@ -80,5 +80,9 @@ void NeTabs_SetRects(HWND hwndParent,
 
 HWND NeTabs_GetActiveScintilla(HWND hwndParent);
 
+// Apply dark / light theme to the tab strip.  Call from Ne_RethemeAll and
+// once after NeTabs_Create to match the initial g_darkMode state.
+void NeTabs_SetDarkMode(HWND hwndParent, bool dark);
+
 // Scroll the tab strip left (forward=false) or right (forward=true).
 
