@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.22.08 - 22.05.2026 08:38
+
+- **Single-quote removed from auto-pair**: Typing `'` now inserts a plain apostrophe in both RichEdit and Scintilla (code) tabs. The single-quote was removed from `Ne_SciAutoPair` (jump-over and auto-close branches) and from the `WM_CHAR` handler in `Ne_EditCaretProc` — it caused unwanted doubling in contractions like *it's* and *that's*. Remaining auto-pair openers: `{`, `[`, `(`, `"`, `«`.
+- **Preview dialog tooltip fix**: Tooltips on the *Open in Browser* and *Revert & Close* buttons in the Preview Online dialog now hide correctly when the mouse leaves. Root cause: `WM_MOUSELEAVE` is never delivered to toolbar controls after `EnableWindow(parent, FALSE)`, *and* is never delivered to dialog controls when the dialog is destroyed — both leave `s_neTipTracking`/`s_neTipHwnd` stale. Fix: `HideTooltip()` + reset of both tracking variables called **twice** in `Ne_ShowPreviewOnFtp` — once before `EnableWindow(hwnd, FALSE)` (so the dialog's buttons can register their own `TrackMouseEvent`) and once before `EnableWindow(hwnd, TRUE)` (so a tooltip visible in the dialog does not linger over the editor). Pattern documented in `tooltip_API.txt` §18.
+
 ## v2026.05.21.20 - 21.05.2026 20:25
 
 - **Menu bar background matches system color**: The owner-drawn top-level menu bar items (File, Edit, Convert, etc.) now fill their background with `GetSysColor(COLOR_MENUBAR)` instead of hardcoded white, so the bar blends with the standard Windows toolbar/chrome background. Popup (drop-down) item backgrounds remain white in light mode.

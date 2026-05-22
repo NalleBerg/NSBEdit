@@ -702,3 +702,48 @@ API REFERENCE:
      (CreateWindowExW-based dialogs) because the subclass intercepts the
      individual control HWNDs, not the dialog procedure.
 
+   18) Tooltip state around a custom modal loop (EnableWindow + GetMessage)
+   -------------------------------------------------------------------------
+   When a function runs its own modal message loop by disabling the parent
+   window (EnableWindow(parent, FALSE)), pumping messages, then re-enabling
+   (EnableWindow(parent, TRUE)), the global tooltip state MUST be cleared on
+   BOTH sides of the loop — not just one side.
+
+   WHY TWO CLEARS ARE NEEDED:
+
+   BEFORE EnableWindow(parent, FALSE):
+     After the parent is disabled, Win32 no longer routes mouse input to its
+     toolbar/child controls. The OS never delivers WM_MOUSELEAVE to any control
+     that was being hovered at the moment DisableWindow fired. The tracking state
+     (s_neTipTracking / s_neTipHwnd) is left stale. If not cleared, the modal
+     dialog's buttons will never call TrackMouseEvent (the guard
+     `if (!s_neTipTracking)` blocks it) and their tooltips will never hide.
+
+   BEFORE EnableWindow(parent, TRUE) (after the message loop exits):
+     When the modal child window is destroyed, Win32 does NOT synthesise
+     WM_MOUSELEAVE for any of its controls. If the user left the mouse over a
+     button in the modal dialog, its tooltip is still visible when the dialog
+     window handle becomes invalid. Re-enabling the parent without clearing
+     tooltip state leaves the stale tooltip floating over the editor.
+
+   REQUIRED PATTERN — apply before BOTH EnableWindow calls:
+
+     // Before disabling parent for modal loop:
+     HideTooltip();
+     s_neTipHwnd     = NULL;
+     s_neTipTracking = false;
+     EnableWindow(hwnd, FALSE);
+     MSG m;
+     while (GetMessageW(&m, NULL, 0, 0)) {
+         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
+     }
+     // Before re-enabling parent after modal loop:
+     HideTooltip();
+     s_neTipHwnd     = NULL;
+     s_neTipTracking = false;
+     EnableWindow(hwnd, TRUE);
+
+   WHERE THIS IS APPLIED IN NSBEdit:
+     Ne_ShowPreviewOnFtp — both the pre-disable block and the post-loop block
+     contain the three-line clear. Pattern verified in v2026.05.22.08.
+

@@ -174,9 +174,10 @@
                                                 only WM_NCDESTROY (cleanup).
                                                 Auto-close bracket/quote pairs:
                                                 Ne_SciAutoPair (called from SCN_CHARADDED)
-                                                — opener {[('"« inserts closer, caret
+                                                — opener {[("« inserts closer, caret
                                                 between; closer typed when same char
-                                                follows caret jumps over it.
+                                                follows caret jumps over it. (Single
+                                                quote ' excluded — breaks contractions.)
                                                 Ne_SciAutoIndent (called from SCN_CHARADDED)
                                                 — on '\n', copies leading whitespace (tabs
                                                 or spaces) from the previous line to the

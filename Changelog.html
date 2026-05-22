@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 21 May 2026 &mdash; v2026.05.21.20 (20:25)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 22 May 2026 &mdash; v2026.05.22.08 (08:38)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.22.08</span></h3>
+<p><strong>Single-quote auto-pair removed; preview dialog tooltip fix (22.05.2026, 08:38):</strong></p>
+<ul>
+<li><strong>Single-quote removed from auto-pair:</strong> Typing <code>'</code> now inserts a plain apostrophe in both RichEdit and Scintilla (code) tabs. The single quote was removed from <code>Ne_SciAutoPair</code> (jump-over and auto-close branches) and from the <code>WM_CHAR</code> handler in <code>Ne_EditCaretProc</code> &mdash; it caused unwanted doubling in contractions like <em>it&rsquo;s</em> and <em>that&rsquo;s</em>. Remaining auto-pair openers: <code>{</code>, <code>[</code>, <code>(</code>, <code>&quot;</code>, <code>&laquo;</code>.</li>
+<li><strong>Preview dialog tooltip fix:</strong> Tooltips on the <em>Open in Browser</em> and <em>Revert &amp; Close</em> buttons in the Preview Online dialog now hide correctly when the mouse leaves. Root cause: <code>WM_MOUSELEAVE</code> is never delivered to toolbar controls after <code>EnableWindow(parent, FALSE)</code>, <em>and</em> is never delivered to dialog controls when the dialog is destroyed &mdash; both leave <code>s_neTipTracking</code>/<code>s_neTipHwnd</code> stale. Fix: <code>HideTooltip()</code> + reset of both tracking variables called <strong>twice</strong> in <code>Ne_ShowPreviewOnFtp</code> &mdash; once before <code>EnableWindow(hwnd, FALSE)</code> (so the dialog&rsquo;s buttons can register their own <code>TrackMouseEvent</code>) and once before <code>EnableWindow(hwnd, TRUE)</code> (so a tooltip visible in the dialog does not linger over the editor). Pattern documented in <code>tooltip_API.txt</code> &sect;18.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.21.20</span></h3>
 <p><strong>Menu bar system color; instant language switching; Norwegian Bokm&aring;l UI; RTF viewport white background fix (21.05.2026, 20:25):</strong></p>

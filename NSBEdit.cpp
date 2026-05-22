@@ -872,7 +872,6 @@ static void Ne_SciAutoPair(HWND hSci, int ch)
     else if (ch == ']')    { jumpCloser = "]";         }
     else if (ch == ')')    { jumpCloser = ")";         }
     else if (ch == '"')    { jumpCloser = "\"";        }
-    else if (ch == '\'')   { jumpCloser = "'";         }
     else if (ch == 0xBB)   { jumpCloser = "\xC2\xBB"; jumpLen = 2; typedLen = 2; } // »
 
     if (jumpCloser) {
@@ -894,7 +893,6 @@ static void Ne_SciAutoPair(HWND hSci, int ch)
     else if (ch == '[')    autoCloser = "]";
     else if (ch == '(')    autoCloser = ")";
     else if (ch == '"')    autoCloser = "\"";
-    else if (ch == '\'')   autoCloser = "'";
     else if (ch == 0xAB)   autoCloser = "\xC2\xBB";  // « → »
 
     if (autoCloser) {
@@ -5608,7 +5606,7 @@ static LRESULT CALLBACK Ne_EditCaretProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
 
         // Jump-over: closing char typed and the same closer already follows the caret.
         wchar_t jumpCloser = 0;
-        if (ch == L'}' || ch == L']' || ch == L')' || ch == L'"' || ch == L'\'' || ch == L'\x00BB')
+        if (ch == L'}' || ch == L']' || ch == L')' || ch == L'"' || ch == L'\x00BB')
             jumpCloser = ch;
         if (jumpCloser && !hasSelection) {
             wchar_t buf[2] = {};
@@ -5630,7 +5628,6 @@ static LRESULT CALLBACK Ne_EditCaretProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
         else if (ch == L'[')     closing = L']';
         else if (ch == L'(')     closing = L')';
         else if (ch == L'"')     closing = L'"';
-        else if (ch == L'\'')    closing = L'\'';
         else if (ch == L'\x00AB') closing = L'\x00BB';  // « → »
 
         if (closing) {
@@ -7947,6 +7944,11 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
     SetFocus(pd.hUrlEdit);
     SetTimer(dlg, 1, 45000, NULL);  // 45-second FTP keepalive
 
+    // WM_MOUSELEAVE is never delivered after EnableWindow(parent, FALSE).
+    // Clear tooltip tracking state now so the preview dialog's buttons track correctly.
+    HideTooltip();
+    s_neTipHwnd     = NULL;
+    s_neTipTracking = false;
     EnableWindow(hwnd, FALSE);
     MSG m;
     while (GetMessageW(&m, NULL, 0, 0)) {
@@ -7957,6 +7959,12 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
         }
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     }
+    // Same reason as above: WM_MOUSELEAVE is never delivered when the dialog is
+    // destroyed. Clear tooltip state before re-enabling the main window so the
+    // stale tooltip from the dialog's buttons does not linger over the editor.
+    HideTooltip();
+    s_neTipHwnd     = NULL;
+    s_neTipTracking = false;
     EnableWindow(hwnd, TRUE);
     KillTimer(dlg, 1);
     SetForegroundWindow(hwnd);
