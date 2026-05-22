@@ -747,3 +747,79 @@ API REFERENCE:
      Ne_ShowPreviewOnFtp — both the pre-disable block and the post-loop block
      contain the three-line clear. Pattern verified in v2026.05.22.08.
 
+   19) Subclass-once pattern for tooltip controls that survive re-init
+   ------------------------------------------------------------------
+   When the function that attaches a tooltip subclass can be called MORE THAN
+   ONCE on the same HWND (e.g. a language-switch helper that iterates all
+   toolbar controls and calls Ne_SetTip on each), you MUST guard against
+   double-subclassing.
+
+   THE CRASH:
+     If SetWindowLongPtrW(GWLP_WNDPROC) is called every time, each call
+     wraps the current proc in a new subclass.  After N language switches
+     there are N nested procs, each holding a heap-allocated tip string and
+     a prevProc pointing to the previous layer.  On WM_NCDESTROY only the
+     outermost layer restores its prevProc — the inner layers remain and
+     free memory they already freed.  Crash is heap corruption on the
+     second (or later) WM_NCDESTROY, or on the next Ne_SetTip call that
+     allocates into freed space.
+
+   THE FIX — subclass-once, update-in-place:
+
+     void Ne_SetTip(HWND hCtrl, const wchar_t* tip) {
+         // 1. If already subclassed, just update the stored tip text.
+         wchar_t* old = (wchar_t*)GetPropW(hCtrl, L"NeTip");
+         if (old) {
+             free(old);
+             SetPropW(hCtrl, L"NeTip", (HANDLE)wcsdup(tip));
+             return;  // ← subclass already in place, nothing else to do
+         }
+         // 2. First call: store tip, subclass, record prevProc as property.
+         SetPropW(hCtrl, L"NeTip", (HANDLE)wcsdup(tip));
+         WNDPROC prev = (WNDPROC)SetWindowLongPtrW(
+             hCtrl, GWLP_WNDPROC, (LONG_PTR)Ne_TipSubclassProc);
+         SetPropW(hCtrl, L"NePrevProc", (HANDLE)prev);
+     }
+
+     static LRESULT CALLBACK Ne_TipSubclassProc(
+         HWND hwnd, UINT msg, WPARAM w, LPARAM l)
+     {
+         WNDPROC prev = (WNDPROC)GetPropW(hwnd, L"NePrevProc");
+         if (msg == WM_MOUSEMOVE) {
+             if (!s_neTipTracking) {
+                 const wchar_t* tip = (const wchar_t*)GetPropW(hwnd, L"NeTip");
+                 if (tip) { /* ShowMultilingualTooltip ... */ }
+                 s_neTipHwnd     = hwnd;
+                 s_neTipTracking = true;
+                 TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hwnd };
+                 TrackMouseEvent(&tme);
+             }
+         } else if (msg == WM_MOUSELEAVE) {
+             HideTooltip();
+             s_neTipTracking = false;
+             s_neTipHwnd     = NULL;
+         } else if (msg == WM_NCDESTROY) {
+             // Free tip text and restore original proc.
+             wchar_t* tip = (wchar_t*)GetPropW(hwnd, L"NeTip");
+             free(tip);
+             RemovePropW(hwnd, L"NeTip");
+             RemovePropW(hwnd, L"NePrevProc");
+             SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)prev);
+         }
+         return CallWindowProcW(prev, hwnd, msg, w, l);
+     }
+
+   KEY RULES:
+   - Use GetPropW(hCtrl, L"NeTip") as the "already subclassed" sentinel.
+     If the property exists the subclass is in place; just swap the text.
+   - Store the original proc as a window property (L"NePrevProc"), not a
+     global/static.  A global static is overwritten when Ne_SetTip is called
+     for multiple controls — the last control's original proc becomes the
+     "prevProc" for all earlier controls, corrupting the chain.
+   - Free the old tip string before replacing it (wcsdup allocates on heap).
+   - RemovePropW both properties in WM_NCDESTROY before restoring the proc
+     so a subsequent GetPropW on a recycled HWND does not find stale data.
+   - This pattern is safe to call from any refresh loop that re-applies
+     tooltip text on language change, theme change, or any other re-init.
+
+

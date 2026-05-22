@@ -224,6 +224,94 @@ SHORTCUTS_COL2   = Function
 SHORTCUTS_COL3   = Description
 SHORTCUTS_BTN_CLOSE = Close
 
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Bold
+SCF_ITALIC        = Italic
+SCF_UNDERLINE     = Underline
+SCF_UNDO          = Undo
+SCF_REDO          = Redo
+SCF_CUT           = Cut
+SCF_COPY          = Copy
+SCF_PASTE         = Paste
+SCF_SELECT_ALL    = Select All
+SCF_SAVE          = Save
+SCF_SAVE_AS       = Save As
+SCF_NEW           = New
+SCF_OPEN          = Open
+SCF_PRINT         = Print
+SCF_EXPORT_PDF    = Export as PDF
+SCF_PREVIEW       = Preview online
+SCF_GO_START      = Go to start
+SCF_GO_END        = Go to end
+SCF_WORD_LEFT     = Word left
+SCF_WORD_RIGHT    = Word right
+SCF_EXTEND_SEL    = Extend selection
+SCF_SEL_WORD      = Select word
+SCF_ZOOM_IN       = Zoom in
+SCF_ZOOM_OUT      = Zoom out
+SCF_RESET_ZOOM    = Reset zoom
+SCF_EXIT          = Exit
+SCF_SHORTCUTS     = Keyboard Shortcuts
+SCF_ABOUT         = About
+SCF_CLOSE_DLG     = Close dialog
+SCF_NEW_LINE      = New line
+SCF_INDENT        = Indent
+SCF_DELETE        = Delete
+SCF_BACKSPACE     = Backspace
+SCF_DEL_WORD_R    = Delete word right
+SCF_DEL_WORD_L    = Delete word left
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Toggle bold on the selection
+SCD_ITALIC        = Toggle italic on the selection
+SCD_UNDERLINE     = Toggle underline on the selection
+SCD_UNDO          = Undo the last change
+SCD_REDO          = Redo the last undone change
+SCD_CUT           = Cut selection to clipboard
+SCD_COPY          = Copy selection to clipboard
+SCD_PASTE         = Paste from clipboard
+SCD_SELECT_ALL    = Select the entire document
+SCD_SAVE          = Save the current file
+SCD_SAVE_AS       = Save to a new file
+SCD_NEW           = Create a new empty document
+SCD_OPEN          = Open a file
+SCD_PRINT         = Print the document
+SCD_EXPORT_PDF    = Export the document as a PDF file
+SCD_PREVIEW       = Upload and preview the FTP-linked file in the browser
+SCD_GO_START      = Move cursor to start of document
+SCD_GO_END        = Move cursor to end of document
+SCD_WORD_LEFT     = Move cursor one word to the left
+SCD_WORD_RIGHT    = Move cursor one word to the right
+SCD_EXTEND_SEL    = Extend text selection one character
+SCD_SEL_WORD      = Extend selection one word at a time
+SCD_ZOOM_IN       = Increase zoom level
+SCD_ZOOM_OUT      = Decrease zoom level
+SCD_RESET_ZOOM    = Reset zoom to 100% / default
+SCD_MNU_NEW       = File menu → New
+SCD_MNU_OPEN      = File menu → Open
+SCD_MNU_SAVE      = File menu → Save
+SCD_MNU_SAVE_AS   = File menu → Save As
+SCD_MNU_PRINT     = File menu → Print
+SCD_MNU_EXPORT_PDF = File menu → Export as PDF
+SCD_EXIT_APP      = Close the document (exit app)
+SCD_MNU_EXIT      = File menu → Exit
+SCD_MNU_UNDO      = Edit menu → Undo
+SCD_MNU_REDO      = Edit menu → Redo
+SCD_MNU_CUT       = Edit menu → Cut
+SCD_MNU_COPY      = Edit menu → Copy
+SCD_MNU_PASTE     = Edit menu → Paste
+SCD_MNU_SELECT_ALL = Edit menu → Select All
+SCD_MNU_SHORTCUTS = Help menu → Keyboard Shortcuts
+SCD_MNU_ABOUT     = Help menu → About NSBEdit
+SCD_SHOW_SHORTCUTS = Show this keyboard shortcuts list
+SCD_CLOSE_DLG     = Close the current dialog
+SCD_NEW_LINE      = Insert a new paragraph
+SCD_INDENT        = Insert a tab character
+SCD_DELETE        = Delete the character to the right
+SCD_BACKSPACE     = Delete the character to the left
+SCD_DEL_WORD_R    = Delete word to the right of cursor
+SCD_DEL_WORD_L    = Delete word to the left of cursor
+
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.
 ABOUT_TITLE       = About NSBEdit
@@ -237,6 +325,16 @@ ABOUT_LICENSE     = Licensed under the GNU General Public License v2.\n
 ABOUT_BTN_LICENSE = View License
 ABOUT_BTN_CREDITS = Credits
 ABOUT_BTN_CLOSE   = Close
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Credits
+CREDITS_SCINTILLA  = Scintilla is a free, open-source source code editing component by Neil Hodgson. NSBEdit uses Scintilla for syntax-highlighted code editing.\n\n
+CREDITS_LEXILLA    = Lexilla is a library of lexers for Scintilla, also by Neil Hodgson. NSBEdit uses Lexilla to provide syntax highlighting for over 20 programming languages.\n\n
+CREDITS_GDI_PLUS   = GDI+ is part of the Windows platform SDK. NSBEdit uses it to render the NSBEdit logo in the About dialog.\n
+CREDITS_MINGW      = The MinGW-W64 project provides a complete runtime environment for GCC and LLVM/Clang toolchains on Windows. NSBEdit is compiled with MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite is a small, fast, self-contained SQL database engine in the public domain. NSBEdit uses the SQLite amalgamation to store FTP/SFTP connection profiles.\n\n
+CREDITS_CURL       = libcurl is a free, open-source URL transfer library by Daniel Stenberg. libssh2 is an open-source SSH2 protocol library. NSBEdit uses both to implement FTP and SFTP file transfer for remote editing.\n\n
+CREDITS_RTF2HTML   = rtf2html is an open-source RTF to HTML converter library by Valentyn Lavrinenko. NSBEdit uses it to export Rich Text documents as HTML5. Licensed under the GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
 
 # ── FTP / SFTP ────────────────────────────────────────────────────────────────
 MENU_FTP             = FTP

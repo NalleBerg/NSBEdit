@@ -2502,67 +2502,68 @@ static void Ne_ExportPdf(HWND hwnd)
 // Displays a read-only ListView with three columns: Shortcut | Function | Description.
 // Sorted most-used → least-used.  Includes menu accelerators, Alt-key mnemonics,
 // and standard RichEdit editing shortcuts so new users can discover everything.
+// func and desc hold locale keys resolved via Ls() at display time.
 struct ShortcutRow { const wchar_t* key; const wchar_t* func; const wchar_t* desc; };
 
 static const ShortcutRow s_shortcuts[] = {
     // ── Formatting (most typed by far) ────────────────────────────────────────
-    { L"[Ctrl]+B",             L"Bold",               L"Toggle bold on the selection" },
-    { L"[Ctrl]+I",             L"Italic",             L"Toggle italic on the selection" },
-    { L"[Ctrl]+U",             L"Underline",          L"Toggle underline on the selection" },
+    { L"[Ctrl]+B",             L"SCF_BOLD",          L"SCD_BOLD" },
+    { L"[Ctrl]+I",             L"SCF_ITALIC",        L"SCD_ITALIC" },
+    { L"[Ctrl]+U",             L"SCF_UNDERLINE",     L"SCD_UNDERLINE" },
     // ── Edit ──────────────────────────────────────────────────────────────────
-    { L"[Ctrl]+Z",             L"Undo",               L"Undo the last change" },
-    { L"[Ctrl]+Y",             L"Redo",               L"Redo the last undone change" },
-    { L"[Ctrl]+X",             L"Cut",                L"Cut selection to clipboard" },
-    { L"[Ctrl]+C",             L"Copy",               L"Copy selection to clipboard" },
-    { L"[Ctrl]+V",             L"Paste",              L"Paste from clipboard" },
-    { L"[Ctrl]+A",             L"Select All",         L"Select the entire document" },
+    { L"[Ctrl]+Z",             L"SCF_UNDO",          L"SCD_UNDO" },
+    { L"[Ctrl]+Y",             L"SCF_REDO",          L"SCD_REDO" },
+    { L"[Ctrl]+X",             L"SCF_CUT",           L"SCD_CUT" },
+    { L"[Ctrl]+C",             L"SCF_COPY",          L"SCD_COPY" },
+    { L"[Ctrl]+V",             L"SCF_PASTE",         L"SCD_PASTE" },
+    { L"[Ctrl]+A",             L"SCF_SELECT_ALL",    L"SCD_SELECT_ALL" },
     // ── File ──────────────────────────────────────────────────────────────────
-    { L"[Ctrl]+S",             L"Save",               L"Save the current file" },
-    { L"[Ctrl]+[Shift]+S",     L"Save As",            L"Save to a new file" },
-    { L"[Ctrl]+N",             L"New",                L"Create a new empty document" },
-    { L"[Ctrl]+O",             L"Open",               L"Open a file" },
-    { L"[Ctrl]+P",             L"Print",              L"Print the document" },
-    { L"[Ctrl]+[Shift]+P",     L"Export as PDF",      L"Export the document as a PDF file" },
-    { L"[Ctrl]+[Shift]+H",     L"Preview online",     L"Upload and preview the FTP-linked file in the browser" },
+    { L"[Ctrl]+S",             L"SCF_SAVE",          L"SCD_SAVE" },
+    { L"[Ctrl]+[Shift]+S",     L"SCF_SAVE_AS",       L"SCD_SAVE_AS" },
+    { L"[Ctrl]+N",             L"SCF_NEW",           L"SCD_NEW" },
+    { L"[Ctrl]+O",             L"SCF_OPEN",          L"SCD_OPEN" },
+    { L"[Ctrl]+P",             L"SCF_PRINT",         L"SCD_PRINT" },
+    { L"[Ctrl]+[Shift]+P",     L"SCF_EXPORT_PDF",    L"SCD_EXPORT_PDF" },
+    { L"[Ctrl]+[Shift]+H",     L"SCF_PREVIEW",       L"SCD_PREVIEW" },
     // ── Navigation ────────────────────────────────────────────────────────────
-    { L"[Ctrl]+[Home]",        L"Go to start",        L"Move cursor to start of document" },
-    { L"[Ctrl]+[End]",         L"Go to end",          L"Move cursor to end of document" },
-    { L"[Ctrl]+[Left]",        L"Word left",          L"Move cursor one word to the left" },
-    { L"[Ctrl]+[Right]",       L"Word right",         L"Move cursor one word to the right" },
-    { L"[Shift]+[Left/Right]", L"Extend selection",   L"Extend text selection one character" },
-    { L"[Ctrl]+[Shift]+[Left/Right]", L"Select word", L"Extend selection one word at a time" },
+    { L"[Ctrl]+[Home]",        L"SCF_GO_START",      L"SCD_GO_START" },
+    { L"[Ctrl]+[End]",         L"SCF_GO_END",        L"SCD_GO_END" },
+    { L"[Ctrl]+[Left]",        L"SCF_WORD_LEFT",     L"SCD_WORD_LEFT" },
+    { L"[Ctrl]+[Right]",       L"SCF_WORD_RIGHT",    L"SCD_WORD_RIGHT" },
+    { L"[Shift]+[Left/Right]", L"SCF_EXTEND_SEL",    L"SCD_EXTEND_SEL" },
+    { L"[Ctrl]+[Shift]+[Left/Right]", L"SCF_SEL_WORD", L"SCD_SEL_WORD" },
     // ── Zoom ──────────────────────────────────────────────────────────────────
-    { L"[Ctrl]+[+]",           L"Zoom in",            L"Increase zoom level" },
-    { L"[Ctrl]+[-]",           L"Zoom out",           L"Decrease zoom level" },
-    { L"[Ctrl]+0",             L"Reset zoom",         L"Reset zoom to 100% / default" },
-    { L"[Ctrl]+[Scroll Up]",   L"Zoom in",            L"Increase zoom level" },
-    { L"[Ctrl]+[Scroll Down]", L"Zoom out",           L"Decrease zoom level" },
+    { L"[Ctrl]+[+]",           L"SCF_ZOOM_IN",       L"SCD_ZOOM_IN" },
+    { L"[Ctrl]+[-]",           L"SCF_ZOOM_OUT",      L"SCD_ZOOM_OUT" },
+    { L"[Ctrl]+0",             L"SCF_RESET_ZOOM",    L"SCD_RESET_ZOOM" },
+    { L"[Ctrl]+[Scroll Up]",   L"SCF_ZOOM_IN",       L"SCD_ZOOM_IN" },
+    { L"[Ctrl]+[Scroll Down]", L"SCF_ZOOM_OUT",      L"SCD_ZOOM_OUT" },
     // ── Menu access (Alt mnemonics) ───────────────────────────────────────────
-    { L"[Alt]+F, N",           L"New",                L"File menu \u2192 New" },
-    { L"[Alt]+F, O",           L"Open",               L"File menu \u2192 Open" },
-    { L"[Alt]+F, S",           L"Save",               L"File menu \u2192 Save" },
-    { L"[Alt]+F, A",           L"Save As",            L"File menu \u2192 Save As" },
-    { L"[Alt]+F, P",           L"Print",              L"File menu \u2192 Print" },
-    { L"[Alt]+F, E",           L"Export as PDF",      L"File menu \u2192 Export as PDF" },
-    { L"[Ctrl]+W",             L"Exit",               L"Close the document (exit app)" },
-    { L"[Alt]+F, X",           L"Exit",               L"File menu \u2192 Exit" },
-    { L"[Alt]+E, U",           L"Undo",               L"Edit menu \u2192 Undo" },
-    { L"[Alt]+E, R",           L"Redo",               L"Edit menu \u2192 Redo" },
-    { L"[Alt]+E, T",           L"Cut",                L"Edit menu \u2192 Cut" },
-    { L"[Alt]+E, C",           L"Copy",               L"Edit menu \u2192 Copy" },
-    { L"[Alt]+E, P",           L"Paste",              L"Edit menu \u2192 Paste" },
-    { L"[Alt]+E, A",           L"Select All",         L"Edit menu \u2192 Select All" },
-    { L"[Alt]+H, K",           L"Keyboard Shortcuts", L"Help menu \u2192 Keyboard Shortcuts" },
-    { L"[Alt]+H, A",           L"About",              L"Help menu \u2192 About NSBEdit" },
+    { L"[Alt]+F, N",           L"SCF_NEW",           L"SCD_MNU_NEW" },
+    { L"[Alt]+F, O",           L"SCF_OPEN",          L"SCD_MNU_OPEN" },
+    { L"[Alt]+F, S",           L"SCF_SAVE",          L"SCD_MNU_SAVE" },
+    { L"[Alt]+F, A",           L"SCF_SAVE_AS",       L"SCD_MNU_SAVE_AS" },
+    { L"[Alt]+F, P",           L"SCF_PRINT",         L"SCD_MNU_PRINT" },
+    { L"[Alt]+F, E",           L"SCF_EXPORT_PDF",    L"SCD_MNU_EXPORT_PDF" },
+    { L"[Ctrl]+W",             L"SCF_EXIT",          L"SCD_EXIT_APP" },
+    { L"[Alt]+F, X",           L"SCF_EXIT",          L"SCD_MNU_EXIT" },
+    { L"[Alt]+E, U",           L"SCF_UNDO",          L"SCD_MNU_UNDO" },
+    { L"[Alt]+E, R",           L"SCF_REDO",          L"SCD_MNU_REDO" },
+    { L"[Alt]+E, T",           L"SCF_CUT",           L"SCD_MNU_CUT" },
+    { L"[Alt]+E, C",           L"SCF_COPY",          L"SCD_MNU_COPY" },
+    { L"[Alt]+E, P",           L"SCF_PASTE",         L"SCD_MNU_PASTE" },
+    { L"[Alt]+E, A",           L"SCF_SELECT_ALL",    L"SCD_MNU_SELECT_ALL" },
+    { L"[Alt]+H, K",           L"SCF_SHORTCUTS",     L"SCD_MNU_SHORTCUTS" },
+    { L"[Alt]+H, A",           L"SCF_ABOUT",         L"SCD_MNU_ABOUT" },
     // ── Misc ──────────────────────────────────────────────────────────────────
-    { L"[F1]",                 L"Keyboard Shortcuts", L"Show this keyboard shortcuts list" },
-    { L"[Esc]",                L"Close dialog",       L"Close the current dialog" },
-    { L"[Enter]",              L"New line",            L"Insert a new paragraph" },
-    { L"[Tab]",                L"Indent",              L"Insert a tab character" },
-    { L"[Delete]",             L"Delete",              L"Delete the character to the right" },
-    { L"[Backspace]",          L"Backspace",           L"Delete the character to the left" },
-    { L"[Ctrl]+[Delete]",      L"Delete word right",  L"Delete word to the right of cursor" },
-    { L"[Ctrl]+[Backspace]",   L"Delete word left",   L"Delete word to the left of cursor" },
+    { L"[F1]",                 L"SCF_SHORTCUTS",     L"SCD_SHOW_SHORTCUTS" },
+    { L"[Esc]",                L"SCF_CLOSE_DLG",     L"SCD_CLOSE_DLG" },
+    { L"[Enter]",              L"SCF_NEW_LINE",      L"SCD_NEW_LINE" },
+    { L"[Tab]",                L"SCF_INDENT",        L"SCD_INDENT" },
+    { L"[Delete]",             L"SCF_DELETE",        L"SCD_DELETE" },
+    { L"[Backspace]",          L"SCF_BACKSPACE",     L"SCD_BACKSPACE" },
+    { L"[Ctrl]+[Delete]",      L"SCF_DEL_WORD_R",   L"SCD_DEL_WORD_R" },
+    { L"[Ctrl]+[Backspace]",   L"SCF_DEL_WORD_L",   L"SCD_DEL_WORD_L" },
 };
 static const int s_shortcutCount = (int)(sizeof(s_shortcuts) / sizeof(s_shortcuts[0]));
 
@@ -5026,8 +5027,8 @@ static void Ne_ShowShortcuts(HWND parent)
         lvi.iSubItem = 0;
         lvi.pszText  = (LPWSTR)s_shortcuts[i].key;
         ListView_InsertItem(hLV, &lvi);
-        ListView_SetItemText(hLV, i, 1, (LPWSTR)s_shortcuts[i].func);
-        ListView_SetItemText(hLV, i, 2, (LPWSTR)s_shortcuts[i].desc);
+        ListView_SetItemText(hLV, i, 1, (LPWSTR)Ls(s_shortcuts[i].func));
+        ListView_SetItemText(hLV, i, 2, (LPWSTR)Ls(s_shortcuts[i].desc));
     }
 
     // Auto-size all columns to fit content/header, then resize the dialog so
@@ -5039,7 +5040,10 @@ static void Ne_ShowShortcuts(HWND parent)
         for (int i = 0; i < 3; ++i)
             totalColW += ListView_GetColumnWidth(hLV, i);
         int lvHBorder  = 2 * GetSystemMetrics(SM_CXEDGE);
-        int lvNeededW  = totalColW + S(MSB_WIDTH_FULL) + lvHBorder;
+        // Use SM_CXVSCROLL (not S(MSB_WIDTH_FULL)) so columns still fit when
+        // the ListView's origProc momentarily re-shows the native V bar during
+        // WM_SIZE, which subtracts exactly SM_CXVSCROLL from the client width.
+        int lvNeededW  = totalColW + GetSystemMetrics(SM_CXVSCROLL) + lvHBorder;
         int dlgClientW = lvNeededW + 2 * PAD;
         RECT rcAdj = { 0, 0, dlgClientW, rcC.bottom };
         AdjustWindowRectEx(&rcAdj,
@@ -5055,7 +5059,6 @@ static void Ne_ShowShortcuts(HWND parent)
                      rcC.right - 2*PAD, rcC.bottom - 3*PAD - BTN_H,
                      SWP_NOZORDER | SWP_NOACTIVATE);
     }
-
     // ── Custom Close button ───────────────────────────────────────────────────
     sd->hDlgFont = Ne_CreateDialogFont(true);
     sd->dd.hDlgFont    = sd->hDlgFont;
@@ -6198,14 +6201,25 @@ static LRESULT CALLBACK Ne_TipSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, L
 
 static void Ne_SetTip(HWND hCtrl, const wchar_t* text)
 {
-    // Heap-copy so the pointer stays valid for the button's lifetime.
-    // Freed in Ne_TipSubclassProc WM_NCDESTROY.
+    if (!hCtrl) return;
+    // Free the previous allocation so repeated Ne_SetTip calls (e.g. on
+    // locale switch) don't leak the old string.
+    wchar_t* old = (wchar_t*)(void*)GetPropW(hCtrl, L"neTipText");
+    delete[] old;
+
     size_t len = wcslen(text) + 1;
     wchar_t* copy = new wchar_t[len];
     wcscpy(copy, text);
     SetPropW(hCtrl, L"neTipText", (HANDLE)(void*)copy);
-    WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hCtrl, GWLP_WNDPROC, (LONG_PTR)Ne_TipSubclassProc);
-    SetPropW(hCtrl, L"neTipProc", (HANDLE)(void*)(LONG_PTR)prev);
+
+    // Install the subclass ONLY ONCE. If the control is already subclassed,
+    // SetWindowLongPtrW returns Ne_TipSubclassProc as the "previous" proc,
+    // which would be written into neTipProc — making the proc call itself
+    // infinitely on the next message (stack overflow / crash).
+    if (!GetPropW(hCtrl, L"neTipProc")) {
+        WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hCtrl, GWLP_WNDPROC, (LONG_PTR)Ne_TipSubclassProc);
+        SetPropW(hCtrl, L"neTipProc", (HANDLE)(void*)(LONG_PTR)prev);
+    }
 }
 
 // ── Responsive toolbar layout ─────────────────────────────────────────────────
@@ -9075,7 +9089,7 @@ static void ShowNsbCreditsDialog(HWND parent)
     if (y < 30) y = 30;
 
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME|WS_EX_WINDOWEDGE,
-        L"NsbCreditsClass", L"Credits",
+        L"NsbCreditsClass", Ls(L"CREDITS_TITLE"),
         WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_VISIBLE,
         x, y, W, H, parent, NULL, hi, NULL);
     if (!dlg) return;
@@ -9103,11 +9117,7 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit,
         L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
         false, RGB(0,128,64), 0, true);
-    AppendNsbRich(hEdit,
-        L"Scintilla is a free, open-source source code editing component "
-        L"by Neil Hodgson. NSBEdit uses Scintilla for syntax-highlighted "
-        L"code editing.\r\n\r\n",
-        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_SCINTILLA"), false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, L"https://www.scintilla.org/\r\n", false, RGB(0,80,160), 0, false);
 
     // ── Lexilla ───────────────────────────────────────────────────────────────
@@ -9118,11 +9128,7 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit,
         L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
         false, RGB(0,80,160), 0, true);
-    AppendNsbRich(hEdit,
-        L"Lexilla is a library of lexers for Scintilla, also by Neil Hodgson. "
-        L"NSBEdit uses Lexilla to provide syntax highlighting for over 20 "
-        L"programming languages.\r\n\r\n",
-        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_LEXILLA"), false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, L"https://www.scintilla.org/Lexilla.html\r\n", false, RGB(0,80,160), 0, false);
 
     // ── GDI+ ─────────────────────────────────────────────────────────────────
@@ -9133,10 +9139,7 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit,
         L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
         false, RGB(0,70,140), 0, true);
-    AppendNsbRich(hEdit,
-        L"GDI+ is part of the Windows platform SDK. NSBEdit uses it to render "
-        L"the NSBEdit logo in the About dialog.\r\n",
-        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_GDI_PLUS"), false, RGB(40,40,40), 0, false);
 
     // ── MinGW-W64 ─────────────────────────────────────────────────────────────
     AppendNsbRich(hEdit,
@@ -9146,11 +9149,7 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit,
         L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
         false, RGB(160,82,45), 0, true);
-    AppendNsbRich(hEdit,
-        L"The MinGW-W64 project provides a complete runtime environment for "
-        L"GCC and LLVM/Clang toolchains on Windows. NSBEdit is compiled with "
-        L"MinGW-W64 GCC 15.2.0.\r\n\r\n",
-        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_MINGW"), false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, L"https://www.mingw-w64.org/\r\n", false, RGB(0,80,160), 0, false);
 
     // ── SQLite3 ───────────────────────────────────────────────────────────────
@@ -9161,10 +9160,7 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit,
         L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
         false, RGB(0,100,80), 0, true);
-    AppendNsbRich(hEdit,
-        L"SQLite is a small, fast, self-contained SQL database engine in the public domain. "
-        L"NSBEdit uses the SQLite amalgamation to store FTP/SFTP connection profiles.\r\n\r\n",
-        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_SQLITE"), false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, L"https://www.sqlite.org/\r\n", false, RGB(0,80,160), 0, false);
 
     // ── libcurl + libssh2 ─────────────────────────────────────────────────────
@@ -9175,11 +9171,7 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit,
         L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
         false, RGB(0,60,180), 0, true);
-    AppendNsbRich(hEdit,
-        L"libcurl is a free, open-source URL transfer library by Daniel Stenberg. "
-        L"libssh2 is an open-source SSH2 protocol library. "
-        L"NSBEdit uses both to implement FTP and SFTP file transfer for remote editing.\r\n\r\n",
-        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_CURL"), false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, L"https://curl.se/\r\n", false, RGB(0,80,160), 0, false);
     AppendNsbRich(hEdit, L"https://libssh2.org/\r\n", false, RGB(0,80,160), 0, false);
 
@@ -9191,12 +9183,7 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit,
         L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
         false, RGB(140,60,0), 0, true);
-    AppendNsbRich(hEdit,
-        L"rtf2html is an open-source RTF to HTML converter library "
-        L"by Valentyn Lavrinenko. NSBEdit uses it to export Rich Text "
-        L"documents as HTML5. Licensed under the GNU Lesser General "
-        L"Public License v2.1 (LGPLv2.1).\r\n\r\n",
-        false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_RTF2HTML"), false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, L"https://github.com/lvu/rtf2html\r\n", false, RGB(0,80,160), 0, false);
 
     SendMessageW(hEdit, EM_SETSEL, 0, 0);
@@ -9218,13 +9205,24 @@ static void ShowNsbCreditsDialog(HWND parent)
         SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
     }
 
-    if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);
+    if (parent && IsWindow(parent)) {
+        HideTooltip();
+        s_neTipHwnd     = NULL;
+        s_neTipTracking = false;
+        EnableWindow(parent, FALSE);
+    }
     SetFocus(hBtn);
     MSG m;
     while (GetMessageW(&m, NULL, 0, 0)) {
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
     }
-    if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
+    if (parent && IsWindow(parent)) {
+        HideTooltip();
+        s_neTipHwnd     = NULL;
+        s_neTipTracking = false;
+        EnableWindow(parent, TRUE);
+        SetForegroundWindow(parent);
+    }
 }
 
 static void ShowNsbAboutDialog(HWND parent)

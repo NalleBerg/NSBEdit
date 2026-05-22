@@ -224,6 +224,94 @@ SHORTCUTS_COL2   = Funksjon
 SHORTCUTS_COL3   = Beskrivelse
 SHORTCUTS_BTN_CLOSE = Lukk
 
+# ── Tastatursnarveier — funksjon-kolonne ─────────────────────────────────────
+SCF_BOLD          = Fet
+SCF_ITALIC        = Kursiv
+SCF_UNDERLINE     = Understreking
+SCF_UNDO          = Angre
+SCF_REDO          = Gjør om
+SCF_CUT           = Klipp ut
+SCF_COPY          = Kopier
+SCF_PASTE         = Lim inn
+SCF_SELECT_ALL    = Merk alt
+SCF_SAVE          = Lagre
+SCF_SAVE_AS       = Lagre som
+SCF_NEW           = Ny
+SCF_OPEN          = Åpne
+SCF_PRINT         = Skriv ut
+SCF_EXPORT_PDF    = Eksporter som PDF
+SCF_PREVIEW       = Forhåndsvis på nett
+SCF_GO_START      = Gå til start
+SCF_GO_END        = Gå til slutt
+SCF_WORD_LEFT     = Ord til venstre
+SCF_WORD_RIGHT    = Ord til høyre
+SCF_EXTEND_SEL    = Utvid markering
+SCF_SEL_WORD      = Velg ord
+SCF_ZOOM_IN       = Zoom inn
+SCF_ZOOM_OUT      = Zoom ut
+SCF_RESET_ZOOM    = Tilbakestill zoom
+SCF_EXIT          = Avslutt
+SCF_SHORTCUTS     = Tastatursnarveier
+SCF_ABOUT         = Om
+SCF_CLOSE_DLG     = Lukk dialog
+SCF_NEW_LINE      = Ny linje
+SCF_INDENT        = Innrykk
+SCF_DELETE        = Slett
+SCF_BACKSPACE     = Tilbake
+SCF_DEL_WORD_R    = Slett ord til høyre
+SCF_DEL_WORD_L    = Slett ord til venstre
+
+# ── Tastatursnarveier — beskrivelse-kolonne ──────────────────────────────────
+SCD_BOLD          = Veksle fet skrift for markeringen
+SCD_ITALIC        = Veksle kursiv for markeringen
+SCD_UNDERLINE     = Veksle understreking for markeringen
+SCD_UNDO          = Angre siste endring
+SCD_REDO          = Gjenta siste angring
+SCD_CUT           = Klipp ut markering til utklippstavle
+SCD_COPY          = Kopier markering til utklippstavle
+SCD_PASTE         = Lim inn fra utklippstavle
+SCD_SELECT_ALL    = Merk hele dokumentet
+SCD_SAVE          = Lagre gjeldende fil
+SCD_SAVE_AS       = Lagre til ny fil
+SCD_NEW           = Opprett et nytt tomt dokument
+SCD_OPEN          = Åpne en fil
+SCD_PRINT         = Skriv ut dokumentet
+SCD_EXPORT_PDF    = Eksporter dokumentet som PDF-fil
+SCD_PREVIEW       = Last opp og forhåndsvis FTP-koblet fil i nettleseren
+SCD_GO_START      = Flytt markøren til starten av dokumentet
+SCD_GO_END        = Flytt markøren til slutten av dokumentet
+SCD_WORD_LEFT     = Flytt markøren ett ord til venstre
+SCD_WORD_RIGHT    = Flytt markøren ett ord til høyre
+SCD_EXTEND_SEL    = Utvid tekstmarkering ett tegn
+SCD_SEL_WORD      = Utvid markering ett ord av gangen
+SCD_ZOOM_IN       = Øk zoomnivå
+SCD_ZOOM_OUT      = Reduser zoomnivå
+SCD_RESET_ZOOM    = Tilbakestill zoom til 100 % / standard
+SCD_MNU_NEW       = Fil-menyen → Ny
+SCD_MNU_OPEN      = Fil-menyen → Åpne
+SCD_MNU_SAVE      = Fil-menyen → Lagre
+SCD_MNU_SAVE_AS   = Fil-menyen → Lagre som
+SCD_MNU_PRINT     = Fil-menyen → Skriv ut
+SCD_MNU_EXPORT_PDF = Fil-menyen → Eksporter som PDF
+SCD_EXIT_APP      = Lukk dokumentet (avslutt)
+SCD_MNU_EXIT      = Fil-menyen → Avslutt
+SCD_MNU_UNDO      = Rediger-menyen → Angre
+SCD_MNU_REDO      = Rediger-menyen → Gjør om
+SCD_MNU_CUT       = Rediger-menyen → Klipp ut
+SCD_MNU_COPY      = Rediger-menyen → Kopier
+SCD_MNU_PASTE     = Rediger-menyen → Lim inn
+SCD_MNU_SELECT_ALL = Rediger-menyen → Merk alt
+SCD_MNU_SHORTCUTS = Hjelp-menyen → Tastatursnarveier
+SCD_MNU_ABOUT     = Hjelp-menyen → Om NSBEdit
+SCD_SHOW_SHORTCUTS = Vis denne listen over tastatursnarveier
+SCD_CLOSE_DLG     = Lukk gjeldende dialog
+SCD_NEW_LINE      = Sett inn et nytt avsnitt
+SCD_INDENT        = Sett inn et tabulatortegn
+SCD_DELETE        = Slett tegnet til høyre
+SCD_BACKSPACE     = Slett tegnet til venstre
+SCD_DEL_WORD_R    = Slett ord til høyre for markøren
+SCD_DEL_WORD_L    = Slett ord til venstre for markøren
+
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.
 ABOUT_TITLE       = Om NSBEdit
@@ -237,6 +325,16 @@ ABOUT_LICENSE     = Lisensiert under GNU General Public License v2.\n
 ABOUT_BTN_LICENSE = Vis lisens
 ABOUT_BTN_CREDITS = Bidragsytere
 ABOUT_BTN_CLOSE   = Lukk
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Bidragsytere
+CREDITS_SCINTILLA  = Scintilla er et gratis, åpen kildekode-komponent for redigering av kildekode, av Neil Hodgson. NSBEdit bruker Scintilla for syntaksuthevet koderedigering.\n\n
+CREDITS_LEXILLA    = Lexilla er et bibliotek med leksere for Scintilla, også av Neil Hodgson. NSBEdit bruker Lexilla for å gi syntaksutheving for over 20 programmeringsspråk.\n\n
+CREDITS_GDI_PLUS   = GDI+ er en del av Windows platform SDK. NSBEdit bruker det til å vise NSBEdit-logoen i Om-dialogen.\n
+CREDITS_MINGW      = MinGW-W64-prosjektet leverer et komplett kjøretidsmiljø for GCC og LLVM/Clang-verktøykjeder på Windows. NSBEdit er kompilert med MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite er en liten, rask, selvstendig SQL-databasemotor i det offentlige domene. NSBEdit bruker SQLite-amalgamasjonen til å lagre FTP/SFTP-tilkoblingsprofiler.\n\n
+CREDITS_CURL       = libcurl er et gratis, åpen kildekode-bibliotek for URL-overføring av Daniel Stenberg. libssh2 er et åpen kildekode-bibliotek for SSH2-protokollen. NSBEdit bruker begge til å implementere FTP- og SFTP-filoverføring for ekstern redigering.\n\n
+CREDITS_RTF2HTML   = rtf2html er et åpen kildekode-bibliotek for konvertering av RTF til HTML av Valentyn Lavrinenko. NSBEdit bruker det til å eksportere riktekstdokumenter som HTML5. Lisensiert under GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
 
 # ── FTP / SFTP ────────────────────────────────────────────────────────────────
 MENU_FTP             = FTP

@@ -3,6 +3,11 @@
         "/^cmd /c makeit\\.bat 2>&1$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "/^cmd /c \"makeit\\.bat 2>&1\" \\| Select-String -Pattern \"error:\\|SUCCEEDED\\|FAILED\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "ForEach-Object": true
     }
 }
