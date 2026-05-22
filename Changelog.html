@@ -1,6 +1,12 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 22 May 2026 &mdash; v2026.05.22.11 (11:57)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 22 May 2026 &mdash; v2026.05.22.12 (12:08)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.22.12</span></h3>
+<p><strong>Dark-editor blink fix (complete) (22.05.2026, 12:08):</strong></p>
+<ul>
+<li><strong>Dark-editor blink fully eliminated:</strong> The previous fix only filled the editor rect dark and then <code>break</code>-ed out of <code>WM_ERASEBKGND</code>, which let <code>DefWindowProcW</code> run at the end of the WndProc and overwrite the dark fill with the system white brush &mdash; causing a blink on any line-count change (Enter, Backspace on empty line, paste, etc.). The handler has been rewritten: it now calls <code>ExcludeClipRect</code> to protect the editor area, explicitly calls <code>DefWindowProcW</code> so the surrounding chrome (toolbar, status bar, tab strip) is painted normally, then restores the clip region, fills the editor rect with <code>RGB(30,30,30)</code>, and returns&nbsp;1 to prevent any further default processing. The white flash is now fully suppressed for all editing operations.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.22.11</span></h3>
 <p><strong>FTP open reuses tab; toolbar fix on tab close; Edition 1; dark-editor blink fix (22.05.2026, 11:57):</strong></p>

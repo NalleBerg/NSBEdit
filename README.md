@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.22.11**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.22.12**
 
 ## Download
 
@@ -60,7 +60,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **FTP browser open reuses blank tab** — opening a file from the FTP file browser reuses the active untouched untitled tab, just like *File → Open*; no extra blank tab created
 - **Toolbar always correct after tab close** — closing a tab now immediately applies the correct button row (RTF / plain-text / code) for the newly-active tab
 - **Dark mode** — full dark UI (title bar, dialogs, toolbar, menus, status bar, code editor gutter) toggled from *Edit → Preferences…*; in light mode an optional *dark editor background* applies dark colors to only the code/plain-text viewport while all other UI chrome stays light; RTF writing area is always white regardless of the dark-editor setting
-- **Dark-editor keystroke blink fix** — pressing Enter (or any key) in a code tab no longer causes a brief white flash when *Dark editor background* is enabled in Preferences while the overall UI is in light mode
+- **Dark-editor keystroke blink fix** — no white flash in any editing operation (Enter, Backspace, paste…) when *Dark editor background* is enabled in Preferences while the overall UI is in light mode; `WM_ERASEBKGND` fully owns the editor area paint via `ExcludeClipRect` + explicit `DefWindowProcW` + return 1
 - **Menu bar background matches system color** — the top-level menu bar items use `GetSysColor(COLOR_MENUBAR)` so the bar blends with the standard Windows toolbar/chrome; drop-down popup backgrounds remain white in light mode
 - **Norwegian Bokmål UI** — full translation of all ~200 UI strings; switch instantly from *GUI Language → Norsk (bokmål)* (no restart required)
 - **Instant language switching** — changing the UI language via the menu rebuilds the full menu bar, all tooltips, tab titles, and status bar on the spot

@@ -10074,15 +10074,34 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 1;
         }
         if (g_darkEditor) {
-            // Light UI but dark Scintilla editor: paint the editor area with the
-            // Scintilla background colour so transient repaints never show white.
+            // Light UI but dark Scintilla editor: exclude the editor rect from the
+            // DC clip region so DefWindowProc paints the surrounding chrome normally,
+            // then fill the editor area with the Scintilla bg colour ourselves.
+            // We must return 1 so the outer DefWindowProc is never called (otherwise
+            // it overwrites our dark fill with the system white/grey brush).
             NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
             if (st && st->editH > 0) {
+                HDC hdc = (HDC)wParam;
                 RECT er = { st->editX, st->editY,
                             st->editX + st->editW, st->editY + st->editH };
+
+                // Save original clip region so we can restore it for the dark fill.
+                HRGN hRgnOrig = CreateRectRgn(0, 0, 0, 0);
+                int  clipType = GetClipRgn(hdc, hRgnOrig);
+
+                // Let DefWindowProc handle non-editor areas (toolbar, status strip…)
+                ExcludeClipRect(hdc, er.left, er.top, er.right, er.bottom);
+                DefWindowProcW(hwnd, msg, wParam, lParam);
+
+                // Restore clip region and paint the editor area dark.
+                if (clipType == 1) SelectClipRgn(hdc, hRgnOrig);
+                else               SelectClipRgn(hdc, NULL);
+                DeleteObject(hRgnOrig);
+
                 HBRUSH hbr = CreateSolidBrush(RGB(30, 30, 30)); // matches Scintilla bg
-                FillRect((HDC)wParam, &er, hbr);
+                FillRect(hdc, &er, hbr);
                 DeleteObject(hbr);
+                return 1;
             }
         }
         break;

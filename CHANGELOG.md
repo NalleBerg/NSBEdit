@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.22.12 - 22.05.2026 12:08
+
+- **Dark-editor blink fully eliminated**: The previous fix filled the editor rect dark then `break`-ed out of `WM_ERASEBKGND`, letting `DefWindowProcW` overwrite the dark fill with the system white brush on any line-count change (Enter, Backspace on empty line, paste, etc.). Rewritten: `ExcludeClipRect` protects the editor area, `DefWindowProcW` is called explicitly so surrounding chrome paints normally, then the editor rect is filled `RGB(30,30,30)` and the handler returns 1 — preventing any further default processing. White flash fully suppressed for all editing operations.
+
 ## v2026.05.22.11 - 22.05.2026 11:57
 
 - **FTP browser open reuses untouched tab**: Opening a file from the FTP file browser (*FTP → Browse files…*) now reuses the active tab if it is an untouched untitled RichEdit tab (path empty, not modified, no Scintilla window) — the same logic that *File → Open* already applied. Previously `NeTabs_AddUntitled` was called unconditionally, producing an empty extra tab alongside the loaded file.

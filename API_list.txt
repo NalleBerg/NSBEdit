@@ -282,11 +282,14 @@
                                                 to white/auto-colour on conversion.
                                                 WM_ERASEBKGND: g_darkMode → fill entire
                                                 client RGB(25,26,27); g_darkEditor &&
-                                                !g_darkMode → fill edit rect only
-                                                (st->editX/Y/W/H) with RGB(30,30,30) to
-                                                prevent white flash when Scintilla's
-                                                repaint cycle briefly exposes the parent
-                                                background (e.g. on Enter / auto-indent).
+                                                !g_darkMode → ExcludeClipRect(edit rect),
+                                                DefWindowProcW (paints chrome normally),
+                                                restore clip, FillRect edit rect
+                                                RGB(30,30,30), return 1. Returning 1
+                                                prevents outer DefWindowProc from
+                                                overwriting the dark fill with white —
+                                                eliminates blink on any line-count change
+                                                (Enter, Backspace, paste, etc.).
                                                 Ne_CloseTabAt: calls Ne_UpdateToolbarMode
                                                 after NeTabs_CloseTab so the toolbar
                                                 always shows the correct mode (Rich/Txt/
