@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad for Windows. **v2026.05.22.10**
+A lightweight, standalone RTF notepad for Windows. **v2026.05.22.11**
 
 ## Download
 
@@ -56,8 +56,11 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Smart backspace unindent** in code tabs — Backspace in leading whitespace removes one full indent level
 - **FTP Preview Online** — when a code/plain-text tab is FTP-linked, a violet *Preview online* button appears in the toolbar and under the FTP menu. Clicking uploads the current buffer and opens a dialog with the resolved URL; *Open in browser* launches it; closing reverts the remote file to its original. FTP profile editor gains a **Web URL root** field
 - **FTP upload success auto-close** — the "File saved and uploaded successfully" notification closes itself after 2½ seconds
-- **Edition 1 RC** — About dialog shows Edition: 1 RC
+- **Edition 1** — About dialog shows Edition: 1 (RC suffix removed)
+- **FTP browser open reuses blank tab** — opening a file from the FTP file browser reuses the active untouched untitled tab, just like *File → Open*; no extra blank tab created
+- **Toolbar always correct after tab close** — closing a tab now immediately applies the correct button row (RTF / plain-text / code) for the newly-active tab
 - **Dark mode** — full dark UI (title bar, dialogs, toolbar, menus, status bar, code editor gutter) toggled from *Edit → Preferences…*; in light mode an optional *dark editor background* applies dark colors to only the code/plain-text viewport while all other UI chrome stays light; RTF writing area is always white regardless of the dark-editor setting
+- **Dark-editor keystroke blink fix** — pressing Enter (or any key) in a code tab no longer causes a brief white flash when *Dark editor background* is enabled in Preferences while the overall UI is in light mode
 - **Menu bar background matches system color** — the top-level menu bar items use `GetSysColor(COLOR_MENUBAR)` so the bar blends with the standard Windows toolbar/chrome; drop-down popup backgrounds remain white in light mode
 - **Norwegian Bokmål UI** — full translation of all ~200 UI strings; switch instantly from *GUI Language → Norsk (bokmål)* (no restart required)
 - **Instant language switching** — changing the UI language via the menu rebuilds the full menu bar, all tooltips, tab titles, and status bar on the spot

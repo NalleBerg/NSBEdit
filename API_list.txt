@@ -207,6 +207,11 @@
                                                 an untouched untitled RichEdit tab (path
                                                 empty, not modified, no Scintilla) instead
                                                 of creating a new blank tab first.
+                                                Ne_ShowFtpBrowser — same reuse logic
+                                                applied before NeTabs_AddUntitled so
+                                                opening a file from the FTP browser also
+                                                reuses an untouched untitled tab rather
+                                                than creating an extra blank one.
                                                 Ne_ShowChoiceDialog — optional
                                                 autoCloseMs parameter (default 0 = no
                                                 auto-close); if > 0 a WM_TIMER (id 1) is
@@ -275,6 +280,17 @@
                                                 the dark-editor preference. IDM_CONV_TO_RTF
                                                 handler resets EM_SETBKGNDCOLOR + CHARFORMAT
                                                 to white/auto-colour on conversion.
+                                                WM_ERASEBKGND: g_darkMode → fill entire
+                                                client RGB(25,26,27); g_darkEditor &&
+                                                !g_darkMode → fill edit rect only
+                                                (st->editX/Y/W/H) with RGB(30,30,30) to
+                                                prevent white flash when Scintilla's
+                                                repaint cycle briefly exposes the parent
+                                                background (e.g. on Enter / auto-indent).
+                                                Ne_CloseTabAt: calls Ne_UpdateToolbarMode
+                                                after NeTabs_CloseTab so the toolbar
+                                                always shows the correct mode (Rich/Txt/
+                                                Prog) for the newly-active tab.
                                                 i18n live-switch: Ne_BuildMainMenu(HWND) —
                                                 destroys the old HMENU, rebuilds from Ls()
                                                 strings, calls SetMenu + DrawMenuBar +

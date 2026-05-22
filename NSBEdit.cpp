@@ -6135,6 +6135,7 @@ static bool Ne_CloseTabAt(HWND hwnd, int index)
     if (!NeTabs_CloseTab(hwnd, index)) return false;
 
     Ne_SyncScrollbarVisibility(hwnd);
+    Ne_UpdateToolbarMode(hwnd);   // must come before Ne_SyncToolbar so the right buttons are visible
     Ne_UpdateStatusText(hwnd);
     Ne_UpdateTitle(hwnd);
     HWND hEdit = NeTabs_GetActiveEdit(hwnd);
@@ -8660,7 +8661,14 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
     DeleteObject(hFont);
 
     if (!d.pendingOpenLocal.empty()) {
-        NeTabs_AddUntitled(parent);
+        // Reuse the active tab if it is an untouched untitled RichEdit, just like
+        // the regular File > Open path does.
+        NeTabDoc* existingDoc = NeTabs_GetActiveDoc(parent);
+        bool reuseTab = existingDoc &&
+                        existingDoc->path.empty() &&
+                        !existingDoc->modified &&
+                        existingDoc->hEdit && !existingDoc->hSci;
+        if (!reuseTab) NeTabs_AddUntitled(parent);
         Ne_LoadPathIntoEditor(parent, d.pendingOpenLocal);
         NeTabDoc* doc = NeTabs_GetActiveDoc(parent);
         if (doc) {
@@ -9315,7 +9323,7 @@ static void ShowNsbAboutDialog(HWND parent)
     AppendNsbRich(hEdit, Ls(L"ABOUT_VERSION"),   true,  RGB(0,0,0), 0, true);
     AppendNsbRich(hEdit, (version   + L"\r\n").c_str(), false, RGB(0,0,0), 0, true);
     AppendNsbRich(hEdit, Ls(L"ABOUT_EDITION"),   true,  RGB(0,0,0), 0, true);
-    AppendNsbRich(hEdit, L"1 RC\r\n",             false, RGB(0,0,0), 0, true);
+    AppendNsbRich(hEdit, L"1\r\n",               false, RGB(0,0,0), 0, true);
     AppendNsbRich(hEdit, L"\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\r\n\r\n", false, RGB(180,20,20), 0, true);
     AppendNsbRich(hEdit, Ls(L"ABOUT_DESC"),    false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, Ls(L"ABOUT_LICENSE"), true,  RGB(0,70,140), 0, false);
@@ -10064,6 +10072,18 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             FillRect((HDC)wParam, &r, hbr);
             DeleteObject(hbr);
             return 1;
+        }
+        if (g_darkEditor) {
+            // Light UI but dark Scintilla editor: paint the editor area with the
+            // Scintilla background colour so transient repaints never show white.
+            NeState* st = (NeState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+            if (st && st->editH > 0) {
+                RECT er = { st->editX, st->editY,
+                            st->editX + st->editW, st->editY + st->editH };
+                HBRUSH hbr = CreateSolidBrush(RGB(30, 30, 30)); // matches Scintilla bg
+                FillRect((HDC)wParam, &er, hbr);
+                DeleteObject(hbr);
+            }
         }
         break;
 

@@ -27,7 +27,10 @@ $files = @(
     'curver.txt',     # version info read by About dialog at runtime
     'nsbedit.db',     # SQLite3 stub — presence signals portable mode; installer copies to AppData
     'Changelog.html', # version history (human-readable)
-    'GPLv2.md'        # licence
+    'GPLv2.md',       # licence
+    'Install.bat',    # double-click launcher (opens _doinstall.ps1 in a PowerShell window)
+    '_doinstall.ps1', # installer  (run as admin; copies files, shortcuts, registry)
+    'Uninstall.ps1'   # uninstaller (also copied to Program Files by installer)
 )
 
 foreach ($f in $files) {

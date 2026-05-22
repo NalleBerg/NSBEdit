@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.05.22.11 - 22.05.2026 11:57
+
+- **FTP browser open reuses untouched tab**: Opening a file from the FTP file browser (*FTP → Browse files…*) now reuses the active tab if it is an untouched untitled RichEdit tab (path empty, not modified, no Scintilla window) — the same logic that *File → Open* already applied. Previously `NeTabs_AddUntitled` was called unconditionally, producing an empty extra tab alongside the loaded file.
+- **Toolbar mode corrected after tab close**: `Ne_CloseTabAt` now calls `Ne_UpdateToolbarMode` before `Ne_SyncToolbar` when a tab is closed. Previously the toolbar kept the mode of the *closed* tab — most visibly: closing an initial RTF tab while an FTP plain-text file was open showed the full RTF button row instead of the plain-text/code row.
+- **About — Edition 1**: The About dialog now shows `Edition: 1`. The "RC" suffix removed.
+- **Dark-editor keystroke blink fix**: With *Dark editor background* on in Preferences (light UI, `g_darkEditor = true`, `g_darkMode = false`), pressing Enter (or any auto-indent key) in a code tab no longer causes a brief white flash. Root cause: `WM_ERASEBKGND` only painted dark for `g_darkMode`; when Scintilla's internal repaint briefly exposed the parent background the default white brush showed through. Fix: `WM_ERASEBKGND` now fills the edit area (`st->editX/editY/editW/editH`) with `RGB(30,30,30)` (Scintilla background) when `g_darkEditor` is true.
+
 ## v2026.05.22.10 - 22.05.2026 10:40
 
 - **Shortcuts dialog fully i18n**: All 52 rows of the Keyboard Shortcuts dialog (`F1`) now use locale keys for both the function name and description columns. Keys follow the pattern `SCF_*` (function) and `SCD_*` (description) — 84 new keys added to `locale/en_GB.txt` and `locale/no_nb.txt`. Switching the UI language now immediately updates all three columns.

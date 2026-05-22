@@ -1,6 +1,15 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 22 May 2026 &mdash; v2026.05.22.10 (10:40)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 22 May 2026 &mdash; v2026.05.22.11 (11:57)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.22.11</span></h3>
+<p><strong>FTP open reuses tab; toolbar fix on tab close; Edition 1; dark-editor blink fix (22.05.2026, 11:57):</strong></p>
+<ul>
+<li><strong>FTP browser open reuses untouched tab:</strong> Opening a file from the FTP file browser (<em>FTP &rarr; Browse files&hellip;</em>) now reuses the active tab if it is an untouched untitled RichEdit tab (path empty, not modified, no Scintilla window) &mdash; exactly the same logic that <em>File &rarr; Open</em> already applied. Previously the FTP browser always called <code>NeTabs_AddUntitled</code> unconditionally, producing an empty extra tab alongside the loaded file.</li>
+<li><strong>Toolbar mode corrected after tab close:</strong> <code>Ne_CloseTabAt</code> now calls <code>Ne_UpdateToolbarMode</code> before <code>Ne_SyncToolbar</code> when a tab is closed. Previously, closing a tab left the toolbar in the mode of the <em>closed</em> tab rather than the newly-active one &mdash; most visibly: closing an initial RTF tab while an FTP plain-text file was open in the next tab showed the full RTF button row instead of the plain-text/code row.</li>
+<li><strong>About &mdash; Edition 1:</strong> The About dialog now shows <code>Edition: 1</code>. The &ldquo;RC&rdquo; suffix has been removed.</li>
+<li><strong>Dark-editor keystroke blink fix:</strong> When <em>Dark editor background</em> is enabled in Preferences while the overall UI is in light mode (<code>g_darkEditor = true</code>, <code>g_darkMode = false</code>), pressing Enter (or any key that triggers auto-indent) in a code tab no longer produces a brief white flash. Root cause: the main window&rsquo;s <code>WM_ERASEBKGND</code> handler only painted dark for <code>g_darkMode</code>; when Scintilla&rsquo;s internal repaint cycle briefly exposed the parent background, the default white brush showed through. Fix: <code>WM_ERASEBKGND</code> now also fills the edit area (<code>st&rarr;editX/editY/editW/editH</code>) with <code>RGB(30,30,30)</code> (matching the Scintilla background) when <code>g_darkEditor</code> is true.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.22.10</span></h3>
 <p><strong>Shortcuts &amp; Credits dialog i18n; Ne_SetTip crash fix; H-scrollbar garbling fix (22.05.2026, 10:40):</strong></p>
