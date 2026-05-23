@@ -6939,11 +6939,23 @@ static void ShowNsbLicenseDialog(HWND parent)
     if (hIco) { SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
                 SendMessageW(dlg, WM_SETICON, ICON_BIG,   (LPARAM)hIco); }
 
-    // GNU logo BMP
-    wchar_t exeDir[MAX_PATH]; GetModuleFileNameW(NULL, exeDir, MAX_PATH);
-    wchar_t* sl = wcsrchr(exeDir, L'\\'); if (sl) *(sl+1) = 0;
-    wchar_t bmpPath[MAX_PATH]; wcscpy_s(bmpPath, exeDir); wcscat_s(bmpPath, L"GnuLogo.bmp");
-    HBITMAP hBmp = (HBITMAP)LoadImageW(NULL, bmpPath, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    // GNU logo — loaded from embedded RCDATA resource 13
+    HBITMAP hBmp = NULL;
+    {
+        HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(13), RT_RCDATA);
+        if (hRes) {
+            HGLOBAL hGlob = LoadResource(hi, hRes);
+            const BYTE* pData = (const BYTE*)LockResource(hGlob);
+            if (pData) {
+                const BITMAPFILEHEADER* pFH   = (const BITMAPFILEHEADER*)pData;
+                const BITMAPINFO*       pBI   = (const BITMAPINFO*)(pData + sizeof(BITMAPFILEHEADER));
+                const BYTE*             pBits = pData + pFH->bfOffBits;
+                HDC hDC = GetDC(dlg);
+                hBmp = CreateDIBitmap(hDC, &pBI->bmiHeader, CBM_INIT, pBits, pBI, DIB_RGB_COLORS);
+                ReleaseDC(dlg, hDC);
+            }
+        }
+    }
     int logoH = 0;
     if (hBmp) {
         BITMAP bm; GetObject(hBmp, sizeof(bm), &bm);
@@ -6973,6 +6985,8 @@ static void ShowNsbLicenseDialog(HWND parent)
     AppendNsbRich(hEdit, L"Version 2, June 1991\r\n\r\n",   false, RGB(0,70,140), 10, true);
 
     // Load and parse GPLv2.md
+    wchar_t exeDir[MAX_PATH]; GetModuleFileNameW(NULL, exeDir, MAX_PATH);
+    { wchar_t* sl = wcsrchr(exeDir, L'\\'); if (sl) *(sl+1) = 0; }
     wchar_t mdPath[MAX_PATH]; wcscpy_s(mdPath, exeDir); wcscat_s(mdPath, L"GPLv2.md");
     HANDLE hf = CreateFileW(mdPath, GENERIC_READ, FILE_SHARE_READ, NULL,
                             OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);

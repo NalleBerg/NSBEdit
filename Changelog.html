@@ -3,10 +3,11 @@
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 23 May 2026 &mdash; v2026.05.23.10 (10:08)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.23.10</span></h3>
-<p><strong>About dialog redesign; compile-time version baking (23.05.2026, 10:08):</strong></p>
+<p><strong>About dialog redesign; compile-time version baking; GNU logo embedded (23.05.2026, 10:08):</strong></p>
 <ul>
 <li><strong>About dialog redesigned:</strong> The About dialog has been fully rewritten. The application logo (<code>nsb_256.png</code>) is now embedded in the executable as RCDATA&nbsp;12 and drawn at 100&times;100 DPI-scaled pixels via GDI+ loaded from a memory stream &mdash; no external file dependency. The dialog uses Segoe UI 12&nbsp;pt throughout with a red app-name title, grey subtitle, a decorative separator line, and three coloured section headers: <em>RTF editing</em> (blue), <em>Code editing &amp; syntax highlighting</em> (green), and <em>FTP &amp; remote editing</em> (purple). All section headers and descriptions are fully i18n&rsquo;d &mdash; keys <code>ABOUT_SEC_RTF</code>, <code>ABOUT_DESC_RTF</code>, <code>ABOUT_SEC_CODE</code>, <code>ABOUT_DESC_CODE</code>, <code>ABOUT_SEC_FTP</code>, <code>ABOUT_DESC_FTP</code> added to both <code>locale/en_GB.txt</code> and <code>locale/no_nb.txt</code>.</li>
 <li><strong>Compile-time version baking:</strong> <code>makeit.bat</code> now includes a <code>[pre]</code> step that reads <code>curver.txt</code> via PowerShell and emits <code>ne_version.h</code> with two wide-string <code>#define</code> constants: <code>NE_PUBLISHED</code> and <code>NE_VERSION</code>. <code>ShowNsbAboutDialog</code> uses these constants directly &mdash; no file I/O at runtime. <code>curver.txt</code> remains the source-of-truth (updated by <code>NewVersion.ps1</code>) but is no longer read at runtime and is no longer shipped in the distribution ZIP.</li>
+<li><strong>GNU logo embedded in License dialog:</strong> The GNU wildebeest logo (<code>GnuLogo.bmp</code>) is now embedded in the executable as RCDATA&nbsp;13 and loaded via <code>CreateDIBitmap</code> from the resource data &mdash; no external file required. The logo appears at the top of the License dialog as before.</li>
 </ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.23.09</span></h3>

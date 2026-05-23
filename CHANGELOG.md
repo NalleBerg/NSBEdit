@@ -4,6 +4,7 @@
 
 - **About dialog redesigned**: The About dialog has been fully rewritten. The app logo (`nsb_256.png`) is now embedded as RCDATA 12 and drawn at S(100)×S(100) DPI-scaled pixels via GDI+ from a memory stream — no external file dependency. The dialog uses Segoe UI 12 pt throughout with a red app-name title, grey subtitle, decorative separator line, and three coloured section headers: RTF editing (blue), Code editing & syntax highlighting (green), FTP & remote editing (purple). All section headers and descriptions are i18n'd — keys `ABOUT_SEC_RTF`, `ABOUT_DESC_RTF`, `ABOUT_SEC_CODE`, `ABOUT_DESC_CODE`, `ABOUT_SEC_FTP`, `ABOUT_DESC_FTP` in both `locale/en_GB.txt` and `locale/no_nb.txt`.
 - **Compile-time version baking**: `makeit.bat` now includes a `[pre]` step that reads `curver.txt` via PowerShell and writes `ne_version.h` with `#define NE_PUBLISHED` and `#define NE_VERSION` as wide-string literals. `ShowNsbAboutDialog` uses these constants directly — no file I/O at runtime. `curver.txt` is no longer shipped in the distribution ZIP.
+- **GNU logo embedded in License dialog**: `GnuLogo.bmp` is now embedded as RCDATA 13 and loaded via `CreateDIBitmap` from the resource — no external file required. The GNU wildebeest logo appears at the top of the License dialog as before.
 
 ## v2026.05.23.09 - 23.05.2026 09:44
 
