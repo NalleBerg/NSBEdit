@@ -24,7 +24,6 @@ New-Item -ItemType Directory -Path $stagingDir | Out-Null
 
 $files = @(
     'NSBEdit.exe',    # main executable
-    'curver.txt',     # version info read by About dialog at runtime
     'nsbedit.db',     # SQLite3 stub — presence signals portable mode; installer copies to AppData
     'Changelog.html', # version history (human-readable)
     'GPLv2.md',       # licence
@@ -39,6 +38,10 @@ foreach ($f in $files) {
     Copy-Item $src $stagingDir
     Write-Host "  + $f"
 }
+
+# Write version.txt so the installer can read the version without curver.txt
+$version | Set-Content (Join-Path $stagingDir 'version.txt') -Encoding UTF8
+Write-Host "  + version.txt  ($version)"
 
 # ── Zip ───────────────────────────────────────────────────────────────────────
 $zipPath = "$PSScriptRoot\$zipName"

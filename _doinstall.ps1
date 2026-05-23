@@ -18,11 +18,10 @@ if (-not $isAdmin) {
 
 try {
 
-# -- Read version --------------------------------------------------------------
+# -- Read version -------------------------------------------------------------
 $here    = Split-Path $MyInvocation.MyCommand.Path
-$curver  = Get-Content "$here\curver.txt" -Encoding UTF8
-$version = ($curver | Where-Object { $_ -match '^Version:\s*(.+)' } | Select-Object -First 1) -replace '^Version:\s*',''
-if (-not $version) { throw "Could not read version from curver.txt" }
+$version = (Get-Content "$here\version.txt" -Encoding UTF8 -ErrorAction SilentlyContinue | Select-Object -First 1).Trim()
+if (-not $version) { $version = 'unknown' }
 
 $installDir = Join-Path $env:ProgramFiles 'NSBEdit'
 $appDataDir = Join-Path $env:APPDATA       'NSBEdit'
@@ -39,7 +38,7 @@ New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 New-Item -ItemType Directory -Path $appDataDir -Force | Out-Null
 
 # -- Copy program files --------------------------------------------------------
-foreach ($f in @('NSBEdit.exe','curver.txt','Changelog.html','GPLv2.md')) {
+foreach ($f in @('NSBEdit.exe','Changelog.html','GPLv2.md')) {
     $src = Join-Path $here $f
     if (Test-Path $src) {
         Copy-Item $src $installDir -Force

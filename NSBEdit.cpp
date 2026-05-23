@@ -4,6 +4,7 @@
 // Tooltips: English-only via project tooltip system.
 
 #include "NSBEdit.h"
+#include "ne_version.h"
 #include <windows.h>
 #include <windowsx.h>
 #include <dwmapi.h>
@@ -6649,18 +6650,8 @@ static void Ne_SciToggleHtmlComment(HWND hSci)
 // ── About dialog ──────────────────────────────────────────────────────────────
 static void AppendNsbRich(HWND hEdit, const wchar_t* text, bool bold, COLORREF col, int pt, bool center)
 {
-    static wchar_t s_face[LF_FACESIZE] = {};
-    static int     s_twips = 0;
-    if (!s_twips) {
-        NONCLIENTMETRICSW ncm = {}; ncm.cbSize = sizeof(ncm);
-        SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
-        wcscpy_s(s_face, ncm.lfMessageFont.lfFaceName);
-        HDC hdc = GetDC(hEdit);
-        int dpiY = GetDeviceCaps(hdc, LOGPIXELSY); ReleaseDC(hEdit, hdc);
-        if (dpiY <= 0) dpiY = 96;
-        s_twips = MulDiv((int)(abs(ncm.lfMessageFont.lfHeight) * 1.2f + 0.5f), 1440, dpiY);
-        if (s_twips <= 0) s_twips = 180;
-    }
+    static const wchar_t s_face[] = L"Segoe UI";
+    static const int     s_twips  = 240;  // 12 pt × 20 twips/pt
     CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
     cf.dwMask     = CFM_COLOR | CFM_BOLD | CFM_SIZE | CFM_FACE;
     cf.crTextColor = col;
@@ -6698,8 +6689,8 @@ static LRESULT CALLBACK NsbAboutEditProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
         Gdiplus::Graphics g(hdc);
         POINT pt = {}; SendMessageW(hwnd, EM_GETSCROLLPOS, 0, (LPARAM)&pt);
         RECT rc; GetClientRect(hwnd, &rc);
-        int lw = (int)(s_nas.logo->GetWidth()  * 0.75f);
-        int lh = (int)(s_nas.logo->GetHeight() * 0.75f);
+        int lw = S(100);
+        int lh = S(100);
         int x  = (rc.right - lw) / 2;
         int y  = 10 - pt.y;
         if (y + lh > 0 && y < rc.bottom)
@@ -9367,20 +9358,35 @@ static void ShowNsbAboutDialog(HWND parent)
     ULONG_PTR gdipToken;
     Gdiplus::GdiplusStartup(&gdipToken, &gsi, NULL);
 
-    // Load NSB.png from exe directory
-    wchar_t exePath[MAX_PATH];
-    GetModuleFileNameW(NULL, exePath, MAX_PATH);
-    wchar_t* sl = wcsrchr(exePath, L'\\'); if (sl) *(sl+1) = 0;
-    wchar_t pngPath[MAX_PATH];
-    wcscpy_s(pngPath, exePath); wcscat_s(pngPath, L"NSB.png");
-    s_nas.logo = Gdiplus::Image::FromFile(pngPath);
+    // Load logo from embedded RCDATA resource 12
+    {
+        HINSTANCE hi2 = GetModuleHandleW(NULL);
+        HRSRC hRes = FindResourceW(hi2, MAKEINTRESOURCEW(12), RT_RCDATA);
+        if (hRes) {
+            HGLOBAL hGlob = LoadResource(hi2, hRes);
+            DWORD   sz    = SizeofResource(hi2, hRes);
+            void*   pData = LockResource(hGlob);
+            HGLOBAL hMem  = GlobalAlloc(GMEM_MOVEABLE, sz);
+            if (hMem) {
+                void* pMem = GlobalLock(hMem);
+                if (pMem) { memcpy(pMem, pData, sz); GlobalUnlock(hMem); }
+                IStream* pStream = nullptr;
+                if (SUCCEEDED(CreateStreamOnHGlobal(hMem, TRUE, &pStream))) {
+                    s_nas.logo = Gdiplus::Image::FromStream(pStream);
+                    pStream->Release();
+                } else {
+                    GlobalFree(hMem);
+                }
+            }
+        }
+    }
 
     HINSTANCE hi = GetModuleHandleW(NULL);
     WNDCLASSW wc = {}; wc.lpfnWndProc = NsbAboutWndProc; wc.hInstance = hi;
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1); wc.lpszClassName = L"NsbAboutClass";
     if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
 
-    const int W = S(480), H = S(520);
+    const int W = S(480), H = S(580);
     RECT pr = {}; if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
     int x = (pr.left+pr.right)/2 - W/2, y = (pr.top+pr.bottom)/2 - H/2;
     if (y < 30) y = 30;
@@ -9409,52 +9415,39 @@ static void ShowNsbAboutDialog(HWND parent)
     SendMessageW(hEdit, EM_SETTARGETDEVICE, 0, 0);
 
     // Reserve space for logo
-    int logoH = s_nas.logo ? (int)(s_nas.logo->GetHeight() * 0.75f) : 0;
-    int logoLines = (logoH + 20) / S(15);
+    int logoH     = s_nas.logo ? S(100) : 0;
+    int logoLines = (logoH + S(20)) / S(15);
     for (int i = 0; i < logoLines; i++) AppendNsbRich(hEdit, L"\r\n", false, RGB(0,0,0), 0, false);
 
-    // Content
-    AppendNsbRich(hEdit, Ls(L"ABOUT_APP_NAME"), true,  RGB(180,20,20),  16, true);
-    AppendNsbRich(hEdit, Ls(L"ABOUT_SUBTITLE"), false, RGB(80,80,80),   10, true);
-    AppendNsbRich(hEdit, L"\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\r\n", false, RGB(180,20,20), 0, true);
+    // ── Title / subtitle ──────────────────────────────────────────────────────
+    AppendNsbRich(hEdit, Ls(L"ABOUT_APP_NAME"), true,  RGB(180,20,20),  22, true);
+    AppendNsbRich(hEdit, Ls(L"ABOUT_SUBTITLE"), false, RGB(100,100,100), 10, true);
+    AppendNsbRich(hEdit, L"\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\r\n", false, RGB(180,20,20), 8, true);
 
-    // Load version from curver.txt next to exe
-    wchar_t exeP2[MAX_PATH]; GetModuleFileNameW(NULL, exeP2, MAX_PATH);
-    wchar_t* sl2 = wcsrchr(exeP2, L'\\'); if (sl2) *(sl2+1) = 0;
-    wchar_t cvPath[MAX_PATH]; wcscpy_s(cvPath, exeP2); wcscat_s(cvPath, L"curver.txt");
-    std::wstring published, version;
-    HANDLE hcv = CreateFileW(cvPath, GENERIC_READ, FILE_SHARE_READ, NULL,
-                             OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hcv != INVALID_HANDLE_VALUE) {
-        DWORD sz = GetFileSize(hcv, NULL); std::string buf(sz,'\0'); DWORD rd;
-        ReadFile(hcv, buf.data(), sz, &rd, NULL); CloseHandle(hcv);
-        int wn = MultiByteToWideChar(CP_UTF8, 0, buf.data(), (int)rd, NULL, 0);
-        std::wstring wc2(wn, L'\0');
-        MultiByteToWideChar(CP_UTF8, 0, buf.data(), (int)rd, wc2.data(), wn);
-        auto grab = [&](const wchar_t* key) -> std::wstring {
-            size_t p = wc2.find(key);
-            if (p == std::wstring::npos) return {};
-            p += wcslen(key);
-            size_t e = wc2.find(L'\n', p);
-            std::wstring v = wc2.substr(p, e == std::wstring::npos ? std::wstring::npos : e-p);
-            while (!v.empty() && (v.back()==L'\r'||v.back()==L'\n')) v.pop_back();
-            return v;
-        };
-        published = grab(L"Published: ");
-        version   = grab(L"Version: ");
-    }
-    if (published.empty()) published = L"—";
-    if (version.empty())   version   = L"—";
+    // ── Version block (hardcoded at build time from curver.txt via ne_version.h) ─
+    std::wstring published = NE_PUBLISHED;
+    std::wstring version   = NE_VERSION;
 
-    AppendNsbRich(hEdit, Ls(L"ABOUT_PUBLISHED"), true,  RGB(0,0,0), 0, true);
-    AppendNsbRich(hEdit, (published + L"\r\n").c_str(), false, RGB(0,0,0), 0, true);
-    AppendNsbRich(hEdit, Ls(L"ABOUT_VERSION"),   true,  RGB(0,0,0), 0, true);
-    AppendNsbRich(hEdit, (version   + L"\r\n").c_str(), false, RGB(0,0,0), 0, true);
-    AppendNsbRich(hEdit, Ls(L"ABOUT_EDITION"),   true,  RGB(0,0,0), 0, true);
-    AppendNsbRich(hEdit, L"1\r\n",               false, RGB(0,0,0), 0, true);
-    AppendNsbRich(hEdit, L"\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\r\n\r\n", false, RGB(180,20,20), 0, true);
-    AppendNsbRich(hEdit, Ls(L"ABOUT_DESC"),    false, RGB(40,40,40), 0, false);
-    AppendNsbRich(hEdit, Ls(L"ABOUT_LICENSE"), true,  RGB(0,70,140), 0, false);
+    AppendNsbRich(hEdit, Ls(L"ABOUT_PUBLISHED"), true,  RGB(60,60,60), 11, true);
+    AppendNsbRich(hEdit, (published + L"\r\n").c_str(), false, RGB(60,60,60), 11, true);
+    AppendNsbRich(hEdit, Ls(L"ABOUT_VERSION"),   true,  RGB(60,60,60), 11, true);
+    AppendNsbRich(hEdit, (version   + L"\r\n").c_str(), false, RGB(60,60,60), 11, true);
+    AppendNsbRich(hEdit, L"\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\r\n\r\n", false, RGB(180,20,20), 8, true);
+
+    // ── RTF editing section ───────────────────────────────────────────────────
+    AppendNsbRich(hEdit, Ls(L"ABOUT_SEC_RTF"),  true,  RGB(0,80,190),  12, false);
+    AppendNsbRich(hEdit, Ls(L"ABOUT_DESC_RTF"), false, RGB(50,50,50),  10, false);
+
+    // ── Code editing section ──────────────────────────────────────────────────
+    AppendNsbRich(hEdit, Ls(L"ABOUT_SEC_CODE"),  true,  RGB(20,140,50), 12, false);
+    AppendNsbRich(hEdit, Ls(L"ABOUT_DESC_CODE"), false, RGB(50,50,50),  10, false);
+
+    // ── FTP section ───────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit, Ls(L"ABOUT_SEC_FTP"),  true,  RGB(120,0,190), 12, false);
+    AppendNsbRich(hEdit, Ls(L"ABOUT_DESC_FTP"), false, RGB(50,50,50),  10, false);
+
+    // ── License ───────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit, Ls(L"ABOUT_LICENSE"), true, RGB(0,70,140), 10, false);
 
     SendMessageW(hEdit, EM_SETSEL, 0, 0);
     SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);

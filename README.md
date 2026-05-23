@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.23.09**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.23.10**
 
 ## Download
 
@@ -71,6 +71,8 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **FTP keepalive** — TCP keepalive on all connections; `NeFtp_Keepalive()` sends NOOP to FTP servers during long preview sessions to prevent idle timeout
 - **follow.ps1 persistent counter** — the `RUN #N` build counter survives PowerShell restarts via `makeit_count.txt`
 - **HTML block comment toggle** — the `[//]` button in code tabs toggles `<!-- -->` block comments in HTML regions (HTML and PHP files). Three modes: wrap selection in a new block, remove existing wrapper lines, or split an outer block to exclude the selected lines. In PHP files the button shows `<!--` when the cursor is in HTML and `//` when in PHP code — switching live as the cursor moves
+- **About dialog redesigned** — logo embedded in the executable (no external file); Segoe UI 12 pt throughout; coloured section headers for RTF editing, Code editing, and FTP; fully i18n'd in English and Norwegian
+- **Compile-time version** — version and publish date are baked into the executable at build time; `curver.txt` is no longer read at runtime and is no longer shipped in the ZIP
 
 ## Building from source
 

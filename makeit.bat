@@ -13,6 +13,16 @@ echo ============================================================
 echo  NSBEdit build started
 echo ============================================================
 
+:: ── Generate ne_version.h from curver.txt ─────────────────────────
+echo [pre] Generating ne_version.h from curver.txt...
+powershell -NoProfile -Command "& { $l = gc 'curver.txt'; $p = ($l -match '^Published: ')[0] -replace '^Published: ',''; $v = ($l -match '^Version: ')[0] -replace '^Version: ',''; $q = [char]34; [IO.File]::WriteAllText([IO.Path]::GetFullPath('ne_version.h'), '#pragma once' + [char]10 + '#define NE_PUBLISHED L' + $q + $p + $q + [char]10 + '#define NE_VERSION   L' + $q + $v + $q, [Text.Encoding]::UTF8) }"
+@if !ERRORLEVEL! neq 0 (
+    echo [ERROR] ne_version.h generation FAILED  ^(exit code !ERRORLEVEL!^)
+    exit /b 1
+)
+echo       Done.
+echo.
+
 :: ── Kill running instance ────────────────────────────────────
 echo [1/5] Killing running NSBEdit.exe (if any)...
 taskkill /F /IM NSBEdit.exe

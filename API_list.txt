@@ -44,8 +44,11 @@
                                                 Underline/Strike/Subscript/Superscript/
                                                 FontFace/FontSize/Color/Highlight/Align
                                                 L/C/R/J/Bullet/Numbered/Image), status
-                                                bar, About dialog (GDI+ logo, curver.txt
-                                                version), License dialog (GPLv2.md stream).
+                                                bar, About dialog (GDI+ logo + RCDATA 12
+                                                nsb_256.png, NE_PUBLISHED/NE_VERSION from
+                                                ne_version.h generated at build time by
+                                                makeit.bat [pre] step), License dialog
+                                                (GPLv2.md stream).
                                                 Ne_ExportPdf — MS Print to PDF via
                                                 OpenPrinterW/DocumentPropertiesW/CreateDCW
                                                 + DOCINFO.lpszOutput + EM_FORMATRANGE.

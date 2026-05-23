@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 23 May 2026 &mdash; v2026.05.23.09 (09:44)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 23 May 2026 &mdash; v2026.05.23.10 (10:08)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.23.10</span></h3>
+<p><strong>About dialog redesign; compile-time version baking (23.05.2026, 10:08):</strong></p>
+<ul>
+<li><strong>About dialog redesigned:</strong> The About dialog has been fully rewritten. The application logo (<code>nsb_256.png</code>) is now embedded in the executable as RCDATA&nbsp;12 and drawn at 100&times;100 DPI-scaled pixels via GDI+ loaded from a memory stream &mdash; no external file dependency. The dialog uses Segoe UI 12&nbsp;pt throughout with a red app-name title, grey subtitle, a decorative separator line, and three coloured section headers: <em>RTF editing</em> (blue), <em>Code editing &amp; syntax highlighting</em> (green), and <em>FTP &amp; remote editing</em> (purple). All section headers and descriptions are fully i18n&rsquo;d &mdash; keys <code>ABOUT_SEC_RTF</code>, <code>ABOUT_DESC_RTF</code>, <code>ABOUT_SEC_CODE</code>, <code>ABOUT_DESC_CODE</code>, <code>ABOUT_SEC_FTP</code>, <code>ABOUT_DESC_FTP</code> added to both <code>locale/en_GB.txt</code> and <code>locale/no_nb.txt</code>.</li>
+<li><strong>Compile-time version baking:</strong> <code>makeit.bat</code> now includes a <code>[pre]</code> step that reads <code>curver.txt</code> via PowerShell and emits <code>ne_version.h</code> with two wide-string <code>#define</code> constants: <code>NE_PUBLISHED</code> and <code>NE_VERSION</code>. <code>ShowNsbAboutDialog</code> uses these constants directly &mdash; no file I/O at runtime. <code>curver.txt</code> remains the source-of-truth (updated by <code>NewVersion.ps1</code>) but is no longer read at runtime and is no longer shipped in the distribution ZIP.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.23.09</span></h3>
 <p><strong>Changelog title; HTML block comment toggle; smart PHP/HTML region detection (23.05.2026, 09:44):</strong></p>
