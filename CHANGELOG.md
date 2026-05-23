@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.23.08 - 23.05.2026 08:58
+
+- **Toolbar always shows correct row on new tab**: `Ne_New` (File → New / Ctrl+N) now calls `Ne_UpdateToolbarMode` at the end so the Rich button row is applied immediately when the new untitled tab becomes active. Previously the Prog/Txt row from the previous code-file tab stayed visible until the user switched away and back.
+
 ## v2026.05.22.12 - 22.05.2026 12:08
 
 - **Dark-editor blink fully eliminated**: The previous fix filled the editor rect dark then `break`-ed out of `WM_ERASEBKGND`, letting `DefWindowProcW` overwrite the dark fill with the system white brush on any line-count change (Enter, Backspace on empty line, paste, etc.). Rewritten: `ExcludeClipRect` protects the editor area, `DefWindowProcW` is called explicitly so surrounding chrome paints normally, then the editor rect is filled `RGB(30,30,30)` and the handler returns 1 — preventing any further default processing. White flash fully suppressed for all editing operations.

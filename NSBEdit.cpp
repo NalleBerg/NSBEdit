@@ -5669,6 +5669,8 @@ static void Ne_SubclassEditForCaret(HWND hEdit)
     SetPropW(hEdit, L"NeEditCaretPrev", (HANDLE)prev);
 }
 
+static void Ne_UpdateToolbarMode(HWND hwnd); // forward declaration
+
 static void Ne_New(HWND hwnd)
 {
     if (!NeTabs_AddUntitled(hwnd)) return;
@@ -5705,9 +5707,8 @@ static void Ne_New(HWND hwnd)
     { HWND hWBtn = GetDlgItem(hwnd, IDC_NE_WORDWRAP);
       if (hWBtn) { SendMessageW(hWBtn, BM_SETCHECK, BST_CHECKED, 0);
                    RedrawWindow(hWBtn, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW); } }
+    Ne_UpdateToolbarMode(hwnd); // ensure Rich button row is shown for the new RTF tab
 }
-
-static void Ne_UpdateToolbarMode(HWND hwnd); // defined below
 
 static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
 {

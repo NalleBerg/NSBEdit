@@ -1,6 +1,12 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 22 May 2026 &mdash; v2026.05.22.12 (12:08)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 23 May 2026 &mdash; v2026.05.23.08 (08:58)<br />Lightweight portable RTF editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.23.08</span></h3>
+<p><strong>Toolbar mode correct on new tab (23.05.2026, 08:58):</strong></p>
+<ul>
+<li><strong>Toolbar always shows correct row when opening a new tab:</strong> <em>File &rarr; New</em> (<kbd>Ctrl+N</kbd>) now calls <code>Ne_UpdateToolbarMode</code> at the end of <code>Ne_New</code>, so the Rich button row is applied immediately when the new untitled tab becomes active. Previously, if the previous tab was a PHP/plain-text code file the Prog button row stayed visible until the user manually switched tabs and back.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.22.12</span></h3>
 <p><strong>Dark-editor blink fix (complete) (22.05.2026, 12:08):</strong></p>

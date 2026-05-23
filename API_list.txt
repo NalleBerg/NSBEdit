@@ -294,6 +294,12 @@
                                                 after NeTabs_CloseTab so the toolbar
                                                 always shows the correct mode (Rich/Txt/
                                                 Prog) for the newly-active tab.
+                                                Ne_New: calls Ne_UpdateToolbarMode at end
+                                                so opening a new untitled tab (Ctrl+N /
+                                                File > New) immediately shows the Rich
+                                                button row regardless of the previous
+                                                tab's mode. Ne_UpdateToolbarMode forward-
+                                                declared before Ne_New to allow the call.
                                                 i18n live-switch: Ne_BuildMainMenu(HWND) —
                                                 destroys the old HMENU, rebuilds from Ls()
                                                 strings, calls SetMenu + DrawMenuBar +
