@@ -4,3 +4,6 @@ NSBEdit.res
 # Generated header
 version.h
 curver.txt
+
+# Distribution zips
+zip/

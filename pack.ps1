@@ -1,6 +1,6 @@
 # pack.ps1 — Build a distributable ZIP of NSBEdit
 # Usage: .\pack.ps1
-# Output: NSBEdit_v<version>.zip  (in the workspace root)
+# Output: NSBEdit_v<version>.zip  (in .\zip\)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -44,7 +44,9 @@ $version | Set-Content (Join-Path $stagingDir 'version.txt') -Encoding UTF8
 Write-Host "  + version.txt  ($version)"
 
 # ── Zip ───────────────────────────────────────────────────────────────────────
-$zipPath = "$PSScriptRoot\$zipName"
+$zipDir = "$PSScriptRoot\zip"
+if (-not (Test-Path $zipDir)) { New-Item -ItemType Directory -Path $zipDir | Out-Null }
+$zipPath = "$zipDir\$zipName"
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 Compress-Archive -Path "$PSScriptRoot\_pack_staging\*" -DestinationPath $zipPath
 Remove-Item "$PSScriptRoot\_pack_staging" -Recurse -Force
