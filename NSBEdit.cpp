@@ -120,6 +120,7 @@ enum class NeEncoding {
 #define IDM_SAVE_TO_FTP     133   // File menu: "Save to FTP..."
 #define IDM_PREVIEW_FTP     134   // File/FTP menu + toolbar: "Preview online."
 #define IDM_PREFS           135   // Edit menu: Preferences
+#define IDM_FTP_CLOSE_CONN  136   // FTP menu: "Close connection" (picker dialog)
 #define IDM_LANG_BASE        600  // Language menu: 600..600+NE_LANG_COUNT-1
 #define IDM_FTP_CONNECT_BASE 700  // FTP menu: profile entries 700..799
 #define IDM_LOCALE_BASE      800  // GUI language menu: locale entries 800..899
@@ -1051,6 +1052,7 @@ static void Ne_UpdateLangMenuCheck(int langId)
 // ── Owner-draw menu support ───────────────────────────────────────────────────
 // g_hMenuFont declared near top of file (needs to be visible to NsbLineGutterProc).
 static HICON g_hFtpMenuIcon    = NULL;
+static HICON g_hFtpConnIcon    = NULL;  // netshell.dll icon 41 — shown on connected profiles
 static HICON g_hLocaleMenuIcon = NULL;
 
 struct NeMenuItemData {
@@ -6847,6 +6849,11 @@ static void Ne_RebuildFtpMenu(HWND hwnd)
     while (GetMenuItemCount(s_hFtpMenu) > 0)
         RemoveMenu(s_hFtpMenu, 0, MF_BYPOSITION);
     Ne_AppendMenuOD(s_hFtpMenu, MF_STRING, IDM_FTP_ADD_SITE, Ls(L"FTP_ADD_SITE"));
+    // "Close connection" — enabled only when at least one profile is connected
+    bool anyConn = NeFtp_IsConnected();
+    Ne_AppendMenuOD(s_hFtpMenu,
+        MF_STRING | (anyConn ? 0 : MF_GRAYED),
+        IDM_FTP_CLOSE_CONN, Ls(L"FTP_CLOSE_CONN_MENU"));
     NeTabDoc* aDoc = NeTabs_GetActiveDoc(hwnd);
     int64_t activeTabProfileId = (aDoc && aDoc->isFtpFile) ? aDoc->ftpProfileId : 0;
     if (activeTabProfileId && NeFtp_IsConnected(activeTabProfileId)) {
@@ -6859,8 +6866,7 @@ static void Ne_RebuildFtpMenu(HWND hwnd)
     for (int pi = 0; pi < (int)ftpProfiles.size() && pi < 100; ++pi) {
         std::wstring label = ftpProfiles[pi].friendlyName
                            + L"  (" + ftpProfiles[pi].protocol + L")";
-        HICON hIcon = (activeTabProfileId && ftpProfiles[pi].id == activeTabProfileId)
-                      ? g_hFtpMenuIcon : NULL;
+        HICON hIcon = NeFtp_IsConnected(ftpProfiles[pi].id) ? g_hFtpConnIcon : NULL;
         Ne_AppendMenuOD(s_hFtpMenu, MF_STRING,
                         IDM_FTP_CONNECT_BASE + pi, label.c_str(),
                         false, hIcon);
@@ -8969,14 +8975,16 @@ static LRESULT CALLBACK Ne_FtpSelectDlgProc(HWND hwnd, UINT msg, WPARAM wParam, 
 }
 
 // Returns chosen profile id, or -1 if cancelled.
-static int64_t Ne_ShowFtpSelectDialog(HWND parent, const std::vector<NeProfile>& profiles)
+// title and message are pre-translated strings (call Ls() at the call site).
+static int64_t Ne_ShowFtpSelectDialog(HWND parent, const std::vector<NeProfile>& profiles,
+                                      const std::wstring& title, const std::wstring& message)
 {
     if (profiles.empty()) return -1;
 
     const int padH = S(20), padT = S(18), padB = S(15);
     const int gapTB = S(14), btnH = S(34), listGap = S(6);
 
-    std::wstring msg = Ls(L"FTP_PICK_PROFILE");
+    std::wstring msg = message;
     int contW = S(420);
     int textH = Ne_MeasureDialogTextHeight(msg, contW);
     int n = (int)profiles.size();
@@ -9012,7 +9020,7 @@ static int64_t Ne_ShowFtpSelectDialog(HWND parent, const std::vector<NeProfile>&
     if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
 
     NeFtpSelectDlgData dd = {};
-    dd.title    = Ls(L"FTP_SAVE_BROWSER");
+    dd.title    = title;
     dd.message  = msg;
     dd.profiles = &profiles;
     dd.textH    = textH;
@@ -9040,6 +9048,24 @@ static int64_t Ne_ShowFtpSelectDialog(HWND parent, const std::vector<NeProfile>&
         SetForegroundWindow(parent);
     }
     return dd.result;
+}
+
+// Shows a "Close connection" picker dialog.  Lists all currently-connected
+// profiles; the user picks one and the connection is closed immediately.
+// Uses the same vertical-button list pattern as Ne_ShowFtpSelectDialog.
+static void Ne_ShowFtpCloseConnDialog(HWND parent)
+{
+    std::vector<NeProfile> all;
+    NeProfiles_List(all);
+    std::vector<NeProfile> connected;
+    for (auto& p : all)
+        if (NeFtp_IsConnected(p.id)) connected.push_back(p);
+    if (connected.empty()) return;
+
+    int64_t chosenId = Ne_ShowFtpSelectDialog(parent, connected,
+        Ls(L"FTP_CLOSE_CONN_MENU"), Ls(L"FTP_CLOSE_CONN_PROMPT"));
+    if (chosenId < 0) return;
+    NeFtp_Disconnect(chosenId);
 }
 
 // Opens the FTP browser in "save" mode. Returns the chosen remote path, or
@@ -9892,6 +9918,8 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         if (!g_hFtpMenuIcon)
             ExtractIconExW(L"shell32.dll", 150, NULL, &g_hFtpMenuIcon, 1);
+        if (!g_hFtpConnIcon)
+            ExtractIconExW(L"netshell.dll", 41, NULL, &g_hFtpConnIcon, 1);
         if (!g_hLocaleMenuIcon)
             ExtractIconExW(L"shell32.dll", 300, NULL, &g_hLocaleMenuIcon, 1);
         Ne_BuildMainMenu(hwnd);
@@ -10346,7 +10374,8 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
             // Show a scrollable list so the user can pick any connected profile
             // (even when only one is connected, the explicit choice is intentional).
-            int64_t chosenId = Ne_ShowFtpSelectDialog(hwnd, connected);
+            int64_t chosenId = Ne_ShowFtpSelectDialog(hwnd, connected,
+                Ls(L"FTP_SAVE_BROWSER"), Ls(L"FTP_PICK_PROFILE"));
             if (chosenId < 0) return 0;  // cancelled
 
             // 2. Save doc to temp file
@@ -10614,6 +10643,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // ── FTP menu ──────────────────────────────────────────────────────────
         if (wmId == IDM_FTP_ADD_SITE) {
             Ne_ShowFtpSiteDialog(hwnd, nullptr);
+            return 0;
+        }
+        if (wmId == IDM_FTP_CLOSE_CONN) {
+            Ne_ShowFtpCloseConnDialog(hwnd);
+            Ne_UpdateFtpStatus(hwnd);
             return 0;
         }
         if (wmId == IDM_FTP_DISCONNECT) {
@@ -11023,7 +11057,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         Ne_SyncRichGutters(hwnd);
         return 0;
 
-    // ── WM_MENURBUTTONUP — right-click on menu item ────────────────────────────
+    // ── WM_MENURBUTTONUP — right-click on FTP profile → open properties ────────
     case WM_MENURBUTTONUP: {
         HMENU hM = (HMENU)lParam;
         if (hM == s_hFtpMenu) {
@@ -11535,6 +11569,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
         if (g_hMenuFont) { DeleteObject(g_hMenuFont); g_hMenuFont = NULL; }
         if (g_hFtpMenuIcon) { DestroyIcon(g_hFtpMenuIcon); g_hFtpMenuIcon = NULL; }
+        if (g_hFtpConnIcon)  { DestroyIcon(g_hFtpConnIcon);  g_hFtpConnIcon  = NULL; }
         for (auto* p : g_menuItemStorage) delete p;
         g_menuItemStorage.clear();
 

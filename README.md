@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.23.10**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.23.11**
 
 ## Download
 
@@ -58,6 +58,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **FTP upload success auto-close** — the "File saved and uploaded successfully" notification closes itself after 2½ seconds
 - **Edition 1** — About dialog shows Edition: 1 (RC suffix removed)
 - **FTP browser open reuses blank tab** — opening a file from the FTP file browser reuses the active untouched untitled tab, just like *File → Open*; no extra blank tab created
+- **FTP → Close connection** — new FTP menu item (grayed when nothing is connected); clicking opens a picker dialog listing all active connections so you can choose which one to close
 - **Toolbar always correct after tab close** — closing a tab now immediately applies the correct button row (RTF / plain-text / code) for the newly-active tab
 - **Dark mode** — full dark UI (title bar, dialogs, toolbar, menus, status bar, code editor gutter) toggled from *Edit → Preferences…*; in light mode an optional *dark editor background* applies dark colors to only the code/plain-text viewport while all other UI chrome stays light; RTF writing area is always white regardless of the dark-editor setting
 - **Dark-editor keystroke blink fix** — no white flash in any editing operation (Enter, Backspace, paste…) when *Dark editor background* is enabled in Preferences while the overall UI is in light mode; `WM_ERASEBKGND` fully owns the editor area paint via `ExcludeClipRect` + explicit `DefWindowProcW` + return 1

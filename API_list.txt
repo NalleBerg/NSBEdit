@@ -2,6 +2,23 @@
   NSBEdit — Documentation Index
 ================================================================================
 
+  IMPORTANT — AI / AGENT NOTE:
+    The files under API_INTERNALS\ document the AUTHOR'S PERSONAL CODING STYLE
+    and patterns that travel with them across all Win32/C++ projects.
+    They are NOT a separate project.  Any code examples, layout constants, or
+    helper names in those files that look "project-specific" (e.g. references
+    to ctrlw.cpp, mainwindow.cpp, ButtonColor::Green, etc.) are illustrative
+    placeholders from older projects.  The PATTERNS they describe — measure-
+    then-create dialogs, owner-draw buttons, DPI-aware S() sizing, i18n via
+    Ls(), AdjustWindowRectEx sizing, modal pump with EnableWindow — are the
+    canonical approach to use in THIS project too, adapted to NSBEdit's own
+    helper names (Ne_MeasureDialogTextHeight, Ne_CreateDialogFont,
+    Ne_DrawDialogButton, Ne_MeasureButtonWidth, Ne_BtnHoverProc, NeBtnTone,
+    Ne_ToneColor, etc.).
+    When the docs say "CreateCustomButtonWithIcon" read "BS_OWNERDRAW +
+    Ne_BtnHoverProc subclass"; when they say "ButtonColor::Blue" read
+    "NeBtnTone::Blue"; and so on.
+
   Location:
     API_INTERNALS\API\         Reusable toolbox modules — public interfaces.
                                When the project is done, a consolidated API.txt
@@ -117,7 +134,7 @@
                                                 Ne_LoadLocale(). Tooltip subclass:
                                                 Ne_SetTip/Ne_TipSubclassProc.
                                                 Control ID range: 201–230.
-                                                IDM range: 101–133 (core), 600+ (langs), 700+ (FTP profiles).
+                                                IDM range: 101–136 (core), 600+ (langs), 700+ (FTP profiles).
                                                 Ne_ApplyLang(hSci, langIdx) — sends
                                                 SCI_SETKEYWORDS from s_langKws[] and
                                                 applies per-lexer style overrides.
@@ -179,6 +196,15 @@
                                                 Ne_ShowFtpBrowserSave, uploads via
                                                 NeFtp_Upload, marks tab FTP-linked,
                                                 keeps connection open.
+                                                IDM_FTP_CLOSE_CONN (136): FTP menu >
+                                                Close connection — grayed when no
+                                                profile is connected; calls
+                                                Ne_ShowFtpCloseConnDialog which
+                                                collects connected profiles and forwards
+                                                to Ne_ShowFtpSelectDialog(title, prompt).
+                                                Ne_ShowFtpSelectDialog is generic:
+                                                accepts title+message wstrings from
+                                                caller (not hardcoded locale keys).
                                                 MSB custom scrollbars on Scintilla:
                                                 s_sciSbV / s_sciSbH maps; Ne_AttachSci-
                                                 Scrollbars / Ne_DetachSciScrollbars;

@@ -1,6 +1,12 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 23 May 2026 &mdash; v2026.05.23.10 (10:08)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 23 May 2026 &mdash; v2026.05.23.11 (11:18)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.23.11</span></h3>
+<p><strong>FTP &rarr; Close connection menu item and picker dialog (23.05.2026, 11:18):</strong></p>
+<ul>
+<li><strong>FTP &rarr; Close connection:</strong> A new permanent <em>Close connection</em> item appears in the FTP menu directly below <em>Add site&hellip;</em>. It is grayed when no connections are active and enabled as soon as at least one profile is connected. Clicking opens a picker dialog that lists all connected profiles as owner-draw buttons &mdash; the same <code>Ne_ShowFtpSelectDialog</code> style used by <em>Save to FTP</em>. Selecting a profile disconnects it immediately. <code>Ne_ShowFtpSelectDialog</code> has been generalised to accept title and message strings from the caller so it can serve any connection-picker purpose; the thin wrapper <code>Ne_ShowFtpCloseConnDialog</code> drives it for this case. The earlier right-click context-menu approach (WM_MENURBUTTONUP, WM_APP+2 deferred handler, <code>s_ftpCtxProfileId</code>, <code>IDM_FTP_CTX_EDIT/CLOSE</code>) has been removed entirely. Locale keys: <code>FTP_CLOSE_CONN_MENU</code>, <code>FTP_CLOSE_CONN_PROMPT</code> added to <code>locale/en_GB.txt</code> and <code>locale/no_nb.txt</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.23.10</span></h3>
 <p><strong>About dialog redesign; compile-time version baking; GNU logo embedded (23.05.2026, 10:08):</strong></p>

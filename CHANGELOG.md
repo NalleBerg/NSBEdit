@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.23.11 - 23.05.2026 11:18
+
+- **FTP → Close connection**: New permanent FTP menu item "Close connection" appears directly below "Add site…", grayed when nothing is connected. Clicking opens a picker dialog listing all active connections as owner-draw buttons (same `Ne_ShowFtpSelectDialog` style as *Save to FTP*); selecting one disconnects it immediately. `Ne_ShowFtpSelectDialog` is now generalised — it accepts title and message strings from the caller so it can serve any connection-picker purpose. `Ne_ShowFtpCloseConnDialog` wraps it for this use case. The right-click context-menu machinery (WM_MENURBUTTONUP, WM_APP+2 deferred handler, `s_ftpCtxProfileId`, `IDM_FTP_CTX_EDIT/CLOSE`) has been removed entirely. Locale keys: `FTP_CLOSE_CONN_MENU`, `FTP_CLOSE_CONN_PROMPT` (en_GB + no_nb).
+
 ## v2026.05.23.10 - 23.05.2026 10:08
 
 - **About dialog redesigned**: The About dialog has been fully rewritten. The app logo (`nsb_256.png`) is now embedded as RCDATA 12 and drawn at S(100)×S(100) DPI-scaled pixels via GDI+ from a memory stream — no external file dependency. The dialog uses Segoe UI 12 pt throughout with a red app-name title, grey subtitle, decorative separator line, and three coloured section headers: RTF editing (blue), Code editing & syntax highlighting (green), FTP & remote editing (purple). All section headers and descriptions are i18n'd — keys `ABOUT_SEC_RTF`, `ABOUT_DESC_RTF`, `ABOUT_SEC_CODE`, `ABOUT_DESC_CODE`, `ABOUT_SEC_FTP`, `ABOUT_DESC_FTP` in both `locale/en_GB.txt` and `locale/no_nb.txt`.
