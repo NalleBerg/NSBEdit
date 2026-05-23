@@ -123,7 +123,25 @@
                                                 and PHP. PHP tokens (SCE_HPHP_* 118–127)
                                                 styled only when the language is PHP.
                                                 Ne_GetLineComment uses language name
-                                                check for PHP (//).
+                                                check for PHP (//); returns nullptr for
+                                                hypertext lexer (HTML/PHP handled by
+                                                Ne_SciToggleHtmlComment instead).
+                                                Ne_PosIsHtml(hSci, pos) — returns true
+                                                if SCI_GETSTYLEAT(pos) < 118
+                                                (SCE_HPHP_DEFAULT); false = PHP region.
+                                                Ne_SciToggleHtmlComment(hSci) — three-
+                                                case toggle: (1) exact <!--/-->
+                                                wrapper lines → delete them; (2) inside
+                                                outer block → split block to exclude
+                                                selection; (3) else → wrap in new block.
+                                                IDC_NE_COMMENT (266) WM_COMMAND: when
+                                                lexer = "hypertext" AND Ne_PosIsHtml at
+                                                selection start, calls
+                                                Ne_SciToggleHtmlComment; otherwise
+                                                Ne_SciToggleComment. Button label
+                                                updated live in SCN_UPDATEUI: "<!--"
+                                                when cursor in HTML region, "//" in PHP
+                                                region or all other languages.
                                                 Language menu on RichEdit tab converts
                                                 tab to Scintilla on demand (plain text
                                                 extracted, Scintilla created, RichEdit

@@ -6443,6 +6443,16 @@ static void Ne_UpdateToolbarMode(HWND hwnd)
         Ne_SyncRichGutters(hwnd);
         Ne_SyncScrollbarVisibility(hwnd);
     }
+
+    // Update comment button label: "<!--" for HTML, "//" for everything else.
+    { HWND hCmt = GetDlgItem(hwnd, IDC_NE_COMMENT);
+      if (hCmt) {
+          bool isHtml = (doc && doc->hSci && doc->langId >= 0 && doc->langId < NE_LANG_COUNT
+                         && s_langs[doc->langId].lexer
+                         && strcmp(s_langs[doc->langId].lexer, "hypertext") == 0);
+          SetWindowTextW(hCmt, isHtml ? L"<!--" : L"//");
+          RedrawWindow(hCmt, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+      } }
 }
 
 // Return the line-comment prefix for a language, or nullptr if none applies.
@@ -6468,6 +6478,15 @@ static const char* Ne_GetLineComment(int langId)
     if (strcmp(lex, "batch")      == 0) return "rem ";
     // css, hypertext, xml, json, markdown — no line-comment convention
     return nullptr;
+}
+
+// Returns true if `pos` in a hypertext (HTML/PHP) Scintilla document is in the
+// HTML region.  PHP styles start at SCE_HPHP_DEFAULT (118); anything below that
+// is HTML markup.
+static bool Ne_PosIsHtml(HWND hSci, int pos)
+{
+    int style = (int)SendMessageW(hSci, SCI_GETSTYLEAT, pos, 0);
+    return style < 118; // SCE_HPHP_DEFAULT
 }
 
 // Toggle comment/uncomment on the selected lines in a Scintilla editor.
@@ -6516,6 +6535,114 @@ static void Ne_SciToggleComment(HWND hSci, int langId)
             SendMessageW(hSci, SCI_INSERTTEXT, pos, (LPARAM)comment);
         }
     }
+    SendMessageW(hSci, SCI_ENDUNDOACTION, 0, 0);
+}
+
+// Toggle HTML block comment (<!-- ... -->) wrapping the selected lines.
+//
+// Three cases:
+//  1. Exact block — first selected line is "<!--", last is "-->": remove both.
+//  2. Inside block — selection sits inside an enclosing <!--...-->: split the
+//     block so the selected lines are extracted as uncommented content.
+//  3. Otherwise — wrap the selection in a new <!--/---> block.
+static void Ne_SciToggleHtmlComment(HWND hSci)
+{
+    int selStart  = (int)SendMessageW(hSci, SCI_GETSELECTIONSTART, 0, 0);
+    int selEnd    = (int)SendMessageW(hSci, SCI_GETSELECTIONEND,   0, 0);
+    int lineStart = (int)SendMessageW(hSci, SCI_LINEFROMPOSITION, selStart, 0);
+    int lineEnd   = (int)SendMessageW(hSci, SCI_LINEFROMPOSITION, selEnd,   0);
+    if (selEnd > selStart) {
+        int les = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, lineEnd, 0);
+        if (les == selEnd) lineEnd--;
+    }
+    int totalLines = (int)SendMessageW(hSci, SCI_GETLINECOUNT, 0, 0);
+
+    // Read a line's text without its line-ending characters.
+    auto lineText = [&](int ln) -> std::string {
+        int pos    = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, ln, 0);
+        int endPos = (int)SendMessageW(hSci, SCI_GETLINEENDPOSITION, ln, 0);
+        std::string s;
+        s.reserve(endPos - pos);
+        for (int i = pos; i < endPos; i++)
+            s += (char)SendMessageW(hSci, SCI_GETCHARAT, i, 0);
+        return s;
+    };
+
+    // Case 1: selection is exactly a full <!--...---> block.
+    bool exactBlock = (lineEnd > lineStart
+                       && lineText(lineStart) == "<!--"
+                       && lineText(lineEnd)   == "-->");
+
+    // Case 2: search for an enclosing <!--...---> block around the selection.
+    int outerOpen  = -1;
+    int outerClose = -1;
+    if (!exactBlock) {
+        for (int ln = lineStart - 1; ln >= 0; ln--) {
+            std::string t = lineText(ln);
+            if (t == "<!--") { outerOpen = ln; break; }
+            if (t == "-->")  break; // hit a closing marker first — not inside a block
+        }
+        if (outerOpen >= 0) {
+            for (int ln = lineEnd + 1; ln < totalLines; ln++) {
+                std::string t = lineText(ln);
+                if (t == "-->")  { outerClose = ln; break; }
+                if (t == "<!--") break; // hit another open before close
+            }
+            if (outerClose < 0) outerOpen = -1; // no matching close found
+        }
+    }
+    bool insideBlock = (outerOpen >= 0 && outerClose >= 0);
+
+    // Correct line-ending for this document.
+    int eolMode = (int)SendMessageW(hSci, SCI_GETEOLMODE, 0, 0);
+    const char* eol = (eolMode == SC_EOL_CRLF) ? "\r\n"
+                    : (eolMode == SC_EOL_CR)    ? "\r"
+                    :                             "\n";
+
+    SendMessageW(hSci, SCI_BEGINUNDOACTION, 0, 0);
+
+    if (exactBlock) {
+        // Remove wrapper lines. Delete "-->" first (last line) so the position
+        // of "<!--" (first line) stays valid.
+        int prevEnd = (int)SendMessageW(hSci, SCI_GETLINEENDPOSITION, lineEnd - 1, 0);
+        int lastEnd = (int)SendMessageW(hSci, SCI_GETLINEENDPOSITION, lineEnd,     0);
+        SendMessageW(hSci, SCI_DELETERANGE, prevEnd, lastEnd - prevEnd);
+
+        int firstPos  = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, lineStart, 0);
+        int nextStart = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, lineStart + 1, 0);
+        SendMessageW(hSci, SCI_DELETERANGE, firstPos, nextStart - firstPos);
+
+    } else if (insideBlock) {
+        // Split the enclosing block so the selection is extracted as plain content:
+        //   <!--               <!--
+        //   before        →    before
+        //   SELECTED           -->
+        //   after              SELECTED
+        //   -->                <!--
+        //                      after
+        //                      -->
+        // Insert "<!--" reopener after the selection first (preserves lineStart pos).
+        std::string reopener = std::string(eol) + "<!--";
+        int endOfLast = (int)SendMessageW(hSci, SCI_GETLINEENDPOSITION, lineEnd, 0);
+        SendMessageW(hSci, SCI_INSERTTEXT, endOfLast, (LPARAM)reopener.c_str());
+
+        // Insert "-->" closer before the selection.
+        std::string closer = std::string("-->") + eol;
+        int startOfFirst = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, lineStart, 0);
+        SendMessageW(hSci, SCI_INSERTTEXT, startOfFirst, (LPARAM)closer.c_str());
+
+    } else {
+        // Wrap selection in a new <!-- ... --> block.
+        std::string closeTag = std::string(eol) + "-->";
+        std::string openTag  = std::string("<!--") + eol;
+
+        int endOfLast = (int)SendMessageW(hSci, SCI_GETLINEENDPOSITION, lineEnd, 0);
+        SendMessageW(hSci, SCI_INSERTTEXT, endOfLast, (LPARAM)closeTag.c_str());
+
+        int startOfFirst = (int)SendMessageW(hSci, SCI_POSITIONFROMLINE, lineStart, 0);
+        SendMessageW(hSci, SCI_INSERTTEXT, startOfFirst, (LPARAM)openTag.c_str());
+    }
+
     SendMessageW(hSci, SCI_ENDUNDOACTION, 0, 0);
 }
 
@@ -10167,7 +10294,17 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (wmId == IDC_NE_COMMENT) {
             HWND     hSci = NeTabs_GetActiveScintilla(hwnd);
             NeTabDoc* docC = NeTabs_GetActiveDoc(hwnd);
-            if (hSci && docC) Ne_SciToggleComment(hSci, docC->langId);
+            if (hSci && docC) {
+                // For hypertext files (HTML and PHP), inspect the style at the
+                // start of the selection to decide which comment style to use.
+                bool isHypertext = (docC->langId >= 0 && docC->langId < NE_LANG_COUNT
+                                    && s_langs[docC->langId].lexer
+                                    && strcmp(s_langs[docC->langId].lexer, "hypertext") == 0);
+                bool useHtml = isHypertext && Ne_PosIsHtml(hSci,
+                                   (int)SendMessageW(hSci, SCI_GETSELECTIONSTART, 0, 0));
+                if (useHtml) Ne_SciToggleHtmlComment(hSci);
+                else         Ne_SciToggleComment(hSci, docC->langId);
+            }
             return 0;
         }
 
@@ -10786,8 +10923,30 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (scn->nmhdr.code == SCN_UPDATEUI) {
                 // Caret moved in the active Scintilla tab — refresh Line/Col
                 HWND hSciActive = NeTabs_GetActiveScintilla(hwnd);
-                if (scn->nmhdr.hwndFrom == hSciActive)
+                if (scn->nmhdr.hwndFrom == hSciActive) {
                     Ne_UpdateStatusText(hwnd);
+                    // For hypertext files (HTML/PHP) refresh the comment button
+                    // label as the cursor crosses between HTML and PHP regions.
+                    NeTabDoc* docUI = NeTabs_GetActiveDoc(hwnd);
+                    if (docUI && docUI->hSci && docUI->langId >= 0
+                            && docUI->langId < NE_LANG_COUNT
+                            && s_langs[docUI->langId].lexer
+                            && strcmp(s_langs[docUI->langId].lexer, "hypertext") == 0) {
+                        HWND hCmt = GetDlgItem(hwnd, IDC_NE_COMMENT);
+                        if (hCmt) {
+                            bool inHtml = Ne_PosIsHtml(hSciActive,
+                                (int)SendMessageW(hSciActive, SCI_GETCURRENTPOS, 0, 0));
+                            const wchar_t* lbl = inHtml ? L"<!--" : L"//";
+                            wchar_t cur[16] = {};
+                            GetWindowTextW(hCmt, cur, 16);
+                            if (wcscmp(cur, lbl) != 0) {
+                                SetWindowTextW(hCmt, lbl);
+                                RedrawWindow(hCmt, NULL, NULL,
+                                    RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
+                            }
+                        }
+                    }
+                }
                 // Sync custom scrollbar thumb with current scroll position/content
                 {
                     HWND hSciFrom = (HWND)scn->nmhdr.hwndFrom;
