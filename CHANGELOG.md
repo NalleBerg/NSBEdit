@@ -1,7 +1,8 @@
 # Changelog
 
-## v2026.05.23.09 - 23.05.2026 09:28
+## v2026.05.23.09 - 23.05.2026 09:44
 
+- **Changelog title updated**: The Changelog.html header now reads *NSBEdit — Standalone RTF Notepad and Programming Editor*, reflecting the dual-mode nature of the editor.
 - **HTML block comment toggle**: The `[//]` toolbar button now toggles `<!-- -->` block comments when the cursor is in the HTML region of an HTML or PHP file. Three-case logic: (1) if the selection is wrapped in bare `<!--` / `-->` lines those wrapper lines are removed; (2) if the selection is inside an outer block comment the block is split so only the selected lines are excluded; (3) otherwise the selection is wrapped in a new `<!--` / `-->` block. Uses `SCI_BEGINUNDOACTION`/`SCI_ENDUNDOACTION` so the whole operation is a single undo step.
 - **Smart PHP/HTML region detection**: In PHP files (which use the `hypertext` lexer for mixed PHP+HTML), the button checks the Scintilla style at the selection start via `SCI_GETSTYLEAT`. Styles < 118 are HTML regions; styles ≥ 118 (`SCE_HPHP_DEFAULT`) are PHP regions. HTML regions get `<!-- -->` block commenting; PHP regions continue to use `//` line commenting.
 - **Dynamic button label**: The comment button label switches live between `<!--` and `//` as the cursor moves between HTML and PHP regions, updated via the `SCN_UPDATEUI` notification. Only redraws when the label actually changes.
