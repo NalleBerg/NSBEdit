@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.24.12 - 24.05.2026 12:00
+
+- **French (Français) UI translation**: Full translation of all ~200 UI strings added as `locale/fr_FR.txt` (RCDATA 19, locale ID 7). Menu order: Dansk → Deutsch → English → Français → Íslenska → Norsk → Suomi → Svenska.
+- **All locale files updated**: `LANG_UI_FRENCH` added to every existing locale file (en_GB → "French", no_nb → "Fransk", is_IS → "Franska", sv_SE → "Franska", da_DK → "Fransk", fi_FI → "Ranska", de_DE → "Französisch").
+
 ## v2026.05.24.11 - 24.05.2026 11:00
 
 - **German (Deutsch) UI translation**: Full translation of all ~200 UI strings added as `locale/de_DE.txt` (RCDATA 18, locale ID 6). Menu order: Dansk → Deutsch → English → Íslenska → Norsk → Suomi → Svenska.

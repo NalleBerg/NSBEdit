@@ -145,6 +145,7 @@ LANG_PLAIN_TEXT = Nur-Text
 LANG_UI_DANISH    = Dansk
 LANG_UI_ENGLISH   = English
 LANG_UI_FINNISH   = Suomi
+LANG_UI_FRENCH    = Französisch
 LANG_UI_GERMAN    = Deutsch
 LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)

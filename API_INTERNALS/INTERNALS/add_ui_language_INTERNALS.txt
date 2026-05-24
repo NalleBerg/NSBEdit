@@ -45,8 +45,9 @@ RESOURCE ID LAYOUT  (NSBEdit.rc)
   16   RCDATA      locale/da_DK.txt
   17   RCDATA      locale/fi_FI.txt
   18   RCDATA      locale/de_DE.txt
+  19   RCDATA      locale/fr_FR.txt
 
-  Next free locale ID: 19, 20, 21, …
+  Next free locale ID: 20, 21, 22, …
   Always check NSBEdit.rc for ALL existing RCDATA IDs before assigning a
   new one.  windres accepts duplicate IDs without any warning — the last
   definition wins, silently discarding the earlier one.
@@ -123,7 +124,8 @@ Step 5 — Add a case to Ne_LoadLocale()
     4  = Danish    (da_DK)
     5  = Finnish   (fi_FI)
     6  = German    (de_DE)
-    7, 8, 9, … — assign sequentially for future languages.
+    7  = French    (fr_FR)
+    8, 9, 10, … — assign sequentially for future languages.
 
 Step 6 — Add the menu item to Ne_RebuildLocaleMenu()
 ------------------------------------------------------
@@ -189,7 +191,7 @@ PITFALLS ENCOUNTERED
     (GnuLogo.bmp).  Assigning a locale to ID 12 caused FindResourceW to
     return PNG binary data to the locale parser — no keys were parsed, g_str
     was not updated, and the language appeared not to change.
-    Fix: always read NSBEdit.rc before picking an ID.  Current next free: 19.
+    Fix: always read NSBEdit.rc before picking an ID.  Current next free: 20.
 
 2.  MISSING LANG_UI_* KEY IN A LOCALE FILE
     If a locale file does not contain  LANG_UI_NEWLANG, the menu item for

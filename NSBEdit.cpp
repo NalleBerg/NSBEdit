@@ -68,6 +68,7 @@
 #define IDR_LOCALE_DA_DK    16
 #define IDR_LOCALE_FI_FI    17
 #define IDR_LOCALE_DE_DE    18
+#define IDR_LOCALE_FR_FR    19
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1114,6 +1115,7 @@ static void Ne_LoadLocale()
         case 4:  resId = IDR_LOCALE_DA_DK; break;
         case 5:  resId = IDR_LOCALE_FI_FI; break;
         case 6:  resId = IDR_LOCALE_DE_DE; break;
+        case 7:  resId = IDR_LOCALE_FR_FR; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
@@ -6853,6 +6855,8 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
                     L"Deutsch",               false, g_localeId == 6 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 0,
                     L"English",               false, g_localeId == 0 ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 7,
+                    L"Fran\u00e7ais",         false, g_localeId == 7 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 2,
                     L"\u00cdslenska",         false, g_localeId == 2 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 1,
