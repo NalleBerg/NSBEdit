@@ -1,0 +1,440 @@
+# NSBEdit locale file — fi_FI (Suomi)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Nimetön
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Tiedosto
+MENU_NEW        = &Uusi\tCtrl+N
+MENU_OPEN       = &Avaa...\tCtrl+O
+MENU_SAVE       = &Tallenna\tCtrl+S
+MENU_SAVEAS     = Tallenna &nimellä...\tCtrl+Shift+S
+MENU_PRINT      = &Tulosta...\tCtrl+P
+MENU_EXPORT_PDF = &Vie PDF-tiedostona...\tCtrl+Shift+P
+MENU_EXIT       = &Lopeta	Ctrl+W
+MENU_EDIT         = &Muokkaa
+MENU_UNDO         = &Kumoa\tCtrl+Z
+MENU_REDO         = &Tee uudelleen\tCtrl+Y
+MENU_CUT          = &Leikkaa\tCtrl+X
+MENU_COPY         = &Kopioi\tCtrl+C
+MENU_PASTE        = &Liitä\tCtrl+V
+MENU_SELECTALL    = Valitse &kaikki\tCtrl+A
+MENU_PREFS        = &Asetukset...
+PREF_TITLE        = Asetukset
+PREF_SEC_APPEARANCE = Ulkoasu
+PREF_DARK_MODE         = Tumma teema
+PREF_LIGHT_MODE        = Vaalea teema
+PREF_SEC_EDITOR        = Editorin tausta
+PREF_EDITOR_LIGHT_BG   = Vaalea tausta pelkälle tekstille ja koodille
+PREF_EDITOR_DARK_BG    = Tumma tausta pelkälle tekstille ja koodille
+MENU_HELP       = &Ohje
+MENU_SHORTCUTS  = &Pikanäppäimet...\tF1
+MENU_ABOUT      = &Tietoja NSBEdit
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = M&uunna
+MENU_CONV_TO_PLAIN  = Poista muotoilu — tallenna pelkkänä tekstinä
+MENU_CONV_TO_RTF    = Lisää &muotoilu — luo RTF
+MENU_CONV_TO_HTML5  = Vie &HTML 5 -tiedostona...
+MSG_HTML5_ERR       = HTML-muunnos epäonnistui.
+MSG_HTML5_SAVE_ERR  = HTML-tiedoston kirjoittaminen epäonnistui.
+DLG_SAVE_HTML5      = Tallenna HTML 5 -tiedostona
+MENU_ENCODING       = &Merkistö
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (järjestelmä)
+MENU_ENC_WIN1252    = Windows-1252 (Länsi-Eurooppa)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = RTF-teksti
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Pelkkä teksti
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = RTF-muotoilun poistaminen hävittää kaiken lihavoidun, kursivoidun, värit ja muut tekstiefektit.\n\nJatketaanko ja tallennetaanko pelkkänä tekstinä?
+MSG_ENC_LOSSY   = Joitakin merkkejä ei ehkä voi esittää valitussa merkistössä, ja ne korvataan merkillä «?» tai vastaavalla.\n\nJatketaanko?
+MSG_DEL_PLAIN_FILE = Asiakirja on tallennettu RTF-tiedostona.\n\nPoistetaanko alkuperäinen pelkkä tekstitiedosto?
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Kaikki tuetut tiedostot|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-tiedostot (*.rtf)|*.rtf|Tekstitiedostot (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Asetukset (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Kaikki tiedostot (*.*)|*.*
+FILTER_SAVEAS = RTF-tiedostot (*.rtf)|*.rtf|Tekstitiedostot (*.txt)|*.txt|Kaikki tiedostot (*.*)|*.*
+FILTER_IMAGE  = Kuvatiedostot|*.png;*.jpg;*.jpeg|PNG-tiedostot (*.png)|*.png|JPEG-tiedostot (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Avaa
+DLG_SAVEAS = Tallenna nimellä
+DLG_IMAGE  = Lisää kuva
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Tiedoston avaaminen epäonnistui.
+MSG_SAVE_ERR      = Tiedoston tallentaminen epäonnistui.
+MSG_HAS_FORMATTING = Tämä asiakirja sisältää muotoilua (lihavointi, värit, fonttikoot jne.), jota ei voi tallentaa pelkkänä tekstitiedostona.\n\nNapsauta Kyllä tallentaaksesi pelkkänä tekstinä ja poistaaksesi kaiken muotoilun.\nNapsauta Ei tallentaaksesi RTF-muodossa (tiedoston pääte muuttuu .rtf:ksi).\nNapsauta Peruuta palataksesi tallentamatta.
+MSG_IMG_OPEN_ERR  = Kuvatiedoston avaaminen epäonnistui.
+MSG_IMG_FMT_ERR   = Muoto ei ole tuettu. Käytä PNG- tai JPEG-tiedostoa.
+MSG_SAVE_PROMPT   = Tallennetaanko muutokset tiedostoon "%s"?
+DLG_SAVE_CHANGES  = Tallenna muutokset
+BTN_SAVE          = Tallenna
+BTN_DONT_SAVE     = Älä tallenna
+BTN_CANCEL        = Peruuta
+BTN_OK            = OK
+
+DLG_FILE_CHANGED        = Tiedosto on muuttunut levyllä
+MSG_FILE_CHANGED_PROMPT = "%s" muutettiin toisessa ohjelmassa, kun NSBEdit ei ollut aktiivinen.\n\nLadataanko tiedosto levyltä uudelleen?
+BTN_RELOAD              = Lataa uudelleen
+BTN_KEEP                = Säilytä nykyinen
+
+TAB_CTX_NEW_TAB         = Uusi välilehti
+TAB_CTX_CLOSE_TAB       = Sulje välilehti
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Sanoja
+SB_CHARS                = Merkkejä
+SB_SAVED                = Tallennettu
+SB_UNSAVED              = Tallentamaton
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Lihavointi  (Ctrl+B)
+TIP_ITALIC      = Kursivointi  (Ctrl+I)
+TIP_UNDERLINE   = Alleviivaus  (Ctrl+U)
+TIP_STRIKE      = Yliviivaus
+TIP_SUBSCRIPT   = Alaindeksi  (esim. H₂O)
+TIP_SUPERSCRIPT = Yläindeksi  (esim. m²)
+TIP_FONTFACE    = Fontti
+TIP_FONTSIZE    = Fonttikoko (pt)
+TIP_COLOR       = Tekstin väri
+TIP_HIGHLIGHT   = Korostusväri
+TIP_ALIGN_L     = Tasaa vasemmalle
+TIP_ALIGN_C     = Keskitä
+TIP_ALIGN_R     = Tasaa oikealle
+TIP_ALIGN_J     = Tasaa molemmille reunoille
+TIP_BULLET      = Luettelomerkkiluettelo
+TIP_NUMBERED    = Numeroitu luettelo
+TIP_IMAGE       = Lisää kuva  (PNG / JPEG)
+TIP_INDENT_IN   = Suurenna sisennystä
+TIP_INDENT_OUT  = Pienennä sisennystä
+TIP_LINESPACE   = Riviväli...
+TIP_FIND        = Etsi / Korvaa  (Ctrl+F)
+TIP_LINK        = Lisää hyperlinkki
+TIP_TABLE       = Taulukon ominaisuudet...
+TIP_TABLE_DROP  = Lisää taulukko (valitse koko)
+TIP_HLINE       = Lisää vaakaviiva
+TIP_CLEARFMT    = Poista kaikki muotoilu
+TIP_PRINT_BTN   = Tulosta...  (Ctrl+P)
+TIP_ZOOM        = Zoomaus
+TIP_WORDWRAP    = Vaihda tekstin rivittymistä
+TIP_CASE        = Vaihda kirjainkokoa  (ISOT / pienet / Alkukirjain isolla)
+TIP_LINENUM     = Vaihda rivinumerointia
+TIP_PARSPACE    = Kappaleen välistys...
+TIP_SAVE        = Tallenna  (Ctrl+S)
+TIP_SAVE_FTP    = Tallenna FTP-palvelimelle
+TIP_PREVIEW     = Esikatsele verkossa.
+TIP_LANG_UI     = Käyttöliittymän kieli
+TIP_COMMENT     = Kommentoi / poista kommentti valituilla riveillä
+MENU_GUI_LANG   = Käyttöliittymän kieli
+MENU_LANGUAGE   = &Kieli
+LANG_PLAIN_TEXT = Pelkkä teksti
+LANG_UI_DANISH    = Dansk
+LANG_UI_ENGLISH   = English
+LANG_UI_FINNISH   = Suomi
+LANG_UI_ICELANDIC = Íslenska
+LANG_UI_NORWEGIAN = Norsk (bokmål)
+LANG_UI_SWEDISH   = Svenska
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-tiedostot (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Vie PDF-tiedostona
+MSG_PDF_ERR      = PDF-vienti epäonnistui. Varmista, että "Microsoft Print to PDF" on asennettu (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Etsi / Korvaa
+DLG_FIND_WHAT       = Etsi:
+DLG_REPL_WITH       = Korvaa:
+BTN_FIND_NEXT       = Etsi seuraava
+BTN_CLOSE           = Sulje
+BTN_REPLACE         = Korvaa
+BTN_REPLACE_ALL     = Korvaa kaikki
+CHK_MATCHCASE       = Kirjainkoko erotellaan
+CHK_WHOLEWORD       = Koko sana
+CHK_REGEX           = Regex
+MSG_FIND_NOT_FOUND  = Tekstiä ei löydy.
+MSG_REGEX_ERR       = Virheellinen säännöllinen lauseke.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Lisää hyperlinkki
+DLG_LINK_URL    = Verkko-osoite (URL):
+DLG_LINK_TEXT   = Näytettävä teksti:
+LINK_TIP_CTRL   = [Ctrl]+Napsauta avataksesi selaimessa
+MSG_LINK_BAD_URL = Anna kelvollinen URL-osoite.
+
+URL-osoitteen on alettava tunnetulla skeemalla, esim.:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Lisää taulukko
+DLG_TABLE_ROWS  = Rivejä:
+DLG_TABLE_COLS  = Sarakkeita:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Valitse taulukon koko
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Taulukon ominaisuudet
+DLG_TABLE_INSERT    = Lisää taulukko
+TBLP_ROWS           = Rivejä:
+TBLP_COLS           = Sarakkeita:
+TBLP_CELLW          = Sarakkeen leveys:
+TBLP_BORDERW        = Reunuksen leveys:
+TBLP_UNIT_HP        = puolipiste
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Solun pehmuste ylhäällä:
+TBLP_PAD_BOTTOM     = Solun pehmuste alhaalla:
+TBLP_PAD_LEFT       = Solun pehmuste vasemmalla:
+TBLP_PAD_RIGHT      = Solun pehmuste oikealla:
+TBLP_ROWH           = Rivin korkeus (0=auto):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Taulukon tasaus
+TBLP_ALIGN_L        = Vasen
+TBLP_ALIGN_C        = Keskitetty
+TBLP_ALIGN_R        = Oikea
+BTN_APPLY           = Käytä
+CTX_TABLE_PROPS     = Taulukon ominaisuudet...
+TBLP_MODE_ALTER     = Muokkaa nykyistä taulukkoa
+TBLP_MODE_NESTED    = Taulukko nykyisessä solussa
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Riviväli
+RDO_LINESPACE_S  = Yksinkertainen
+RDO_LINESPACE_15 = 1,5-kertainen
+RDO_LINESPACE_D  = Kaksinkertainen
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Kappaleen välistys
+DLG_PARSPACE_BEF = Välistys ennen (pt):
+DLG_PARSPACE_AFT = Välistys jälkeen (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Pikanäppäimet
+SHORTCUTS_COL1   = Pikanäppäin
+SHORTCUTS_COL2   = Toiminto
+SHORTCUTS_COL3   = Kuvaus
+SHORTCUTS_BTN_CLOSE = Sulje
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Lihavointi
+SCF_ITALIC        = Kursivointi
+SCF_UNDERLINE     = Alleviivaus
+SCF_UNDO          = Kumoa
+SCF_REDO          = Tee uudelleen
+SCF_CUT           = Leikkaa
+SCF_COPY          = Kopioi
+SCF_PASTE         = Liitä
+SCF_SELECT_ALL    = Valitse kaikki
+SCF_SAVE          = Tallenna
+SCF_SAVE_AS       = Tallenna nimellä
+SCF_NEW           = Uusi
+SCF_OPEN          = Avaa
+SCF_PRINT         = Tulosta
+SCF_EXPORT_PDF    = Vie PDF-tiedostona
+SCF_PREVIEW       = Esikatsele verkossa
+SCF_GO_START      = Siirry alkuun
+SCF_GO_END        = Siirry loppuun
+SCF_WORD_LEFT     = Sana vasemmalle
+SCF_WORD_RIGHT    = Sana oikealle
+SCF_EXTEND_SEL    = Laajenna valintaa
+SCF_SEL_WORD      = Valitse sana
+SCF_ZOOM_IN       = Lähennä
+SCF_ZOOM_OUT      = Loitonna
+SCF_RESET_ZOOM    = Nollaa zoomaus
+SCF_EXIT          = Lopeta
+SCF_SHORTCUTS     = Pikanäppäimet
+SCF_ABOUT         = Tietoja
+SCF_CLOSE_DLG     = Sulje valintaikkuna
+SCF_NEW_LINE      = Uusi rivi
+SCF_INDENT        = Sisennys
+SCF_DELETE        = Poista
+SCF_BACKSPACE     = Askelpalautin
+SCF_DEL_WORD_R    = Poista sana oikealta
+SCF_DEL_WORD_L    = Poista sana vasemmalta
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Vaihda valitun tekstin lihavointia
+SCD_ITALIC        = Vaihda valitun tekstin kursivointia
+SCD_UNDERLINE     = Vaihda valitun tekstin alleviivausta
+SCD_UNDO          = Kumoa viimeisin muutos
+SCD_REDO          = Tee viimeisin kumottu muutos uudelleen
+SCD_CUT           = Leikkaa valinta leikepöydälle
+SCD_COPY          = Kopioi valinta leikepöydälle
+SCD_PASTE         = Liitä leikepöydältä
+SCD_SELECT_ALL    = Valitse koko asiakirja
+SCD_SAVE          = Tallenna nykyinen tiedosto
+SCD_SAVE_AS       = Tallenna uuteen tiedostoon
+SCD_NEW           = Luo uusi tyhjä asiakirja
+SCD_OPEN          = Avaa tiedosto
+SCD_PRINT         = Tulosta asiakirja
+SCD_EXPORT_PDF    = Vie asiakirja PDF-tiedostona
+SCD_PREVIEW       = Lataa ja esikatsele FTP-linkitetty tiedosto selaimessa
+SCD_GO_START      = Siirrä kohdistin asiakirjan alkuun
+SCD_GO_END        = Siirrä kohdistin asiakirjan loppuun
+SCD_WORD_LEFT     = Siirrä kohdistin yksi sana vasemmalle
+SCD_WORD_RIGHT    = Siirrä kohdistin yksi sana oikealle
+SCD_EXTEND_SEL    = Laajenna tekstivalintaa yhdellä merkillä
+SCD_SEL_WORD      = Laajenna valintaa yksi sana kerrallaan
+SCD_ZOOM_IN       = Suurenna zoomaustasoa
+SCD_ZOOM_OUT      = Pienennä zoomaustasoa
+SCD_RESET_ZOOM    = Nollaa zoomaus 100 %:iin / oletukseen
+SCD_MNU_NEW       = Tiedosto-valikko → Uusi
+SCD_MNU_OPEN      = Tiedosto-valikko → Avaa
+SCD_MNU_SAVE      = Tiedosto-valikko → Tallenna
+SCD_MNU_SAVE_AS   = Tiedosto-valikko → Tallenna nimellä
+SCD_MNU_PRINT     = Tiedosto-valikko → Tulosta
+SCD_MNU_EXPORT_PDF = Tiedosto-valikko → Vie PDF-tiedostona
+SCD_EXIT_APP      = Sulje asiakirja (lopeta ohjelma)
+SCD_MNU_EXIT      = Tiedosto-valikko → Lopeta
+SCD_MNU_UNDO      = Muokkaa-valikko → Kumoa
+SCD_MNU_REDO      = Muokkaa-valikko → Tee uudelleen
+SCD_MNU_CUT       = Muokkaa-valikko → Leikkaa
+SCD_MNU_COPY      = Muokkaa-valikko → Kopioi
+SCD_MNU_PASTE     = Muokkaa-valikko → Liitä
+SCD_MNU_SELECT_ALL = Muokkaa-valikko → Valitse kaikki
+SCD_MNU_SHORTCUTS = Ohje-valikko → Pikanäppäimet
+SCD_MNU_ABOUT     = Ohje-valikko → Tietoja NSBEdit
+SCD_SHOW_SHORTCUTS = Näytä tämä pikanäppäinluettelo
+SCD_CLOSE_DLG     = Sulje nykyinen valintaikkuna
+SCD_NEW_LINE      = Lisää uusi kappale
+SCD_INDENT        = Lisää sarkasmerkki
+SCD_DELETE        = Poista merkki oikealla
+SCD_BACKSPACE     = Poista merkki vasemmalla
+SCD_DEL_WORD_R    = Poista sana kohdistimen oikealta puolelta
+SCD_DEL_WORD_L    = Poista sana kohdistimen vasemmalta puolelta
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Tietoja NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF-muistio ja ohjelmointieditori Windowsille\n\n
+ABOUT_PUBLISHED   = Julkaistu: 
+ABOUT_VERSION     = Versio: 
+ABOUT_EDITION     = Painos: 
+ABOUT_SEC_RTF     = ✏  RTF-muokkaus\n
+ABOUT_DESC_RTF    = •  Lihavointi, kursivointi, alleviivaus, yliviivaus, ylä-/alaindeksi.\n•  Fontti, koko, väri ja korostus; täysi kappalemuotoilu.\n•  Taulukot, luettelot, kuvat, hyperlinkit, vaakaviivat.\n•  Vienti PDF- tai HTML 5 -tiedostona.\n\n
+ABOUT_SEC_CODE    = ⌨  Koodin muokkaus ja syntaksin korostus\n
+ABOUT_DESC_CODE   = •  25 kieltä: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL ja muut.\n•  Automaattinen täydennys, automaattinen sulkeminen, automaattinen sisennys, älykäs ulossisennys.\n•  Rivin kommenttien (//, #, --) ja HTML-lohkokommenttien (<!-- -->) vaihto.\n\n
+ABOUT_SEC_FTP     = ⚡  FTP ja etämuokkaus\n
+ABOUT_DESC_FTP    = •  Tallenna suoraan FTP- ja SFTP-palvelimille.\n•  Selaa, nimeä uudelleen ja hallinnoi etätiedostoja.\n•  Suora esikatselu selaimessa määritettävän verkko-URL-juuren kautta.\n\n
+ABOUT_LICENSE     = Lisensoitu GNU General Public License v2 -lisenssillä.\n
+ABOUT_BTN_LICENSE = Näytä lisenssi
+ABOUT_BTN_CREDITS = Kiitokset
+ABOUT_BTN_CLOSE   = Sulje
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Kiitokset
+CREDITS_SCINTILLA  = Scintilla on Neil Hodgsonin kehittämä ilmainen avoimen lähdekoodin koodieditorin komponentti. NSBEdit käyttää Scintillaa syntaksikorosteiseen koodin muokkaukseen.\n\n
+CREDITS_LEXILLA    = Lexilla on Scintillalle tarkoitettu lexer-kirjasto, myös Neil Hodgsonin kehittämä. NSBEdit käyttää Lexillaa yli 20 ohjelmointikielen syntaksikorostukseen.\n\n
+CREDITS_GDI_PLUS   = GDI+ on osa Windows platform SDK:ta. NSBEdit käyttää sitä NSBEdit-logon renderöintiin Tietoja-valintaikkunassa.\n
+CREDITS_MINGW      = MinGW-W64-projekti tarjoaa täydellisen suoritusympäristön GCC- ja LLVM/Clang-työkalukettjuille Windowsissa. NSBEdit on käännetty MinGW-W64 GCC 15.2.0:lla.\n\n
+CREDITS_SQLITE     = SQLite on pieni, nopea ja itsenäinen SQL-tietokantamoottori, joka on julkisessa omistuksessa. NSBEdit käyttää SQLite-yhteenliittymää FTP/SFTP-yhteysprofiilien tallentamiseen.\n\n
+CREDITS_CURL       = libcurl on Daniel Stenbergin kehittämä ilmainen avoimen lähdekoodin URL-siirtokirjasto. libssh2 on avoimen lähdekoodin SSH2-protokollakirjasto. NSBEdit käyttää molempia FTP- ja SFTP-tiedostonsiirtoon etämuokkauksessa.\n\n
+CREDITS_RTF2HTML   = rtf2html on Valentyn Lavrinenkon kehittämä avoimen lähdekoodin RTF–HTML-muunnoskirjasto. NSBEdit käyttää sitä RTF-asiakirjojen viemiseen HTML5-muotoon. Lisensoitu GNU Lesser General Public License v2.1 -lisenssillä (LGPLv2.1).\n\n
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Lisää sivusto...
+FTP_DISCONNECT       = Katkaise yhteys
+FTP_CLOSE_CONN_MENU  = Sulje yhteys
+FTP_CLOSE_CONN_PROMPT = Valitse suljettava yhteys:
+FTP_BROWSE           = Selaa tiedostoja...
+FTP_DLG_SITE_ADD     = Lisää FTP/SFTP-sivusto
+FTP_DLG_SITE_EDIT    = Muokkaa FTP/SFTP-sivustoa
+FTP_FRIENDLY_NAME    = Näyttönimi:
+FTP_PROTOCOL         = Protokolla:
+FTP_HOST             = Palvelin:
+FTP_PORT             = Portti:
+FTP_USERNAME         = Käyttäjänimi:
+FTP_PASSWORD         = Salasana:
+FTP_REMEMBER_PWD     = Muista salasana
+FTP_INITIAL_PATH     = Aloituskansio:
+FTP_WEB_URL          = Verkko-URL (juuri):
+FTP_HELP_TITLE       = FTP/SFTP-profiili — Kenttäopas
+FTP_SAVE             = Tallenna profiili
+FTP_DELETE           = Poista profiili
+FTP_DLG_BROWSER      = FTP-tiedostoselain
+FTP_COL_NAME         = Nimi
+FTP_COL_SIZE         = Koko
+FTP_COL_PERMS        = Käyttöoikeudet
+FTP_CTX_OPEN         = Avaa / Lataa
+FTP_CTX_CHMOD        = Käyttöoikeudet...
+FTP_CTX_NEW_FILE     = Uusi tiedosto...
+FTP_CTX_NEW_DIR      = Uusi kansio...
+FTP_INPUT_FILENAME   = Tiedostonimi:
+FTP_INPUT_DIRNAME    = Kansion nimi:
+FTP_CTX_DELETE       = Poista
+FTP_CTX_RENAME       = Nimeä uudelleen...
+FTP_INPUT_RENAME     = Uusi nimi:
+FTP_DLG_CHMOD        = Muuta käyttöoikeuksia (chmod)
+FTP_CHMOD_OWNER      = Omistaja
+FTP_CHMOD_GROUP      = Ryhmä
+FTP_CHMOD_OTHER      = Muut
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Oktaali:
+FTP_CHMOD_APPLY      = Käytä
+FTP_CONN_FAILED      = Yhteyden muodostaminen epäonnistui
+FTP_STATUS           = Yhdistetty:
+FTP_NOT_CONNECTED    = Muodosta yhteys yhteen tai useampaan profiiliin ennen FTP-tallennusta.
+FTP_PICK_PROFILE     = Valitse profiili, johon tallennetaan:
+FTP_PW_PROMPT        = Anna salasana
+FTP_PW_FOR           = Salasana kohteelle
+MSG_FTP_UPLOAD_OK    = Tiedosto tallennettiin ja ladattiin onnistuneesti.
+MSG_FTP_UPLOAD_FAIL  = Lataus epäonnistui.
+MENU_SAVE_TO_FTP     = Tallenna FTP:hen...
+MENU_PREVIEW_FTP     = Esikatsele verkossa.
+FTP_PREVIEW_LOCKED   = Välilehti on lukittu esikatselun ollessa aktiivinen.
+FTP_PREVIEW_URL      = Esikatselun URL:
+BTN_OPEN_BROWSER     = Avaa selaimessa
+BTN_OPEN_BROWSER_TIP = Pikakuvake: [Enter] avataksesi selaimessa.
+BTN_REVERT           = Palauta ja sulje
+BTN_REVERT_TIP       = Pikakuvake: [Esc] palauttaa ja sulkee tämän valintaikkunan.
+FTP_PREVIEW_UP_FAIL  = Lataus epäonnistui:
+FTP_PREVIEW_REV_FAIL = Palautus epäonnistui:
+BTN_SAVE_BACKUP      = Tallenna varmuuskopio paikallisesti...
+BTN_CLOSE_ANYWAY     = Sulje palauttamatta
+FTP_SAVE_BROWSER     = Tallenna FTP:hen — valitse kohde
+FTP_FILENAME_PROMPT  = Tiedostonimi:
+FTP_SAVE_HERE        = Tallenna tähän
+FTP_SAVE_TO          = Tallennettu FTP:hen
+FTP_SAVED_OK         = Tiedosto ladattu. Yhteys pidetään auki.
+MSG_FTP_DELETE_WARN  = Poistetaanko "%s" palvelimelta?\n\nTätä ei voi kumota.
+MSG_FTP_CHMOD_OK     = Käyttöoikeudet päivitetty.
+MSG_FTP_DELETE_FAIL  = Poistaminen epäonnistui.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Lisää vaakaviiva
+DLG_HRUL_PROPS      = Vaakaviivan ominaisuudet
+HRP_STYLE           = Tyyli:
+HRP_THICKNESS       = Paksuus (pt):
+HRP_SPACE_ABOVE     = Väli yläpuolella (pt):
+HRP_SPACE_BELOW     = Väli alapuolella (pt):
+HRP_WIDTH_PCT       = Leveys (%):
+HRP_ALIGNMENT       = Tasaus:
+HRP_START_COLOUR    = Aloitusväri:
+HRP_END_COLOUR      = Lopetusväri (liukuväri):
+HRP_ALIGN_L         = Vasen
+HRP_ALIGN_C         = Keskitetty
+HRP_ALIGN_R         = Oikea
+HRP_STYLE_SINGLE    = Yksinkertainen ohut
+HRP_STYLE_THICK     = Paksu
+HRP_STYLE_DOUBLE    = Kaksinkertainen
+HRP_STYLE_DOTTED    = Pisteytetty
+HRP_STYLE_DASHED    = Katkoviiva
+HRP_STYLE_HAIRLINE  = Hiusviiva
+BTN_CHOOSE          = Valitse…

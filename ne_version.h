@@ -1,3 +1,3 @@
 ﻿#pragma once
-#define NE_PUBLISHED L"24.05.2026 09:14"
-#define NE_VERSION   L"2026.05.24.09"
+#define NE_PUBLISHED L"24.05.2026 10:00                          "
+#define NE_VERSION   L"2026.05.24.10"

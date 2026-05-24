@@ -8,6 +8,10 @@
             "approve": true,
             "matchCommandLine": true
         },
-        "ForEach-Object": true
+        "ForEach-Object": true,
+        "/^\\.\\\\pack\\.ps1; git add -A; git commit -m \"v2026\\.05\\.24\\.10 — Finnish \\(Suomi\\) UI translation\"; git push$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }

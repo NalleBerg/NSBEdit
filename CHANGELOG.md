@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.24.10 - 24.05.2026 10:00
+
+- **Finnish (Suomi) UI translation**: Full translation of all ~200 UI strings added as `locale/fi_FI.txt` (RCDATA 17, locale ID 5). Appears in the GUI Language menu between Norsk and Svenska: Dansk → English → Íslenska → Norsk → Suomi → Svenska.
+- **All locale files updated**: `LANG_UI_FINNISH` added to every existing locale file (`en_GB.txt` → "Finnish", `no_nb.txt` → "Finsk", `is_IS.txt` → "Finnska", `sv_SE.txt` → "Finska", `da_DK.txt` → "Finsk").
+
 ## v2026.05.24.09 - 24.05.2026 09:14
 
 - **Swedish (Svenska) UI translation**: Full translation of all ~200 UI strings added as `locale/sv_SE.txt` (RCDATA 15, locale ID 3). Appears in the GUI Language menu in alphabetical order by native name: Dansk → English → Íslenska → Norsk → Svenska. All existing locale files updated with `LANG_UI_SWEDISH`.
