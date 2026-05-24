@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.24.13 (Dutch/Flemish locale fix) - 24.05.2026 13:33
+
+- **Dutch & Flemish — "GUI-taal" label**: `MENU_GUI_LANG` in `nl_NL.txt` and `nl_BE.txt` showed "Taal", identical to `MENU_LANGUAGE` ("&Taal"), making the GUI Language and Code Language menu items indistinguishable. `MENU_GUI_LANG` is now "GUI-taal" in both files, matching the English "GUI Lang" pattern.
+
 ## v2026.05.24.12 (North Sami + Fixes) - 24.05.2026 12:20
 
 - **About dialog — Edition 2**: The About dialog now renders the `ABOUT_EDITION` locale key (already translated in all 15 UI languages) as an "Edition: 2" line immediately after the version number and above the separator rule.
