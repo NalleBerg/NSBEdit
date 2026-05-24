@@ -1,0 +1,441 @@
+# NSBEdit locale file — de_DE (Deutsch)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Unbenannt
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Datei
+MENU_NEW        = &Neu\tCtrl+N
+MENU_OPEN       = &Öffnen...\tCtrl+O
+MENU_SAVE       = &Speichern\tCtrl+S
+MENU_SAVEAS     = Speichern &unter...\tCtrl+Shift+S
+MENU_PRINT      = &Drucken...\tCtrl+P
+MENU_EXPORT_PDF = Als &PDF exportieren...\tCtrl+Shift+P
+MENU_EXIT       = &Beenden	Ctrl+W
+MENU_EDIT         = &Bearbeiten
+MENU_UNDO         = &Rückgängig\tCtrl+Z
+MENU_REDO         = &Wiederholen\tCtrl+Y
+MENU_CUT          = &Ausschneiden\tCtrl+X
+MENU_COPY         = &Kopieren\tCtrl+C
+MENU_PASTE        = &Einfügen\tCtrl+V
+MENU_SELECTALL    = &Alles auswählen\tCtrl+A
+MENU_PREFS        = &Einstellungen...
+PREF_TITLE        = Einstellungen
+PREF_SEC_APPEARANCE = Erscheinungsbild
+PREF_DARK_MODE         = Dunkles Design
+PREF_LIGHT_MODE        = Helles Design
+PREF_SEC_EDITOR        = Editor-Hintergrund
+PREF_EDITOR_LIGHT_BG   = Heller Hintergrund für reinen Text und Code
+PREF_EDITOR_DARK_BG    = Dunkler Hintergrund für reinen Text und Code
+MENU_HELP       = &Hilfe
+MENU_SHORTCUTS  = &Tastenkürzel...\tF1
+MENU_ABOUT      = &Über NSBEdit
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = K&onvertieren
+MENU_CONV_TO_PLAIN  = Formatierung entfernen — als Nur-Text speichern
+MENU_CONV_TO_RTF    = &Formatierung hinzufügen — RTF erstellen
+MENU_CONV_TO_HTML5  = Als &HTML 5 exportieren...
+MSG_HTML5_ERR       = HTML-Konvertierung fehlgeschlagen.
+MSG_HTML5_SAVE_ERR  = HTML-Datei konnte nicht geschrieben werden.
+DLG_SAVE_HTML5      = Als HTML 5 speichern
+MENU_ENCODING       = &Zeichenkodierung
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (System)
+MENU_ENC_WIN1252    = Windows-1252 (Westeuropa)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = RTF-Text
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Nur-Text
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Durch das Entfernen der RTF-Formatierung gehen alle Fettschrift-, Kursiv-, Farb- und anderen Texteffekte verloren.\n\nFortfahren und als Nur-Text speichern?
+MSG_ENC_LOSSY   = Einige Zeichen können in der gewählten Kodierung möglicherweise nicht dargestellt werden und werden durch «?» oder ähnliches ersetzt.\n\nFortfahren?
+MSG_DEL_PLAIN_FILE = Das Dokument wurde als RTF-Datei gespeichert.\n\nSoll die ursprüngliche Nur-Text-Datei gelöscht werden?
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Alle unterstützten Dateien|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-Dateien (*.rtf)|*.rtf|Textdateien (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Konfiguration (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Alle Dateien (*.*)|*.*
+FILTER_SAVEAS = RTF-Dateien (*.rtf)|*.rtf|Textdateien (*.txt)|*.txt|Alle Dateien (*.*)|*.*
+FILTER_IMAGE  = Bilddateien|*.png;*.jpg;*.jpeg|PNG-Dateien (*.png)|*.png|JPEG-Dateien (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Öffnen
+DLG_SAVEAS = Speichern unter
+DLG_IMAGE  = Bild einfügen
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Datei konnte nicht geöffnet werden.
+MSG_SAVE_ERR      = Datei konnte nicht gespeichert werden.
+MSG_HAS_FORMATTING = Dieses Dokument enthält Formatierungen (Fettschrift, Farben, Schriftgrößen usw.), die in einer Nur-Text-Datei nicht gespeichert werden können.\n\nKlicken Sie Ja, um als Nur-Text zu speichern und alle Formatierungen zu entfernen.\nKlicken Sie Nein, um im RTF-Format zu speichern (die Dateierweiterung wird zu .rtf).\nKlicken Sie Abbrechen, um ohne Speichern zurückzukehren.
+MSG_IMG_OPEN_ERR  = Bilddatei konnte nicht geöffnet werden.
+MSG_IMG_FMT_ERR   = Format wird nicht unterstützt. Bitte PNG- oder JPEG-Datei verwenden.
+MSG_SAVE_PROMPT   = Änderungen in „%s" speichern?
+DLG_SAVE_CHANGES  = Änderungen speichern
+BTN_SAVE          = Speichern
+BTN_DONT_SAVE     = Nicht speichern
+BTN_CANCEL        = Abbrechen
+BTN_OK            = OK
+
+DLG_FILE_CHANGED        = Datei wurde auf dem Datenträger geändert
+MSG_FILE_CHANGED_PROMPT = „%s" wurde von einem anderen Programm geändert, während NSBEdit nicht aktiv war.\n\nDatei vom Datenträger neu laden?
+BTN_RELOAD              = Neu laden
+BTN_KEEP                = Aktuelle Version behalten
+
+TAB_CTX_NEW_TAB         = Neuer Tab
+TAB_CTX_CLOSE_TAB       = Tab schließen
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Wörter
+SB_CHARS                = Zeichen
+SB_SAVED                = Gespeichert
+SB_UNSAVED              = Nicht gespeichert
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Fett  (Ctrl+B)
+TIP_ITALIC      = Kursiv  (Ctrl+I)
+TIP_UNDERLINE   = Unterstrichen  (Ctrl+U)
+TIP_STRIKE      = Durchgestrichen
+TIP_SUBSCRIPT   = Tiefgestellt  (z. B. H₂O)
+TIP_SUPERSCRIPT = Hochgestellt  (z. B. m²)
+TIP_FONTFACE    = Schriftart
+TIP_FONTSIZE    = Schriftgröße (pt)
+TIP_COLOR       = Textfarbe
+TIP_HIGHLIGHT   = Hervorhebungsfarbe
+TIP_ALIGN_L     = Linksbündig
+TIP_ALIGN_C     = Zentriert
+TIP_ALIGN_R     = Rechtsbündig
+TIP_ALIGN_J     = Blocksatz
+TIP_BULLET      = Aufzählungsliste
+TIP_NUMBERED    = Nummerierte Liste
+TIP_IMAGE       = Bild einfügen  (PNG / JPEG)
+TIP_INDENT_IN   = Einzug vergrößern
+TIP_INDENT_OUT  = Einzug verkleinern
+TIP_LINESPACE   = Zeilenabstand...
+TIP_FIND        = Suchen / Ersetzen  (Ctrl+F)
+TIP_LINK        = Hyperlink einfügen
+TIP_TABLE       = Tabelleneigenschaften...
+TIP_TABLE_DROP  = Tabelle einfügen (Größe wählen)
+TIP_HLINE       = Horizontale Linie einfügen
+TIP_CLEARFMT    = Alle Formatierungen entfernen
+TIP_PRINT_BTN   = Drucken...  (Ctrl+P)
+TIP_ZOOM        = Zoom
+TIP_WORDWRAP    = Zeilenumbruch umschalten
+TIP_CASE        = Groß-/Kleinschreibung wechseln  (GROSS / klein / Erster Buchstabe groß)
+TIP_LINENUM     = Zeilennummern umschalten
+TIP_PARSPACE    = Absatzabstand...
+TIP_SAVE        = Speichern  (Ctrl+S)
+TIP_SAVE_FTP    = Auf FTP-Server speichern
+TIP_PREVIEW     = Online-Vorschau
+TIP_LANG_UI     = Oberflächensprache
+TIP_COMMENT     = Ausgewählte Zeilen kommentieren / Kommentar entfernen
+MENU_GUI_LANG   = Oberflächensprache
+MENU_LANGUAGE   = &Sprache
+LANG_PLAIN_TEXT = Nur-Text
+LANG_UI_DANISH    = Dansk
+LANG_UI_ENGLISH   = English
+LANG_UI_FINNISH   = Suomi
+LANG_UI_GERMAN    = Deutsch
+LANG_UI_ICELANDIC = Íslenska
+LANG_UI_NORWEGIAN = Norsk (bokmål)
+LANG_UI_SWEDISH   = Svenska
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-Dateien (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Als PDF exportieren
+MSG_PDF_ERR      = PDF-Export fehlgeschlagen. Bitte sicherstellen, dass „Microsoft Print to PDF" installiert ist (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Suchen / Ersetzen
+DLG_FIND_WHAT       = Suchen:
+DLG_REPL_WITH       = Ersetzen durch:
+BTN_FIND_NEXT       = Weitersuchen
+BTN_CLOSE           = Schließen
+BTN_REPLACE         = Ersetzen
+BTN_REPLACE_ALL     = Alle ersetzen
+CHK_MATCHCASE       = Groß-/Kleinschreibung beachten
+CHK_WHOLEWORD       = Ganzes Wort
+CHK_REGEX           = Regulärer Ausdruck
+MSG_FIND_NOT_FOUND  = Text nicht gefunden.
+MSG_REGEX_ERR       = Ungültiger regulärer Ausdruck.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Hyperlink einfügen
+DLG_LINK_URL    = Webadresse (URL):
+DLG_LINK_TEXT   = Anzeigetext:
+LINK_TIP_CTRL   = [Strg]+Klick zum Öffnen im Browser
+MSG_LINK_BAD_URL = Bitte eine gültige URL eingeben.
+
+Die URL muss mit einem bekannten Schema beginnen, z. B.:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Tabelle einfügen
+DLG_TABLE_ROWS  = Zeilen:
+DLG_TABLE_COLS  = Spalten:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Tabellengröße auswählen
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Tabelleneigenschaften
+DLG_TABLE_INSERT    = Tabelle einfügen
+TBLP_ROWS           = Zeilen:
+TBLP_COLS           = Spalten:
+TBLP_CELLW          = Spaltenbreite:
+TBLP_BORDERW        = Rahmenstärke:
+TBLP_UNIT_HP        = Halbpunkt
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Zellauffüllung oben:
+TBLP_PAD_BOTTOM     = Zellauffüllung unten:
+TBLP_PAD_LEFT       = Zellauffüllung links:
+TBLP_PAD_RIGHT      = Zellauffüllung rechts:
+TBLP_ROWH           = Zeilenhöhe (0=auto):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Tabellenausrichtung
+TBLP_ALIGN_L        = Links
+TBLP_ALIGN_C        = Zentriert
+TBLP_ALIGN_R        = Rechts
+BTN_APPLY           = Übernehmen
+CTX_TABLE_PROPS     = Tabelleneigenschaften...
+TBLP_MODE_ALTER     = Aktuelle Tabelle bearbeiten
+TBLP_MODE_NESTED    = Tabelle in aktuelle Zelle einfügen
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Zeilenabstand
+RDO_LINESPACE_S  = Einfach
+RDO_LINESPACE_15 = 1,5-fach
+RDO_LINESPACE_D  = Doppelt
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Absatzabstand
+DLG_PARSPACE_BEF = Abstand davor (pt):
+DLG_PARSPACE_AFT = Abstand danach (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Tastenkürzel
+SHORTCUTS_COL1   = Tastenkürzel
+SHORTCUTS_COL2   = Funktion
+SHORTCUTS_COL3   = Beschreibung
+SHORTCUTS_BTN_CLOSE = Schließen
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Fett
+SCF_ITALIC        = Kursiv
+SCF_UNDERLINE     = Unterstrichen
+SCF_UNDO          = Rückgängig
+SCF_REDO          = Wiederholen
+SCF_CUT           = Ausschneiden
+SCF_COPY          = Kopieren
+SCF_PASTE         = Einfügen
+SCF_SELECT_ALL    = Alles auswählen
+SCF_SAVE          = Speichern
+SCF_SAVE_AS       = Speichern unter
+SCF_NEW           = Neu
+SCF_OPEN          = Öffnen
+SCF_PRINT         = Drucken
+SCF_EXPORT_PDF    = Als PDF exportieren
+SCF_PREVIEW       = Online-Vorschau
+SCF_GO_START      = Zum Anfang
+SCF_GO_END        = Zum Ende
+SCF_WORD_LEFT     = Wort nach links
+SCF_WORD_RIGHT    = Wort nach rechts
+SCF_EXTEND_SEL    = Auswahl erweitern
+SCF_SEL_WORD      = Wort auswählen
+SCF_ZOOM_IN       = Vergrößern
+SCF_ZOOM_OUT      = Verkleinern
+SCF_RESET_ZOOM    = Zoom zurücksetzen
+SCF_EXIT          = Beenden
+SCF_SHORTCUTS     = Tastenkürzel
+SCF_ABOUT         = Über NSBEdit
+SCF_CLOSE_DLG     = Dialog schließen
+SCF_NEW_LINE      = Neue Zeile
+SCF_INDENT        = Einzug
+SCF_DELETE        = Entfernen
+SCF_BACKSPACE     = Rücktaste
+SCF_DEL_WORD_R    = Wort rechts löschen
+SCF_DEL_WORD_L    = Wort links löschen
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Fettschrift der Auswahl umschalten
+SCD_ITALIC        = Kursivschrift der Auswahl umschalten
+SCD_UNDERLINE     = Unterstreichung der Auswahl umschalten
+SCD_UNDO          = Letzte Änderung rückgängig machen
+SCD_REDO          = Letzte rückgängig gemachte Aktion wiederholen
+SCD_CUT           = Auswahl in Zwischenablage ausschneiden
+SCD_COPY          = Auswahl in Zwischenablage kopieren
+SCD_PASTE         = Aus Zwischenablage einfügen
+SCD_SELECT_ALL    = Gesamtes Dokument auswählen
+SCD_SAVE          = Aktuelle Datei speichern
+SCD_SAVE_AS       = In neuer Datei speichern
+SCD_NEW           = Neues leeres Dokument erstellen
+SCD_OPEN          = Datei öffnen
+SCD_PRINT         = Dokument drucken
+SCD_EXPORT_PDF    = Dokument als PDF exportieren
+SCD_PREVIEW       = Per FTP verknüpfte Datei im Browser laden und vorschauen
+SCD_GO_START      = Cursor an den Dokumentanfang setzen
+SCD_GO_END        = Cursor an das Dokumentende setzen
+SCD_WORD_LEFT     = Cursor ein Wort nach links bewegen
+SCD_WORD_RIGHT    = Cursor ein Wort nach rechts bewegen
+SCD_EXTEND_SEL    = Textauswahl um ein Zeichen erweitern
+SCD_SEL_WORD      = Auswahl wortweise erweitern
+SCD_ZOOM_IN       = Zoomstufe erhöhen
+SCD_ZOOM_OUT      = Zoomstufe verringern
+SCD_RESET_ZOOM    = Zoom auf 100 % / Standard zurücksetzen
+SCD_MNU_NEW       = Datei-Menü → Neu
+SCD_MNU_OPEN      = Datei-Menü → Öffnen
+SCD_MNU_SAVE      = Datei-Menü → Speichern
+SCD_MNU_SAVE_AS   = Datei-Menü → Speichern unter
+SCD_MNU_PRINT     = Datei-Menü → Drucken
+SCD_MNU_EXPORT_PDF = Datei-Menü → Als PDF exportieren
+SCD_EXIT_APP      = Dokument schließen (Anwendung beenden)
+SCD_MNU_EXIT      = Datei-Menü → Beenden
+SCD_MNU_UNDO      = Bearbeiten-Menü → Rückgängig
+SCD_MNU_REDO      = Bearbeiten-Menü → Wiederholen
+SCD_MNU_CUT       = Bearbeiten-Menü → Ausschneiden
+SCD_MNU_COPY      = Bearbeiten-Menü → Kopieren
+SCD_MNU_PASTE     = Bearbeiten-Menü → Einfügen
+SCD_MNU_SELECT_ALL = Bearbeiten-Menü → Alles auswählen
+SCD_MNU_SHORTCUTS = Hilfe-Menü → Tastenkürzel
+SCD_MNU_ABOUT     = Hilfe-Menü → Über NSBEdit
+SCD_SHOW_SHORTCUTS = Diese Tastenkürzel-Liste anzeigen
+SCD_CLOSE_DLG     = Aktuellen Dialog schließen
+SCD_NEW_LINE      = Neuen Absatz einfügen
+SCD_INDENT        = Tabulatorzeichen einfügen
+SCD_DELETE        = Zeichen rechts löschen
+SCD_BACKSPACE     = Zeichen links löschen
+SCD_DEL_WORD_R    = Wort rechts vom Cursor löschen
+SCD_DEL_WORD_L    = Wort links vom Cursor löschen
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Über NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF-Editor und Programmierumgebung für Windows\n\n
+ABOUT_PUBLISHED   = Veröffentlicht: 
+ABOUT_VERSION     = Version: 
+ABOUT_EDITION     = Ausgabe: 
+ABOUT_SEC_RTF     = ✏  RTF-Bearbeitung\n
+ABOUT_DESC_RTF    = •  Fett, Kursiv, Unterstrichen, Durchgestrichen, Hoch-/Tiefgestellt.\n•  Schriftart, Größe, Farbe und Hervorhebung; vollständige Absatzformatierung.\n•  Tabellen, Listen, Bilder, Hyperlinks, horizontale Linien.\n•  Export als PDF oder HTML 5.\n\n
+ABOUT_SEC_CODE    = ⌨  Code-Bearbeitung und Syntaxhervorhebung\n
+ABOUT_DESC_CODE   = •  25 Sprachen: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL und weitere.\n•  Autovervollständigung, Auto-Schließen, Auto-Einrückung, intelligentes Ausrücken.\n•  Umschalten von Zeilenkommentaren (//, #, --) und HTML-Blockkommentaren (<!-- -->).\n\n
+ABOUT_SEC_FTP     = ⚡  FTP und Remote-Bearbeitung\n
+ABOUT_DESC_FTP    = •  Direkt auf FTP- und SFTP-Servern speichern.\n•  Remote-Dateien durchsuchen, umbenennen und verwalten.\n•  Direkte Browser-Vorschau über konfigurierbare Web-URL-Basis.\n\n
+ABOUT_LICENSE     = Lizenziert unter GNU General Public License v2.\n
+ABOUT_BTN_LICENSE = Lizenz anzeigen
+ABOUT_BTN_CREDITS = Danksagungen
+ABOUT_BTN_CLOSE   = Schließen
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Danksagungen
+CREDITS_SCINTILLA  = Scintilla ist ein freier Open-Source-Codeeditor-Baustein von Neil Hodgson. NSBEdit verwendet Scintilla für die syntaxhervorgehobene Code-Bearbeitung.\n\n
+CREDITS_LEXILLA    = Lexilla ist eine Lexer-Bibliothek für Scintilla, ebenfalls von Neil Hodgson entwickelt. NSBEdit verwendet Lexilla für die Syntaxhervorhebung in über 20 Programmiersprachen.\n\n
+CREDITS_GDI_PLUS   = GDI+ ist Bestandteil des Windows Platform SDK. NSBEdit verwendet es zum Rendern des NSBEdit-Logos im Über-Dialog.\n
+CREDITS_MINGW      = Das MinGW-W64-Projekt stellt eine vollständige Laufzeitumgebung für die GCC- und LLVM/Clang-Werkzeugketten unter Windows bereit. NSBEdit wurde mit MinGW-W64 GCC 15.2.0 kompiliert.\n\n
+CREDITS_SQLITE     = SQLite ist eine kleine, schnelle und in sich geschlossene SQL-Datenbank-Engine, die gemeinfrei ist. NSBEdit verwendet SQLite zum Speichern von FTP/SFTP-Verbindungsprofilen.\n\n
+CREDITS_CURL       = libcurl ist eine freie Open-Source-URL-Übertragungsbibliothek von Daniel Stenberg. libssh2 ist eine Open-Source-SSH2-Protokollbibliothek. NSBEdit verwendet beide für FTP- und SFTP-Dateiübertragungen bei der Remote-Bearbeitung.\n\n
+CREDITS_RTF2HTML   = rtf2html ist eine Open-Source-RTF-zu-HTML-Konvertierungsbibliothek von Valentyn Lavrynenko. NSBEdit verwendet sie für den Export von RTF-Dokumenten nach HTML5. Lizenziert unter GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Website hinzufügen...
+FTP_DISCONNECT       = Verbindung trennen
+FTP_CLOSE_CONN_MENU  = Verbindung schließen
+FTP_CLOSE_CONN_PROMPT = Zu schließende Verbindung auswählen:
+FTP_BROWSE           = Dateien durchsuchen...
+FTP_DLG_SITE_ADD     = FTP/SFTP-Website hinzufügen
+FTP_DLG_SITE_EDIT    = FTP/SFTP-Website bearbeiten
+FTP_FRIENDLY_NAME    = Anzeigename:
+FTP_PROTOCOL         = Protokoll:
+FTP_HOST             = Server:
+FTP_PORT             = Port:
+FTP_USERNAME         = Benutzername:
+FTP_PASSWORD         = Kennwort:
+FTP_REMEMBER_PWD     = Kennwort speichern
+FTP_INITIAL_PATH     = Startverzeichnis:
+FTP_WEB_URL          = Web-URL (Basis):
+FTP_HELP_TITLE       = FTP/SFTP-Profil — Feldhilfe
+FTP_SAVE             = Profil speichern
+FTP_DELETE           = Profil löschen
+FTP_DLG_BROWSER      = FTP-Dateibrowser
+FTP_COL_NAME         = Name
+FTP_COL_SIZE         = Größe
+FTP_COL_PERMS        = Berechtigungen
+FTP_CTX_OPEN         = Öffnen / Herunterladen
+FTP_CTX_CHMOD        = Berechtigungen...
+FTP_CTX_NEW_FILE     = Neue Datei...
+FTP_CTX_NEW_DIR      = Neuer Ordner...
+FTP_INPUT_FILENAME   = Dateiname:
+FTP_INPUT_DIRNAME    = Ordnername:
+FTP_CTX_DELETE       = Löschen
+FTP_CTX_RENAME       = Umbenennen...
+FTP_INPUT_RENAME     = Neuer Name:
+FTP_DLG_CHMOD        = Berechtigungen ändern (chmod)
+FTP_CHMOD_OWNER      = Eigentümer
+FTP_CHMOD_GROUP      = Gruppe
+FTP_CHMOD_OTHER      = Andere
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Oktal:
+FTP_CHMOD_APPLY      = Übernehmen
+FTP_CONN_FAILED      = Verbindung fehlgeschlagen
+FTP_STATUS           = Verbunden:
+FTP_NOT_CONNECTED    = Bitte zuerst mit einem oder mehreren Profilen verbinden, bevor Sie per FTP speichern.
+FTP_PICK_PROFILE     = Ziel-Profil auswählen:
+FTP_PW_PROMPT        = Kennwort eingeben
+FTP_PW_FOR           = Kennwort für
+MSG_FTP_UPLOAD_OK    = Datei erfolgreich gespeichert und hochgeladen.
+MSG_FTP_UPLOAD_FAIL  = Upload fehlgeschlagen.
+MENU_SAVE_TO_FTP     = Per FTP speichern...
+MENU_PREVIEW_FTP     = Online-Vorschau.
+FTP_PREVIEW_LOCKED   = Tab ist während der Vorschau gesperrt.
+FTP_PREVIEW_URL      = Vorschau-URL:
+BTN_OPEN_BROWSER     = Im Browser öffnen
+BTN_OPEN_BROWSER_TIP = Tastenkürzel: [Eingabe] zum Öffnen im Browser.
+BTN_REVERT           = Zurücksetzen und schließen
+BTN_REVERT_TIP       = Tastenkürzel: [Esc] setzt zurück und schließt diesen Dialog.
+FTP_PREVIEW_UP_FAIL  = Upload fehlgeschlagen:
+FTP_PREVIEW_REV_FAIL = Zurücksetzen fehlgeschlagen:
+BTN_SAVE_BACKUP      = Lokale Sicherungskopie speichern...
+BTN_CLOSE_ANYWAY     = Ohne Zurücksetzen schließen
+FTP_SAVE_BROWSER     = Per FTP speichern — Ziel auswählen
+FTP_FILENAME_PROMPT  = Dateiname:
+FTP_SAVE_HERE        = Hier speichern
+FTP_SAVE_TO          = Per FTP gespeichert unter
+FTP_SAVED_OK         = Datei hochgeladen. Verbindung bleibt bestehen.
+MSG_FTP_DELETE_WARN  = „%s" vom Server löschen?\n\nDies kann nicht rückgängig gemacht werden.
+MSG_FTP_CHMOD_OK     = Berechtigungen aktualisiert.
+MSG_FTP_DELETE_FAIL  = Löschen fehlgeschlagen.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Horizontale Linie einfügen
+DLG_HRUL_PROPS      = Eigenschaften der horizontalen Linie
+HRP_STYLE           = Stil:
+HRP_THICKNESS       = Stärke (pt):
+HRP_SPACE_ABOVE     = Abstand darüber (pt):
+HRP_SPACE_BELOW     = Abstand darunter (pt):
+HRP_WIDTH_PCT       = Breite (%):
+HRP_ALIGNMENT       = Ausrichtung:
+HRP_START_COLOUR    = Startfarbe:
+HRP_END_COLOUR      = Endfarbe (Verlauf):
+HRP_ALIGN_L         = Links
+HRP_ALIGN_C         = Zentriert
+HRP_ALIGN_R         = Rechts
+HRP_STYLE_SINGLE    = Einfach dünn
+HRP_STYLE_THICK     = Dick
+HRP_STYLE_DOUBLE    = Doppelt
+HRP_STYLE_DOTTED    = Gepunktet
+HRP_STYLE_DASHED    = Gestrichelt
+HRP_STYLE_HAIRLINE  = Haarlinie
+BTN_CHOOSE          = Auswählen…

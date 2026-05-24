@@ -67,6 +67,7 @@
 #define IDR_LOCALE_SV_SE    15
 #define IDR_LOCALE_DA_DK    16
 #define IDR_LOCALE_FI_FI    17
+#define IDR_LOCALE_DE_DE    18
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1112,6 +1113,7 @@ static void Ne_LoadLocale()
         case 3:  resId = IDR_LOCALE_SV_SE; break;
         case 4:  resId = IDR_LOCALE_DA_DK; break;
         case 5:  resId = IDR_LOCALE_FI_FI; break;
+        case 6:  resId = IDR_LOCALE_DE_DE; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
@@ -6846,17 +6848,19 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
     while (GetMenuItemCount(s_hLocaleMenu) > 0)
         RemoveMenu(s_hLocaleMenu, 0, MF_BYPOSITION);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 4,
-                    Ls(L"LANG_UI_DANISH"),    false, g_localeId == 4 ? g_hLocaleMenuIcon : NULL);
+                    L"Dansk",                 false, g_localeId == 4 ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 6,
+                    L"Deutsch",               false, g_localeId == 6 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 0,
-                    Ls(L"LANG_UI_ENGLISH"),   false, g_localeId == 0 ? g_hLocaleMenuIcon : NULL);
+                    L"English",               false, g_localeId == 0 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 2,
-                    Ls(L"LANG_UI_ICELANDIC"), false, g_localeId == 2 ? g_hLocaleMenuIcon : NULL);
+                    L"\u00cdslenska",         false, g_localeId == 2 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 1,
-                    Ls(L"LANG_UI_NORWEGIAN"), false, g_localeId == 1 ? g_hLocaleMenuIcon : NULL);
+                    L"Norsk (bokm\u00e5l)",   false, g_localeId == 1 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 5,
-                    Ls(L"LANG_UI_FINNISH"),   false, g_localeId == 5 ? g_hLocaleMenuIcon : NULL);
+                    L"Suomi",                 false, g_localeId == 5 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 3,
-                    Ls(L"LANG_UI_SWEDISH"),   false, g_localeId == 3 ? g_hLocaleMenuIcon : NULL);
+                    L"Svenska",               false, g_localeId == 3 ? g_hLocaleMenuIcon : NULL);
 }
 
 // Rebuild the FTP popup from scratch (called in WM_INITMENUPOPUP for s_hFtpMenu).

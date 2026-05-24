@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.24.11 - 24.05.2026 11:00
+
+- **German (Deutsch) UI translation**: Full translation of all ~200 UI strings added as `locale/de_DE.txt` (RCDATA 18, locale ID 6). Menu order: Dansk → Deutsch → English → Íslenska → Norsk → Suomi → Svenska.
+- **Language menu always shows native names**: The GUI Language menu now displays each language in its own native name regardless of the active UI language (`Ne_RebuildLocaleMenu` uses hardcoded native strings instead of `Ls(L"LANG_UI_*")`). A German speaker always sees "Deutsch" even when the UI is set to Norwegian.
+
 ## v2026.05.24.10 - 24.05.2026 10:00
 
 - **Finnish (Suomi) UI translation**: Full translation of all ~200 UI strings added as `locale/fi_FI.txt` (RCDATA 17, locale ID 5). Appears in the GUI Language menu between Norsk and Svenska: Dansk → English → Íslenska → Norsk → Suomi → Svenska.

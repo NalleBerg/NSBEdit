@@ -359,11 +359,12 @@
                                                 Ne_UpdateStatusText; invoked from the GUI
                                                 Language WM_COMMAND handler so locale
                                                 switches instantly with no restart.
-                                                Six locale files embedded as RCDATA:
+                                                Seven locale files embedded as RCDATA:
                                                 en_GB(10), no_nb(11), is_IS(14), sv_SE(15),
-                                                da_DK(16), fi_FI(17). LANG_UI_DANISH/ENGLISH/
-                                                FINNISH/ICELANDIC/NORWEGIAN/SWEDISH keys
-                                                present in every file.
+                                                da_DK(16), fi_FI(17), de_DE(18). LANG_UI_*
+                                                keys present in every file (documentation
+                                                only — Ne_RebuildLocaleMenu uses hardcoded
+                                                native name strings).
                                                 Ne_RebuildLocaleMenu forward-declared before
                                                 Ne_BuildMainMenu (which calls it).
                                                 See add_ui_language_INTERNALS.txt for the
@@ -430,9 +431,9 @@
                                                 # comments, \n CRLF \t tab \\ backslash.
                                                 Loaded by Ne_LoadLocale() at startup.
                                                 Never read from disk at runtime.
-                                                Contains LANG_UI_DANISH/ENGLISH/FINNISH/
-                                                ICELANDIC/NORWEGIAN/SWEDISH for the language
-                                                menu.
+                                                Contains LANG_UI_* keys (documentation
+                                                only — language menu uses hardcoded
+                                                native names).
 
   locale\no_nb.txt                              Norwegian Bokmål translation (RCDATA 11,
                                                 IDR_LOCALE_NO_NB). Full ~200-key
@@ -453,6 +454,10 @@
   locale\fi_FI.txt                              Finnish (Suomi) translation (RCDATA 17,
                                                 IDR_LOCALE_FI_FI). Full ~200-key
                                                 translation. g_localeId = 5.
+
+  locale\de_DE.txt                              German (Deutsch) translation (RCDATA 18,
+                                                IDR_LOCALE_DE_DE). Full ~200-key
+                                                translation. g_localeId = 6.
 
   ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
                                                 SQLite3 (statically linked). DB lookup order

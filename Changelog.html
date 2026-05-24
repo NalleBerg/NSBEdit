@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 24 May 2026 &mdash; v2026.05.24.10 (10:00)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 24 May 2026 &mdash; v2026.05.24.11 (11:00)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.24.11</span></h3>
+<p><strong>German UI translation; language menu always shows native names (24.05.2026, 11:00):</strong></p>
+<ul>
+<li><strong>German (Deutsch) UI translation:</strong> A complete German translation of all ~200 UI strings has been added as <code>locale/de_DE.txt</code> (RCDATA&nbsp;18, locale ID&nbsp;6). &ldquo;Deutsch&rdquo; sorts between &ldquo;Dansk&rdquo; and &ldquo;English&rdquo;, giving the menu order: Dansk &rarr; Deutsch &rarr; English &rarr; &#xCD;slenska &rarr; Norsk &rarr; Suomi &rarr; Svenska.</li>
+<li><strong>Language menu always shows native names:</strong> The GUI Language menu now displays each language in its own native script regardless of the active UI language &mdash; a German speaker always sees &ldquo;Deutsch&rdquo;, a Finnish speaker always sees &ldquo;Suomi&rdquo;, etc. Previously the names were looked up through the current locale&rsquo;s <code>LANG_UI_*</code> keys, meaning a German speaker using a Norwegian UI would see &ldquo;Tysk&rdquo; instead of &ldquo;Deutsch&rdquo;. The names are now hardcoded native strings in <code>Ne_RebuildLocaleMenu</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.24.10</span></h3>
 <p><strong>Finnish UI translation; Suomi added to language menu (24.05.2026, 10:00):</strong></p>
