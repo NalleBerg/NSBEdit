@@ -142,9 +142,11 @@ TIP_COMMENT     = Setja inn / fjarlægja athugasemd á völdum línum
 MENU_GUI_LANG   = Viðmótsmál
 MENU_LANGUAGE   = &Tungumál
 LANG_PLAIN_TEXT = Venjulegur texti
+LANG_UI_DANISH    = Danska
 LANG_UI_ENGLISH   = English
 LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)
+LANG_UI_SWEDISH   = Svenska
 
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF-skrár (*.pdf)|*.pdf

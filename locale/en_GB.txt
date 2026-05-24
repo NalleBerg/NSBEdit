@@ -142,9 +142,11 @@ TIP_COMMENT     = Comment / Uncomment selected lines
 MENU_GUI_LANG   = GUI Lang
 MENU_LANGUAGE   = &Language
 LANG_PLAIN_TEXT = Plain Text
+LANG_UI_DANISH    = Danish
 LANG_UI_ENGLISH   = English
 LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)
+LANG_UI_SWEDISH   = Svenska
 
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF files (*.pdf)|*.pdf
@@ -328,7 +330,7 @@ ABOUT_DESC_CODE   = •  25 languages: PHP, Python, JavaScript, HTML, CSS, C/C++
 ABOUT_SEC_FTP     = ⚡  FTP & Remote Editing\n
 ABOUT_DESC_FTP    = •  Save directly to FTP and SFTP servers.\n•  Browse, rename and manage remote files.\n•  Live preview in browser via configurable Web URL root.\n\n
 ABOUT_LICENSE     = Licensed under the GNU General Public License v2.\n
-ABOUT_BTN_LICENSE = View License
+ABOUT_BTN_LICENSE = View Licence
 ABOUT_BTN_CREDITS = Credits
 ABOUT_BTN_CLOSE   = Close
 
@@ -426,7 +428,7 @@ HRP_ALIGNMENT       = Alignment:
 HRP_START_COLOUR    = Start colour:
 HRP_END_COLOUR      = End colour (gradient):
 HRP_ALIGN_L         = Left
-HRP_ALIGN_C         = Center
+HRP_ALIGN_C         = Centre
 HRP_ALIGN_R         = Right
 HRP_STYLE_SINGLE    = Single thin
 HRP_STYLE_THICK     = Thick

@@ -1,0 +1,403 @@
+# NSBEdit locale file — sv_SE (Svenska)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Namnlös
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Arkiv
+MENU_NEW        = &Ny\tCtrl+N
+MENU_OPEN       = &Öppna...\tCtrl+O
+MENU_SAVE       = &Spara\tCtrl+S
+MENU_SAVEAS     = Spara &som...\tCtrl+Shift+S
+MENU_PRINT      = &Skriv ut...\tCtrl+P
+MENU_EXPORT_PDF = &Exportera som PDF...\tCtrl+Shift+P
+MENU_EXIT       = A&vsluta	Ctrl+W
+MENU_EDIT         = &Redigera
+MENU_UNDO         = &Ångra\tCtrl+Z
+MENU_REDO         = &Gör om\tCtrl+Y
+MENU_CUT          = Klipp u&t\tCtrl+X
+MENU_COPY         = &Kopiera\tCtrl+C
+MENU_PASTE        = K&listra in\tCtrl+V
+MENU_SELECTALL    = Markera &allt\tCtrl+A
+MENU_PREFS        = &Inställningar...
+PREF_TITLE        = Inställningar
+PREF_SEC_APPEARANCE = Utseende
+PREF_DARK_MODE         = Mörkt tema
+PREF_LIGHT_MODE        = Ljust tema
+PREF_SEC_EDITOR        = Redigerarens bakgrund
+PREF_EDITOR_LIGHT_BG   = Ljus bakgrund för oformaterad text och kod
+PREF_EDITOR_DARK_BG    = Mörk bakgrund för oformaterad text och kod
+MENU_HELP       = &Hjälp
+MENU_SHORTCUTS  = &Kortkommandon...\tF1
+MENU_ABOUT      = &Om NSBEdit
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = Kon&vertera
+MENU_CONV_TO_PLAIN  = Ta bort formatering — spara som oformaterad text
+MENU_CONV_TO_RTF    = Lägg till &formatering — skapa RTF
+MENU_CONV_TO_HTML5  = Exportera som &HTML 5...
+MSG_HTML5_ERR       = HTML-konverteringen misslyckades.
+MSG_HTML5_SAVE_ERR  = Kunde inte skriva HTML-fil.
+DLG_SAVE_HTML5      = Spara som HTML 5
+MENU_ENCODING       = &Teckenkodning
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (system)
+MENU_ENC_WIN1252    = Windows-1252 (västeuropeisk)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = RTF-text
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Oformaterad text
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Om du tar bort RTF-formateringen raderas all fetstil, kursiv, färger och andra formateringseffekter.\n\nFortsätt och spara som oformaterad text?
+MSG_ENC_LOSSY   = Vissa tecken kanske inte kan representeras i den valda teckenkodningen och ersätts med «?» eller liknande.\n\nFortsätt?
+MSG_DEL_PLAIN_FILE = Dokumentet har sparats som en RTF-fil.\n\nVill du ta bort den ursprungliga textfilen?
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Alla filer som stöds|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-filer (*.rtf)|*.rtf|Textfiler (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Konfiguration (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Alla filer (*.*)|*.*
+FILTER_SAVEAS = RTF-filer (*.rtf)|*.rtf|Textfiler (*.txt)|*.txt|Alla filer (*.*)|*.*
+FILTER_IMAGE  = Bildfiler|*.png;*.jpg;*.jpeg|PNG-filer (*.png)|*.png|JPEG-filer (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Öppna
+DLG_SAVEAS = Spara som
+DLG_IMAGE  = Infoga bild
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Det gick inte att öppna filen.
+MSG_SAVE_ERR      = Det gick inte att spara filen.
+MSG_HAS_FORMATTING = Det här dokumentet innehåller formatering (fetstil, färger, teckenstorlekar m.m.) som inte kan lagras i en oformaterad textfil.\n\nKlicka Ja för att spara som oformaterad text och ta bort all formatering.\nKlicka Nej för att spara som RTF i stället (filen byter ändelse till .rtf).\nKlicka Avbryt för att gå tillbaka utan att spara.
+MSG_IMG_OPEN_ERR  = Det gick inte att öppna bildfilen.
+MSG_IMG_FMT_ERR   = Formatet stöds inte. Använd PNG eller JPEG.
+MSG_SAVE_PROMPT   = Spara ändringar i "%s"?
+DLG_SAVE_CHANGES  = Spara ändringar
+BTN_SAVE          = Spara
+BTN_DONT_SAVE     = Spara inte
+BTN_CANCEL        = Avbryt
+BTN_OK            = OK
+
+DLG_FILE_CHANGED        = Filen har ändrats på disk
+MSG_FILE_CHANGED_PROMPT = "%s" ändrades av ett annat program medan NSBEdit inte var aktivt.\n\nLäs in från disk igen?
+BTN_RELOAD              = Läs in igen
+BTN_KEEP                = Behåll nuvarande
+
+TAB_CTX_NEW_TAB         = Ny flik
+TAB_CTX_CLOSE_TAB       = Stäng flik
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Ord
+SB_CHARS                = Tecken
+SB_SAVED                = Sparad
+SB_UNSAVED              = Osparad
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Fetstil  (Ctrl+B)
+TIP_ITALIC      = Kursiv  (Ctrl+I)
+TIP_UNDERLINE   = Understrykning  (Ctrl+U)
+TIP_STRIKE      = Genomstrykning
+TIP_SUBSCRIPT   = Nedsänkt  (t.ex. H₂O)
+TIP_SUPERSCRIPT = Upphöjd  (t.ex. m²)
+TIP_FONTFACE    = Teckensnitt
+TIP_FONTSIZE    = Teckenstorlek (pt)
+TIP_COLOR       = Textfärg
+TIP_HIGHLIGHT   = Markeringsfärg
+TIP_ALIGN_L     = Vänsterjustera
+TIP_ALIGN_C     = Centrera
+TIP_ALIGN_R     = Högerjustera
+TIP_ALIGN_J     = Marginaljustera
+TIP_BULLET      = Punktlista
+TIP_NUMBERED    = Numrerad lista
+TIP_IMAGE       = Infoga bild  (PNG / JPEG)
+TIP_INDENT_IN   = Öka indrag
+TIP_INDENT_OUT  = Minska indrag
+TIP_LINESPACE   = Radavstånd...
+TIP_FIND        = Sök / Ersätt  (Ctrl+F)
+TIP_LINK        = Infoga hyperlänk
+TIP_TABLE       = Tabellegenskaper...
+TIP_TABLE_DROP  = Infoga tabell (välj storlek)
+TIP_HLINE       = Infoga horisontell linje
+TIP_CLEARFMT    = Ta bort all formatering
+TIP_PRINT_BTN   = Skriv ut...  (Ctrl+P)
+TIP_ZOOM        = Zoom
+TIP_WORDWRAP    = Växla radbrytning
+TIP_CASE        = Växla skiftläge  (VERSALER / gemener / Inledande versal)
+TIP_LINENUM     = Växla radnummer
+TIP_PARSPACE    = Styckeavstånd...
+TIP_SAVE        = Spara  (Ctrl+S)
+TIP_SAVE_FTP    = Spara till FTP-server
+TIP_PREVIEW     = Förhandsgranska online.
+TIP_LANG_UI     = Gränssnittsspråk
+TIP_COMMENT     = Kommentera / avkommentera markerade rader
+MENU_GUI_LANG   = Gränssnittsspråk
+MENU_LANGUAGE   = &Språk
+LANG_PLAIN_TEXT = Oformaterad text
+LANG_UI_DANISH    = Danska
+LANG_UI_ENGLISH   = English
+LANG_UI_ICELANDIC = Íslenska
+LANG_UI_NORWEGIAN = Norsk (bokmål)
+LANG_UI_SWEDISH   = Svenska
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-filer (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Exportera som PDF
+MSG_PDF_ERR      = Det gick inte att exportera PDF. Kontrollera att "Microsoft Print to PDF" är installerat (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Sök / Ersätt
+DLG_FIND_WHAT       = Sök:
+DLG_REPL_WITH       = Ersätt med:
+BTN_FIND_NEXT       = Sök nästa
+BTN_CLOSE           = Stäng
+BTN_REPLACE         = Ersätt
+BTN_REPLACE_ALL     = Ersätt alla
+CHK_MATCHCASE       = Skilj på versaler och gemener
+CHK_WHOLEWORD       = Hela ord
+CHK_REGEX           = Regex
+MSG_FIND_NOT_FOUND  = Texten hittades inte.
+MSG_REGEX_ERR       = Ogiltigt reguljärt uttryck.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Infoga hyperlänk
+DLG_LINK_URL    = Webbadress (URL):
+DLG_LINK_TEXT   = Visningstext:
+LINK_TIP_CTRL   = [Ctrl]+Klicka för att öppna i webbläsaren
+MSG_LINK_BAD_URL = Ange en giltig webbadress.
+
+En webbadress måste börja med ett känt schema som:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Infoga tabell
+DLG_TABLE_ROWS  = Rader:
+DLG_TABLE_COLS  = Kolumner:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Välj tabellstorlek
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Tabellegenskaper
+DLG_TABLE_INSERT    = Infoga tabell
+TBLP_ROWS           = Rader:
+TBLP_COLS           = Kolumner:
+TBLP_CELLW          = Kolumnbredd:
+TBLP_BORDERW        = Kantlinjebredd:
+TBLP_UNIT_HP        = halvpunkt
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Celltoppaddning:
+TBLP_PAD_BOTTOM     = Cellbottenpaddning:
+TBLP_PAD_LEFT       = Cellvänsterpaddning:
+TBLP_PAD_RIGHT      = Cellhögerpaddning:
+TBLP_ROWH           = Radhöjd (0=auto):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Tabelljustering
+TBLP_ALIGN_L        = Vänster
+TBLP_ALIGN_C        = Centrerad
+TBLP_ALIGN_R        = Höger
+BTN_APPLY           = Verkställ
+CTX_TABLE_PROPS     = Tabellegenskaper...
+TBLP_MODE_ALTER     = Ändra aktuell tabell
+TBLP_MODE_NESTED    = Tabell i aktuell cell
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Radavstånd
+RDO_LINESPACE_S  = Enkelt
+RDO_LINESPACE_15 = 1,5 rader
+RDO_LINESPACE_D  = Dubbelt
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Styckeavstånd
+DLG_PARSPACE_BEF = Avstånd före (pt):
+DLG_PARSPACE_AFT = Avstånd efter (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Kortkommandon
+SHORTCUTS_COL1   = Kortkommando
+SHORTCUTS_COL2   = Funktion
+SHORTCUTS_COL3   = Beskrivning
+SHORTCUTS_BTN_CLOSE = Stäng
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Fetstil
+SCF_ITALIC        = Kursiv
+SCF_UNDERLINE     = Understrykning
+SCF_UNDO          = Ångra
+SCF_REDO          = Gör om
+SCF_CUT           = Klipp ut
+SCF_COPY          = Kopiera
+SCF_PASTE         = Klistra in
+SCF_SELECT_ALL    = Markera allt
+SCF_SAVE          = Spara
+SCF_SAVE_AS       = Spara som
+SCF_NEW           = Ny
+SCF_OPEN          = Öppna
+SCF_PRINT         = Skriv ut
+SCF_EXPORT_PDF    = Exportera som PDF
+SCF_PREVIEW       = Förhandsgranska online
+SCF_GO_START      = Gå till början
+SCF_GO_END        = Gå till slutet
+SCF_WORD_LEFT     = Ord till vänster
+SCF_WORD_RIGHT    = Ord till höger
+SCF_EXTEND_SEL    = Utöka markering
+SCF_SEL_WORD      = Markera ord
+SCF_ZOOM_IN       = Zooma in
+SCF_ZOOM_OUT      = Zooma ut
+SCF_RESET_ZOOM    = Återställ zoom
+SCF_EXIT          = Avsluta
+SCF_SHORTCUTS     = Kortkommandon
+SCF_ABOUT         = Om
+SCF_CLOSE_DLG     = Stäng dialog
+SCF_NEW_LINE      = Ny rad
+SCF_INDENT        = Indrag
+SCF_DELETE        = Ta bort
+SCF_BACKSPACE     = Backsteg
+SCF_DEL_WORD_R    = Ta bort ord till höger
+SCF_DEL_WORD_L    = Ta bort ord till vänster
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Växla fetstil på markeringen
+SCD_ITALIC        = Växla kursiv på markeringen
+SCD_UNDERLINE     = Växla understrykning på markeringen
+SCD_UNDO          = Ångra den senaste ändringen
+SCD_REDO          = Gör om den senaste ångringen
+SCD_CUT           = Klipp ut markering till Urklipp
+SCD_COPY          = Kopiera markering till Urklipp
+SCD_PASTE         = Klistra in från Urklipp
+SCD_SELECT_ALL    = Markera hela dokumentet
+SCD_SAVE          = Spara den aktuella filen
+SCD_SAVE_AS       = Spara till en ny fil
+SCD_NEW           = Skapa ett nytt tomt dokument
+SCD_OPEN          = Öppna en fil
+SCD_PRINT         = Skriv ut dokumentet
+SCD_EXPORT_PDF    = Exportera dokumentet som PDF
+SCD_PREVIEW       = Ladda upp och förhandsgranska FTP-länkad fil i webbläsaren
+SCD_GO_START      = Flytta markören till dokumentets början
+SCD_GO_END        = Flytta markören till dokumentets slut
+SCD_WORD_LEFT     = Flytta markören ett ord till vänster
+SCD_WORD_RIGHT    = Flytta markören ett ord till höger
+SCD_EXTEND_SEL    = Utöka textmarkering ett tecken
+SCD_SEL_WORD      = Utöka markering ett ord i taget
+SCD_ZOOM_IN       = Öka zoomnivån
+SCD_ZOOM_OUT      = Minska zoomnivån
+SCD_RESET_ZOOM    = Återställ zoom till 100 % / standard
+SCD_MNU_NEW       = Arkiv-menyn → Ny
+SCD_MNU_OPEN      = Arkiv-menyn → Öppna
+SCD_MNU_SAVE      = Arkiv-menyn → Spara
+SCD_MNU_SAVE_AS   = Arkiv-menyn → Spara som
+SCD_MNU_PRINT     = Arkiv-menyn → Skriv ut
+SCD_MNU_EXPORT_PDF = Arkiv-menyn → Exportera som PDF
+SCD_EXIT_APP      = Stäng dokumentet (avsluta)
+SCD_MNU_EXIT      = Arkiv-menyn → Avsluta
+SCD_MNU_UNDO      = Redigera-menyn → Ångra
+SCD_MNU_REDO      = Redigera-menyn → Gör om
+SCD_MNU_CUT       = Redigera-menyn → Klipp ut
+SCD_MNU_COPY      = Redigera-menyn → Kopiera
+SCD_MNU_PASTE     = Redigera-menyn → Klistra in
+SCD_MNU_SELECT_ALL = Redigera-menyn → Markera allt
+SCD_MNU_SHORTCUTS = Hjälp-menyn → Kortkommandon
+SCD_MNU_ABOUT     = Hjälp-menyn → Om NSBEdit
+SCD_SHOW_SHORTCUTS = Visa den här listan med kortkommandon
+SCD_CLOSE_DLG     = Stäng den aktuella dialogen
+SCD_NEW_LINE      = Infoga ett nytt stycke
+SCD_INDENT        = Infoga ett tabbtecken
+SCD_DELETE        = Ta bort tecknet till höger
+SCD_BACKSPACE     = Ta bort tecknet till vänster
+SCD_DEL_WORD_R    = Ta bort ord till höger om markören
+SCD_DEL_WORD_L    = Ta bort ord till vänster om markören
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Om NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF-anteckningsblock och programmeringsredigerare för Windows\n\n
+ABOUT_PUBLISHED   = Publicerad: 
+ABOUT_VERSION     = Version: 
+ABOUT_EDITION     = Utgåva: 
+ABOUT_SEC_RTF     = ✏  RTF-redigering\n
+ABOUT_DESC_RTF    = •  Fetstil, kursiv, understrykning, genomstrykning, upphöjd/nedsänkt.\n•  Teckensnitt, storlek, färg och markeringsfärg; fullständig styckeformatering.\n•  Tabeller, listor, bilder, hyperlänkar, horisontella linjer.\n•  Exportera som PDF eller HTML 5.\n\n
+ABOUT_SEC_CODE    = ⌨  Kodredigering och syntaxmarkering\n
+ABOUT_DESC_CODE   = •  25 språk: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL med mera.\n•  Automatisk tabbkomplettering, auto-avslutning av par, auto-indrag, smart outdent.\n•  Växla radkommentarer (//, #, --) och HTML-blockkommentarer (<!-- -->).\n\n
+ABOUT_SEC_FTP     = ⚡  FTP och fjärrredigering\n
+ABOUT_DESC_FTP    = •  Spara direkt till FTP- och SFTP-servrar.\n•  Bläddra, byt namn och hantera filer på fjärrservern.\n•  Förhandsgranska i webbläsaren via konfigurerbar URL-rot.\n\n
+ABOUT_LICENSE     = Licensierad under GNU General Public License v2.\n
+ABOUT_BTN_LICENSE = Visa licens
+ABOUT_BTN_CREDITS = Tack till
+ABOUT_BTN_CLOSE   = Stäng
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Tack till
+CREDITS_SCINTILLA  = Scintilla är en gratis komponent med öppen källkod för kodredigering, av Neil Hodgson. NSBEdit använder Scintilla för syntaxmarkerad kodredigering.\n\n
+CREDITS_LEXILLA    = Lexilla är ett bibliotek med lexers för Scintilla, också av Neil Hodgson. NSBEdit använder Lexilla för syntaxmarkering av över 20 programmeringsspråk.\n\n
+CREDITS_GDI_PLUS   = GDI+ ingår i Windows platform SDK. NSBEdit använder det för att rendera NSBEdit-logotypen i Om-dialogen.\n
+CREDITS_MINGW      = MinGW-W64-projektet tillhandahåller en komplett körningsmiljö för GCC och LLVM/Clang på Windows. NSBEdit kompileras med MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite är en liten, snabb och fristående SQL-databasmotor i det offentliga domänet. NSBEdit använder SQLite-sammanslagningen för att lagra FTP/SFTP-anslutningsprofiler.\n\n
+CREDITS_CURL       = libcurl är ett gratis URL-överföringsbibliotek med öppen källkod av Daniel Stenberg. libssh2 är ett SSH2-protokollbibliotek med öppen källkod. NSBEdit använder båda för FTP- och SFTP-filöverföring vid fjärrredigering.\n\n
+CREDITS_RTF2HTML   = rtf2html är ett RTF-till-HTML-konverteringsbibliotek med öppen källkod av Valentyn Lavrinenko. NSBEdit använder det för att exportera RTF-dokument som HTML5. Licensierat under GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Lägg till webbplats...
+FTP_DISCONNECT       = Koppla från
+FTP_CLOSE_CONN_MENU  = Stäng anslutning
+FTP_CLOSE_CONN_PROMPT = Välj en anslutning att stänga:
+FTP_BROWSE           = Bläddra i filer...
+FTP_DLG_SITE_ADD     = Lägg till FTP/SFTP-webbplats
+FTP_DLG_SITE_EDIT    = Redigera FTP/SFTP-webbplats
+FTP_FRIENDLY_NAME    = Visningsnamn:
+FTP_PROTOCOL         = Protokoll:
+FTP_HOST             = Server:
+FTP_PORT             = Port:
+FTP_USERNAME         = Användarnamn:
+FTP_PASSWORD         = Lösenord:
+FTP_REMEMBER_PWD     = Kom ihåg lösenord
+FTP_INITIAL_PATH     = Startmapp:
+FTP_WEB_URL          = Webb-URL (rot):
+FTP_HELP_TITLE       = FTP/SFTP-profil — Fältguide
+FTP_SAVE             = Spara profil
+FTP_DELETE           = Ta bort profil
+FTP_DLG_BROWSER      = FTP-filbläddrare
+FTP_COL_NAME         = Namn
+FTP_COL_SIZE         = Storlek
+FTP_COL_PERMS        = Behörigheter
+FTP_CTX_OPEN         = Öppna / Hämta
+FTP_CTX_CHMOD        = Behörigheter...
+FTP_CTX_NEW_FILE     = Ny fil...
+FTP_CTX_NEW_DIR      = Ny mapp...
+FTP_INPUT_FILENAME   = Filnamn:
+FTP_INPUT_DIRNAME    = Mappnamn:
+FTP_CTX_DELETE       = Ta bort
+FTP_CTX_RENAME       = Byt namn...
+FTP_INPUT_RENAME     = Nytt namn:
+FTP_DLG_CHMOD        = Ändra behörigheter (chmod)
+FTP_CHMOD_OWNER      = Ägare
+FTP_CHMOD_GROUP      = Grupp
+FTP_CHMOD_OTHER      = Övriga
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Oktal:
+FTP_CHMOD_APPLY      = Verkställ
+FTP_CONN_FAILED      = Anslutningen misslyckades
+FTP_STATUS           = Ansluten:
+FTP_NOT_CONNECTED    = Anslut till en eller flera profiler innan du sparar till FTP.
+FTP_PICK_PROFILE     = Välj en profil att spara till:
+FTP_PW_PROMPT        = Ange lösenord
+FTP_PW_FOR           = Lösenord för
+MSG_FTP_UPLOAD_OK    = Filen sparades och laddades upp.
+MSG_FTP_UPLOAD_FAIL  = Uppladdningen misslyckades.
+MENU_SAVE_TO_FTP     = Spara till FTP...
+MENU_PREVIEW_FTP     = Förhandsgranska online.
+FTP_PREVIEW_LOCKED   = Fliken är låst medan förhandsgranskning är aktiv.
+FTP_PREVIEW_URL      = Förhandsgransknings-URL:
+BTN_OPEN_BROWSER     = Öppna i webbläsaren
+BTN_OPEN_BROWSER_TIP = Genväg: [Enter] för att öppna i webbläsaren.

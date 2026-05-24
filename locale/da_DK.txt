@@ -1,0 +1,439 @@
+# NSBEdit locale file — da_DK (Dansk)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Unavngivet
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Filer
+MENU_NEW        = &Ny\tCtrl+N
+MENU_OPEN       = &Åbn...\tCtrl+O
+MENU_SAVE       = &Gem\tCtrl+S
+MENU_SAVEAS     = Gem &som...\tCtrl+Shift+S
+MENU_PRINT      = &Udskriv...\tCtrl+P
+MENU_EXPORT_PDF = &Eksporter som PDF...\tCtrl+Shift+P
+MENU_EXIT       = A&fslut	Ctrl+W
+MENU_EDIT         = &Rediger
+MENU_UNDO         = &Fortryd\tCtrl+Z
+MENU_REDO         = &Gentag\tCtrl+Y
+MENU_CUT          = &Klip\tCtrl+X
+MENU_COPY         = &Kopiér\tCtrl+C
+MENU_PASTE        = &Sæt ind\tCtrl+V
+MENU_SELECTALL    = Vælg &alt\tCtrl+A
+MENU_PREFS        = &Indstillinger...
+PREF_TITLE        = Indstillinger
+PREF_SEC_APPEARANCE = Udseende
+PREF_DARK_MODE         = Mørkt tema
+PREF_LIGHT_MODE        = Lyst tema
+PREF_SEC_EDITOR        = Editorbaggrund
+PREF_EDITOR_LIGHT_BG   = Lys baggrund for ren tekst og kode
+PREF_EDITOR_DARK_BG    = Mørk baggrund for ren tekst og kode
+MENU_HELP       = &Hjælp
+MENU_SHORTCUTS  = &Tastaturgenveje...\tF1
+MENU_ABOUT      = &Om NSBEdit
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = Kon&vertér
+MENU_CONV_TO_PLAIN  = Fjern formatering — gem som ren tekst
+MENU_CONV_TO_RTF    = Tilføj &formatering — opret RTF
+MENU_CONV_TO_HTML5  = Eksporter som &HTML 5...
+MSG_HTML5_ERR       = HTML-konvertering mislykkedes.
+MSG_HTML5_SAVE_ERR  = Kunne ikke skrive HTML-filen.
+DLG_SAVE_HTML5      = Gem som HTML 5
+MENU_ENCODING       = &Tegnkodning
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (system)
+MENU_ENC_WIN1252    = Windows-1252 (vesteuropæisk)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = RTF-tekst
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Ren tekst
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Hvis du fjerner RTF-formateringen, slettes al fed, kursiv, farver og andre formateringseffekter.\n\nFortsæt og gem som ren tekst?
+MSG_ENC_LOSSY   = Nogle tegn kan muligvis ikke repræsenteres i den valgte kodning og erstattes med «?» eller lignende.\n\nFortsæt?
+MSG_DEL_PLAIN_FILE = Dokumentet er gemt som en RTF-fil.\n\nVil du slette den oprindelige tekstfil?
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Alle understøttede filer|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-filer (*.rtf)|*.rtf|Tekstfiler (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Konfiguration (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Alle filer (*.*)|*.*
+FILTER_SAVEAS = RTF-filer (*.rtf)|*.rtf|Tekstfiler (*.txt)|*.txt|Alle filer (*.*)|*.*
+FILTER_IMAGE  = Billedfiler|*.png;*.jpg;*.jpeg|PNG-filer (*.png)|*.png|JPEG-filer (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Åbn
+DLG_SAVEAS = Gem som
+DLG_IMAGE  = Indsæt billede
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Kunne ikke åbne filen.
+MSG_SAVE_ERR      = Kunne ikke gemme filen.
+MSG_HAS_FORMATTING = Dette dokument indeholder formatering (fed, farver, skriftstørrelser m.m.), der ikke kan gemmes i en ren tekstfil.\n\nKlik Ja for at gemme som ren tekst og fjerne al formatering.\nKlik Nej for at gemme som RTF i stedet (filens endelse ændres til .rtf).\nKlik Annullér for at gå tilbage uden at gemme.
+MSG_IMG_OPEN_ERR  = Kunne ikke åbne billedfilen.
+MSG_IMG_FMT_ERR   = Formatet understøttes ikke. Brug PNG eller JPEG.
+MSG_SAVE_PROMPT   = Gem ændringer i "%s"?
+DLG_SAVE_CHANGES  = Gem ændringer
+BTN_SAVE          = Gem
+BTN_DONT_SAVE     = Gem ikke
+BTN_CANCEL        = Annullér
+BTN_OK            = OK
+
+DLG_FILE_CHANGED        = Filen er ændret på disken
+MSG_FILE_CHANGED_PROMPT = "%s" blev ændret af et andet program, mens NSBEdit ikke var i fokus.\n\nGenindlæs fra disken?
+BTN_RELOAD              = Genindlæs
+BTN_KEEP                = Behold nuværende
+
+TAB_CTX_NEW_TAB         = Ny fane
+TAB_CTX_CLOSE_TAB       = Luk fane
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Ord
+SB_CHARS                = Tegn
+SB_SAVED                = Gemt
+SB_UNSAVED              = Ikke gemt
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Fed  (Ctrl+B)
+TIP_ITALIC      = Kursiv  (Ctrl+I)
+TIP_UNDERLINE   = Understregning  (Ctrl+U)
+TIP_STRIKE      = Gennemstregning
+TIP_SUBSCRIPT   = Sænket skrift  (f.eks. H₂O)
+TIP_SUPERSCRIPT = Hævet skrift  (f.eks. m²)
+TIP_FONTFACE    = Skrifttype
+TIP_FONTSIZE    = Skriftstørrelse (pt)
+TIP_COLOR       = Tekstfarve
+TIP_HIGHLIGHT   = Fremhævningsfarve
+TIP_ALIGN_L     = Venstrejustér
+TIP_ALIGN_C     = Centrér
+TIP_ALIGN_R     = Højrejustér
+TIP_ALIGN_J     = Margenjustér
+TIP_BULLET      = Punktliste
+TIP_NUMBERED    = Nummereret liste
+TIP_IMAGE       = Indsæt billede  (PNG / JPEG)
+TIP_INDENT_IN   = Forøg indrykning
+TIP_INDENT_OUT  = Formindsk indrykning
+TIP_LINESPACE   = Linjeafstand...
+TIP_FIND        = Find / Erstat  (Ctrl+F)
+TIP_LINK        = Indsæt hyperlink
+TIP_TABLE       = Tabelegenskaber...
+TIP_TABLE_DROP  = Indsæt tabel (vælg størrelse)
+TIP_HLINE       = Indsæt vandret linje
+TIP_CLEARFMT    = Fjern al formatering
+TIP_PRINT_BTN   = Udskriv...  (Ctrl+P)
+TIP_ZOOM        = Zoom
+TIP_WORDWRAP    = Slå tekstombrydning til/fra
+TIP_CASE        = Skift store/små bogstaver  (STORE / små / Stort Begyndelsesbogstav)
+TIP_LINENUM     = Slå linjenumre til/fra
+TIP_PARSPACE    = Afsnitsafstand...
+TIP_SAVE        = Gem  (Ctrl+S)
+TIP_SAVE_FTP    = Gem på FTP-server
+TIP_PREVIEW     = Forhåndsvis online.
+TIP_LANG_UI     = Brugergrænsefladesprog
+TIP_COMMENT     = Kommenter / fjern kommentar for markerede linjer
+MENU_GUI_LANG   = Brugergrænsefladesprog
+MENU_LANGUAGE   = &Sprog
+LANG_PLAIN_TEXT = Ren tekst
+LANG_UI_DANISH    = Dansk
+LANG_UI_ENGLISH   = English
+LANG_UI_ICELANDIC = Íslenska
+LANG_UI_NORWEGIAN = Norsk (bokmål)
+LANG_UI_SWEDISH   = Svenska
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-filer (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Eksporter som PDF
+MSG_PDF_ERR      = Kunne ikke eksportere PDF. Sørg for, at "Microsoft Print til PDF" er installeret (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Find / Erstat
+DLG_FIND_WHAT       = Find:
+DLG_REPL_WITH       = Erstat med:
+BTN_FIND_NEXT       = Find næste
+BTN_CLOSE           = Luk
+BTN_REPLACE         = Erstat
+BTN_REPLACE_ALL     = Erstat alle
+CHK_MATCHCASE       = Forskel på store/små bogstaver
+CHK_WHOLEWORD       = Hele ord
+CHK_REGEX           = Regex
+MSG_FIND_NOT_FOUND  = Teksten blev ikke fundet.
+MSG_REGEX_ERR       = Ugyldigt regulært udtryk.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Indsæt hyperlink
+DLG_LINK_URL    = Webadresse (URL):
+DLG_LINK_TEXT   = Visningstekst:
+LINK_TIP_CTRL   = [Ctrl]+Klik for at åbne i browseren
+MSG_LINK_BAD_URL = Angiv en gyldig URL.
+
+En URL skal begynde med et kendt skema som:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Indsæt tabel
+DLG_TABLE_ROWS  = Rækker:
+DLG_TABLE_COLS  = Kolonner:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Vælg tabelstørrelse
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Tabelegenskaber
+DLG_TABLE_INSERT    = Indsæt tabel
+TBLP_ROWS           = Rækker:
+TBLP_COLS           = Kolonner:
+TBLP_CELLW          = Kolonnebredde:
+TBLP_BORDERW        = Kantlinjebredde:
+TBLP_UNIT_HP        = halvpoint
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Cellepolstring øverst:
+TBLP_PAD_BOTTOM     = Cellepolstring nederst:
+TBLP_PAD_LEFT       = Cellepolstring til venstre:
+TBLP_PAD_RIGHT      = Cellepolstring til højre:
+TBLP_ROWH           = Række højde (0=auto):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Tabeljustering
+TBLP_ALIGN_L        = Venstre
+TBLP_ALIGN_C        = Centreret
+TBLP_ALIGN_R        = Højre
+BTN_APPLY           = Anvend
+CTX_TABLE_PROPS     = Tabelegenskaber...
+TBLP_MODE_ALTER     = Rediger nuværende tabel
+TBLP_MODE_NESTED    = Tabel i nuværende celle
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Linjeafstand
+RDO_LINESPACE_S  = Enkelt
+RDO_LINESPACE_15 = 1,5 linjer
+RDO_LINESPACE_D  = Dobbelt
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Afsnitsafstand
+DLG_PARSPACE_BEF = Afstand før (pt):
+DLG_PARSPACE_AFT = Afstand efter (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Tastaturgenveje
+SHORTCUTS_COL1   = Genvej
+SHORTCUTS_COL2   = Funktion
+SHORTCUTS_COL3   = Beskrivelse
+SHORTCUTS_BTN_CLOSE = Luk
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Fed
+SCF_ITALIC        = Kursiv
+SCF_UNDERLINE     = Understregning
+SCF_UNDO          = Fortryd
+SCF_REDO          = Gentag
+SCF_CUT           = Klip
+SCF_COPY          = Kopiér
+SCF_PASTE         = Sæt ind
+SCF_SELECT_ALL    = Vælg alt
+SCF_SAVE          = Gem
+SCF_SAVE_AS       = Gem som
+SCF_NEW           = Ny
+SCF_OPEN          = Åbn
+SCF_PRINT         = Udskriv
+SCF_EXPORT_PDF    = Eksporter som PDF
+SCF_PREVIEW       = Forhåndsvis online
+SCF_GO_START      = Gå til start
+SCF_GO_END        = Gå til slut
+SCF_WORD_LEFT     = Ord til venstre
+SCF_WORD_RIGHT    = Ord til højre
+SCF_EXTEND_SEL    = Udvid markering
+SCF_SEL_WORD      = Vælg ord
+SCF_ZOOM_IN       = Zoom ind
+SCF_ZOOM_OUT      = Zoom ud
+SCF_RESET_ZOOM    = Nulstil zoom
+SCF_EXIT          = Afslut
+SCF_SHORTCUTS     = Tastaturgenveje
+SCF_ABOUT         = Om
+SCF_CLOSE_DLG     = Luk dialog
+SCF_NEW_LINE      = Ny linje
+SCF_INDENT        = Indrykning
+SCF_DELETE        = Slet
+SCF_BACKSPACE     = Tilbage
+SCF_DEL_WORD_R    = Slet ord til højre
+SCF_DEL_WORD_L    = Slet ord til venstre
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Slå fed til/fra for markeringen
+SCD_ITALIC        = Slå kursiv til/fra for markeringen
+SCD_UNDERLINE     = Slå understregning til/fra for markeringen
+SCD_UNDO          = Fortryd den seneste ændring
+SCD_REDO          = Gentag den seneste fortrydelse
+SCD_CUT           = Klip markering til udklipsholder
+SCD_COPY          = Kopiér markering til udklipsholder
+SCD_PASTE         = Sæt ind fra udklipsholder
+SCD_SELECT_ALL    = Vælg hele dokumentet
+SCD_SAVE          = Gem den aktuelle fil
+SCD_SAVE_AS       = Gem til en ny fil
+SCD_NEW           = Opret et nyt tomt dokument
+SCD_OPEN          = Åbn en fil
+SCD_PRINT         = Udskriv dokumentet
+SCD_EXPORT_PDF    = Eksporter dokumentet som PDF-fil
+SCD_PREVIEW       = Upload og forhåndsvis FTP-tilknyttet fil i browseren
+SCD_GO_START      = Flyt markøren til dokumentets start
+SCD_GO_END        = Flyt markøren til dokumentets slut
+SCD_WORD_LEFT     = Flyt markøren ét ord til venstre
+SCD_WORD_RIGHT    = Flyt markøren ét ord til højre
+SCD_EXTEND_SEL    = Udvid tekstmarkering ét tegn
+SCD_SEL_WORD      = Udvid markering ét ord ad gangen
+SCD_ZOOM_IN       = Forøg zoomniveauet
+SCD_ZOOM_OUT      = Formindsk zoomniveauet
+SCD_RESET_ZOOM    = Nulstil zoom til 100 % / standard
+SCD_MNU_NEW       = Filer-menu → Ny
+SCD_MNU_OPEN      = Filer-menu → Åbn
+SCD_MNU_SAVE      = Filer-menu → Gem
+SCD_MNU_SAVE_AS   = Filer-menu → Gem som
+SCD_MNU_PRINT     = Filer-menu → Udskriv
+SCD_MNU_EXPORT_PDF = Filer-menu → Eksporter som PDF
+SCD_EXIT_APP      = Luk dokumentet (afslut)
+SCD_MNU_EXIT      = Filer-menu → Afslut
+SCD_MNU_UNDO      = Rediger-menu → Fortryd
+SCD_MNU_REDO      = Rediger-menu → Gentag
+SCD_MNU_CUT       = Rediger-menu → Klip
+SCD_MNU_COPY      = Rediger-menu → Kopiér
+SCD_MNU_PASTE     = Rediger-menu → Sæt ind
+SCD_MNU_SELECT_ALL = Rediger-menu → Vælg alt
+SCD_MNU_SHORTCUTS = Hjælp-menu → Tastaturgenveje
+SCD_MNU_ABOUT     = Hjælp-menu → Om NSBEdit
+SCD_SHOW_SHORTCUTS = Vis denne liste med tastaturgenveje
+SCD_CLOSE_DLG     = Luk den aktuelle dialog
+SCD_NEW_LINE      = Indsæt et nyt afsnit
+SCD_INDENT        = Indsæt et tabulatortegn
+SCD_DELETE        = Slet tegnet til højre
+SCD_BACKSPACE     = Slet tegnet til venstre
+SCD_DEL_WORD_R    = Slet ord til højre for markøren
+SCD_DEL_WORD_L    = Slet ord til venstre for markøren
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Om NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF-notepad og programmeringseditor til Windows\n\n
+ABOUT_PUBLISHED   = Udgivet: 
+ABOUT_VERSION     = Version: 
+ABOUT_EDITION     = Udgave: 
+ABOUT_SEC_RTF     = ✏  RTF-redigering\n
+ABOUT_DESC_RTF    = •  Fed, kursiv, understregning, gennemstregning, hævet/sænket skrift.\n•  Skrifttype, størrelse, farve og fremhævning; fuld afsnitsformatering.\n•  Tabeller, lister, billeder, hyperlinks, vandrette linjer.\n•  Eksporter som PDF eller HTML 5.\n\n
+ABOUT_SEC_CODE    = ⌨  Koderedigering og syntaksfremhævning\n
+ABOUT_DESC_CODE   = •  25 sprog: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL m.fl.\n•  Autofuldførelse, automatisk lukning af par, auto-indrykning, smart udrykning.\n•  Slå linjekommentarer (//, #, --) og HTML-blokkommentarer (<!-- -->) til/fra.\n\n
+ABOUT_SEC_FTP     = ⚡  FTP og fjernstyret redigering\n
+ABOUT_DESC_FTP    = •  Gem direkte til FTP- og SFTP-servere.\n•  Gennemse, omdøb og administrér fjernfiler.\n•  Live forhåndsvisning i browser via konfigurerbar web-URL-rod.\n\n
+ABOUT_LICENSE     = Licenseret under GNU General Public License v2.\n
+ABOUT_BTN_LICENSE = Vis licens
+ABOUT_BTN_CREDITS = Tak til
+ABOUT_BTN_CLOSE   = Luk
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Tak til
+CREDITS_SCINTILLA  = Scintilla er en gratis open source-komponent til koderedigering af Neil Hodgson. NSBEdit bruger Scintilla til syntaksfremhævet koderedigering.\n\n
+CREDITS_LEXILLA    = Lexilla er et bibliotek med lexers til Scintilla, også af Neil Hodgson. NSBEdit bruger Lexilla til syntaksfremhævning for over 20 programmeringssprog.\n\n
+CREDITS_GDI_PLUS   = GDI+ er en del af Windows platform SDK. NSBEdit bruger det til at gengive NSBEdit-logoet i Om-dialogen.\n
+CREDITS_MINGW      = MinGW-W64-projektet leverer et komplet kørtidsmiljø til GCC og LLVM/Clang på Windows. NSBEdit er kompileret med MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite er en lille, hurtig og selvstændig SQL-databasemotor i det offentlige domæne. NSBEdit bruger SQLite-sammenlægningen til at gemme FTP/SFTP-forbindelsesprofiler.\n\n
+CREDITS_CURL       = libcurl er et gratis open source-URL-overførselsbibliotek af Daniel Stenberg. libssh2 er et open source SSH2-protokolbibliotek. NSBEdit bruger begge til FTP- og SFTP-filoverførsel ved fjernstyret redigering.\n\n
+CREDITS_RTF2HTML   = rtf2html er et open source RTF-til-HTML-konverteringsbibliotek af Valentyn Lavrinenko. NSBEdit bruger det til at eksportere RTF-dokumenter som HTML5. Licenseret under GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Tilføj websted...
+FTP_DISCONNECT       = Afbryd forbindelsen
+FTP_CLOSE_CONN_MENU  = Luk forbindelse
+FTP_CLOSE_CONN_PROMPT = Vælg en forbindelse, der skal lukkes:
+FTP_BROWSE           = Gennemse filer...
+FTP_DLG_SITE_ADD     = Tilføj FTP/SFTP-websted
+FTP_DLG_SITE_EDIT    = Rediger FTP/SFTP-websted
+FTP_FRIENDLY_NAME    = Visningsnavn:
+FTP_PROTOCOL         = Protokol:
+FTP_HOST             = Server:
+FTP_PORT             = Port:
+FTP_USERNAME         = Brugernavn:
+FTP_PASSWORD         = Adgangskode:
+FTP_REMEMBER_PWD     = Husk adgangskode
+FTP_INITIAL_PATH     = Startmappe:
+FTP_WEB_URL          = Web-URL (rod):
+FTP_HELP_TITLE       = FTP/SFTP-profil — Feltvejledning
+FTP_SAVE             = Gem profil
+FTP_DELETE           = Slet profil
+FTP_DLG_BROWSER      = FTP-filgennemser
+FTP_COL_NAME         = Navn
+FTP_COL_SIZE         = Størrelse
+FTP_COL_PERMS        = Tilladelser
+FTP_CTX_OPEN         = Åbn / Hent
+FTP_CTX_CHMOD        = Tilladelser...
+FTP_CTX_NEW_FILE     = Ny fil...
+FTP_CTX_NEW_DIR      = Ny mappe...
+FTP_INPUT_FILENAME   = Filnavn:
+FTP_INPUT_DIRNAME    = Mappenavn:
+FTP_CTX_DELETE       = Slet
+FTP_CTX_RENAME       = Omdøb...
+FTP_INPUT_RENAME     = Nyt navn:
+FTP_DLG_CHMOD        = Rediger tilladelser (chmod)
+FTP_CHMOD_OWNER      = Ejer
+FTP_CHMOD_GROUP      = Gruppe
+FTP_CHMOD_OTHER      = Andre
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Oktal:
+FTP_CHMOD_APPLY      = Anvend
+FTP_CONN_FAILED      = Forbindelsen mislykkedes
+FTP_STATUS           = Forbundet:
+FTP_NOT_CONNECTED    = Opret forbindelse til én eller flere profiler, inden du gemmer til FTP.
+FTP_PICK_PROFILE     = Vælg en profil at gemme til:
+FTP_PW_PROMPT        = Indtast adgangskode
+FTP_PW_FOR           = Adgangskode til
+MSG_FTP_UPLOAD_OK    = Filen blev gemt og uploadet.
+MSG_FTP_UPLOAD_FAIL  = Upload mislykkedes.
+MENU_SAVE_TO_FTP     = Gem til FTP...
+MENU_PREVIEW_FTP     = Forhåndsvis online.
+FTP_PREVIEW_LOCKED   = Fanen er låst, mens forhåndsvisning er aktiv.
+FTP_PREVIEW_URL      = Forhåndsvisnings-URL:
+BTN_OPEN_BROWSER     = Åbn i browser
+BTN_OPEN_BROWSER_TIP = Genvej: [Enter] for at åbne i browseren.
+BTN_REVERT           = Gendan og luk
+BTN_REVERT_TIP       = Genvej: [Esc] for at gendanne og lukke denne dialog.
+FTP_PREVIEW_UP_FAIL  = Upload mislykkedes:
+FTP_PREVIEW_REV_FAIL = Gendannelse mislykkedes:
+BTN_SAVE_BACKUP      = Gem sikkerhedskopi lokalt...
+BTN_CLOSE_ANYWAY     = Luk uden at gendanne
+FTP_SAVE_BROWSER     = Gem til FTP — vælg destination
+FTP_FILENAME_PROMPT  = Filnavn:
+FTP_SAVE_HERE        = Gem her
+FTP_SAVE_TO          = Gemt til FTP
+FTP_SAVED_OK         = Filen er uploadet. Forbindelsen holdes åben.
+MSG_FTP_DELETE_WARN  = Slet "%s" fra serveren?\n\nDette kan ikke fortrydes.
+MSG_FTP_CHMOD_OK     = Tilladelser opdateret.
+MSG_FTP_DELETE_FAIL  = Sletning mislykkedes.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Indsæt vandret linje
+DLG_HRUL_PROPS      = Egenskaber for vandret linje
+HRP_STYLE           = Stil:
+HRP_THICKNESS       = Tykkelse (pt):
+HRP_SPACE_ABOVE     = Afstand ovenover (pt):
+HRP_SPACE_BELOW     = Afstand nedenunder (pt):
+HRP_WIDTH_PCT       = Bredde (%):
+HRP_ALIGNMENT       = Justering:
+HRP_START_COLOUR    = Startfarve:
+HRP_END_COLOUR      = Slutfarve (gradient):
+HRP_ALIGN_L         = Venstre
+HRP_ALIGN_C         = Centreret
+HRP_ALIGN_R         = Højre
+HRP_STYLE_SINGLE    = Enkelt tynd
+HRP_STYLE_THICK     = Tyk
+HRP_STYLE_DOUBLE    = Dobbelt
+HRP_STYLE_DOTTED    = Punkteret
+HRP_STYLE_DASHED    = Stiplet
+HRP_STYLE_HAIRLINE  = Hårfin
+BTN_CHOOSE          = Vælg…

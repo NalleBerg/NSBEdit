@@ -359,13 +359,14 @@
                                                 Ne_UpdateStatusText; invoked from the GUI
                                                 Language WM_COMMAND handler so locale
                                                 switches instantly with no restart.
-                                                locale\no_nb.txt (RCDATA 11,
-                                                IDR_LOCALE_NO_NB): full Norwegian Bokmål
-                                                translation (~200 keys). LANG_UI_ENGLISH /
-                                                LANG_UI_NORWEGIAN keys added to en_GB.txt
-                                                and no_nb.txt for the locale menu labels.
+                                                Five locale files embedded as RCDATA:
+                                                en_GB(10), no_nb(11), is_IS(14), sv_SE(15),
+                                                da_DK(16). LANG_UI_DANISH/ENGLISH/ICELANDIC/
+                                                NORWEGIAN/SWEDISH keys present in every file.
                                                 Ne_RebuildLocaleMenu forward-declared before
                                                 Ne_BuildMainMenu (which calls it).
+                                                See add_ui_language_INTERNALS.txt for the
+                                                full step-by-step checklist and RC ID table.
 
   ne_tabs.h / ne_tabs.cpp                       Tabbed editor module — SysTabControl32
                                                 strip + per-tab RichEdit HWND ownership.
@@ -428,15 +429,24 @@
                                                 # comments, \n CRLF \t tab \\ backslash.
                                                 Loaded by Ne_LoadLocale() at startup.
                                                 Never read from disk at runtime.
-                                                Added keys: LANG_UI_ENGLISH,
-                                                LANG_UI_NORWEGIAN (locale menu labels).
+                                                Contains LANG_UI_DANISH/ENGLISH/ICELANDIC/
+                                                NORWEGIAN/SWEDISH for the language menu.
 
   locale\no_nb.txt                              Norwegian Bokmål translation (RCDATA 11,
                                                 IDR_LOCALE_NO_NB). Full ~200-key
-                                                translation of en_GB.txt. Selected via
-                                                GUI Language → Norsk (bokmål).
-                                                g_localeId = 1 persisted as "locale_id"
-                                                in DB.
+                                                translation. g_localeId = 1.
+
+  locale\is_IS.txt                              Icelandic (Íslenska) translation (RCDATA 14,
+                                                IDR_LOCALE_IS_IS). Full ~200-key
+                                                translation. g_localeId = 2.
+
+  locale\sv_SE.txt                              Swedish (Svenska) translation (RCDATA 15,
+                                                IDR_LOCALE_SV_SE). Full ~200-key
+                                                translation. g_localeId = 3.
+
+  locale\da_DK.txt                              Danish (Dansk) translation (RCDATA 16,
+                                                IDR_LOCALE_DA_DK). Full ~200-key
+                                                translation. g_localeId = 4.
 
   ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
                                                 SQLite3 (statically linked). DB lookup order
@@ -505,6 +515,17 @@
                                                 checkboxes/radios — attach tip string via
                                                 SetPropW(L"avTip") and read in one shared proc;
                                                 Win32 TOOLTIPS_CLASS unreliable for these controls.
+
+  API_INTERNALS\INTERNALS\add_ui_language_INTERNALS.txt
+                                                Step-by-step checklist for adding a new UI
+                                                language. Covers all 8 touch-points: locale
+                                                file creation, RC resource ID assignment
+                                                (with ID layout table and next-free pointer),
+                                                #define, Ne_LoadLocale case, menu item order,
+                                                LANG_UI_* keys in all existing files, and
+                                                build+test. Pitfalls: duplicate RCDATA ID
+                                                (windres silent), missing LANG_UI_* key,
+                                                locale integer ID vs RCDATA ID confusion.
 
   API_INTERNALS\INTERNALS\hrule_INTERNALS.txt  Horizontal Rule implementation internals —
                                                 NeHRuleEntry struct, g_hrMap / g_hrPendingCleanup,

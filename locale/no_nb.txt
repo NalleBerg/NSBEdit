@@ -142,9 +142,11 @@ TIP_COMMENT     = Kommenter / fjern kommentar for markerte linjer
 MENU_GUI_LANG   = Grensesnittspråk
 MENU_LANGUAGE   = &Språk
 LANG_PLAIN_TEXT = Ren tekst
+LANG_UI_DANISH    = Dansk
 LANG_UI_ENGLISH = English
 LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)
+LANG_UI_SWEDISH   = Svenska
 
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF-filer (*.pdf)|*.pdf

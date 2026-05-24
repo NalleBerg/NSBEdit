@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.24.09 - 24.05.2026 09:14
+
+- **Swedish (Svenska) UI translation**: Full translation of all ~200 UI strings added as `locale/sv_SE.txt` (RCDATA 15, locale ID 3). Appears in the GUI Language menu in alphabetical order by native name: Dansk → English → Íslenska → Norsk → Svenska. All existing locale files updated with `LANG_UI_SWEDISH`.
+- **Danish (Dansk) UI translation**: Full translation of all ~200 UI strings added as `locale/da_DK.txt` (RCDATA 16, locale ID 4). "Dansk" sorts before "English" alphabetically and appears at the top of the language menu. All existing locale files updated with `LANG_UI_DANISH`.
+- **UK English corrections in `en_GB.txt`**: `HRP_ALIGN_C` changed from "Center" to "Centre"; `ABOUT_BTN_LICENSE` changed from "View License" to "View Licence" (British noun form).
+
 ## v2026.05.24.08 - 24.05.2026 08:55
 
 - **Icelandic (Íslenska) UI translation**: Full translation of all ~200 UI strings added as `locale/is_IS.txt`. Appears in the GUI Language menu between English and Norwegian (alphabetical by native name). Switching requires no restart. All existing locale files updated with `LANG_UI_ICELANDIC = Íslenska`.
