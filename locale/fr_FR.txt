@@ -149,6 +149,7 @@ LANG_UI_FRENCH    = Français
 LANG_UI_GERMAN    = Deutsch
 LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)
+LANG_UI_SPANISH   = Espagnol
 LANG_UI_SWEDISH   = Svenska
 
 # ── Export PDF ───────────────────────────────────────────────────────────────
