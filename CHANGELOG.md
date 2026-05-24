@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.24.11 (Greek) - 24.05.2026 11:01
+
+- **Greek (Ελληνικά) UI translation**: Full translation of all ~200 UI strings added as `locale/el_GR.txt` (RCDATA 22, locale ID 10). "Ελληνικά" sorts as "El…" — between "Deutsch" and "English" — giving the menu order: Dansk → Deutsch → Ελληνικά → English → Español → Français → Íslenska → Norsk → Suomi → Svenska → Українська.
+- **All locale files updated**: `LANG_UI_GREEK` added to every existing locale file (en_GB → "Greek", no_nb → "Gresk", is_IS → "Gríska", sv_SE → "Grekiska", da_DK → "Græsk", fi_FI → "Kreikka", de_DE → "Griechisch", fr_FR → "Grec", es_ES → "Griego", uk_UA → "Грецька").
+- **FTP site dialog auto-resizes width**: Pre-measures button labels before window creation; width = `max(S(420), totalButtonWidth + 2×padding)`. Fixes clipping of long translated button labels (e.g. "Delete Profile" in Ukrainian). Button gap widened S(8) → S(12).
+
 ## v2026.05.24.10 (Ukrainian) - 24.05.2026 10:20
 
 - **Ukrainian (Українська) UI translation**: Full translation of all ~200 UI strings added as `locale/uk_UA.txt` (RCDATA 21, locale ID 9). Menu order: Dansk → Deutsch → English → Español → Français → Íslenska → Norsk → Suomi → Svenska → Українська.

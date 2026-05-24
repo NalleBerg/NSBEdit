@@ -1,0 +1,445 @@
+# NSBEdit locale file — el_GR (Ελληνικά)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Χωρίς τίτλο
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Αρχείο
+MENU_NEW        = &Νέο\tCtrl+N
+MENU_OPEN       = &Άνοιγμα...\tCtrl+O
+MENU_SAVE       = &Αποθήκευση\tCtrl+S
+MENU_SAVEAS     = Αποθήκευση &ως...\tCtrl+Shift+S
+MENU_PRINT      = &Εκτύπωση...\tCtrl+P
+MENU_EXPORT_PDF = &Εξαγωγή ως PDF...\tCtrl+Shift+P
+MENU_EXIT       = Έ&ξοδος	Ctrl+W
+MENU_EDIT         = &Επεξεργασία
+MENU_UNDO         = &Αναίρεση\tCtrl+Z
+MENU_REDO         = &Επανάληψη\tCtrl+Y
+MENU_CUT          = Α&ποκοπή\tCtrl+X
+MENU_COPY         = &Αντιγραφή\tCtrl+C
+MENU_PASTE        = &Επικόλληση\tCtrl+V
+MENU_SELECTALL    = Επιλογή &όλων\tCtrl+A
+MENU_PREFS        = &Προτιμήσεις...
+PREF_TITLE        = Προτιμήσεις
+PREF_SEC_APPEARANCE = Εμφάνιση
+PREF_DARK_MODE         = Σκοτεινή λειτουργία
+PREF_LIGHT_MODE        = Φωτεινή λειτουργία
+PREF_SEC_EDITOR        = Φόντο επεξεργαστή
+PREF_EDITOR_LIGHT_BG   = Φωτεινό φόντο για απλό κείμενο και κώδικα
+PREF_EDITOR_DARK_BG    = Σκοτεινό φόντο για απλό κείμενο και κώδικα
+MENU_HELP       = &Βοήθεια
+MENU_SHORTCUTS  = &Συντομεύσεις πληκτρολογίου...\tF1
+MENU_ABOUT      = &Σχετικά με το NSBEdit
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = Μετα&τροπή
+MENU_CONV_TO_PLAIN  = Αφαίρεση μορφοποίησης — αποθήκευση ως απλό κείμενο
+MENU_CONV_TO_RTF    = Προσθήκη &μορφοποίησης — δημιουργία RTF
+MENU_CONV_TO_HTML5  = Εξαγωγή ως &HTML 5...
+MSG_HTML5_ERR       = Αποτυχία μετατροπής HTML.
+MSG_HTML5_SAVE_ERR  = Αδύνατη η εγγραφή αρχείου HTML.
+DLG_SAVE_HTML5      = Αποθήκευση ως HTML 5
+MENU_ENCODING       = &Κωδικοποίηση
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (σύστημα)
+MENU_ENC_WIN1252    = Windows-1252 (Δυτικά)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = Μορφοποιημένο κείμενο
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Απλό κείμενο
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Η αφαίρεση μορφοποίησης RTF θα διαγράψει όλες τις έντονες γραφές, τα πλάγια, τα χρώματα και άλλα εφέ εμπλουτισμένου κειμένου.\n\nΣυνέχεια και αποθήκευση ως απλό κείμενο;
+MSG_ENC_LOSSY   = Ορισμένοι χαρακτήρες μπορεί να μην αναπαρίστανται στην επιλεγμένη κωδικοποίηση και θα αντικατασταθούν με ";" ή παρόμοιο.\n\nΣυνέχεια;
+MSG_DEL_PLAIN_FILE = Το έγγραφο αποθηκεύτηκε ως αρχείο RTF.\n\nΔιαγραφή του αρχικού αρχείου απλού κειμένου;
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Όλα τα υποστηριζόμενα αρχεία|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|Αρχεία RTF (*.rtf)|*.rtf|Αρχεία κειμένου (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Config (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Όλα τα αρχεία (*.*)|*.*
+FILTER_SAVEAS = Αρχεία RTF (*.rtf)|*.rtf|Αρχεία κειμένου (*.txt)|*.txt|Όλα τα αρχεία (*.*)|*.*
+FILTER_IMAGE  = Αρχεία εικόνας|*.png;*.jpg;*.jpeg|Αρχεία PNG (*.png)|*.png|Αρχεία JPEG (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Άνοιγμα
+DLG_SAVEAS = Αποθήκευση ως
+DLG_IMAGE  = Εισαγωγή εικόνας
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Αδύνατο το άνοιγμα του αρχείου.
+MSG_SAVE_ERR      = Αδύνατη η αποθήκευση του αρχείου.
+MSG_HAS_FORMATTING = Αυτό το έγγραφο περιέχει μορφοποίηση (έντονα, χρώματα, μεγέθη γραμματοσειράς κ.λπ.) που δεν μπορεί να αποθηκευτεί σε αρχείο απλού κειμένου.\n\nΠατήστε Ναι για αποθήκευση ως απλό κείμενο και απόρριψη όλης της μορφοποίησης.\nΠατήστε Όχι για αποθήκευση ως RTF (το αρχείο θα μετονομαστεί με επέκταση .rtf).\nΠατήστε Ακύρωση για επιστροφή χωρίς αποθήκευση.
+MSG_IMG_OPEN_ERR  = Αδύνατο το άνοιγμα αρχείου εικόνας.
+MSG_IMG_FMT_ERR   = Μη υποστηριζόμενη μορφή. Χρησιμοποιήστε PNG ή JPEG.
+MSG_SAVE_PROMPT   = Αποθήκευση αλλαγών στο "%s";
+DLG_SAVE_CHANGES  = Αποθήκευση αλλαγών
+BTN_SAVE          = Αποθήκευση
+BTN_DONT_SAVE     = Χωρίς αποθήκευση
+BTN_CANCEL        = Ακύρωση
+BTN_OK            = ΟΚ
+
+DLG_FILE_CHANGED        = Το αρχείο άλλαξε στο δίσκο
+MSG_FILE_CHANGED_PROMPT = Το "%s" τροποποιήθηκε από άλλο πρόγραμμα ενώ το NSBEdit δεν είχε εστίαση.\n\nΕπαναφόρτωση από δίσκο;
+BTN_RELOAD              = Επαναφόρτωση
+BTN_KEEP                = Διατήρηση τρέχοντος
+
+TAB_CTX_NEW_TAB         = Νέα καρτέλα
+TAB_CTX_CLOSE_TAB       = Κλείσιμο καρτέλας
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Λέξεις
+SB_CHARS                = Χαρακτήρες
+SB_SAVED                = Αποθηκευμένο
+SB_UNSAVED              = Μη αποθηκευμένο
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Έντονα  (Ctrl+B)
+TIP_ITALIC      = Πλάγια  (Ctrl+I)
+TIP_UNDERLINE   = Υπογράμμιση  (Ctrl+U)
+TIP_STRIKE      = Διαγραφή
+TIP_SUBSCRIPT   = Δείκτης  (π.χ. H₂O)
+TIP_SUPERSCRIPT = Εκθέτης  (π.χ. m²)
+TIP_FONTFACE    = Γραμματοσειρά
+TIP_FONTSIZE    = Μέγεθος γραμματοσειράς (pt)
+TIP_COLOR       = Χρώμα κειμένου
+TIP_HIGHLIGHT   = Χρώμα επισήμανσης
+TIP_ALIGN_L     = Στοίχιση αριστερά
+TIP_ALIGN_C     = Στοίχιση στο κέντρο
+TIP_ALIGN_R     = Στοίχιση δεξιά
+TIP_ALIGN_J     = Πλήρης στοίχιση
+TIP_BULLET      = Λίστα με κουκκίδες
+TIP_NUMBERED    = Αριθμημένη λίστα
+TIP_IMAGE       = Εισαγωγή εικόνας  (PNG / JPEG)
+TIP_INDENT_IN   = Αύξηση εσοχής
+TIP_INDENT_OUT  = Μείωση εσοχής
+TIP_LINESPACE   = Διάστιχο...
+TIP_FIND        = Εύρεση / Αντικατάσταση  (Ctrl+F)
+TIP_LINK        = Εισαγωγή υπερσύνδεσμου
+TIP_TABLE       = Ιδιότητες πίνακα...
+TIP_TABLE_DROP  = Εισαγωγή πίνακα (επιλογή μεγέθους)
+TIP_HLINE       = Εισαγωγή οριζόντιας γραμμής
+TIP_CLEARFMT    = Εκκαθάριση όλης της μορφοποίησης
+TIP_PRINT_BTN   = Εκτύπωση...  (Ctrl+P)
+TIP_ZOOM        = Ζουμ
+TIP_WORDWRAP    = Εναλλαγή αναδίπλωσης λέξης
+TIP_CASE        = Εναλλαγή πεζών/κεφαλαίων  (ΚΕΦΑΛΑΙΑ / πεζά / Τίτλος)
+TIP_LINENUM     = Εναλλαγή αριθμών γραμμής
+TIP_PARSPACE    = Απόσταση παραγράφου...
+TIP_SAVE        = Αποθήκευση  (Ctrl+S)
+TIP_SAVE_FTP    = Αποθήκευση στον διακομιστή FTP
+TIP_PREVIEW     = Προεπισκόπηση στο διαδίκτυο.
+TIP_LANG_UI     = Γλώσσα διεπαφής
+TIP_COMMENT     = Σχολιασμός / Κατάργηση σχολίου επιλεγμένων γραμμών
+MENU_GUI_LANG   = Γλώσσα
+MENU_LANGUAGE   = &Γλώσσα
+LANG_PLAIN_TEXT = Απλό κείμενο
+LANG_UI_DANISH    = Δανικά
+LANG_UI_ENGLISH   = Αγγλικά
+LANG_UI_FINNISH   = Φινλανδικά
+LANG_UI_FRENCH    = Γαλλικά
+LANG_UI_GERMAN    = Γερμανικά
+LANG_UI_SPANISH   = Ισπανικά
+LANG_UI_GREEK     = Ελληνικά
+LANG_UI_SWEDISH   = Σουηδικά
+LANG_UI_UKRAINIAN = Ουκρανικά
+LANG_UI_ICELANDIC = Ισλανδικά
+LANG_UI_NORWEGIAN = Νορβηγικά
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = Αρχεία PDF (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Εξαγωγή ως PDF
+MSG_PDF_ERR      = Αδύνατη η εξαγωγή PDF. Βεβαιωθείτε ότι το "Microsoft Print to PDF" είναι εγκατεστημένο (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Εύρεση / Αντικατάσταση
+DLG_FIND_WHAT       = Εύρεση:
+DLG_REPL_WITH       = Αντικατάσταση με:
+BTN_FIND_NEXT       = Επόμενο
+BTN_CLOSE           = Κλείσιμο
+BTN_REPLACE         = Αντικατάσταση
+BTN_REPLACE_ALL     = Αντικατάσταση όλων
+CHK_MATCHCASE       = Διάκριση πεζών/κεφαλαίων
+CHK_WHOLEWORD       = Ολόκληρη λέξη
+CHK_REGEX           = Regex
+MSG_FIND_NOT_FOUND  = Το κείμενο δεν βρέθηκε.
+MSG_REGEX_ERR       = Μη έγκυρη κανονική έκφραση.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Εισαγωγή υπερσύνδεσμου
+DLG_LINK_URL    = URL:
+DLG_LINK_TEXT   = Εμφανιζόμενο κείμενο:
+LINK_TIP_CTRL   = [Ctrl]+Κλικ για άνοιγμα στο πρόγραμμα περιήγησης
+MSG_LINK_BAD_URL = Εισαγάγετε έγκυρο URL.
+
+Ένα URL πρέπει να αρχίζει με αναγνωρισμένο πρόθεμα όπως:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Εισαγωγή πίνακα
+DLG_TABLE_ROWS  = Γραμμές:
+DLG_TABLE_COLS  = Στήλες:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Επιλέξτε μέγεθος πίνακα
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Ιδιότητες πίνακα
+DLG_TABLE_INSERT    = Εισαγωγή πίνακα
+TBLP_ROWS           = Γραμμές:
+TBLP_COLS           = Στήλες:
+TBLP_CELLW          = Πλάτος στήλης:
+TBLP_BORDERW        = Πλάτος περιγράμματος:
+TBLP_UNIT_HP        = μισό pt
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Εσωτερική απόσταση πάνω:
+TBLP_PAD_BOTTOM     = Εσωτερική απόσταση κάτω:
+TBLP_PAD_LEFT       = Εσωτερική απόσταση αριστερά:
+TBLP_PAD_RIGHT      = Εσωτερική απόσταση δεξιά:
+TBLP_ROWH           = Ύψος γραμμής (0=αυτόματο):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Στοίχιση πίνακα
+TBLP_ALIGN_L        = Αριστερά
+TBLP_ALIGN_C        = Κέντρο
+TBLP_ALIGN_R        = Δεξιά
+BTN_APPLY           = Εφαρμογή
+CTX_TABLE_PROPS     = Ιδιότητες πίνακα...
+TBLP_MODE_ALTER     = Τροποποίηση τρέχοντος πίνακα
+TBLP_MODE_NESTED    = Πίνακας στο τρέχον κελί
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Διάστιχο
+RDO_LINESPACE_S  = Απλό
+RDO_LINESPACE_15 = 1,5 γραμμές
+RDO_LINESPACE_D  = Διπλό
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Απόσταση παραγράφου
+DLG_PARSPACE_BEF = Απόσταση πριν (pt):
+DLG_PARSPACE_AFT = Απόσταση μετά (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Συντομεύσεις πληκτρολογίου
+SHORTCUTS_COL1   = Συντόμευση
+SHORTCUTS_COL2   = Λειτουργία
+SHORTCUTS_COL3   = Περιγραφή
+SHORTCUTS_BTN_CLOSE = Κλείσιμο
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Έντονα
+SCF_ITALIC        = Πλάγια
+SCF_UNDERLINE     = Υπογράμμιση
+SCF_UNDO          = Αναίρεση
+SCF_REDO          = Επανάληψη
+SCF_CUT           = Αποκοπή
+SCF_COPY          = Αντιγραφή
+SCF_PASTE         = Επικόλληση
+SCF_SELECT_ALL    = Επιλογή όλων
+SCF_SAVE          = Αποθήκευση
+SCF_SAVE_AS       = Αποθήκευση ως
+SCF_NEW           = Νέο
+SCF_OPEN          = Άνοιγμα
+SCF_PRINT         = Εκτύπωση
+SCF_EXPORT_PDF    = Εξαγωγή ως PDF
+SCF_PREVIEW       = Προεπισκόπηση στο διαδίκτυο
+SCF_GO_START      = Μετάβαση στην αρχή
+SCF_GO_END        = Μετάβαση στο τέλος
+SCF_WORD_LEFT     = Λέξη αριστερά
+SCF_WORD_RIGHT    = Λέξη δεξιά
+SCF_EXTEND_SEL    = Επέκταση επιλογής
+SCF_SEL_WORD      = Επιλογή λέξης
+SCF_ZOOM_IN       = Μεγέθυνση
+SCF_ZOOM_OUT      = Σμίκρυνση
+SCF_RESET_ZOOM    = Επαναφορά ζουμ
+SCF_EXIT          = Έξοδος
+SCF_SHORTCUTS     = Συντομεύσεις πληκτρολογίου
+SCF_ABOUT         = Σχετικά με
+SCF_CLOSE_DLG     = Κλείσιμο παραθύρου
+SCF_NEW_LINE      = Νέα γραμμή
+SCF_INDENT        = Εσοχή
+SCF_DELETE        = Διαγραφή
+SCF_BACKSPACE     = Backspace
+SCF_DEL_WORD_R    = Διαγραφή λέξης δεξιά
+SCF_DEL_WORD_L    = Διαγραφή λέξης αριστερά
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Εναλλαγή έντονης γραφής στην επιλογή
+SCD_ITALIC        = Εναλλαγή πλάγιας γραφής στην επιλογή
+SCD_UNDERLINE     = Εναλλαγή υπογράμμισης στην επιλογή
+SCD_UNDO          = Αναίρεση της τελευταίας αλλαγής
+SCD_REDO          = Επανάληψη της τελευταίας αναιρεμένης αλλαγής
+SCD_CUT           = Αποκοπή επιλογής στο πρόχειρο
+SCD_COPY          = Αντιγραφή επιλογής στο πρόχειρο
+SCD_PASTE         = Επικόλληση από το πρόχειρο
+SCD_SELECT_ALL    = Επιλογή ολόκληρου του εγγράφου
+SCD_SAVE          = Αποθήκευση του τρέχοντος αρχείου
+SCD_SAVE_AS       = Αποθήκευση σε νέο αρχείο
+SCD_NEW           = Δημιουργία νέου κενού εγγράφου
+SCD_OPEN          = Άνοιγμα αρχείου
+SCD_PRINT         = Εκτύπωση του εγγράφου
+SCD_EXPORT_PDF    = Εξαγωγή του εγγράφου ως αρχείο PDF
+SCD_PREVIEW       = Αποστολή και προεπισκόπηση του αρχείου FTP στο πρόγραμμα περιήγησης
+SCD_GO_START      = Μετακίνηση δρομέα στην αρχή του εγγράφου
+SCD_GO_END        = Μετακίνηση δρομέα στο τέλος του εγγράφου
+SCD_WORD_LEFT     = Μετακίνηση δρομέα μία λέξη αριστερά
+SCD_WORD_RIGHT    = Μετακίνηση δρομέα μία λέξη δεξιά
+SCD_EXTEND_SEL    = Επέκταση επιλογής κειμένου κατά έναν χαρακτήρα
+SCD_SEL_WORD      = Επέκταση επιλογής κατά μία λέξη τη φορά
+SCD_ZOOM_IN       = Αύξηση επιπέδου ζουμ
+SCD_ZOOM_OUT      = Μείωση επιπέδου ζουμ
+SCD_RESET_ZOOM    = Επαναφορά ζουμ στο 100% / προεπιλογή
+SCD_MNU_NEW       = Μενού Αρχείο → Νέο
+SCD_MNU_OPEN      = Μενού Αρχείο → Άνοιγμα
+SCD_MNU_SAVE      = Μενού Αρχείο → Αποθήκευση
+SCD_MNU_SAVE_AS   = Μενού Αρχείο → Αποθήκευση ως
+SCD_MNU_PRINT     = Μενού Αρχείο → Εκτύπωση
+SCD_MNU_EXPORT_PDF = Μενού Αρχείο → Εξαγωγή ως PDF
+SCD_EXIT_APP      = Κλείσιμο εγγράφου (έξοδος από εφαρμογή)
+SCD_MNU_EXIT      = Μενού Αρχείο → Έξοδος
+SCD_MNU_UNDO      = Μενού Επεξεργασία → Αναίρεση
+SCD_MNU_REDO      = Μενού Επεξεργασία → Επανάληψη
+SCD_MNU_CUT       = Μενού Επεξεργασία → Αποκοπή
+SCD_MNU_COPY      = Μενού Επεξεργασία → Αντιγραφή
+SCD_MNU_PASTE     = Μενού Επεξεργασία → Επικόλληση
+SCD_MNU_SELECT_ALL = Μενού Επεξεργασία → Επιλογή όλων
+SCD_MNU_SHORTCUTS = Μενού Βοήθεια → Συντομεύσεις πληκτρολογίου
+SCD_MNU_ABOUT     = Μενού Βοήθεια → Σχετικά με το NSBEdit
+SCD_SHOW_SHORTCUTS = Εμφάνιση αυτής της λίστας συντομεύσεων
+SCD_CLOSE_DLG     = Κλείσιμο του τρέχοντος παραθύρου
+SCD_NEW_LINE      = Εισαγωγή νέας παραγράφου
+SCD_INDENT        = Εισαγωγή χαρακτήρα tab
+SCD_DELETE        = Διαγραφή χαρακτήρα δεξιά
+SCD_BACKSPACE     = Διαγραφή χαρακτήρα αριστερά
+SCD_DEL_WORD_R    = Διαγραφή λέξης δεξιά από τον δρομέα
+SCD_DEL_WORD_L    = Διαγραφή λέξης αριστερά από τον δρομέα
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Σχετικά με το NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = Σημειωματάριο RTF και επεξεργαστής προγραμματισμού για Windows\n\n
+ABOUT_PUBLISHED   = Δημοσιεύτηκε: 
+ABOUT_VERSION     = Έκδοση: 
+ABOUT_EDITION     = Τύπος: 
+ABOUT_SEC_RTF     = ✏  Επεξεργασία εμπλουτισμένου κειμένου\n
+ABOUT_DESC_RTF    = •  Έντονα, πλάγια, υπογράμμιση, διαγραφή, εκθέτης/δείκτης.\n•  Γραμματοσειρά, μέγεθος, χρώμα και επισήμανση· πλήρης μορφοποίηση παραγράφου.\n•  Πίνακες, λίστες με κουκκίδες και αριθμημένες, εικόνες, υπερσύνδεσμοι, οριζόντιες γραμμές.\n•  Εξαγωγή ως PDF ή HTML 5.\n\n
+ABOUT_SEC_CODE    = ⌨  Επεξεργασία κώδικα και επισήμανση σύνταξης\n
+ABOUT_DESC_CODE   = •  25 γλώσσες: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL και άλλες.\n•  Αυτόματη συμπλήρωση, αυτόματο κλείσιμο ζευγών, αυτόματη εσοχή, έξυπνη εξαγωγή εσοχής.\n•  Εναλλαγή σχολίων γραμμής (//, #, --) και σχολίων HTML (<!-- -->).\n\n
+ABOUT_SEC_FTP     = ⚡  FTP και απομακρυσμένη επεξεργασία\n
+ABOUT_DESC_FTP    = •  Αποθήκευση απευθείας σε διακομιστές FTP και SFTP.\n•  Περιήγηση, μετονομασία και διαχείριση απομακρυσμένων αρχείων.\n•  Ζωντανή προεπισκόπηση στο πρόγραμμα περιήγησης μέσω διαμορφώσιμης ρίζας Web URL.\n\n
+ABOUT_LICENSE     = Αδειοδοτείται υπό την Γενική Δημόσια Άδεια GNU v2.\n
+ABOUT_BTN_LICENSE = Προβολή άδειας
+ABOUT_BTN_CREDITS = Πιστώσεις
+ABOUT_BTN_CLOSE   = Κλείσιμο
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Πιστώσεις
+CREDITS_SCINTILLA  = Το Scintilla είναι ένα ελεύθερο στοιχείο επεξεργασίας πηγαίου κώδικα ανοικτού λογισμικού από τον Neil Hodgson. Το NSBEdit χρησιμοποιεί το Scintilla για επεξεργασία κώδικα με επισήμανση σύνταξης.\n\n
+CREDITS_LEXILLA    = Το Lexilla είναι μια βιβλιοθήκη lexers για το Scintilla, επίσης από τον Neil Hodgson. Το NSBEdit χρησιμοποιεί το Lexilla για επισήμανση σύνταξης σε πάνω από 20 γλώσσες προγραμματισμού.\n\n
+CREDITS_GDI_PLUS   = Το GDI+ αποτελεί μέρος του Windows platform SDK. Το NSBEdit το χρησιμοποιεί για την απεικόνιση του λογοτύπου NSBEdit στο παράθυρο Σχετικά.\n
+CREDITS_MINGW      = Το έργο MinGW-W64 παρέχει ένα πλήρες περιβάλλον εκτέλεσης για τις εργαλειοθήκες GCC και LLVM/Clang στα Windows. Το NSBEdit μεταγλωττίζεται με MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = Το SQLite είναι μια μικρή, γρήγορη, αυτόνομη μηχανή βάσης δεδομένων SQL ανοικτής χρήσης. Το NSBEdit χρησιμοποιεί την ενοποίηση SQLite για την αποθήκευση προφίλ σύνδεσης FTP/SFTP.\n\n
+CREDITS_CURL       = Η libcurl είναι μια ελεύθερη βιβλιοθήκη μεταφοράς URL ανοικτού λογισμικού από τον Daniel Stenberg. Η libssh2 είναι μια βιβλιοθήκη πρωτοκόλλου SSH2 ανοικτού λογισμικού. Το NSBEdit χρησιμοποιεί και τις δύο για την υλοποίηση μεταφοράς αρχείων FTP και SFTP για απομακρυσμένη επεξεργασία.\n\n
+CREDITS_RTF2HTML   = Το rtf2html είναι μια βιβλιοθήκη μετατροπής RTF σε HTML ανοικτού λογισμικού από τον Valentyn Lavrinenko. Το NSBEdit το χρησιμοποιεί για εξαγωγή εγγράφων εμπλουτισμένου κειμένου ως HTML5. Αδειοδοτείται υπό την Ελάσσονα Γενική Δημόσια Άδεια GNU v2.1 (LGPLv2.1).\n\n
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Προσθήκη ιστότοπου...
+FTP_DISCONNECT       = Αποσύνδεση
+FTP_CLOSE_CONN_MENU  = Κλείσιμο σύνδεσης
+FTP_CLOSE_CONN_PROMPT = Επιλέξτε σύνδεση για κλείσιμο:
+FTP_BROWSE           = Περιήγηση αρχείων...
+FTP_DLG_SITE_ADD     = Προσθήκη ιστότοπου FTP/SFTP
+FTP_DLG_SITE_EDIT    = Επεξεργασία ιστότοπου FTP/SFTP
+FTP_FRIENDLY_NAME    = Εμφανιζόμενο όνομα:
+FTP_PROTOCOL         = Πρωτόκολλο:
+FTP_HOST             = Διακομιστής:
+FTP_PORT             = Θύρα:
+FTP_USERNAME         = Όνομα χρήστη:
+FTP_PASSWORD         = Κωδικός πρόσβασης:
+FTP_REMEMBER_PWD     = Αποθήκευση κωδικού
+FTP_INITIAL_PATH     = Αρχικός φάκελος:
+FTP_WEB_URL          = Ρίζα Web URL:
+FTP_HELP_TITLE       = Προφίλ FTP/SFTP — Οδηγός πεδίων
+FTP_SAVE             = Αποθήκευση προφίλ
+FTP_DELETE           = Διαγραφή προφίλ
+FTP_DLG_BROWSER      = Περιηγητής FTP
+FTP_COL_NAME         = Όνομα
+FTP_COL_SIZE         = Μέγεθος
+FTP_COL_PERMS        = Δικαιώματα
+FTP_CTX_OPEN         = Άνοιγμα / Λήψη
+FTP_CTX_CHMOD        = Δικαιώματα...
+FTP_CTX_NEW_FILE     = Νέο αρχείο...
+FTP_CTX_NEW_DIR      = Νέος φάκελος...
+FTP_INPUT_FILENAME   = Όνομα αρχείου:
+FTP_INPUT_DIRNAME    = Όνομα φακέλου:
+FTP_CTX_DELETE       = Διαγραφή
+FTP_CTX_RENAME       = Μετονομασία...
+FTP_INPUT_RENAME     = Νέο όνομα:
+FTP_DLG_CHMOD        = Αλλαγή δικαιωμάτων (chmod)
+FTP_CHMOD_OWNER      = Ιδιοκτήτης
+FTP_CHMOD_GROUP      = Ομάδα
+FTP_CHMOD_OTHER      = Άλλοι
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Οκταδικό:
+FTP_CHMOD_APPLY      = Εφαρμογή
+FTP_CONN_FAILED      = Αποτυχία σύνδεσης
+FTP_STATUS           = Συνδεδεμένο:
+FTP_NOT_CONNECTED    = Συνδεθείτε σε ένα ή περισσότερα προφίλ πριν από την αποθήκευση στο FTP.
+FTP_PICK_PROFILE     = Επιλέξτε προφίλ για αποθήκευση:
+FTP_PW_PROMPT        = Εισαγωγή κωδικού
+FTP_PW_FOR           = Κωδικός για
+MSG_FTP_UPLOAD_OK    = Το αρχείο αποθηκεύτηκε και ανέβηκε επιτυχώς.
+MSG_FTP_UPLOAD_FAIL  = Αποτυχία αποστολής.
+MENU_SAVE_TO_FTP     = Αποθήκευση στο FTP...
+MENU_PREVIEW_FTP     = Προεπισκόπηση στο διαδίκτυο.
+FTP_PREVIEW_LOCKED   = Η καρτέλα είναι κλειδωμένη κατά τη διάρκεια της προεπισκόπησης.
+FTP_PREVIEW_URL      = URL προεπισκόπησης:
+BTN_OPEN_BROWSER     = Άνοιγμα στο πρόγραμμα περιήγησης
+BTN_OPEN_BROWSER_TIP = Συντόμευση: [Enter] για άνοιγμα στο πρόγραμμα περιήγησης.
+BTN_REVERT           = Επαναφορά & κλείσιμο
+BTN_REVERT_TIP       = Συντόμευση: [Esc] για επαναφορά και κλείσιμο αυτού του παραθύρου.
+FTP_PREVIEW_UP_FAIL  = Αποτυχία αποστολής:
+FTP_PREVIEW_REV_FAIL = Αποτυχία επαναφοράς:
+BTN_SAVE_BACKUP      = Αποθήκευση εφεδρικού αντιγράφου τοπικά...
+BTN_CLOSE_ANYWAY     = Κλείσιμο χωρίς επαναφορά
+FTP_SAVE_BROWSER     = Αποθήκευση στο FTP — επιλογή προορισμού
+FTP_FILENAME_PROMPT  = Όνομα αρχείου:
+FTP_SAVE_HERE        = Αποθήκευση εδώ
+FTP_SAVE_TO          = Αποθηκεύτηκε στο FTP
+FTP_SAVED_OK         = Το αρχείο ανέβηκε επιτυχώς. Η σύνδεση παραμένει ανοικτή.
+MSG_FTP_DELETE_WARN  = Διαγραφή του "%s" από τον διακομιστή;\n\nΑυτή η ενέργεια δεν μπορεί να αναιρεθεί.
+MSG_FTP_CHMOD_OK     = Τα δικαιώματα ενημερώθηκαν.
+MSG_FTP_DELETE_FAIL  = Αποτυχία διαγραφής.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Εισαγωγή οριζόντιας γραμμής
+DLG_HRUL_PROPS      = Ιδιότητες οριζόντιας γραμμής
+HRP_STYLE           = Στυλ:
+HRP_THICKNESS       = Πάχος (pt):
+HRP_SPACE_ABOVE     = Απόσταση πάνω (pt):
+HRP_SPACE_BELOW     = Απόσταση κάτω (pt):
+HRP_WIDTH_PCT       = Πλάτος (%):
+HRP_ALIGNMENT       = Στοίχιση:
+HRP_START_COLOUR    = Χρώμα εκκίνησης:
+HRP_END_COLOUR      = Χρώμα τερματισμού (διαβάθμιση):
+HRP_ALIGN_L         = Αριστερά
+HRP_ALIGN_C         = Κέντρο
+HRP_ALIGN_R         = Δεξιά
+HRP_STYLE_SINGLE    = Μονή λεπτή
+HRP_STYLE_THICK     = Παχιά
+HRP_STYLE_DOUBLE    = Διπλή
+HRP_STYLE_DOTTED    = Με τελείες
+HRP_STYLE_DASHED    = Διακεκομμένη
+HRP_STYLE_HAIRLINE  = Τριχοειδής
+BTN_CHOOSE          = Επιλογή…

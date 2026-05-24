@@ -71,6 +71,7 @@
 #define IDR_LOCALE_FR_FR    19
 #define IDR_LOCALE_ES_ES    20
 #define IDR_LOCALE_UK_UA    21
+#define IDR_LOCALE_EL_GR    22
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1120,6 +1121,7 @@ static void Ne_LoadLocale()
         case 7:  resId = IDR_LOCALE_FR_FR; break;
         case 8:  resId = IDR_LOCALE_ES_ES; break;
         case 9:  resId = IDR_LOCALE_UK_UA; break;
+        case 10: resId = IDR_LOCALE_EL_GR; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
@@ -6854,11 +6856,13 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
     while (GetMenuItemCount(s_hLocaleMenu) > 0)
         RemoveMenu(s_hLocaleMenu, 0, MF_BYPOSITION);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 4,
-                    L"Dansk",                 false, g_localeId == 4 ? g_hLocaleMenuIcon : NULL);
+                    L"Dansk",                 false, g_localeId == 4  ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 6,
-                    L"Deutsch",               false, g_localeId == 6 ? g_hLocaleMenuIcon : NULL);
+                    L"Deutsch",               false, g_localeId == 6  ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 10,
+                    L"\u0395\u03bb\u03bb\u03b7\u03bd\u03b9\u03ba\u03ac", false, g_localeId == 10 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 0,
-                    L"English",               false, g_localeId == 0 ? g_hLocaleMenuIcon : NULL);
+                    L"English",               false, g_localeId == 0  ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 8,
                     L"Espa\u00f1ol",           false, g_localeId == 8 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 7,
@@ -7488,7 +7492,18 @@ static void Ne_ShowFtpSiteDialog(HWND parent, NeProfile* existing)
     if (existing) d.profile = *existing;
     else { d.profile.protocol = L"FTP"; d.profile.port = 21; d.profile.initialPath = L"/"; }
 
-    const int W = S(460), H = S(534);
+    // Pre-measure buttons to compute required dialog width
+    const int PRE_PAD = S(16);
+    const int PRE_GAP = S(12);
+    int preWidths[3] = {
+        Ne_MeasureButtonWidth(Ls(L"FTP_SAVE")),
+        Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL")),
+        d.isEdit ? Ne_MeasureButtonWidth(Ls(L"FTP_DELETE")) : 0
+    };
+    int numBtnsW = d.isEdit ? 3 : 2;
+    int preTotalBW = 0;
+    for (int i = 0; i < numBtnsW; ++i) preTotalBW += preWidths[i] + (i ? PRE_GAP : 0);
+    const int W = std::max(S(420), preTotalBW + 2 * PRE_PAD), H = S(534);
     RECT pr = {}; if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
     int x = (pr.left+pr.right)/2 - W/2, y = (pr.top+pr.bottom)/2 - H/2;
     if (y < 30) y = 30;
@@ -7605,19 +7620,16 @@ static void Ne_ShowFtpSiteDialog(HWND parent, NeProfile* existing)
     }
     y0 += ROW;
 
-    // Buttons
-    int numBtns = d.isEdit ? 3 : 2;
+    // Buttons (widths already measured in preWidths[])
+    int numBtns = numBtnsW;
     d.dd.buttonCount = numBtns;
-    d.dd.buttons[0] = { 1029, Ls(L"FTP_SAVE"),   NeBtnTone::Green, IDI_INFORMATION,
-                         Ne_MeasureButtonWidth(Ls(L"FTP_SAVE")) };
-    d.dd.buttons[1] = { IDCANCEL, Ls(L"BTN_CANCEL"), NeBtnTone::Blue, IDI_ERROR,
-                         Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL")) };
+    d.dd.buttons[0] = { 1029, Ls(L"FTP_SAVE"),   NeBtnTone::Green, IDI_INFORMATION, preWidths[0] };
+    d.dd.buttons[1] = { IDCANCEL, Ls(L"BTN_CANCEL"), NeBtnTone::Blue, IDI_ERROR,    preWidths[1] };
     if (d.isEdit)
-        d.dd.buttons[2] = { 1030, Ls(L"FTP_DELETE"), NeBtnTone::Red, IDI_ERROR,
-                             Ne_MeasureButtonWidth(Ls(L"FTP_DELETE")) };
+        d.dd.buttons[2] = { 1030, Ls(L"FTP_DELETE"), NeBtnTone::Red, IDI_ERROR,     preWidths[2] };
 
     int totalBW = 0;
-    for (int i = 0; i < numBtns; ++i) totalBW += d.dd.buttons[i].width + (i ? S(8) : 0);
+    for (int i = 0; i < numBtns; ++i) totalBW += d.dd.buttons[i].width + (i ? S(12) : 0);
     int bx = (rc.right - totalBW) / 2, by = rc.bottom - PAD - BTN_H;
     for (int i = 0; i < numBtns; ++i) {
         HWND hBtn = CreateWindowExW(0, L"BUTTON", d.dd.buttons[i].text.c_str(),
@@ -7627,7 +7639,7 @@ static void Ne_ShowFtpSiteDialog(HWND parent, NeProfile* existing)
         SendMessageW(hBtn, WM_SETFONT, (WPARAM)hFont, TRUE);
         WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
         SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
-        bx += d.dd.buttons[i].width + S(8);
+        bx += d.dd.buttons[i].width + S(12);
     }
 
     if (parent && IsWindow(parent)) EnableWindow(parent, FALSE);

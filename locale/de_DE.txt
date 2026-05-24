@@ -148,6 +148,7 @@ LANG_UI_FINNISH   = Suomi
 LANG_UI_FRENCH    = Französisch
 LANG_UI_GERMAN    = Deutsch
 LANG_UI_SPANISH   = Spanisch
+LANG_UI_GREEK     = Griechisch
 LANG_UI_SWEDISH   = Schwedisch
 LANG_UI_UKRAINIAN = Ukrainisch
 LANG_UI_ICELANDIC = Íslenska
