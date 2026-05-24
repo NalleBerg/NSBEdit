@@ -152,6 +152,8 @@ LANG_UI_NORWEGIAN = Norsk (bokmål)
 LANG_UI_SPANISH   = Espagnol
 LANG_UI_GREEK     = Grec
 LANG_UI_PORTUGUESE = Portugais
+LANG_UI_DUTCH      = Néerlandais
+LANG_UI_FLEMISH    = Flamand
 LANG_UI_SWEDISH   = Svenska
 LANG_UI_UKRAINIAN = Ukrainien
 

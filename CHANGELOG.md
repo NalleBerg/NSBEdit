@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.24.11 (Dutch + Flemish) - 24.05.2026 11:33
+
+- **Dutch (Nederlands) UI translation**: Full Dutch (Netherlands) translation of all ~200 UI strings added as `locale/nl_NL.txt` (RCDATA 24, locale ID 12). "Nederlands" sorts between "Íslenska" and "Norsk", giving the menu order: Dansk → Deutsch → Ελληνικά → English → Español → Français → Íslenska → Nederlands → Norsk → Português → Suomi → Svenska → Vlaams → Українська.
+- **Flemish (Vlaams) UI translation**: Complete Belgian Dutch (Flemish) translation added as `locale/nl_BE.txt` (RCDATA 25, locale ID 13). Uses "bewaren" (to save/keep) where Dutch uses "opslaan", and a slightly more formal register throughout. "Vlaams" sorts after "Svenska" in the language menu.
+- **All locale files updated**: `LANG_UI_DUTCH` and `LANG_UI_FLEMISH` added to every existing locale file (en_GB → "Dutch"/"Flemish", no_nb → "Nederlandsk"/"Flamsk", is_IS → "Hollenska"/"Flæmska", sv_SE → "Nederländska"/"Flamländska", da_DK → "Nederlandsk"/"Flamsk", fi_FI → "Hollanti"/"Flaami", de_DE → "Niederländisch"/"Flämisch", fr_FR → "Néerlandais"/"Flamand", es_ES → "Neerlandés"/"Flamenco", uk_UA → "Нідерландська"/"Фламандська", el_GR → "Ολλανδικά"/"Φλαμανδικά", pt_PT → "Neerlandês"/"Flamengo").
+
 ## v2026.05.24.12 (Portuguese) - 24.05.2026 11:09
 
 - **Portuguese (Português) UI translation**: Full European Portuguese translation of all ~200 UI strings added as `locale/pt_PT.txt` (RCDATA 23, locale ID 11). "Português" sorts between "Norsk" and "Suomi", giving the menu order: Dansk → Deutsch → Ελληνικά → English → Español → Français → Íslenska → Norsk → Português → Suomi → Svenska → Українська.

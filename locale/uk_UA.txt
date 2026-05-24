@@ -153,6 +153,8 @@ LANG_UI_NORWEGIAN = Norsk (bokmål)
 LANG_UI_SPANISH   = Español
 LANG_UI_GREEK     = Грецька
 LANG_UI_PORTUGUESE = Португальська
+LANG_UI_DUTCH      = Нідерландська
+LANG_UI_FLEMISH    = Фламандська
 LANG_UI_SWEDISH   = Svenska
 LANG_UI_UKRAINIAN = Українська
 

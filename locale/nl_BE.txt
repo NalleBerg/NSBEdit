@@ -1,0 +1,450 @@
+# NSBEdit locale file — nl_BE (Vlaams)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+# Vlaams uses "bewaren" (save), "verwijderen" (delete), "venster" (window),
+# and prefers more formal "u"-based phrasing in instructional text.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Naamloos document
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Bestand
+MENU_NEW        = &Nieuw\tCtrl+N
+MENU_OPEN       = &Openen...\tCtrl+O
+MENU_SAVE       = &Bewaren\tCtrl+S
+MENU_SAVEAS     = Bewaren &als...\tCtrl+Shift+S
+MENU_PRINT      = &Afdrukken...\tCtrl+P
+MENU_EXPORT_PDF = &Exporteren als PDF...\tCtrl+Shift+P
+MENU_EXIT       = &Afsluiten	Ctrl+W
+MENU_EDIT         = &Bewerken
+MENU_UNDO         = &Ongedaan maken\tCtrl+Z
+MENU_REDO         = Op&nieuw uitvoeren\tCtrl+Y
+MENU_CUT          = &Knippen\tCtrl+X
+MENU_COPY         = &Kopi\u00ebren\tCtrl+C
+MENU_PASTE        = &Plakken\tCtrl+V
+MENU_SELECTALL    = Alles &selecteren\tCtrl+A
+MENU_PREFS        = &Voorkeuren...
+PREF_TITLE        = Voorkeuren
+PREF_SEC_APPEARANCE = Weergave
+PREF_DARK_MODE         = Donker thema
+PREF_LIGHT_MODE        = Licht thema
+PREF_SEC_EDITOR        = Achtergrond van de editor
+PREF_EDITOR_LIGHT_BG   = Lichte achtergrond voor platte tekst en code
+PREF_EDITOR_DARK_BG    = Donkere achtergrond voor platte tekst en code
+MENU_HELP       = &Help
+MENU_SHORTCUTS  = &Sneltoetsen...\tF1
+MENU_ABOUT      = &Over NSBEdit
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = Con&verteren
+MENU_CONV_TO_PLAIN  = Opmaak verwijderen \u2014 bewaren als platte tekst
+MENU_CONV_TO_RTF    = &Opmaak toevoegen \u2014 RTF maken
+MENU_CONV_TO_HTML5  = Exporteren als &HTML 5...
+MSG_HTML5_ERR       = HTML-conversie mislukt.
+MSG_HTML5_SAVE_ERR  = Het HTML-bestand kon niet worden geschreven.
+DLG_SAVE_HTML5      = Bewaren als HTML 5
+MENU_ENCODING       = &Codering
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (systeem)
+MENU_ENC_WIN1252    = Windows-1252 (West-Europees)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = Opgemaakte tekst
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Platte tekst
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Door de RTF-opmaak te verwijderen worden alle vet, cursief, kleuren en andere opmaakelementen gewist.\n\nDoorgaan en bewaren als platte tekst?
+MSG_ENC_LOSSY   = Bepaalde tekens zijn mogelijk niet beschikbaar in de gekozen codering en worden vervangen door ";" of iets gelijkaardigs.\n\nDoorgaan?
+MSG_DEL_PLAIN_FILE = Het document werd bewaard als RTF-bestand.\n\nHet oorspronkelijke bestand met platte tekst verwijderen?
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Alle ondersteunde bestanden|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-bestanden (*.rtf)|*.rtf|Tekstbestanden (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Config (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Alle bestanden (*.*)|*.*
+FILTER_SAVEAS = RTF-bestanden (*.rtf)|*.rtf|Tekstbestanden (*.txt)|*.txt|Alle bestanden (*.*)|*.*
+FILTER_IMAGE  = Afbeeldingsbestanden|*.png;*.jpg;*.jpeg|PNG-bestanden (*.png)|*.png|JPEG-bestanden (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Openen
+DLG_SAVEAS = Bewaren als
+DLG_IMAGE  = Afbeelding invoegen
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Het bestand kon niet worden geopend.
+MSG_SAVE_ERR      = Het bestand kon niet worden bewaard.
+MSG_HAS_FORMATTING = Dit document bevat opmaak (vet, kleuren, lettergroottes, enz.) die niet kan worden bewaard in een bestand met platte tekst.\n\nKlik op Ja om te bewaren als platte tekst en alle opmaak te verwijderen.\nKlik op Nee om te bewaren als RTF (het bestand wordt hernoemd met de extensie .rtf).\nKlik op Annuleren om terug te keren zonder te bewaren.
+MSG_IMG_OPEN_ERR  = Het afbeeldingsbestand kon niet worden geopend.
+MSG_IMG_FMT_ERR   = Niet-ondersteund formaat. Gebruik PNG of JPEG.
+MSG_SAVE_PROMPT   = Wijzigingen in "%s" bewaren?
+DLG_SAVE_CHANGES  = Wijzigingen bewaren
+BTN_SAVE          = Bewaar
+BTN_DONT_SAVE     = Niet bewaren
+BTN_CANCEL        = Annuleren
+BTN_OK            = OK
+
+DLG_FILE_CHANGED        = Bestand gewijzigd op schijf
+MSG_FILE_CHANGED_PROMPT = "%s" werd gewijzigd door een ander programma terwijl NSBEdit niet actief was.\n\nOpnieuw laden van schijf?
+BTN_RELOAD              = Opnieuw laden
+BTN_KEEP                = Huidige versie bewaren
+
+TAB_CTX_NEW_TAB         = Nieuw tabblad
+TAB_CTX_CLOSE_TAB       = Tabblad sluiten
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Woorden
+SB_CHARS                = Tekens
+SB_SAVED                = Bewaard
+SB_UNSAVED              = Niet bewaard
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Vet  (Ctrl+B)
+TIP_ITALIC      = Cursief  (Ctrl+I)
+TIP_UNDERLINE   = Onderstrepen  (Ctrl+U)
+TIP_STRIKE      = Doorhalen
+TIP_SUBSCRIPT   = Subscript  (bijv. H\u2082O)
+TIP_SUPERSCRIPT = Superscript  (bijv. m\u00b2)
+TIP_FONTFACE    = Lettertype
+TIP_FONTSIZE    = Lettergrootte (pt)
+TIP_COLOR       = Tekstkleur
+TIP_HIGHLIGHT   = Markeringskleur
+TIP_ALIGN_L     = Links uitlijnen
+TIP_ALIGN_C     = Centreren
+TIP_ALIGN_R     = Rechts uitlijnen
+TIP_ALIGN_J     = Uitvullen
+TIP_BULLET      = Ongeordende lijst
+TIP_NUMBERED    = Genummerde lijst
+TIP_IMAGE       = Afbeelding invoegen  (PNG / JPEG)
+TIP_INDENT_IN   = Inspringing vergroten
+TIP_INDENT_OUT  = Inspringing verkleinen
+TIP_LINESPACE   = Regelafstand...
+TIP_FIND        = Zoeken / Vervangen  (Ctrl+F)
+TIP_LINK        = Hyperlink invoegen
+TIP_TABLE       = Tabeleigenschappen...
+TIP_TABLE_DROP  = Tabel invoegen (grootte kiezen)
+TIP_HLINE       = Horizontale lijn invoegen
+TIP_CLEARFMT    = Alle opmaak wissen
+TIP_PRINT_BTN   = Afdrukken...  (Ctrl+P)
+TIP_ZOOM        = Zoom
+TIP_WORDWRAP    = Tekstterugloop in-/uitschakelen
+TIP_CASE        = Hoofd-/kleine letters wisselen  (HOOFDLETTERS / kleine letters / Zin)
+TIP_LINENUM     = Regelnummers in-/uitschakelen
+TIP_PARSPACE    = Alineaafstand...
+TIP_SAVE        = Bewaren  (Ctrl+S)
+TIP_SAVE_FTP    = Bewaren op FTP-server
+TIP_PREVIEW     = Voorvertonen op internet.
+TIP_LANG_UI     = Interfacetaal
+TIP_COMMENT     = Regels van opmerking voorzien of verwijderen
+MENU_GUI_LANG   = Taal
+MENU_LANGUAGE   = &Taal
+LANG_PLAIN_TEXT = Platte tekst
+LANG_UI_DANISH    = Deens
+LANG_UI_ENGLISH   = Engels
+LANG_UI_FINNISH   = Fins
+LANG_UI_FRENCH    = Frans
+LANG_UI_GERMAN    = Duits
+LANG_UI_SPANISH   = Spaans
+LANG_UI_GREEK     = Grieks
+LANG_UI_PORTUGUESE = Portugees
+LANG_UI_SWEDISH   = Zweeds
+LANG_UI_UKRAINIAN = Oekra\u00efens
+LANG_UI_ICELANDIC = IJslands
+LANG_UI_NORWEGIAN = Noors
+LANG_UI_DUTCH     = Nederlands
+LANG_UI_FLEMISH   = Vlaams
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-bestanden (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Exporteren als PDF
+MSG_PDF_ERR      = PDF kon niet worden ge\u00ebxporteerd. Controleer of "Microsoft Print to PDF" ge\u00efnstalleerd is (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Zoeken / Vervangen
+DLG_FIND_WHAT       = Zoeken naar:
+DLG_REPL_WITH       = Vervangen door:
+BTN_FIND_NEXT       = Volgende
+BTN_CLOSE           = Sluiten
+BTN_REPLACE         = Vervangen
+BTN_REPLACE_ALL     = Alles vervangen
+CHK_MATCHCASE       = Hoofdlettergevoelig
+CHK_WHOLEWORD       = Heel woord
+CHK_REGEX           = Regex
+MSG_FIND_NOT_FOUND  = Tekst niet gevonden.
+MSG_REGEX_ERR       = Ongeldige reguliere expressie.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Hyperlink invoegen
+DLG_LINK_URL    = URL:
+DLG_LINK_TEXT   = Weergavetekst:
+LINK_TIP_CTRL   = [Ctrl]+Klik om te openen in browser
+MSG_LINK_BAD_URL = Geef een geldige URL op.
+
+Een URL moet beginnen met een erkend voorvoegsel zoals:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Tabel invoegen
+DLG_TABLE_ROWS  = Rijen:
+DLG_TABLE_COLS  = Kolommen:
+TABLE_PICKER_FMT  = %d \u00d7 %d
+TABLE_PICKER_HINT = Tabelgrootte selecteren
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Tabeleigenschappen
+DLG_TABLE_INSERT    = Tabel invoegen
+TBLP_ROWS           = Rijen:
+TBLP_COLS           = Kolommen:
+TBLP_CELLW          = Kolombreedte:
+TBLP_BORDERW        = Randdikte:
+TBLP_UNIT_HP        = halve pt
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Bovenmarge cel:
+TBLP_PAD_BOTTOM     = Ondermarge cel:
+TBLP_PAD_LEFT       = Linkermarge cel:
+TBLP_PAD_RIGHT      = Rechtermarge cel:
+TBLP_ROWH           = Rijhoogte (0=automatisch):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Tabeluitlijning
+TBLP_ALIGN_L        = Links
+TBLP_ALIGN_C        = Midden
+TBLP_ALIGN_R        = Rechts
+BTN_APPLY           = Toepassen
+CTX_TABLE_PROPS     = Tabeleigenschappen...
+TBLP_MODE_ALTER     = Huidige tabel wijzigen
+TBLP_MODE_NESTED    = Tabel in huidige cel
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Regelafstand
+RDO_LINESPACE_S  = Enkel
+RDO_LINESPACE_15 = 1,5 regels
+RDO_LINESPACE_D  = Dubbel
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Alineaafstand
+DLG_PARSPACE_BEF = Afstand voor (pt):
+DLG_PARSPACE_AFT = Afstand na (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Sneltoetsen
+SHORTCUTS_COL1   = Sneltoets
+SHORTCUTS_COL2   = Functie
+SHORTCUTS_COL3   = Beschrijving
+SHORTCUTS_BTN_CLOSE = Sluiten
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Vet
+SCF_ITALIC        = Cursief
+SCF_UNDERLINE     = Onderstrepen
+SCF_UNDO          = Ongedaan maken
+SCF_REDO          = Opnieuw uitvoeren
+SCF_CUT           = Knippen
+SCF_COPY          = Kopi\u00ebren
+SCF_PASTE         = Plakken
+SCF_SELECT_ALL    = Alles selecteren
+SCF_SAVE          = Bewaren
+SCF_SAVE_AS       = Bewaren als
+SCF_NEW           = Nieuw
+SCF_OPEN          = Openen
+SCF_PRINT         = Afdrukken
+SCF_EXPORT_PDF    = Exporteren als PDF
+SCF_PREVIEW       = Voorvertonen op internet
+SCF_GO_START      = Naar begin gaan
+SCF_GO_END        = Naar einde gaan
+SCF_WORD_LEFT     = Woord naar links
+SCF_WORD_RIGHT    = Woord naar rechts
+SCF_EXTEND_SEL    = Selectie uitbreiden
+SCF_SEL_WORD      = Woord selecteren
+SCF_ZOOM_IN       = Inzoomen
+SCF_ZOOM_OUT      = Uitzoomen
+SCF_RESET_ZOOM    = Zoom herstellen
+SCF_EXIT          = Afsluiten
+SCF_SHORTCUTS     = Sneltoetsen
+SCF_ABOUT         = Over
+SCF_CLOSE_DLG     = Venster sluiten
+SCF_NEW_LINE      = Nieuwe regel
+SCF_INDENT        = Inspringing
+SCF_DELETE        = Verwijderen
+SCF_BACKSPACE     = Backspace
+SCF_DEL_WORD_R    = Woord rechts verwijderen
+SCF_DEL_WORD_L    = Woord links verwijderen
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Vet in-/uitschakelen in selectie
+SCD_ITALIC        = Cursief in-/uitschakelen in selectie
+SCD_UNDERLINE     = Onderstreping in-/uitschakelen in selectie
+SCD_UNDO          = Laatste wijziging ongedaan maken
+SCD_REDO          = Laatste ongedaan gemaakte wijziging opnieuw uitvoeren
+SCD_CUT           = Selectie naar klembord knippen
+SCD_COPY          = Selectie naar klembord kopi\u00ebren
+SCD_PASTE         = Van klembord plakken
+SCD_SELECT_ALL    = Gehele document selecteren
+SCD_SAVE          = Huidig bestand bewaren
+SCD_SAVE_AS       = Bewaren in nieuw bestand
+SCD_NEW           = Nieuw leeg document maken
+SCD_OPEN          = Bestand openen
+SCD_PRINT         = Document afdrukken
+SCD_EXPORT_PDF    = Document exporteren als PDF-bestand
+SCD_PREVIEW       = FTP-bestand verzenden en voorvertonen in browser
+SCD_GO_START      = Cursor naar het begin van het document verplaatsen
+SCD_GO_END        = Cursor naar het einde van het document verplaatsen
+SCD_WORD_LEFT     = Cursor \u00e9\u00e9n woord naar links verplaatsen
+SCD_WORD_RIGHT    = Cursor \u00e9\u00e9n woord naar rechts verplaatsen
+SCD_EXTEND_SEL    = Tekstselectie met \u00e9\u00e9n teken uitbreiden
+SCD_SEL_WORD      = Selectie per woord uitbreiden
+SCD_ZOOM_IN       = Zoomniveau verhogen
+SCD_ZOOM_OUT      = Zoomniveau verlagen
+SCD_RESET_ZOOM    = Zoom herstellen naar 100% / standaard
+SCD_MNU_NEW       = Menu Bestand \u2192 Nieuw
+SCD_MNU_OPEN      = Menu Bestand \u2192 Openen
+SCD_MNU_SAVE      = Menu Bestand \u2192 Bewaren
+SCD_MNU_SAVE_AS   = Menu Bestand \u2192 Bewaren als
+SCD_MNU_PRINT     = Menu Bestand \u2192 Afdrukken
+SCD_MNU_EXPORT_PDF = Menu Bestand \u2192 Exporteren als PDF
+SCD_EXIT_APP      = Document sluiten (programma afsluiten)
+SCD_MNU_EXIT      = Menu Bestand \u2192 Afsluiten
+SCD_MNU_UNDO      = Menu Bewerken \u2192 Ongedaan maken
+SCD_MNU_REDO      = Menu Bewerken \u2192 Opnieuw uitvoeren
+SCD_MNU_CUT       = Menu Bewerken \u2192 Knippen
+SCD_MNU_COPY      = Menu Bewerken \u2192 Kopi\u00ebren
+SCD_MNU_PASTE     = Menu Bewerken \u2192 Plakken
+SCD_MNU_SELECT_ALL = Menu Bewerken \u2192 Alles selecteren
+SCD_MNU_SHORTCUTS = Menu Help \u2192 Sneltoetsen
+SCD_MNU_ABOUT     = Menu Help \u2192 Over NSBEdit
+SCD_SHOW_SHORTCUTS = Deze lijst met sneltoetsen weergeven
+SCD_CLOSE_DLG     = Huidig venster sluiten
+SCD_NEW_LINE      = Nieuwe alinea invoegen
+SCD_INDENT        = Tabteken invoegen
+SCD_DELETE        = Teken rechts verwijderen
+SCD_BACKSPACE     = Teken links verwijderen
+SCD_DEL_WORD_R    = Woord rechts van cursor verwijderen
+SCD_DEL_WORD_L    = Woord links van cursor verwijderen
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Over NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF-kladblok en programmeereditie voor Windows\n\n
+ABOUT_PUBLISHED   = Gepubliceerd: 
+ABOUT_VERSION     = Versie: 
+ABOUT_EDITION     = Editie: 
+ABOUT_SEC_RTF     = \u270f  Opgemaakte tekst bewerken\n
+ABOUT_DESC_RTF    = \u2022  Vet, cursief, onderstrepen, doorhalen, superscript/subscript.\n\u2022  Lettertype, grootte, kleur en markering; volledige alinea-opmaak.\n\u2022  Tabellen, ongeordende en genummerde lijsten, afbeeldingen, hyperlinks, horizontale lijnen.\n\u2022  Exporteren als PDF of HTML 5.\n\n
+ABOUT_SEC_CODE    = \u2328  Code bewerken en syntaxisaccentuering\n
+ABOUT_DESC_CODE   = \u2022  25 talen: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL en meer.\n\u2022  Automatisch aanvullen, automatisch sluiten van paren, automatisch inspringen, slim uitspringen.\n\u2022  Regelopmerkingen (//, #, --) en HTML-opmerkingen (<!-- -->) in-/uitschakelen.\n\n
+ABOUT_SEC_FTP     = \u26a1  FTP en externe bewerking\n
+ABOUT_DESC_FTP    = \u2022  Rechtstreeks bewaren op FTP- en SFTP-servers.\n\u2022  Bladeren, hernoemen en externe bestanden beheren.\n\u2022  Live voorvertoning in browser via configureerbare web-URL-basis.\n\n
+ABOUT_LICENSE     = Gelicenseerd onder de GNU Algemene Publieke Licentie v2.\n
+ABOUT_BTN_LICENSE = Licentie bekijken
+ABOUT_BTN_CREDITS = Bijdragen
+ABOUT_BTN_CLOSE   = Sluiten
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Bijdragen
+CREDITS_SCINTILLA  = Scintilla is een gratis en opensource-component voor broncode-bewerking van Neil Hodgson. NSBEdit gebruikt Scintilla voor code-bewerking met syntaxisaccentuering.\n\n
+CREDITS_LEXILLA    = Lexilla is een bibliotheek met lexers voor Scintilla, eveneens van Neil Hodgson. NSBEdit gebruikt Lexilla voor syntaxisaccentuering in meer dan 20 programmeertalen.\n\n
+CREDITS_GDI_PLUS   = GDI+ maakt deel uit van de Windows platform SDK. NSBEdit gebruikt het om het NSBEdit-logo te tonen in het venster Over.\n
+CREDITS_MINGW      = Het MinGW-W64-project biedt een volledige runtime-omgeving voor de GCC- en LLVM/Clang-toolchains op Windows. NSBEdit wordt gecompileerd met MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite is een kleine, snelle, zelfstandige en vrij te gebruiken SQL-database-engine. NSBEdit gebruikt ingebedde SQLite voor het opslaan van FTP/SFTP-verbindingsprofielen.\n\n
+CREDITS_CURL       = libcurl is een gratis en opensource URL-overdrachtsbibliotheek van Daniel Stenberg. libssh2 is een opensource SSH2-protocolbibliotheek. NSBEdit gebruikt beide voor FTP- en SFTP-bestandsoverdracht voor externe bewerking.\n\n
+CREDITS_RTF2HTML   = rtf2html is een opensource bibliotheek voor RTF-naar-HTML-conversie van Valentyn Lavrinenko. NSBEdit gebruikt het voor het exporteren van opgemaakte documenten als HTML5. Gelicenseerd onder de GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Site toevoegen...
+FTP_DISCONNECT       = Verbinding verbreken
+FTP_CLOSE_CONN_MENU  = Verbinding sluiten
+FTP_CLOSE_CONN_PROMPT = Selecteer een verbinding om te sluiten:
+FTP_BROWSE           = Bestanden bladeren...
+FTP_DLG_SITE_ADD     = FTP/SFTP-site toevoegen
+FTP_DLG_SITE_EDIT    = FTP/SFTP-site bewerken
+FTP_FRIENDLY_NAME    = Weergavenaam:
+FTP_PROTOCOL         = Protocol:
+FTP_HOST             = Server:
+FTP_PORT             = Poort:
+FTP_USERNAME         = Gebruikersnaam:
+FTP_PASSWORD         = Wachtwoord:
+FTP_REMEMBER_PWD     = Wachtwoord onthouden
+FTP_INITIAL_PATH     = Startmap:
+FTP_WEB_URL          = Web-URL-basis:
+FTP_HELP_TITLE       = FTP/SFTP-profiel \u2014 Veldengids
+FTP_SAVE             = Profiel bewaren
+FTP_DELETE           = Profiel verwijderen
+FTP_DLG_BROWSER      = FTP-verkenner
+FTP_COL_NAME         = Naam
+FTP_COL_SIZE         = Grootte
+FTP_COL_PERMS        = Machtigingen
+FTP_CTX_OPEN         = Openen / Downloaden
+FTP_CTX_CHMOD        = Machtigingen...
+FTP_CTX_NEW_FILE     = Nieuw bestand...
+FTP_CTX_NEW_DIR      = Nieuwe map...
+FTP_INPUT_FILENAME   = Bestandsnaam:
+FTP_INPUT_DIRNAME    = Mapnaam:
+FTP_CTX_DELETE       = Verwijderen
+FTP_CTX_RENAME       = Hernoemen...
+FTP_INPUT_RENAME     = Nieuwe naam:
+FTP_DLG_CHMOD        = Machtigingen wijzigen (chmod)
+FTP_CHMOD_OWNER      = Eigenaar
+FTP_CHMOD_GROUP      = Groep
+FTP_CHMOD_OTHER      = Overige
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Octaal:
+FTP_CHMOD_APPLY      = Toepassen
+FTP_CONN_FAILED      = Verbinding mislukt
+FTP_STATUS           = Verbonden:
+FTP_NOT_CONNECTED    = Maak verbinding met een of meer profielen alvorens te bewaren via FTP.
+FTP_PICK_PROFILE     = Selecteer een profiel om naar te bewaren:
+FTP_PW_PROMPT        = Wachtwoord invoeren
+FTP_PW_FOR           = Wachtwoord voor
+MSG_FTP_UPLOAD_OK    = Bestand bewaard en ge\u00fcpload.
+MSG_FTP_UPLOAD_FAIL  = Uploaden mislukt.
+MENU_SAVE_TO_FTP     = Bewaren op FTP...
+MENU_PREVIEW_FTP     = Voorvertonen op internet.
+FTP_PREVIEW_LOCKED   = Het tabblad is vergrendeld terwijl de voorvertoning actief is.
+FTP_PREVIEW_URL      = Voorvertoon-URL:
+BTN_OPEN_BROWSER     = Openen in browser
+BTN_OPEN_BROWSER_TIP = Sneltoets: [Enter] om te openen in browser.
+BTN_REVERT           = Terugzetten & sluiten
+BTN_REVERT_TIP       = Sneltoets: [Esc] om terug te zetten en dit venster te sluiten.
+FTP_PREVIEW_UP_FAIL  = Uploaden mislukt:
+FTP_PREVIEW_REV_FAIL = Terugzetten mislukt:
+BTN_SAVE_BACKUP      = Lokale reservekopie bewaren...
+BTN_CLOSE_ANYWAY     = Sluiten zonder terugzetten
+FTP_SAVE_BROWSER     = Bewaren op FTP \u2014 doel kiezen
+FTP_FILENAME_PROMPT  = Bestandsnaam:
+FTP_SAVE_HERE        = Hier bewaren
+FTP_SAVE_TO          = Bewaard op FTP
+FTP_SAVED_OK         = Bestand ge\u00fcpload. Verbinding blijft open.
+MSG_FTP_DELETE_WARN  = "%s" van de server verwijderen?\n\nDeze actie kan niet ongedaan worden gemaakt.
+MSG_FTP_CHMOD_OK     = Machtigingen bijgewerkt.
+MSG_FTP_DELETE_FAIL  = Verwijderen mislukt.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Horizontale lijn invoegen
+DLG_HRUL_PROPS      = Eigenschappen horizontale lijn
+HRP_STYLE           = Stijl:
+HRP_THICKNESS       = Dikte (pt):
+HRP_SPACE_ABOVE     = Ruimte boven (pt):
+HRP_SPACE_BELOW     = Ruimte onder (pt):
+HRP_WIDTH_PCT       = Breedte (%):
+HRP_ALIGNMENT       = Uitlijning:
+HRP_START_COLOUR    = Beginkleur:
+HRP_END_COLOUR      = Eindkleur (verloop):
+HRP_ALIGN_L         = Links
+HRP_ALIGN_C         = Midden
+HRP_ALIGN_R         = Rechts
+HRP_STYLE_SINGLE    = Enkele dunne lijn
+HRP_STYLE_THICK     = Dik
+HRP_STYLE_DOUBLE    = Dubbel
+HRP_STYLE_DOTTED    = Gestippeld
+HRP_STYLE_DASHED    = Onderbroken
+HRP_STYLE_HAIRLINE  = Haarfijn
+BTN_CHOOSE          = Kiezen\u2026

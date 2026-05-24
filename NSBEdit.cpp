@@ -73,6 +73,8 @@
 #define IDR_LOCALE_UK_UA    21
 #define IDR_LOCALE_EL_GR    22
 #define IDR_LOCALE_PT_PT    23
+#define IDR_LOCALE_NL_NL    24
+#define IDR_LOCALE_NL_BE    25
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1124,6 +1126,8 @@ static void Ne_LoadLocale()
         case 9:  resId = IDR_LOCALE_UK_UA; break;
         case 10: resId = IDR_LOCALE_EL_GR; break;
         case 11: resId = IDR_LOCALE_PT_PT; break;
+        case 12: resId = IDR_LOCALE_NL_NL; break;
+        case 13: resId = IDR_LOCALE_NL_BE; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
@@ -6870,7 +6874,9 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 7,
                     L"Fran\u00e7ais",         false, g_localeId == 7 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 2,
-                    L"\u00cdslenska",         false, g_localeId == 2 ? g_hLocaleMenuIcon : NULL);
+                    L"\u00cdslenska",         false, g_localeId == 2  ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 12,
+                    L"Nederlands",            false, g_localeId == 12 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 1,
                     L"Norsk (bokm\u00e5l)",   false, g_localeId == 1  ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 11,
@@ -6878,7 +6884,9 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 5,
                     L"Suomi",                 false, g_localeId == 5  ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 3,
-                    L"Svenska",               false, g_localeId == 3 ? g_hLocaleMenuIcon : NULL);
+                    L"Svenska",               false, g_localeId == 3  ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 13,
+                    L"Vlaams",                false, g_localeId == 13 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 9,
                     L"\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", false, g_localeId == 9 ? g_hLocaleMenuIcon : NULL);
 }
