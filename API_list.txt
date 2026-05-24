@@ -508,7 +508,9 @@
                                                 NeProfiles_IsMemory() — true when running on
                                                 an in-memory DB.
                                                 NeProfiles_Add/Update/Delete/List/GetById —
-                                                CRUD for NeProfile structs.
+                                                CRUD for NeProfile structs. Delete shows
+                                                MSG_PROFILE_DELETE_CONFIRM (MB_YESNO,
+                                                default No) before removing a profile.
                                                 NeProfiles_GetIntSetting / SetIntSetting —
                                                 key/value store in settings table.
                                                 NeProfiles_GetStrSetting / SetStrSetting —
@@ -519,8 +521,10 @@
                                                 Passwords encrypted at rest via NeCrypto
                                                 (ne_crypto.h); remember_pwd flag controls
                                                 whether password is persisted.
-                                                nsbedit.db: 0-byte seed file; SQLite3
-                                                writes the schema on first use.
+                                                nsbedit.db: shipped as a 0-byte stub in
+                                                the ZIP; SQLite3 writes the schema on
+                                                first use. A 0-byte stub is skipped in
+                                                the portable path — AppData DB wins.
 
   ne_crypto.h / ne_crypto.cpp                   Lightweight password encryption helper.
                                                 NeCrypto_Init() / NeCrypto_Encrypt() /

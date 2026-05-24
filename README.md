@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.24.11**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.24.12**
 
 ## Download
 
@@ -48,15 +48,14 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Paragraph Spacing dialog** — set space before/after a paragraph in points (Format → Paragraph Spacing); owner-draw blue/red buttons, white background, fully i18n
 - **Line Spacing dialog** — choose Single, 1.5 lines, or Double line spacing (Format → Line Spacing); same owner-draw style, white background, radio buttons, fully i18n
 - **Word wrap ↵ indicator in code tabs** — a teal-green ↵ glyph marks every wrapped visual sub-line in Scintilla (code) tabs when word wrap is on, drawn to the left of the vertical scrollbar
-- **Edition 1** — About dialog now shows Edition: 1 below the version number
-- **Portable and installed modes** — drop `nsbedit.db` (included in the ZIP) next to the exe for portable operation; installer copies it to `%APPDATA%\NSBEdit\` for installed mode. If neither file is present the app runs with an in-memory database and warns the user
+- **Edition 2** — About dialog now shows Edition: 2 below the version number (translated in all 15 UI languages via `ABOUT_EDITION`)
+- **Portable and installed modes** — drop `nsbedit.db` (included in the ZIP) next to the exe for portable operation; installer copies it to `%APPDATA%\NSBEdit\` for installed mode. A zero-byte stub is treated as absent — the AppData database always wins. If neither file is present the app runs with an in-memory database and warns the user
 - **FTP browser — Rename**: right-click any file or folder to rename it in place; input dialog pre-filled with the current name
 - **FTP browser — remember last folder**: reopens in the folder you were last in (per profile); tree always roots at `/` so you can navigate anywhere
 - **Auto-indent on Enter** in code (Scintilla) tabs — new lines inherit the indentation of the line above, preserving tabs and spaces exactly
 - **Smart backspace unindent** in code tabs — Backspace in leading whitespace removes one full indent level
 - **FTP Preview Online** — when a code/plain-text tab is FTP-linked, a violet *Preview online* button appears in the toolbar and under the FTP menu. Clicking uploads the current buffer and opens a dialog with the resolved URL; *Open in browser* launches it; closing reverts the remote file to its original. FTP profile editor gains a **Web URL root** field
 - **FTP upload success auto-close** — the "File saved and uploaded successfully" notification closes itself after 2½ seconds
-- **Edition 1** — About dialog shows Edition: 1 (RC suffix removed)
 - **FTP browser open reuses blank tab** — opening a file from the FTP file browser reuses the active untouched untitled tab, just like *File → Open*; no extra blank tab created
 - **FTP → Close connection** — new FTP menu item (grayed when nothing is connected); clicking opens a picker dialog listing all active connections so you can choose which one to close
 - **Toolbar always correct after tab close** — closing a tab now immediately applies the correct button row (RTF / plain-text / code) for the newly-active tab
