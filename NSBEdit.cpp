@@ -70,6 +70,7 @@
 #define IDR_LOCALE_DE_DE    18
 #define IDR_LOCALE_FR_FR    19
 #define IDR_LOCALE_ES_ES    20
+#define IDR_LOCALE_UK_UA    21
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1118,6 +1119,7 @@ static void Ne_LoadLocale()
         case 6:  resId = IDR_LOCALE_DE_DE; break;
         case 7:  resId = IDR_LOCALE_FR_FR; break;
         case 8:  resId = IDR_LOCALE_ES_ES; break;
+        case 9:  resId = IDR_LOCALE_UK_UA; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
@@ -6869,6 +6871,8 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
                     L"Suomi",                 false, g_localeId == 5 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 3,
                     L"Svenska",               false, g_localeId == 3 ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 9,
+                    L"\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430", false, g_localeId == 9 ? g_hLocaleMenuIcon : NULL);
 }
 
 // Rebuild the FTP popup from scratch (called in WM_INITMENUPOPUP for s_hFtpMenu).

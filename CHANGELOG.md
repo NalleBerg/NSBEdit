@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.24.10 (Ukrainian) - 24.05.2026 10:20
+
+- **Ukrainian (Українська) UI translation**: Full translation of all ~200 UI strings added as `locale/uk_UA.txt` (RCDATA 21, locale ID 9). Menu order: Dansk → Deutsch → English → Español → Français → Íslenska → Norsk → Suomi → Svenska → Українська.
+- **All locale files updated**: `LANG_UI_UKRAINIAN` added to every existing locale file (en_GB → "Ukrainian", no_nb → "Ukrainsk", is_IS → "Úkraínska", sv_SE → "Ukrainska", da_DK → "Ukrainsk", fi_FI → "Ukraina", de_DE → "Ukrainisch", fr_FR → "Ukrainien", es_ES → "Ucraniano").
+
 ## v2026.05.24.10 - 24.05.2026 10:07
 
 - **Spanish (Español) UI translation**: Full translation of all ~200 UI strings added as `locale/es_ES.txt` (RCDATA 20, locale ID 8). Menu order: Dansk → Deutsch → English → Español → Français → Íslenska → Norsk → Suomi → Svenska.

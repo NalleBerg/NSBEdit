@@ -9,5 +9,6 @@
 18 RCDATA "locale/de_DE.txt"
 19 RCDATA "locale/fr_FR.txt"
 20 RCDATA "locale/es_ES.txt"
+21 RCDATA "locale/uk_UA.txt"
 12 RCDATA "nsb_256.png"
 13 RCDATA "GnuLogo.bmp"

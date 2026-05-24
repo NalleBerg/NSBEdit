@@ -148,9 +148,10 @@ LANG_UI_FINNISH   = Finska
 LANG_UI_FRENCH    = Franska
 LANG_UI_GERMAN    = Tyska
 LANG_UI_SPANISH   = Spanska
+LANG_UI_SWEDISH   = Svenska
+LANG_UI_UKRAINIAN = Ukrainska
 LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)
-LANG_UI_SWEDISH   = Svenska
 
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF-filer (*.pdf)|*.pdf
