@@ -1,0 +1,401 @@
+# NSBEdit locale file — is_IS (Íslenska)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Nafnlaus
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Skrá
+MENU_NEW        = &Ný\tCtrl+N
+MENU_OPEN       = &Opna...\tCtrl+O
+MENU_SAVE       = &Vista\tCtrl+S
+MENU_SAVEAS     = Vista &sem...\tCtrl+Shift+S
+MENU_PRINT      = &Prenta...\tCtrl+P
+MENU_EXPORT_PDF = &Flytja út sem PDF...\tCtrl+Shift+P
+MENU_EXIT       = H&ætta	Ctrl+W
+MENU_EDIT         = &Breyta
+MENU_UNDO         = &Afturkalla\tCtrl+Z
+MENU_REDO         = &Endurgera\tCtrl+Y
+MENU_CUT          = &Klippa\tCtrl+X
+MENU_COPY         = &Afrita\tCtrl+C
+MENU_PASTE        = &Líma\tCtrl+V
+MENU_SELECTALL    = Velja &allt\tCtrl+A
+MENU_PREFS        = &Stillingar...
+PREF_TITLE        = Stillingar
+PREF_SEC_APPEARANCE = Útlit
+PREF_DARK_MODE         = Dökkt þema
+PREF_LIGHT_MODE        = Ljóst þema
+PREF_SEC_EDITOR        = Bakgrunnur ritils
+PREF_EDITOR_LIGHT_BG   = Ljós bakgrunnur fyrir venjulegan texta og kóða
+PREF_EDITOR_DARK_BG    = Dökkur bakgrunnur fyrir venjulegan texta og kóða
+MENU_HELP       = &Hjálp
+MENU_SHORTCUTS  = &Flýtilyklar...\tF1
+MENU_ABOUT      = &Um NSBEdit
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = &Umbreyta
+MENU_CONV_TO_PLAIN  = Fjarlægja snið — vista sem venjulegan texta
+MENU_CONV_TO_RTF    = Bæta við &sniði — búa til RTF
+MENU_CONV_TO_HTML5  = Flytja út sem &HTML 5...
+MSG_HTML5_ERR       = HTML-umbreyting mistókst.
+MSG_HTML5_SAVE_ERR  = Gat ekki skrifað HTML-skrá.
+DLG_SAVE_HTML5      = Vista sem HTML 5
+MENU_ENCODING       = &Stafakóðun
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (kerfi)
+MENU_ENC_WIN1252    = Windows-1252 (vestræn)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = Ríkur texti
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Venjulegur texti
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Með því að fjarlægja RTF-snið verður öll feitletrað, skáletrað, litir og aðrar sniðsáhrif eytt.\n\nHalda áfram og vista sem venjulegan texta?
+MSG_ENC_LOSSY   = Sumir stafir eru hugsanlega ekki studdir í valinni stafakóðun og verða skiptir út fyrir «?» eða líkt.\n\nHalda áfram?
+MSG_DEL_PLAIN_FILE = Skjalið hefur verið vistað sem RTF-skrá.\n\nEyða upprunalegu textaskránni?
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Allar studdar skrár|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-skrár (*.rtf)|*.rtf|Textaskrár (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Stillingar (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Allar skrár (*.*)|*.*
+FILTER_SAVEAS = RTF-skrár (*.rtf)|*.rtf|Textaskrár (*.txt)|*.txt|Allar skrár (*.*)|*.*
+FILTER_IMAGE  = Myndskrár|*.png;*.jpg;*.jpeg|PNG-skrár (*.png)|*.png|JPEG-skrár (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Opna
+DLG_SAVEAS = Vista sem
+DLG_IMAGE  = Setja inn mynd
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Gat ekki opnað skrá.
+MSG_SAVE_ERR      = Gat ekki vistað skrá.
+MSG_HAS_FORMATTING = Þetta skjal inniheldur snið (feitletrað, litir, leturstærðir o.s.frv.) sem ekki er hægt að geyma í venjulegri textaskrá.\n\nSmelltu á Já til að vista sem venjulegan texta og fleygja öllu sniði.\nSmelltu á Nei til að vista sem RTF (skráin verður endurnefnd með .rtf endingu).\nSmelltu á Hætta við til að fara til baka án þess að vista.
+MSG_IMG_OPEN_ERR  = Gat ekki opnað myndskrá.
+MSG_IMG_FMT_ERR   = Óstuddað snið. Vinsamlegast notaðu PNG eða JPEG.
+MSG_SAVE_PROMPT   = Vista breytingar á „%s"?
+DLG_SAVE_CHANGES  = Vista breytingar
+BTN_SAVE          = Vista
+BTN_DONT_SAVE     = Ekki vista
+BTN_CANCEL        = Hætta við
+BTN_OK            = Í lagi
+
+DLG_FILE_CHANGED        = Skrá breytt á disk
+MSG_FILE_CHANGED_PROMPT = „%s" var breytt af öðru forriti á meðan NSBEdit hafði ekki fókus.\n\nEndurhlaða af disk?
+BTN_RELOAD              = Endurhlaða
+BTN_KEEP                = Halda núverandi
+
+TAB_CTX_NEW_TAB         = Nýr flipi
+TAB_CTX_CLOSE_TAB       = Loka flipa
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Orð
+SB_CHARS                = Stafir
+SB_SAVED                = Vistað
+SB_UNSAVED              = Óvistað
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Feitletrað  (Ctrl+B)
+TIP_ITALIC      = Skáletrað  (Ctrl+I)
+TIP_UNDERLINE   = Undirstrikað  (Ctrl+U)
+TIP_STRIKE      = Yfirstrikað
+TIP_SUBSCRIPT   = Niðurskrift  (t.d. H₂O)
+TIP_SUPERSCRIPT = Uppskrift  (t.d. m²)
+TIP_FONTFACE    = Leturgerð
+TIP_FONTSIZE    = Leturstærð (pt)
+TIP_COLOR       = Litur texta
+TIP_HIGHLIGHT   = Undirstrikunarlitur
+TIP_ALIGN_L     = Vinstrijafna
+TIP_ALIGN_C     = Miðjujafna
+TIP_ALIGN_R     = Hægrijafna
+TIP_ALIGN_J     = Heildarjafna
+TIP_BULLET      = Punktalisti
+TIP_NUMBERED    = Númeraður listi
+TIP_IMAGE       = Setja inn mynd  (PNG / JPEG)
+TIP_INDENT_IN   = Auka inndrátt
+TIP_INDENT_OUT  = Minnka inndrátt
+TIP_LINESPACE   = Línubil...
+TIP_FIND        = Leita / Skipta  (Ctrl+F)
+TIP_LINK        = Setja inn hlekk
+TIP_TABLE       = Töflustillingar...
+TIP_TABLE_DROP  = Setja inn töflu (velja stærð)
+TIP_HLINE       = Setja inn lárétta línu
+TIP_CLEARFMT    = Hreinsa allt snið
+TIP_PRINT_BTN   = Prenta...  (Ctrl+P)
+TIP_ZOOM        = Aðdráttur
+TIP_WORDWRAP    = Kveikja/slökkva á línubrotum
+TIP_CASE        = Skipta um hástafi/lágstafi  (HÁSTAFIR / lágstafir / Fyrstur Hástafur)
+TIP_LINENUM     = Kveikja/slökkva á línunúmerum
+TIP_PARSPACE    = Málsgreinarbil...
+TIP_SAVE        = Vista  (Ctrl+S)
+TIP_SAVE_FTP    = Vista á FTP-þjón
+TIP_PREVIEW     = Forskoðun á netinu.
+TIP_LANG_UI     = Tungumál viðmóts
+TIP_COMMENT     = Setja inn / fjarlægja athugasemd á völdum línum
+MENU_GUI_LANG   = Viðmótsmál
+MENU_LANGUAGE   = &Tungumál
+LANG_PLAIN_TEXT = Venjulegur texti
+LANG_UI_ENGLISH   = English
+LANG_UI_ICELANDIC = Íslenska
+LANG_UI_NORWEGIAN = Norsk (bokmål)
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-skrár (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Flytja út sem PDF
+MSG_PDF_ERR      = Gat ekki flutt út PDF. Gakktu úr skugga um að „Microsoft Print to PDF" sé uppsett (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Leita / Skipta
+DLG_FIND_WHAT       = Leita:
+DLG_REPL_WITH       = Skipta fyrir:
+BTN_FIND_NEXT       = Finna næsta
+BTN_CLOSE           = Loka
+BTN_REPLACE         = Skipta
+BTN_REPLACE_ALL     = Skipta öllu
+CHK_MATCHCASE       = Greinarmunur á hástöfum
+CHK_WHOLEWORD       = Heilt orð
+CHK_REGEX           = Regex
+MSG_FIND_NOT_FOUND  = Texti ekki fundinn.
+MSG_REGEX_ERR       = Ógilt reglulegt segð.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Setja inn hlekk
+DLG_LINK_URL    = Slóð (URL):
+DLG_LINK_TEXT   = Birta texta:
+LINK_TIP_CTRL   = [Ctrl]+Smella til að opna í vafra
+MSG_LINK_BAD_URL = Vinsamlegast sláðu inn gilda slóð.
+
+Slóð verður að byrja á þekktu skema eins og:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Setja inn töflu
+DLG_TABLE_ROWS  = Raðir:
+DLG_TABLE_COLS  = Dálkar:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Veldu töflustærð
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Töflustillingar
+DLG_TABLE_INSERT    = Setja inn töflu
+TBLP_ROWS           = Raðir:
+TBLP_COLS           = Dálkar:
+TBLP_CELLW          = Dálkabreidd:
+TBLP_BORDERW        = Breidd ramma:
+TBLP_UNIT_HP        = hálft punkt
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Innfelling efst:
+TBLP_PAD_BOTTOM     = Innfelling neðst:
+TBLP_PAD_LEFT       = Innfelling til vinstri:
+TBLP_PAD_RIGHT      = Innfelling til hægri:
+TBLP_ROWH           = Raðhæð (0=sjálfvirkt):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Jöfnun töflu
+TBLP_ALIGN_L        = Vinstri
+TBLP_ALIGN_C        = Miðja
+TBLP_ALIGN_R        = Hægri
+BTN_APPLY           = Nota
+CTX_TABLE_PROPS     = Töflustillingar...
+TBLP_MODE_ALTER     = Breyta núverandi töflu
+TBLP_MODE_NESTED    = Tafla í núverandi reit
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Línubil
+RDO_LINESPACE_S  = Einfalt
+RDO_LINESPACE_15 = 1,5 línur
+RDO_LINESPACE_D  = Tvöfalt
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Málsgreinarbil
+DLG_PARSPACE_BEF = Bil á undan (pt):
+DLG_PARSPACE_AFT = Bil á eftir (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Flýtilyklar
+SHORTCUTS_COL1   = Flýtilykill
+SHORTCUTS_COL2   = Aðgerð
+SHORTCUTS_COL3   = Lýsing
+SHORTCUTS_BTN_CLOSE = Loka
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Feitletrað
+SCF_ITALIC        = Skáletrað
+SCF_UNDERLINE     = Undirstrikað
+SCF_UNDO          = Afturkalla
+SCF_REDO          = Endurgera
+SCF_CUT           = Klippa
+SCF_COPY          = Afrita
+SCF_PASTE         = Líma
+SCF_SELECT_ALL    = Velja allt
+SCF_SAVE          = Vista
+SCF_SAVE_AS       = Vista sem
+SCF_NEW           = Ný
+SCF_OPEN          = Opna
+SCF_PRINT         = Prenta
+SCF_EXPORT_PDF    = Flytja út sem PDF
+SCF_PREVIEW       = Forskoðun á netinu
+SCF_GO_START      = Fara í byrjun
+SCF_GO_END        = Fara í enda
+SCF_WORD_LEFT     = Orð til vinstri
+SCF_WORD_RIGHT    = Orð til hægri
+SCF_EXTEND_SEL    = Stækka val
+SCF_SEL_WORD      = Velja orð
+SCF_ZOOM_IN       = Auka aðdrátt
+SCF_ZOOM_OUT      = Minnka aðdrátt
+SCF_RESET_ZOOM    = Endurstilla aðdrátt
+SCF_EXIT          = Hætta
+SCF_SHORTCUTS     = Flýtilyklar
+SCF_ABOUT         = Um
+SCF_CLOSE_DLG     = Loka glugga
+SCF_NEW_LINE      = Ný lína
+SCF_INDENT        = Inndrátt
+SCF_DELETE        = Eyða
+SCF_BACKSPACE     = Bakkar
+SCF_DEL_WORD_R    = Eyða orði til hægri
+SCF_DEL_WORD_L    = Eyða orði til vinstri
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Kveikja/slökkva á feitletrað á vali
+SCD_ITALIC        = Kveikja/slökkva á skáletrað á vali
+SCD_UNDERLINE     = Kveikja/slökkva á undirstrikun á vali
+SCD_UNDO          = Afturkalla síðustu breytingu
+SCD_REDO          = Endurgera síðustu afturköllun
+SCD_CUT           = Klippa val á klippiborð
+SCD_COPY          = Afrita val á klippiborð
+SCD_PASTE         = Líma af klippiborði
+SCD_SELECT_ALL    = Velja allt skjalið
+SCD_SAVE          = Vista núverandi skrá
+SCD_SAVE_AS       = Vista í nýja skrá
+SCD_NEW           = Búa til nýtt tómt skjal
+SCD_OPEN          = Opna skrá
+SCD_PRINT         = Prenta skjalið
+SCD_EXPORT_PDF    = Flytja skjalið út sem PDF-skrá
+SCD_PREVIEW       = Hlaða upp og forskoða FTP-tengda skrá í vafra
+SCD_GO_START      = Færa bendil í byrjun skjals
+SCD_GO_END        = Færa bendil í enda skjals
+SCD_WORD_LEFT     = Færa bendil eitt orð til vinstri
+SCD_WORD_RIGHT    = Færa bendil eitt orð til hægri
+SCD_EXTEND_SEL    = Stækka textaval um einn staf
+SCD_SEL_WORD      = Stækka val um eitt orð í senn
+SCD_ZOOM_IN       = Auka aðdráttig
+SCD_ZOOM_OUT      = Minnka aðdrátt
+SCD_RESET_ZOOM    = Endurstilla aðdrátt í 100% / sjálfgefið
+SCD_MNU_NEW       = Skrá-valmynd → Ný
+SCD_MNU_OPEN      = Skrá-valmynd → Opna
+SCD_MNU_SAVE      = Skrá-valmynd → Vista
+SCD_MNU_SAVE_AS   = Skrá-valmynd → Vista sem
+SCD_MNU_PRINT     = Skrá-valmynd → Prenta
+SCD_MNU_EXPORT_PDF = Skrá-valmynd → Flytja út sem PDF
+SCD_EXIT_APP      = Loka skjali (hætta í forriti)
+SCD_MNU_EXIT      = Skrá-valmynd → Hætta
+SCD_MNU_UNDO      = Breyta-valmynd → Afturkalla
+SCD_MNU_REDO      = Breyta-valmynd → Endurgera
+SCD_MNU_CUT       = Breyta-valmynd → Klippa
+SCD_MNU_COPY      = Breyta-valmynd → Afrita
+SCD_MNU_PASTE     = Breyta-valmynd → Líma
+SCD_MNU_SELECT_ALL = Breyta-valmynd → Velja allt
+SCD_MNU_SHORTCUTS = Hjálp-valmynd → Flýtilyklar
+SCD_MNU_ABOUT     = Hjálp-valmynd → Um NSBEdit
+SCD_SHOW_SHORTCUTS = Sýna þennan lista yfir flýtilykla
+SCD_CLOSE_DLG     = Loka núverandi glugga
+SCD_NEW_LINE      = Setja inn nýja málsgrein
+SCD_INDENT        = Setja inn dálkabil
+SCD_DELETE        = Eyða staf til hægri
+SCD_BACKSPACE     = Eyða staf til vinstri
+SCD_DEL_WORD_R    = Eyða orði til hægri við bendil
+SCD_DEL_WORD_L    = Eyða orði til vinstri við bendil
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Um NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF minnisbók og forritaritill fyrir Windows\n\n
+ABOUT_PUBLISHED   = Útgefið: 
+ABOUT_VERSION     = Útgáfa: 
+ABOUT_EDITION     = Útgáfugerð: 
+ABOUT_SEC_RTF     = ✏  Ríkur texti\n
+ABOUT_DESC_RTF    = •  Feitletrað, skáletrað, undirstrikað, yfirstrikað, uppskrift/niðurskrift.\n•  Leturgerð, stærð, litur og undirstrikunarlitur; full málsgreinarsnið.\n•  Töflur, listar, myndir, hlekkir, lárétt lína.\n•  Flytja út sem PDF eða HTML 5.\n\n
+ABOUT_SEC_CODE    = ⌨  Kóðaritill og málgreiningalýsing\n
+ABOUT_DESC_CODE   = •  25 forritunarmál: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL og fleiri.\n•  Sjálfvirk lokun para, sjálfvirkt inndrátt, snjallt afskrift-inndrátt.\n•  Kveikja/slökkva á línuathugasemdum (//, #, --) og HTML-blokkathugasemdum (<!-- -->).\n\n
+ABOUT_SEC_FTP     = ⚡  FTP og fjaraðgangur\n
+ABOUT_DESC_FTP    = •  Vista beint á FTP- og SFTP-þjóna.\n•  Fletta, endurnefna og stjórna skrám á fjarlægum þjóni.\n•  Forskoðun í vafra í gegnum stillanleg vefslóð.\n\n
+ABOUT_LICENSE     = Gefið út undir GNU General Public License v2.\n
+ABOUT_BTN_LICENSE = Skoða leyfi
+ABOUT_BTN_CREDITS = Þakkir
+ABOUT_BTN_CLOSE   = Loka
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Þakkir
+CREDITS_SCINTILLA  = Scintilla er ókeypis, opinn hugbúnaðar-ritilshluti eftir Neil Hodgson. NSBEdit notar Scintilla fyrir málgreiningalýst kóðaritil.\n\n
+CREDITS_LEXILLA    = Lexilla er safn af málgreinum fyrir Scintilla, einnig eftir Neil Hodgson. NSBEdit notar Lexilla til að bjóða upp á málgreiningalýsingu fyrir yfir 20 forritunarmál.\n\n
+CREDITS_GDI_PLUS   = GDI+ er hluti af Windows platform SDK. NSBEdit notar það til að birta NSBEdit-merki í Um-glugganum.\n
+CREDITS_MINGW      = MinGW-W64-verkefnið veitir fullkomið keyrsluumhverfi fyrir GCC og LLVM/Clang verkfærakistuna á Windows. NSBEdit er þýtt með MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite er lítil, hröð, sjálfstæð SQL-gagnagrunnsmotor í almenningseign. NSBEdit notar SQLite-samsetningu til að geyma FTP/SFTP-tengingarsniðmát.\n\n
+CREDITS_CURL       = libcurl er ókeypis, opinn hugbúnaðar URL-millifærslusafn eftir Daniel Stenberg. libssh2 er opinn hugbúnaðar SSH2-samskiptareglasafn. NSBEdit notar bæði til að útfæra FTP- og SFTP-skráamillifærslu fyrir fjarritsetningu.\n\n
+CREDITS_RTF2HTML   = rtf2html er opinn hugbúnaðar RTF-í-HTML umbreytingarsafn eftir Valentyn Lavrinenko. NSBEdit notar það til að flytja út ríkur texti skjöl sem HTML5. Gefið út undir GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Bæta við síðu...
+FTP_DISCONNECT       = Losa tengingu
+FTP_CLOSE_CONN_MENU  = Loka tengingu
+FTP_CLOSE_CONN_PROMPT = Veldu tengingu til að loka:
+FTP_BROWSE           = Fletta í skrám...
+FTP_DLG_SITE_ADD     = Bæta við FTP/SFTP-síðu
+FTP_DLG_SITE_EDIT    = Breyta FTP/SFTP-síðu
+FTP_FRIENDLY_NAME    = Vinveitt heiti:
+FTP_PROTOCOL         = Samskiptareglur:
+FTP_HOST             = Þjónn:
+FTP_PORT             = Gátt:
+FTP_USERNAME         = Notandanafn:
+FTP_PASSWORD         = Lykilorð:
+FTP_REMEMBER_PWD     = Muna lykilorð
+FTP_INITIAL_PATH     = Upphafsmappe:
+FTP_WEB_URL          = Vef-URL (rót):
+FTP_HELP_TITLE       = FTP/SFTP-sniðmát — reitleiðbeiningar
+FTP_SAVE             = Vista sniðmát
+FTP_DELETE           = Eyða sniðmáti
+FTP_DLG_BROWSER      = FTP-skráaflettir
+FTP_COL_NAME         = Heiti
+FTP_COL_SIZE         = Stærð
+FTP_COL_PERMS        = Heimildir
+FTP_CTX_OPEN         = Opna / Sækja
+FTP_CTX_CHMOD        = Heimildir...
+FTP_CTX_NEW_FILE     = Ný skrá...
+FTP_CTX_NEW_DIR      = Ný mappa...
+FTP_INPUT_FILENAME   = Skráarheiti:
+FTP_INPUT_DIRNAME    = Mappaheiti:
+FTP_CTX_DELETE       = Eyða
+FTP_CTX_RENAME       = Endurnefna...
+FTP_INPUT_RENAME     = Nýtt heiti:
+FTP_DLG_CHMOD        = Breyta heimildum (chmod)
+FTP_CHMOD_OWNER      = Eigandi
+FTP_CHMOD_GROUP      = Hópur
+FTP_CHMOD_OTHER      = Aðrir
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Áttundakerfi:
+FTP_CHMOD_APPLY      = Nota
+FTP_CONN_FAILED      = Tenging mistókst
+FTP_STATUS           = Tengt:
+FTP_NOT_CONNECTED    = Tengdu við eitt eða fleiri sniðmát áður en þú vistar á FTP.
+FTP_PICK_PROFILE     = Veldu sniðmát til að vista á:
+FTP_PW_PROMPT        = Sláðu inn lykilorð
+FTP_PW_FOR           = Lykilorð fyrir
+MSG_FTP_UPLOAD_OK    = Skrá vistuð og hlaðin upp.
+MSG_FTP_UPLOAD_FAIL  = Upphleðsla mistókst.
+MENU_SAVE_TO_FTP     = Vista á FTP...
+MENU_PREVIEW_FTP     = Forskoðun á netinu.
+FTP_PREVIEW_LOCKED   = Flipinn er læstur á meðan forskoðun er virk.
+FTP_PREVIEW_URL      = Forskoðunarslóð:
+BTN_OPEN_BROWSER     = Opna í vafra
+BTN_OPEN_BROWSER_TIP = Flýtilykill: [Enter] til að opna í vafra.

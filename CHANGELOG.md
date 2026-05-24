@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.24.08 - 24.05.2026 08:55
+
+- **Icelandic (Íslenska) UI translation**: Full translation of all ~200 UI strings added as `locale/is_IS.txt`. Appears in the GUI Language menu between English and Norwegian (alphabetical by native name). Switching requires no restart. All existing locale files updated with `LANG_UI_ICELANDIC = Íslenska`.
+- **RC resource-ID collision fix**: Icelandic locale was initially assigned RCDATA 12, which was already taken by `nsb_256.png`. `windres` accepts duplicate IDs silently — the first definition wins, so `FindResourceW` returned PNG binary data to the locale parser and the language appeared not to change. Moved to RCDATA 14 (`IDR_LOCALE_IS_IS = 14`). Documented in `API_INTERNALS\INTERNALS\add_ui_language_INTERNALS.txt` with full RC ID layout table and pitfall list.
+- **ZIP output moved to `zip\`**: `pack.ps1` now writes ZIPs to `zip\` (auto-created); `zip/` added to `.gitignore` — ZIPs are no longer tracked by Git.
+
 ## v2026.05.23.11 - 23.05.2026 11:18
 
 - **FTP → Close connection**: New permanent FTP menu item "Close connection" appears directly below "Add site…", grayed when nothing is connected. Clicking opens a picker dialog listing all active connections as owner-draw buttons (same `Ne_ShowFtpSelectDialog` style as *Save to FTP*); selecting one disconnects it immediately. `Ne_ShowFtpSelectDialog` is now generalised — it accepts title and message strings from the caller so it can serve any connection-picker purpose. `Ne_ShowFtpCloseConnDialog` wraps it for this use case. The right-click context-menu machinery (WM_MENURBUTTONUP, WM_APP+2 deferred handler, `s_ftpCtxProfileId`, `IDM_FTP_CTX_EDIT/CLOSE`) has been removed entirely. Locale keys: `FTP_CLOSE_CONN_MENU`, `FTP_CLOSE_CONN_PROMPT` (en_GB + no_nb).

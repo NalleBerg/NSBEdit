@@ -1,6 +1,14 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 23 May 2026 &mdash; v2026.05.23.11 (11:18)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 24 May 2026 &mdash; v2026.05.24.08 (08:55)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.24.08</span></h3>
+<p><strong>Icelandic UI translation; RC resource-ID collision fix; zip output folder (24.05.2026, 08:55):</strong></p>
+<ul>
+<li><strong>Icelandic (&#xCD;slenska) UI translation:</strong> A complete Icelandic translation of all ~200 UI strings has been added as <code>locale/is_IS.txt</code>. The language appears in the GUI Language drop-down between English and Norwegian (alphabetical by native name: English &rarr; &#xCD;slenska &rarr; Norsk). Switching to Icelandic requires no restart &mdash; the full menu bar, tooltips, tab titles, and status bar update instantly. All existing locale files (<code>en_GB.txt</code>, <code>no_nb.txt</code>) have been updated with the <code>LANG_UI_ICELANDIC = &#xCD;slenska</code> key so the language name appears correctly regardless of the active UI language.</li>
+<li><strong>RC resource-ID collision fix:</strong> The initial Icelandic locale was assigned RCDATA&nbsp;12 in <code>NSBEdit.rc</code>, which was already occupied by <code>nsb_256.png</code>. <code>windres</code> accepts duplicate RCDATA IDs without warning and the first definition wins, so <code>FindResourceW</code> returned PNG binary data to the locale parser &mdash; no keys were parsed, <code>g_str</code> was not updated, and the language appeared not to change. The Icelandic locale has been moved to RCDATA&nbsp;14 (<code>#define IDR_LOCALE_IS_IS 14</code>). The full RC resource-ID layout and this pitfall are documented in <code>API_INTERNALS\INTERNALS\add_ui_language_INTERNALS.txt</code>.</li>
+<li><strong>Distribution ZIP moved to <code>.\zip\</code>:</strong> <code>pack.ps1</code> now writes distribution ZIPs to a <code>zip\</code> sub-folder (created automatically if absent). The folder is listed in <code>.gitignore</code> so ZIPs are no longer tracked by Git. Previously ZIPs were written to the workspace root and committed to the repository.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.23.11</span></h3>
 <p><strong>FTP &rarr; Close connection menu item and picker dialog (23.05.2026, 11:18):</strong></p>

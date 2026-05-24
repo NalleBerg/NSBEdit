@@ -63,6 +63,7 @@
 #define IDM_REPLACE         117
 #define IDR_LOCALE_EN_GB    10
 #define IDR_LOCALE_NO_NB    11
+#define IDR_LOCALE_IS_IS    14
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1104,6 +1105,7 @@ static void Ne_LoadLocale()
     int resId = IDR_LOCALE_EN_GB;  // default / fallback
     switch (g_localeId) {
         case 1:  resId = IDR_LOCALE_NO_NB; break;
+        case 2:  resId = IDR_LOCALE_IS_IS; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
@@ -6839,6 +6841,8 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
         RemoveMenu(s_hLocaleMenu, 0, MF_BYPOSITION);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 0,
                     Ls(L"LANG_UI_ENGLISH"),   false, g_localeId == 0 ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 2,
+                    Ls(L"LANG_UI_ICELANDIC"), false, g_localeId == 2 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 1,
                     Ls(L"LANG_UI_NORWEGIAN"), false, g_localeId == 1 ? g_hLocaleMenuIcon : NULL);
 }

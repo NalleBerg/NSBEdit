@@ -1235,6 +1235,19 @@
                                                 fallback, ExpandEscapes usage, and step-by-step
                                                 guide for adding a new locale key.
 
+  API_INTERNALS\INTERNALS\add_ui_language_INTERNALS.txt
+                                                Step-by-step checklist for adding a new GUI
+                                                language (locale file) to the Language menu.
+                                                Covers all 8 touch-points: locale/xx_YY.txt,
+                                                NSBEdit.rc RCDATA entry, IDR_LOCALE_* define,
+                                                Ne_LoadLocale case, Ne_RebuildLocaleMenu entry,
+                                                and LANG_UI_* keys in every existing locale.
+                                                Includes RCDATA resource ID layout table (IDs
+                                                1–14, next free = 15), locale integer ID vs
+                                                RCDATA ID distinction, and three documented
+                                                pitfalls (duplicate RC ID, missing LANG_UI_*,
+                                                ID confusion).
+
   API_INTERNALS\INTERNALS\dialogs_INTERNALS.txt Dialogs page module (toolbar index 4) —
                                                 InstallerDialogType enum (0–9) and row
                                                 visibility rules:

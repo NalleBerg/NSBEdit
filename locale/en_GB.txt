@@ -143,6 +143,7 @@ MENU_GUI_LANG   = GUI Lang
 MENU_LANGUAGE   = &Language
 LANG_PLAIN_TEXT = Plain Text
 LANG_UI_ENGLISH   = English
+LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)
 
 # ── Export PDF ───────────────────────────────────────────────────────────────

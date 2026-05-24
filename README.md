@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.23.11**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.24.08**
 
 ## Download
 
@@ -63,7 +63,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Dark mode** — full dark UI (title bar, dialogs, toolbar, menus, status bar, code editor gutter) toggled from *Edit → Preferences…*; in light mode an optional *dark editor background* applies dark colors to only the code/plain-text viewport while all other UI chrome stays light; RTF writing area is always white regardless of the dark-editor setting
 - **Dark-editor keystroke blink fix** — no white flash in any editing operation (Enter, Backspace, paste…) when *Dark editor background* is enabled in Preferences while the overall UI is in light mode; `WM_ERASEBKGND` fully owns the editor area paint via `ExcludeClipRect` + explicit `DefWindowProcW` + return 1
 - **Menu bar background matches system color** — the top-level menu bar items use `GetSysColor(COLOR_MENUBAR)` so the bar blends with the standard Windows toolbar/chrome; drop-down popup backgrounds remain white in light mode
-- **Norwegian Bokmål UI** — full translation of all ~200 UI strings; switch instantly from *GUI Language → Norsk (bokmål)* (no restart required)
+- **Multiple UI languages** — English, Íslenska (Icelandic) and Norsk bokmål (Norwegian); switch instantly from the *GUI Language* menu (no restart required)
 - **Instant language switching** — changing the UI language via the menu rebuilds the full menu bar, all tooltips, tab titles, and status bar on the spot
 - **PHP syntax highlighting fixed** — PHP files now use the `hypertext` lexer so both embedded HTML and PHP tokens are coloured correctly
 - **Zoom via keyboard and scroll** — `Ctrl+[+]` / `Ctrl+[-]` / `Ctrl+0` and `Ctrl+MouseScroll` all work for zooming in both RTF and code (Scintilla) tabs
