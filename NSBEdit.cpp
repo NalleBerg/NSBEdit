@@ -9541,6 +9541,8 @@ static void ShowNsbAboutDialog(HWND parent)
     AppendNsbRich(hEdit, (published + L"\r\n").c_str(), false, RGB(60,60,60), 11, true);
     AppendNsbRich(hEdit, Ls(L"ABOUT_VERSION"),   true,  RGB(60,60,60), 11, true);
     AppendNsbRich(hEdit, (version   + L"\r\n").c_str(), false, RGB(60,60,60), 11, true);
+    AppendNsbRich(hEdit, Ls(L"ABOUT_EDITION"),   true,  RGB(60,60,60), 11, true);
+    AppendNsbRich(hEdit, L"2\r\n",               false, RGB(60,60,60), 11, true);
     AppendNsbRich(hEdit, L"\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\r\n\r\n", false, RGB(180,20,20), 8, true);
 
     // ── RTF editing section ───────────────────────────────────────────────────

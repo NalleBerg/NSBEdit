@@ -2,6 +2,7 @@
 
 ## v2026.05.24.12 (North Sami + Fixes) - 24.05.2026 12:05
 
+- **About dialog — Edition 2**: The About dialog now renders the `ABOUT_EDITION` locale key (already translated in all 15 UI languages) as an "Edition: 2" line immediately after the version number and above the separator rule.
 - **FTP profile delete confirmation**: Clicking "Delete Profile" in the Add/Edit FTP/SFTP Site dialog now shows a "Delete profile '%s'? — This cannot be undone." confirmation with "No" as the default button. Previously the profile was deleted immediately with no warning. Localised in all 15 UI languages via the new `MSG_PROFILE_DELETE_CONFIRM` key.
 - **Database safety — portable stub ignored**: `ne_profiles.cpp` now skips a zero-byte `nsbedit.db` stub next to the executable. The AppData database (`%APPDATA%\NSBEdit\nsbedit.db`) is always preferred when it exists.
 - **Unicode escape fix in locale files**: About-dialog symbols (✏ • ⌨ ⚡) and special characters in `nl_NL.txt`, `nl_BE.txt`, and `se_NO.txt` were stored as `\uXXXX` sequences which the locale parser does not handle. All replaced with literal UTF-8 characters.
