@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.24.12 (Portuguese) - 24.05.2026 11:09
+
+- **Portuguese (Português) UI translation**: Full European Portuguese translation of all ~200 UI strings added as `locale/pt_PT.txt` (RCDATA 23, locale ID 11). "Português" sorts between "Norsk" and "Suomi", giving the menu order: Dansk → Deutsch → Ελληνικά → English → Español → Français → Íslenska → Norsk → Português → Suomi → Svenska → Українська.
+- **All locale files updated**: `LANG_UI_PORTUGUESE` added to every existing locale file (en_GB → "Portuguese", no_nb → "Portugisisk", is_IS → "Portúgalska", sv_SE → "Portugisiska", da_DK → "Portugisisk", fi_FI → "Portugali", de_DE → "Portugiesisch", fr_FR → "Portugais", es_ES → "Portugués", uk_UA → "Португальська", el_GR → "Πορτογαλικά").
+
 ## v2026.05.24.11 (Greek) - 24.05.2026 11:01
 
 - **Greek (Ελληνικά) UI translation**: Full translation of all ~200 UI strings added as `locale/el_GR.txt` (RCDATA 22, locale ID 10). "Ελληνικά" sorts as "El…" — between "Deutsch" and "English" — giving the menu order: Dansk → Deutsch → Ελληνικά → English → Español → Français → Íslenska → Norsk → Suomi → Svenska → Українська.

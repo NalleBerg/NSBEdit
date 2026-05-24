@@ -72,6 +72,7 @@
 #define IDR_LOCALE_ES_ES    20
 #define IDR_LOCALE_UK_UA    21
 #define IDR_LOCALE_EL_GR    22
+#define IDR_LOCALE_PT_PT    23
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1122,6 +1123,7 @@ static void Ne_LoadLocale()
         case 8:  resId = IDR_LOCALE_ES_ES; break;
         case 9:  resId = IDR_LOCALE_UK_UA; break;
         case 10: resId = IDR_LOCALE_EL_GR; break;
+        case 11: resId = IDR_LOCALE_PT_PT; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
@@ -6870,9 +6872,11 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 2,
                     L"\u00cdslenska",         false, g_localeId == 2 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 1,
-                    L"Norsk (bokm\u00e5l)",   false, g_localeId == 1 ? g_hLocaleMenuIcon : NULL);
+                    L"Norsk (bokm\u00e5l)",   false, g_localeId == 1  ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 11,
+                    L"Portugu\u00eas",         false, g_localeId == 11 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 5,
-                    L"Suomi",                 false, g_localeId == 5 ? g_hLocaleMenuIcon : NULL);
+                    L"Suomi",                 false, g_localeId == 5  ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 3,
                     L"Svenska",               false, g_localeId == 3 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 9,

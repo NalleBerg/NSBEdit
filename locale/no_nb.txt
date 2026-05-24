@@ -149,6 +149,7 @@ LANG_UI_FRENCH    = Fransk
 LANG_UI_GERMAN    = Tysk
 LANG_UI_SPANISH   = Spansk
 LANG_UI_GREEK     = Gresk
+LANG_UI_PORTUGUESE = Portugisisk
 LANG_UI_SWEDISH   = Svensk
 LANG_UI_UKRAINIAN = Ukrainsk
 LANG_UI_ICELANDIC = Íslenska

@@ -359,10 +359,10 @@
                                                 Ne_UpdateStatusText; invoked from the GUI
                                                 Language WM_COMMAND handler so locale
                                                 switches instantly with no restart.
-                                                Eleven locale files embedded as RCDATA:
+                                                Twelve locale files embedded as RCDATA:
                                                 en_GB(10), no_nb(11), is_IS(14), sv_SE(15),
                                                 da_DK(16), fi_FI(17), de_DE(18), fr_FR(19),
-                                                es_ES(20), uk_UA(21), el_GR(22). LANG_UI_*
+                                                es_ES(20), uk_UA(21), el_GR(22), pt_PT(23). LANG_UI_*
                                                 keys present in every file (documentation
                                                 only — Ne_RebuildLocaleMenu uses hardcoded
                                                 native name strings).
@@ -475,6 +475,10 @@
   locale\el_GR.txt                              Greek (Ελληνικά) translation (RCDATA 22,
                                                 IDR_LOCALE_EL_GR). Full ~200-key
                                                 translation. g_localeId = 10.
+
+  locale\pt_PT.txt                              Portuguese (Português) translation (RCDATA 23,
+                                                IDR_LOCALE_PT_PT). Full ~200-key
+                                                translation. g_localeId = 11.
 
   ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
                                                 SQLite3 (statically linked). DB lookup order

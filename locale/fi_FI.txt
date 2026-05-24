@@ -149,6 +149,7 @@ LANG_UI_FRENCH    = Ranska
 LANG_UI_GERMAN    = Saksa
 LANG_UI_SPANISH   = Espanja
 LANG_UI_GREEK     = Kreikka
+LANG_UI_PORTUGUESE = Portugali
 LANG_UI_SWEDISH   = Ruotsi
 LANG_UI_UKRAINIAN = Ukraina
 LANG_UI_ICELANDIC = Íslenska
