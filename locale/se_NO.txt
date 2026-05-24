@@ -1,0 +1,451 @@
+# NSBEdit locale file — se_NO (Davvisámegiella / North Sami)
+# Format:  KEY = value
+# Escape sequences:  \n = CR+LF,  \t = tab,  \\ = backslash
+# North Sami (Davvisámegiella) is spoken in Norway, Sweden and Finland.
+# IT terminology follows established Sámi language board (Sámediggi) vocabulary.
+# Special characters: á č đ ŋ š ŧ ž and their uppercase forms.
+
+# ── Application ──────────────────────────────────────────────────────────────
+APP_NAME = NSBEdit
+UNTITLED = Namma haga
+
+# ── Menus ─────────────────────────────────────────────────────────────────────
+MENU_FILE       = &Fiila
+MENU_NEW        = &Ođđa\tCtrl+N
+MENU_OPEN       = &Rahpat...\tCtrl+O
+MENU_SAVE       = &Vurket\tCtrl+S
+MENU_SAVEAS     = Vurket &nammain...\tCtrl+Shift+S
+MENU_PRINT      = &Čállit...\tCtrl+P
+MENU_EXPORT_PDF = &Exporteret PDF-hámis...\tCtrl+Shift+P
+MENU_EXIT       = &Loahpahit	Ctrl+W
+MENU_EDIT         = &Rievdadit
+MENU_UNDO         = &Máhcahit\tCtrl+Z
+MENU_REDO         = &Fas dahkat\tCtrl+Y
+MENU_CUT          = &Bávččat\tCtrl+X
+MENU_COPY         = &Kopiiret\tCtrl+C
+MENU_PASTE        = &Liimet\tCtrl+V
+MENU_SELECTALL    = Válljehit &buot\tCtrl+A
+MENU_PREFS        = &Ásahusat...
+PREF_TITLE        = Ásahusat
+PREF_SEC_APPEARANCE = Govvádus
+PREF_DARK_MODE         = Seavdnjat tiivva
+PREF_LIGHT_MODE        = Vilges tiivva
+PREF_SEC_EDITOR        = Doaimmahanbohccohusa duogáš
+PREF_EDITOR_LIGHT_BG   = Vilges duogáš čálosasiidda ja koda fiilaide
+PREF_EDITOR_DARK_BG    = Seavdnjat duogáš čálosasiidda ja koda fiilaide
+MENU_HELP       = &Veahkki
+MENU_SHORTCUTS  = &Njuikenvuogit...\tF1
+MENU_ABOUT      = &NSBEdit birra
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = &Nuppástuhttit
+MENU_CONV_TO_PLAIN  = Čállosapmašupmi sihkut — vurket čállosiin
+MENU_CONV_TO_RTF    = &Čállosapmašupmi lasihit — RTF-hámis dahkat
+MENU_CONV_TO_HTML5  = Exporteret &HTML 5-hámis...
+MSG_HTML5_ERR       = HTML-nuppástuhttimin ii lihkostuvvan.
+MSG_HTML5_SAVE_ERR  = HTML-fiila ii sáhttán čállit.
+DLG_SAVE_HTML5      = Vurket HTML 5-hámis
+MENU_ENCODING       = &Koderengiella
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (vuogádat)
+MENU_ENC_WIN1252    = Windows-1252 (Oarjemeahcceeurohpálaš)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels ───────────────────────────────────────────────────────────
+ENC_RICHTEXT    = Hápmostuvvon čállos
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Čállos
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Čállosapmašumi sihkumiin jávká buot buoiddes, oadjebas, ivdnit ja eará hápmit.\n\nJatkat ja vurket čállosiinni?
+MSG_ENC_LOSSY   = Muhtin mearkkat eai sáhte gávdnot válljejuvvon koderengielas ja šaddet nuppástuvvot ";" dahje sullasaččan.\n\nJatkat?
+MSG_DEL_PLAIN_FILE = Dokumeanta lea vurkejuvvon RTF-fiilan.\n\nSihkut alggos čállosfiila?
+
+# ── File-dialog filters ───────────────────────────────────────────────────────
+FILTER_OPEN   = Buot dorjojuvvon fiilat|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-fiilat (*.rtf)|*.rtf|Čállosfiilat (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Config (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Batch (*.bat;*.cmd)|*.bat;*.cmd|Buot fiilat (*.*)|*.*
+FILTER_SAVEAS = RTF-fiilat (*.rtf)|*.rtf|Čállosfiilat (*.txt)|*.txt|Buot fiilat (*.*)|*.*
+FILTER_IMAGE  = Govvafiilat|*.png;*.jpg;*.jpeg|PNG-fiilat (*.png)|*.png|JPEG-fiilat (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Rahpat
+DLG_SAVEAS = Vurket nammain
+DLG_IMAGE  = Govva bidjet
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Fiila ii sáhttán rahpojuvvot.
+MSG_SAVE_ERR      = Fiila ii sáhttán vurkejuvvot.
+MSG_HAS_FORMATTING = Dás lea čállosapmašupmi (buoiddes, ivdnit, čoalbmestuorrodagat, j.e.a.) mii ii sáhttán vurkejuvvot čállosfiilain.\n\nVállje Juo vurket čállosiinni ja sihkut buot čállosapmašumiid.\nVállje Ii vurket RTF-hámis (fiillanamma nuppástuvvá .rtf-mearrideapmái).\nVállje Jávkadit máhccat vurkemeahttumit.
+MSG_IMG_OPEN_ERR  = Govvafiila ii sáhttán rahpojuvvot.
+MSG_IMG_FMT_ERR   = Ii dorjojuvvon hápmi. Geavat PNG dahje JPEG.
+MSG_SAVE_PROMPT   = Vurket "%s"-nuppástusaid?
+DLG_SAVE_CHANGES  = Vurket nuppástusaid
+BTN_SAVE          = Vurket
+BTN_DONT_SAVE     = Ii vurke
+BTN_CANCEL        = Jávkadit
+BTN_OK            = Dohkket
+
+DLG_FILE_CHANGED        = Fiila rievdaduvvon disskus
+MSG_FILE_CHANGED_PROMPT = "%s" lea rievdaduvvon eará prográmmas go NSBEdit ii leamašan doaibmame.\n\nViežžat ođđasit disskus?
+BTN_RELOAD              = Viežžat ođđasit
+BTN_KEEP                = Doallat dálá versioma
+
+TAB_CTX_NEW_TAB         = Ođđa tabulator
+TAB_CTX_CLOSE_TAB       = Giddejuvvot tabulator
+
+# ── Status bar ────────────────────────────────────────────────────────────────
+SB_WORDS                = Sánit
+SB_CHARS                = Mearkkat
+SB_SAVED                = Vurkejuvvon
+SB_UNSAVED              = Ii vurkejuvvon
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Buoiddes  (Ctrl+B)
+TIP_ITALIC      = Oadjebas  (Ctrl+I)
+TIP_UNDERLINE   = Vuolleviila  (Ctrl+U)
+TIP_STRIKE      = Rasttalin
+TIP_SUBSCRIPT   = Vuollelogat  (ovdamearka: H₂O)
+TIP_SUPERSCRIPT = Bajilogat  (ovdamearka: m²)
+TIP_FONTFACE    = Čoalbmi
+TIP_FONTSIZE    = Čoalbmestuorrodat (pt)
+TIP_COLOR       = Čállosat ivdni
+TIP_HIGHLIGHT   = Merkenivdni
+TIP_ALIGN_L     = Gurut beallái
+TIP_ALIGN_C     = Gaskamielkki
+TIP_ALIGN_R     = Olgeš beallái
+TIP_ALIGN_J     = Buohkaid siiddu
+TIP_BULLET      = Mearkkalisttu
+TIP_NUMBERED    = Numeralastemerica
+TIP_IMAGE       = Govva bidjet  (PNG / JPEG)
+TIP_INDENT_IN   = Sisabealli stuorát
+TIP_INDENT_OUT  = Sisabealli unnit
+TIP_LINESPACE   = Linjaspásii...
+TIP_FIND        = Ohcat / Nuppástuhttit  (Ctrl+F)
+TIP_LINK        = Hyperlinka bidjet
+TIP_TABLE       = Tabeallas eigahusat...
+TIP_TABLE_DROP  = Tabealla bidjet (sturrodat válljehit)
+TIP_HLINE       = Vodolaš linja bidjet
+TIP_CLEARFMT    = Buot čállosapmašupmi sihkut
+TIP_PRINT_BTN   = Čállit...  (Ctrl+P)
+TIP_ZOOM        = Sturrodit
+TIP_WORDWRAP    = Sáni bidjat njiber nuppástuhttit
+TIP_CASE        = Stuora/unna bustávat nuppástuhttit  (STUORRA / unna / Lause)
+TIP_LINENUM     = Linjamearit nuppástuhttit
+TIP_PARSPACE    = Kapihttala spásii...
+TIP_SAVE        = Vurket  (Ctrl+S)
+TIP_SAVE_FTP    = Vurket FTP-servevrrii
+TIP_PREVIEW     = Internehtas ovdačájálmit.
+TIP_LANG_UI     = Bealegiella
+TIP_COMMENT     = Linját kommentáriidin merket dahje sihkut
+MENU_GUI_LANG   = Giella
+MENU_LANGUAGE   = &Giella
+LANG_PLAIN_TEXT = Čállos
+LANG_UI_DANISH    = Dánalaš giella
+LANG_UI_ENGLISH   = Eaŋgalsgiella
+LANG_UI_FINNISH   = Suomagiella
+LANG_UI_FRENCH    = Fránskkagiella
+LANG_UI_GERMAN    = Duiskkagiella
+LANG_UI_SPANISH   = Spánskkagiella
+LANG_UI_GREEK     = Greikkagiella
+LANG_UI_PORTUGUESE = Portugálalaš giella
+LANG_UI_SWEDISH   = Ruoŧagiella
+LANG_UI_UKRAINIAN = Ukrainagiella
+LANG_UI_ICELANDIC = Islánddalaš giella
+LANG_UI_NORWEGIAN = Dárogiella
+LANG_UI_DUTCH     = Hollánddalaš giella
+LANG_UI_FLEMISH   = Flámalaš giella
+LANG_UI_SAMI      = Davvisámegiella
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-fiilat (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Exporteret PDF-hámis
+MSG_PDF_ERR      = PDF ii sáhttán exporterejuvvot. Dárkkis ahte "Microsoft Print to PDF" lea biddjojuvvon (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Ohcat / Nuppástuhttit
+DLG_FIND_WHAT       = Ohcat:
+DLG_REPL_WITH       = Nuppástuhttit:
+BTN_FIND_NEXT       = Boahtte
+BTN_CLOSE           = Giddejuvvot
+BTN_REPLACE         = Nuppástuhttit
+BTN_REPLACE_ALL     = Buot nuppástuhttit
+CHK_MATCHCASE       = Stuora/unna bustávat vuhtiiváldit
+CHK_WHOLEWORD       = Olles sátni
+CHK_REGEX           = Regex
+MSG_FIND_NOT_FOUND  = Čállos ii gávdnon.
+MSG_REGEX_ERR       = Ii gelvvolaš reguláralaš čiehtadan.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Hyperlinka bidjet
+DLG_LINK_URL    = URL:
+DLG_LINK_TEXT   = Čájehuvvon čállos:
+LINK_TIP_CTRL   = [Ctrl]+Klikkahit rahpat navigahtoriin
+MSG_LINK_BAD_URL = Adde gelvvolaš URL.
+
+URL ferte álgit mearriduvvon álgguhusain, dego:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Tabealla bidjet
+DLG_TABLE_ROWS  = Linját:
+DLG_TABLE_COLS  = Pillárat:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Tabealla sturrodat válljehit
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Tabealla eigahusat
+DLG_TABLE_INSERT    = Tabealla bidjet
+TBLP_ROWS           = Linját:
+TBLP_COLS           = Pillárat:
+TBLP_CELLW          = Pillar viidodat:
+TBLP_BORDERW        = Rádjemearkka buoidodat:
+TBLP_UNIT_HP        = bealli pt
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Čella badjebealli:
+TBLP_PAD_BOTTOM     = Čella vuollebealli:
+TBLP_PAD_LEFT       = Čella gurut bealli:
+TBLP_PAD_RIGHT      = Čella olgeš bealli:
+TBLP_ROWH           = Linja albmi (0=automáhttalaš):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Tabealla čoaggáneapmi
+TBLP_ALIGN_L        = Gurut
+TBLP_ALIGN_C        = Gaskamielkki
+TBLP_ALIGN_R        = Olgeš
+BTN_APPLY           = Čuovvolit
+CTX_TABLE_PROPS     = Tabealla eigahusat...
+TBLP_MODE_ALTER     = Dálá tabealla rievdadit
+TBLP_MODE_NESTED    = Tabealla dálá čellas
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Linjaspásii
+RDO_LINESPACE_S  = Okta
+RDO_LINESPACE_15 = 1,5 linja
+RDO_LINESPACE_D  = Guovtti
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Kapihttala spásii
+DLG_PARSPACE_BEF = Spásii ovdal (pt):
+DLG_PARSPACE_AFT = Spásii maŋŋil (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Njuikenvuogit
+SHORTCUTS_COL1   = Njuikenvuohki
+SHORTCUTS_COL2   = Doaibma
+SHORTCUTS_COL3   = Čilgehus
+SHORTCUTS_BTN_CLOSE = Giddejuvvot
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Buoiddes
+SCF_ITALIC        = Oadjebas
+SCF_UNDERLINE     = Vuolleviila
+SCF_UNDO          = Máhcahit
+SCF_REDO          = Fas dahkat
+SCF_CUT           = Bávččat
+SCF_COPY          = Kopiiret
+SCF_PASTE         = Liimet
+SCF_SELECT_ALL    = Buot válljehit
+SCF_SAVE          = Vurket
+SCF_SAVE_AS       = Vurket nammain
+SCF_NEW           = Ođđa
+SCF_OPEN          = Rahpat
+SCF_PRINT         = Čállit
+SCF_EXPORT_PDF    = Exporteret PDF-hámis
+SCF_PREVIEW       = Internehtas ovdačájálmit
+SCF_GO_START      = Álgui mannat
+SCF_GO_END        = Loahppai mannat
+SCF_WORD_LEFT     = Sátni gurut
+SCF_WORD_RIGHT    = Sátni olgeš
+SCF_EXTEND_SEL    = Válljema viiddidit
+SCF_SEL_WORD      = Sátni válljehit
+SCF_ZOOM_IN       = Sturrodit
+SCF_ZOOM_OUT      = Unnit
+SCF_RESET_ZOOM    = Sturrodeapmi álggahit
+SCF_EXIT          = Loahpahit
+SCF_SHORTCUTS     = Njuikenvuogit
+SCF_ABOUT         = Birra
+SCF_CLOSE_DLG     = Suokkardeami giddejuvvot
+SCF_NEW_LINE      = Ođđa linja
+SCF_INDENT        = Sisabidjan
+SCF_DELETE        = Sihkut
+SCF_BACKSPACE     = Backspace
+SCF_DEL_WORD_R    = Sátni olgeš sihkut
+SCF_DEL_WORD_L    = Sátni gurut sihkut
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Buoiddes nuppástuhttit válljejuvvon čállosiin
+SCD_ITALIC        = Oadjebas nuppástuhttit válljejuvvon čállosiin
+SCD_UNDERLINE     = Vuolleviila nuppástuhttit válljejuvvon čállosiin
+SCD_UNDO          = Maŋimuš rievdadusa máhcahit
+SCD_REDO          = Máhcahuvvon rievdadusa fas dahkat
+SCD_CUT           = Válljema goahtái bávččat
+SCD_COPY          = Válljema goahtái kopiiret
+SCD_PASTE         = Goahtás liimet
+SCD_SELECT_ALL    = Olles dokumeanta válljehit
+SCD_SAVE          = Dálá fiila vurket
+SCD_SAVE_AS       = Ođđa fiilan vurket
+SCD_NEW           = Ođđa fievrrideaddji dokumeanta dahkat
+SCD_OPEN          = Fiila rahpat
+SCD_PRINT         = Dokumeanta čállit
+SCD_EXPORT_PDF    = Dokumeanta exporteret PDF-fiilan
+SCD_PREVIEW       = FTP-fiila sáddet ja navigahtoriin ovdačájálmit
+SCD_GO_START      = Gursora dokumeanta álggui sirddet
+SCD_GO_END        = Gursora dokumeanta loahppai sirddet
+SCD_WORD_LEFT     = Gursora okta sátni gurut sirddet
+SCD_WORD_RIGHT    = Gursora okta sátni olgeš sirddet
+SCD_EXTEND_SEL    = Válljema okta mearka viiddidit
+SCD_SEL_WORD      = Válljema sátnni mielde viiddidit
+SCD_ZOOM_IN       = Sturrodeami dási bajit
+SCD_ZOOM_OUT      = Sturrodeami dási vuollit
+SCD_RESET_ZOOM    = Sturrodat 100%-ii / álggaiga máhccat
+SCD_MNU_NEW       = Fiila válikkahus → Ođđa
+SCD_MNU_OPEN      = Fiila válikkahus → Rahpat
+SCD_MNU_SAVE      = Fiila válikkahus → Vurket
+SCD_MNU_SAVE_AS   = Fiila válikkahus → Vurket nammain
+SCD_MNU_PRINT     = Fiila válikkahus → Čállit
+SCD_MNU_EXPORT_PDF = Fiila válikkahus → Exporteret PDF-hámis
+SCD_EXIT_APP      = Dokumeanta giddejuvvot (prográmma loahpahit)
+SCD_MNU_EXIT      = Fiila válikkahus → Loahpahit
+SCD_MNU_UNDO      = Rievdadit válikkahus → Máhcahit
+SCD_MNU_REDO      = Rievdadit válikkahus → Fas dahkat
+SCD_MNU_CUT       = Rievdadit válikkahus → Bávččat
+SCD_MNU_COPY      = Rievdadit válikkahus → Kopiiret
+SCD_MNU_PASTE     = Rievdadit válikkahus → Liimet
+SCD_MNU_SELECT_ALL = Rievdadit válikkahus → Buot válljehit
+SCD_MNU_SHORTCUTS = Veahkki válikkahus → Njuikenvuogit
+SCD_MNU_ABOUT     = Veahkki válikkahus → NSBEdit birra
+SCD_SHOW_SHORTCUTS = Dán njuikenvuogi listta čájehit
+SCD_CLOSE_DLG     = Dálá suokkardeami giddejuvvot
+SCD_NEW_LINE      = Ođđa kapihttala bidjet
+SCD_INDENT        = Tábulator mearrka bidjet
+SCD_DELETE        = Mearka olgeš beallái sihkut
+SCD_BACKSPACE     = Mearka gurut beallái sihkut
+SCD_DEL_WORD_R    = Sátni gursora olgeš beallái sihkut
+SCD_DEL_WORD_L    = Sátni gursora gurut beallái sihkut
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+ABOUT_TITLE       = NSBEdit birra
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF-memo ja prográmmadoaimmahanbohccohus Windowsii\n\n
+ABOUT_PUBLISHED   = Almmustuhtton: 
+ABOUT_VERSION     = Versiuma: 
+ABOUT_EDITION     = Beaivi: 
+ABOUT_SEC_RTF     = ✏  Hápmostuvvon čállosat rievdadit\n
+ABOUT_DESC_RTF    = •  Buoiddes, oadjebas, vuolleviila, rasttalin, bajilogat/vuollelogat.\n•  Čoalbmi, stuorrodat, ivdni ja merken; olles kapihttala hápmoshupmi.\n•  Tabeallat, mearkkalisttut, govvat, hyperlinkat, vodolaš linját.\n•  Exporteret PDF- dahje HTML 5-hámis.\n\n
+ABOUT_SEC_CODE    = ⌨  Koda rievdadit ja syntáksa čilgejupmi\n
+ABOUT_DESC_CODE   = •  25 giella: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL ja eará.\n•  Automáhtalaš dárkkisteapmi, automáhtalaš pára giddejupmi, automáhtalaš sisabidjan.\n•  Linjakommentárat (//, #, --) ja HTML-kommentárat (<!-- -->) nuppástuhttit.\n\n
+ABOUT_SEC_FTP     = ⚡  FTP ja gáiddusdoaimmaheapmi\n
+ABOUT_DESC_FTP    = •  Njuolga vurket FTP- ja SFTP-servevrriide.\n•  Gáiddusdiehtosistema vuolgit, nammastit ja hálddašit.\n•  Live ovdačájálmit navigahtoriin mearriduvvon web-URL-vuođu bokte.\n\n
+ABOUT_LICENSE     = Mearriduvvon GNU Almmolaš Almmustahttin Lisenssa v2 vuolde.\n
+ABOUT_BTN_LICENSE = Lisensa geahčadit
+ABOUT_BTN_CREDITS = Ovddasteaddjit
+ABOUT_BTN_CLOSE   = Giddejuvvot
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Ovddasteaddjit
+CREDITS_SCINTILLA  = Scintilla lea njibilaš ja rievttes gáldokoda rievdadankomponenta Neil Hodgsonis. NSBEdit geavaha Scintilla koda rievdadeapmái syntáksa čilgejeami mielde.\n\n
+CREDITS_LEXILLA    = Lexilla lea Scintilla-lexerbibliotehka Neil Hodgsonis. NSBEdit geavaha Lexilla syntáksa čilgejeapmái badjel 20 prográmmagiellas.\n\n
+CREDITS_GDI_PLUS   = GDI+ lea oassi Windows platform SDK:s. NSBEdit geavaha dan NSBEdit-logova čájehit Birra-suokkardeamis.\n
+CREDITS_MINGW      = MinGW-W64 prošeakta addá olles runtime-birra GCC- ja LLVM/Clang-toolchain-iidda Windowsas. NSBEdit kompilerejeaddjo MinGW-W64 GCC 15.2.0-in.\n\n
+CREDITS_SQLITE     = SQLite lea unnán, jođán, iešseisaleaddji ja njibilaš SQL-diehtosistema. NSBEdit geavaha biddjojuvvon SQLite FTP/SFTP-oktavuohtalohkáriid vurkemii.\n\n
+CREDITS_CURL       = libcurl lea njibilaš URL-sirdinbibliotehka Daniel Stenbergis. libssh2 lea rievttes SSH2-protokollabibliotehka. NSBEdit geavaha guktuid FTP- ja SFTP-fiilasirdimii gáiddusdoaimmaheamis.\n\n
+CREDITS_RTF2HTML   = rtf2html lea rievttes RTF-HTML-nuppástuhttin-bibliotehka Valentyn Lavrinenkos. NSBEdit geavaha dan hápmostuvvon dokumeanttat HTML5-hámis exporterejeapmái. Mearriduvvon GNU Lesser General Public License v2.1 (LGPLv2.1) vuolde.\n\n
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Siidu lasihit...
+FTP_DISCONNECT       = Oktavuohta nohkahit
+FTP_CLOSE_CONN_MENU  = Oktavuohta giddejuvvot
+FTP_CLOSE_CONN_PROMPT = Vállje giddejuvvot guhtii oktavuhtii:
+FTP_BROWSE           = Fiilat vuolgit...
+FTP_DLG_SITE_ADD     = FTP/SFTP-siidu lasihit
+FTP_DLG_SITE_EDIT    = FTP/SFTP-siidu rievdadit
+FTP_FRIENDLY_NAME    = Čájehannamma:
+FTP_PROTOCOL         = Protokolla:
+FTP_HOST             = Servevri:
+FTP_PORT             = Portta:
+FTP_USERNAME         = Geavaheaddjinamma:
+FTP_PASSWORD         = Sálašsátni:
+FTP_REMEMBER_PWD     = Sálašsáni muittit
+FTP_INITIAL_PATH     = Álggamappe:
+FTP_WEB_URL          = Web-URL-vuodat:
+FTP_HELP_TITLE       = FTP/SFTP-profilla — Siidu veahkkeoahpahus
+FTP_SAVE             = Profilla vurket
+FTP_DELETE           = Profilla sihkut
+MSG_PROFILE_DELETE_CONFIRM = Profiilla «%s» sihkut?\n\nDán ii sáhte máhcahit.
+FTP_DLG_BROWSER      = FTP-vuolginfállen
+FTP_COL_NAME         = Namma
+FTP_COL_SIZE         = Stuorrodat
+FTP_COL_PERMS        = Luvat
+FTP_CTX_OPEN         = Rahpat / Viežžat
+FTP_CTX_CHMOD        = Luvat...
+FTP_CTX_NEW_FILE     = Ođđa fiila...
+FTP_CTX_NEW_DIR      = Ođđa máhppa...
+FTP_INPUT_FILENAME   = Fiillanamma:
+FTP_INPUT_DIRNAME    = Máhpanamma:
+FTP_CTX_DELETE       = Sihkut
+FTP_CTX_RENAME       = Nammastit ođđasit...
+FTP_INPUT_RENAME     = Ođđa namma:
+FTP_DLG_CHMOD        = Luvat nuppástuhttit (chmod)
+FTP_CHMOD_OWNER      = Eaiggát
+FTP_CHMOD_GROUP      = Joavku
+FTP_CHMOD_OTHER      = Earát
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Oktálalaš:
+FTP_CHMOD_APPLY      = Čuovvolit
+FTP_CONN_FAILED      = Oktavuohta ii lihkostuvvan
+FTP_STATUS           = Oktavuohta lea:
+FTP_NOT_CONNECTED    = Dárbbašat oktavuohta ovdal go vurket FTP-bokte.
+FTP_PICK_PROFILE     = Vállje profilla maidda vurket:
+FTP_PW_PROMPT        = Sálašsáni bidjet
+FTP_PW_FOR           = Sálašsátni siidui
+MSG_FTP_UPLOAD_OK    = Fiila vurkejuvvon ja sáddejuvvon.
+MSG_FTP_UPLOAD_FAIL  = Sáddemin ii lihkostuvvan.
+MENU_SAVE_TO_FTP     = Vurket FTP-siidui...
+MENU_PREVIEW_FTP     = Internehtas ovdačájálmit.
+FTP_PREVIEW_LOCKED   = Tabulator lea lukkon dannego ovdačájálmastat lea doaibmame.
+FTP_PREVIEW_URL      = Ovdačájálmastaga URL:
+BTN_OPEN_BROWSER     = Navigahtoriin rahpat
+BTN_OPEN_BROWSER_TIP = Njuikenvuohki: [Enter] navigahtoriin rahpat.
+BTN_REVERT           = Máhcahit & giddejuvvot
+BTN_REVERT_TIP       = Njuikenvuohki: [Esc] máhcahit ja dán suokkardeami giddejuvvot.
+FTP_PREVIEW_UP_FAIL  = Sáddemin ii lihkostuvvan:
+FTP_PREVIEW_REV_FAIL = Máhcaheapmi ii lihkostuvvan:
+BTN_SAVE_BACKUP      = Báikkálaš varadeattuid vurket...
+BTN_CLOSE_ANYWAY     = Giddejuvvot máhcaheami haga
+FTP_SAVE_BROWSER     = Vurket FTP-siidui — ulbmila válljehit
+FTP_FILENAME_PROMPT  = Fiillanamma:
+FTP_SAVE_HERE        = Dás vurket
+FTP_SAVE_TO          = Vurkejuvvon FTP-siidui
+FTP_SAVED_OK         = Fiila sáddejuvvon. Oktavuohta lea rabas.
+MSG_FTP_DELETE_WARN  = Sihkut "%s" servevris?\n\nDán doaibma ii sáhttán máhcahuvvot.
+MSG_FTP_CHMOD_OK     = Luvat dássebuktojuvvon.
+MSG_FTP_DELETE_FAIL  = Sihkumin ii lihkostuvvan.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Vodolaš linja bidjet
+DLG_HRUL_PROPS      = Vodolaš linja eigahusat
+HRP_STYLE           = Styla:
+HRP_THICKNESS       = Buoidodat (pt):
+HRP_SPACE_ABOVE     = Spásii bajábealde (pt):
+HRP_SPACE_BELOW     = Spásii vuollebealde (pt):
+HRP_WIDTH_PCT       = Viidodat (%):
+HRP_ALIGNMENT       = Čoaggáneapmi:
+HRP_START_COLOUR    = Álggivdni:
+HRP_END_COLOUR      = Loahppivdni (gradieanta):
+HRP_ALIGN_L         = Gurut
+HRP_ALIGN_C         = Gaskamielkki
+HRP_ALIGN_R         = Olgeš
+HRP_STYLE_SINGLE    = Okta ohppan linja
+HRP_STYLE_THICK     = Buoiddes
+HRP_STYLE_DOUBLE    = Guovtti
+HRP_STYLE_DOTTED    = Čuohppan
+HRP_STYLE_DASHED    = Dahkkon
+HRP_STYLE_HAIRLINE  = Hiegan
+BTN_CHOOSE          = Válljehit…

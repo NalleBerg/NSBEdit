@@ -155,6 +155,7 @@ LANG_UI_GREEK     = Грецька
 LANG_UI_PORTUGUESE = Португальська
 LANG_UI_DUTCH      = Нідерландська
 LANG_UI_FLEMISH    = Фламандська
+LANG_UI_SAMI       = Північносаамська
 LANG_UI_SWEDISH   = Svenska
 LANG_UI_UKRAINIAN = Українська
 
@@ -375,6 +376,7 @@ FTP_WEB_URL          = Веб-URL (корінь):
 FTP_HELP_TITLE       = Профіль FTP/SFTP — Довідка по полях
 FTP_SAVE             = Зберегти профіль
 FTP_DELETE           = Видалити профіль
+MSG_PROFILE_DELETE_CONFIRM = Видалити профіль «%s»?\n\nЦю дію не можна скасувати.
 FTP_DLG_BROWSER      = Файловий менеджер FTP
 FTP_COL_NAME         = Ім'я
 FTP_COL_SIZE         = Розмір

@@ -40,8 +40,10 @@ static std::wstring Np_GetDbPath()
             return adPath;
     }
 
-    // 2. Portable: nsbedit.db next to the exe (stub from ZIP).
-    if (GetFileAttributesW(L"nsbedit.db") != INVALID_FILE_ATTRIBUTES)
+    // 2. Portable: nsbedit.db next to the exe (stub from ZIP) — must be non-empty.
+    WIN32_FILE_ATTRIBUTE_DATA fa = {};
+    if (GetFileAttributesExW(L"nsbedit.db", GetFileExInfoStandard, &fa) &&
+        (fa.nFileSizeHigh > 0 || fa.nFileSizeLow > 0))
         return L"nsbedit.db";
 
     // 3. Nothing found — caller will open :memory: and warn the user.

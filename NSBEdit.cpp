@@ -75,6 +75,7 @@
 #define IDR_LOCALE_PT_PT    23
 #define IDR_LOCALE_NL_NL    24
 #define IDR_LOCALE_NL_BE    25
+#define IDR_LOCALE_SE_NO    26
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1128,6 +1129,7 @@ static void Ne_LoadLocale()
         case 11: resId = IDR_LOCALE_PT_PT; break;
         case 12: resId = IDR_LOCALE_NL_NL; break;
         case 13: resId = IDR_LOCALE_NL_BE; break;
+        case 14: resId = IDR_LOCALE_SE_NO; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
@@ -6863,6 +6865,8 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
         RemoveMenu(s_hLocaleMenu, 0, MF_BYPOSITION);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 4,
                     L"Dansk",                 false, g_localeId == 4  ? g_hLocaleMenuIcon : NULL);
+    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 14,
+                    L"Davvis\u00e1megiella",  false, g_localeId == 14 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 6,
                     L"Deutsch",               false, g_localeId == 6  ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 10,
@@ -7307,8 +7311,14 @@ static LRESULT CALLBACK Ne_FtpSiteProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             d->saved = true;
             PostMessageW(hwnd, WM_CLOSE, 0, 0);
         }
-        // Delete (edit mode)
+        // Delete (edit mode) – confirm before destroying
         if (id == 1030 && d && d->isEdit) {
+            wchar_t confMsg[512];
+            swprintf_s(confMsg, Ls(L"MSG_PROFILE_DELETE_CONFIRM"),
+                       d->profile.friendlyName.c_str());
+            if (MessageBoxW(hwnd, confMsg, Ls(L"FTP_DELETE"),
+                            MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
+                return 0;
             d->deleted = true;
             PostMessageW(hwnd, WM_CLOSE, 0, 0);
         }
@@ -9482,7 +9492,10 @@ static void ShowNsbAboutDialog(HWND parent)
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW+1); wc.lpszClassName = L"NsbAboutClass";
     if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
 
-    const int W = S(480), H = S(580);
+    int _abtBtnW = Ne_MeasureButtonWidth(Ls(L"ABOUT_BTN_LICENSE"))
+                 + S(8) + Ne_MeasureButtonWidth(Ls(L"ABOUT_BTN_CREDITS"))
+                 + S(8) + Ne_MeasureButtonWidth(Ls(L"ABOUT_BTN_CLOSE"));
+    const int W = std::max(S(480), _abtBtnW + 2*S(10)), H = S(580);
     RECT pr = {}; if (parent && IsWindow(parent)) GetWindowRect(parent, &pr);
     int x = (pr.left+pr.right)/2 - W/2, y = (pr.top+pr.bottom)/2 - H/2;
     if (y < 30) y = 30;

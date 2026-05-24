@@ -359,11 +359,11 @@
                                                 Ne_UpdateStatusText; invoked from the GUI
                                                 Language WM_COMMAND handler so locale
                                                 switches instantly with no restart.
-                                                Fourteen locale files embedded as RCDATA:
+                                                Fifteen locale files embedded as RCDATA:
                                                 en_GB(10), no_nb(11), is_IS(14), sv_SE(15),
                                                 da_DK(16), fi_FI(17), de_DE(18), fr_FR(19),
                                                 es_ES(20), uk_UA(21), el_GR(22), pt_PT(23),
-                                                nl_NL(24), nl_BE(25). LANG_UI_*
+                                                nl_NL(24), nl_BE(25), se_NO(26). LANG_UI_*
                                                 keys present in every file (documentation
                                                 only — Ne_RebuildLocaleMenu uses hardcoded
                                                 native name strings).
@@ -489,6 +489,12 @@
                                                 IDR_LOCALE_NL_BE). Full ~200-key
                                                 translation. Uses "bewaren" (save/keep)
                                                 instead of "opslaan". g_localeId = 13.
+
+  locale\se_NO.txt                              North Sami (Davvisámegiella) translation
+                                                (RCDATA 26, IDR_LOCALE_SE_NO). Full ~200-key
+                                                translation. Uses established Sámi IT
+                                                terminology (Sámediggi vocabulary).
+                                                g_localeId = 14.
 
   ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
                                                 SQLite3 (statically linked). DB lookup order

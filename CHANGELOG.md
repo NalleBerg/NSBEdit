@@ -1,5 +1,14 @@
 # Changelog
 
+## v2026.05.24.12 (North Sami + Fixes) - 24.05.2026 12:05
+
+- **FTP profile delete confirmation**: Clicking "Delete Profile" in the Add/Edit FTP/SFTP Site dialog now shows a "Delete profile '%s'? — This cannot be undone." confirmation with "No" as the default button. Previously the profile was deleted immediately with no warning. Localised in all 15 UI languages via the new `MSG_PROFILE_DELETE_CONFIRM` key.
+- **Database safety — portable stub ignored**: `ne_profiles.cpp` now skips a zero-byte `nsbedit.db` stub next to the executable. The AppData database (`%APPDATA%\NSBEdit\nsbedit.db`) is always preferred when it exists.
+- **Unicode escape fix in locale files**: About-dialog symbols (✏ • ⌨ ⚡) and special characters in `nl_NL.txt`, `nl_BE.txt`, and `se_NO.txt` were stored as `\uXXXX` sequences which the locale parser does not handle. All replaced with literal UTF-8 characters.
+- **About dialog button row auto-resizes**: Pre-measures the three buttons before window creation; widens dialog if total width exceeds `S(480)`. Fixes clipping of long translated labels (e.g. North Sami "Lisensa geahčadit").
+- **North Sami (Davvisámegiella) UI translation**: Full North Sami translation of all ~200 UI strings added as `locale/se_NO.txt` (RCDATA 26, locale ID 14). "Davvisámegiella" sorts between "Dansk" and "Deutsch", giving the menu order: Dansk → Davvisámegiella → Deutsch → Ελληνικά → English → Español → Français → Íslenska → Nederlands → Norsk → Português → Suomi → Svenska → Vlaams → Українська.
+- **All locale files updated**: `LANG_UI_SAMI` added to every existing locale file (en_GB → "Northern Sami", no_nb → "Nordsamisk", is_IS → "Norðursamíska", sv_SE → "Nordsamiska", da_DK → "Nordsamisk", fi_FI → "Pohjoissaame", de_DE → "Nordsamisch", fr_FR → "Same du Nord", es_ES → "Sami del Norte", uk_UA → "Північносаамська", el_GR → "Βόρεια Σαμικά", pt_PT → "Sami do Norte", nl_NL → "Noordsamisch", nl_BE → "Noordsamisch").
+
 ## v2026.05.24.11 (Dutch + Flemish) - 24.05.2026 11:33
 
 - **Dutch (Nederlands) UI translation**: Full Dutch (Netherlands) translation of all ~200 UI strings added as `locale/nl_NL.txt` (RCDATA 24, locale ID 12). "Nederlands" sorts between "Íslenska" and "Norsk", giving the menu order: Dansk → Deutsch → Ελληνικά → English → Español → Français → Íslenska → Nederlands → Norsk → Português → Suomi → Svenska → Vlaams → Українська.
