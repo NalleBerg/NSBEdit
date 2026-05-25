@@ -35,6 +35,7 @@
 #include "ne_crypto.h"
 #include "ne_profiles.h"
 #include "ne_ftp.h"
+#include "ne_session.h"
 #include "rtf2html/ne_rtf2html_lib.h"
 // Scintilla + Lexilla (statically linked)
 #include "ILexer.h"
@@ -173,6 +174,9 @@ enum class NeEncoding {
 #define IDC_NE_SAVE_FTP         264   // toolbar Save to FTP button
 #define IDC_NE_PREVIEW          265   // toolbar Preview online button
 #define IDC_NE_COMMENT          266   // Comment / Uncomment  (Scintilla only)
+
+// ── Timer IDs (main window) ───────────────────────────────────────────────────
+#define NE_TIMER_SESSION        10    // 60-second autosave of session state
 
 // ── Internal state ─────────────────────────────────────────────────────────────
 // ── Per-tab custom scrollbar handles (keyed by hEdit / hSci HWND) ────────────
@@ -6206,6 +6210,406 @@ static bool Ne_PromptSaveIfModified(HWND hwnd)
     return true; // IDNO — discard
 }
 
+// ── Session save ──────────────────────────────────────────────────────────────
+// Captures the current tab list (including unsaved content) and writes it to
+// the session_tabs DB table.  No-op when not running as installed version.
+static void Ne_SessionSave(HWND hwnd)
+{
+    if (!NeProfiles_IsInstalled()) return;
+
+    const int count     = NeTabs_GetCount(hwnd);
+    const int activeIdx = NeTabs_GetActiveIndex(hwnd);
+    std::vector<NeSessionTab> tabs;
+    tabs.reserve(count);
+
+    for (int i = 0; i < count; i++) {
+        NeTabDoc* doc = NeTabs_GetDocByIndex(hwnd, i);
+        if (!doc) continue;
+
+        // Skip a completely empty untitled tab — nothing worth restoring.
+        if (doc->path.empty() && !doc->isFtpFile && !doc->modified)
+            continue;
+
+        NeSessionTab t;
+        t.sortOrder     = i;
+        t.isActive      = (i == activeIdx);
+        t.localPath     = doc->path;
+        t.isFtp         = doc->isFtpFile;
+        t.ftpProfileId  = doc->ftpProfileId;
+        t.ftpRemotePath = doc->ftpRemotePath;
+        t.ftpFriendly   = doc->ftpFriendlyName;
+        if (doc->hasDiskStamp) {
+            t.diskTimeLo = doc->diskWriteTime.dwLowDateTime;
+            t.diskTimeHi = doc->diskWriteTime.dwHighDateTime;
+            t.diskSize   = (int64_t)doc->diskFileSize;
+        }
+
+        // Store content for: modified tabs, any FTP tab (remote may be
+        // unreachable on restore), and untitled tabs that have content.
+        bool needContent = doc->modified || doc->path.empty() || doc->isFtpFile;
+        if (needContent) {
+            if (doc->hSci && IsWindowVisible(doc->hSci)) {
+                std::string utf8 = Ne_SciGetText(doc->hSci);
+                if (!utf8.empty()) {
+                    t.content.assign(utf8.begin(), utf8.end());
+                    t.contentIsRtf = false;
+                }
+            } else if (doc->hEdit) {
+                std::string rtf = Ne_StreamOut(doc->hEdit, true);
+                if (!rtf.empty()) {
+                    t.content.assign(rtf.begin(), rtf.end());
+                    t.contentIsRtf = true;
+                }
+            }
+        }
+
+        tabs.push_back(std::move(t));
+    }
+
+    NeSession_Save(tabs);
+}
+
+// ── Session restore ───────────────────────────────────────────────────────────
+// Opens all tabs from the saved session.  Called once at startup.
+static void Ne_SessionRestore(HWND hwnd)
+{
+    if (!NeProfiles_IsInstalled()) return;
+
+    std::vector<NeSessionTab> tabs;
+    if (!NeSession_Load(tabs) || tabs.empty()) return;
+
+    // Helper: tear down a tab that failed to open during restore.
+    auto closeFailedTab = [&]() {
+        int idx = NeTabs_GetActiveIndex(hwnd);
+        HWND hEditPre = NeTabs_GetActiveEdit(hwnd);
+        Ne_DetachScrollbars(hEditPre);
+        NeTabDoc* docPre = NeTabs_GetActiveDoc(hwnd);
+        if (docPre && docPre->hSci) Ne_DetachSciScrollbars(docPre->hSci);
+        NeTabs_CloseTab(hwnd, idx);
+        Ne_SyncScrollbarVisibility(hwnd);
+    };
+
+    // Helper: stream cached content into the active tab.
+    auto loadContent = [&](const NeSessionTab& t) {
+        NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+        if (!doc) return;
+
+        if (t.contentIsRtf) {
+            // RTF → RichEdit
+            if (!doc->hEdit) return;
+            Ne_AttachScrollbars(doc->hEdit);
+            ShowWindow(doc->hEdit, SW_SHOW);
+            s_wordWrapOn = true;
+            SendMessageW(doc->hEdit, EM_SETZOOM, (WPARAM)g_zoomRtf, 100);
+            SendMessageW(doc->hEdit, EM_SETTARGETDEVICE, 0, 0); // wrap on
+            std::string rtf(t.content.begin(), t.content.end());
+            doc->suppressChange = true;
+            Ne_StreamIn(doc->hEdit, rtf, true);
+            doc->suppressChange = false;
+            Ne_RebuildHRList(doc->hEdit);
+            InvalidateRect(doc->hEdit, NULL, FALSE);
+            Ne_SyncRichGutters(hwnd);
+        } else {
+            // UTF-8 → Scintilla
+            if (!doc->hSci) {
+                HWND hEdit = doc->hEdit;
+                if (!hEdit) return;
+                RECT rc; GetWindowRect(hEdit, &rc);
+                POINT pt = { rc.left, rc.top };
+                ScreenToClient(hwnd, &pt);
+                doc->hSci = Ne_CreateScintilla(hwnd, pt.x, pt.y,
+                                               rc.right - rc.left,
+                                               rc.bottom - rc.top);
+                if (doc->hSci) {
+                    SetWindowSubclass(doc->hSci, Ne_SciWrapSubclassProc, 2, 0);
+                    Ne_AttachSciScrollbars(doc->hSci);
+                }
+            }
+            if (!doc->hSci) return;
+            if (!t.localPath.empty())
+                doc->langId = Ne_LangFromExt(t.localPath);
+            Ne_ApplyLang(doc->hSci, doc->langId);
+            std::string utf8(t.content.begin(), t.content.end());
+            SendMessageW(doc->hSci, SCI_SETTEXT, 0, (LPARAM)utf8.c_str());
+            SendMessageW(doc->hSci, SCI_EMPTYUNDOBUFFER, 0, 0);
+            ShowWindow(doc->hEdit, SW_HIDE);
+            ShowWindow(doc->hSci, SW_SHOW);
+            SetFocus(doc->hSci);
+            SendMessageW(doc->hSci, SCI_SETZOOM, (WPARAM)g_zoomSci, 0);
+            s_wordWrapOn = false;
+            SendMessageW(doc->hSci, SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
+            Ne_SyncRichGutters(hwnd);
+            Ne_SyncScrollbarVisibility(hwnd);
+        }
+
+        doc->path     = t.localPath;   // may be empty for untitled
+        doc->modified = true;
+        if (t.isFtp) {
+            doc->isFtpFile       = true;
+            doc->ftpProfileId    = t.ftpProfileId;
+            doc->ftpRemotePath   = t.ftpRemotePath;
+            doc->ftpFriendlyName = t.ftpFriendly;
+        }
+        NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
+        Ne_UpdateTitle(hwnd);
+        Ne_UpdateStatusText(hwnd);
+    };
+
+    int savedActiveTabIdx = 0;
+    bool firstTab = true;   // can we reuse the initial empty untitled tab?
+
+    for (int i = 0; i < (int)tabs.size(); i++) {
+        const NeSessionTab& t = tabs[i];
+
+        // Create a new tab, or reuse the initial empty untitled tab.
+        NeTabDoc* existingDoc = NeTabs_GetActiveDoc(hwnd);
+        bool reuseTab = firstTab && existingDoc &&
+                        existingDoc->path.empty() &&
+                        !existingDoc->modified &&
+                        existingDoc->hEdit && !existingDoc->hSci;
+        if (!reuseTab) {
+            if (!NeTabs_AddUntitled(hwnd)) continue;
+        }
+        firstTab = false;
+
+        // ── FTP / SFTP tab ────────────────────────────────────────────────────
+        if (t.isFtp && !t.ftpRemotePath.empty()) {
+            bool connected = NeFtp_SetActiveConn(t.ftpProfileId);
+            if (!connected) {
+                NeProfile prof;
+                if (NeProfiles_GetById(t.ftpProfileId, prof))
+                    connected = NeFtp_Connect(prof);
+            }
+
+            if (connected) {
+                std::wstring localPath;
+                SetCursor(LoadCursorW(NULL, IDC_WAIT));
+                bool dlOk = NeFtp_DownloadToTemp(t.ftpRemotePath, localPath);
+                SetCursor(LoadCursorW(NULL, IDC_ARROW));
+
+                if (dlOk) {
+                    // Check whether the remote file changed since the session
+                    // by comparing the downloaded bytes directly against the
+                    // cached content BLOB (timestamp of a temp file is always
+                    // "now" and is not a reliable indicator of remote changes).
+                    bool remoteChanged = false;
+                    if (!t.content.empty()) {
+                        HANDLE hf = CreateFileW(localPath.c_str(), GENERIC_READ,
+                                                FILE_SHARE_READ, NULL,
+                                                OPEN_EXISTING, 0, NULL);
+                        if (hf != INVALID_HANDLE_VALUE) {
+                            LARGE_INTEGER sz = {};
+                            GetFileSizeEx(hf, &sz);
+                            if ((size_t)sz.QuadPart != t.content.size()) {
+                                remoteChanged = true;
+                            } else if (sz.QuadPart > 0) {
+                                std::vector<uint8_t> disk(t.content.size());
+                                DWORD rd = 0;
+                                ReadFile(hf, disk.data(), (DWORD)disk.size(), &rd, NULL);
+                                remoteChanged = (rd != disk.size() || disk != t.content);
+                            }
+                            CloseHandle(hf);
+                        }
+                    }
+
+                    if (remoteChanged) {
+                        // Ask: keep cached (session) content or reload from server.
+                        wchar_t msg[1024];
+                        swprintf_s(msg, _countof(msg),
+                                   Ls(L"MSG_SESSION_REMOTE_CHANGED"),
+                                   t.ftpRemotePath.c_str(), t.ftpFriendly.c_str());
+                        NeDialogButtonSpec btns[2] = {
+                            { IDYES, Ls(L"BTN_RELOAD_REMOTE"), NeBtnTone::Blue,  IDI_INFORMATION, 0 },
+                            { IDNO,  Ls(L"BTN_KEEP_LOCAL"),    NeBtnTone::Green, IDI_WARNING,     0 },
+                        };
+                        int r = Ne_ShowChoiceDialog(hwnd,
+                                    Ls(L"DLG_SESSION_RESTORE"), msg, btns, 2, IDYES);
+                        if (r == IDNO) {
+                            // Use cached session content instead of the downloaded file.
+                            DeleteFileW(localPath.c_str());
+                            loadContent(t);
+                            if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+                            Ne_UpdateToolbarMode(hwnd);
+                            continue;
+                        }
+                    }
+
+                    // Load the fresh download (or non-changed remote file).
+                    Ne_LoadPathIntoEditor(hwnd, localPath);
+                    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+                    if (doc) {
+                        doc->isFtpFile       = true;
+                        doc->ftpProfileId    = t.ftpProfileId;
+                        doc->ftpRemotePath   = t.ftpRemotePath;
+                        doc->ftpFriendlyName = t.ftpFriendly;
+                    }
+                    if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+                    Ne_UpdateToolbarMode(hwnd);
+                    continue;
+                }
+                // Download failed — fall through to the "can't connect" path.
+            }
+
+            // Could not connect / download.
+            if (!t.content.empty()) {
+                wchar_t msg[1024];
+                swprintf_s(msg, _countof(msg),
+                           Ls(L"MSG_SESSION_FTP_FAIL"),
+                           t.ftpFriendly.c_str(), t.ftpRemotePath.c_str());
+                NeDialogButtonSpec btns[2] = {
+                    { IDYES, Ls(L"BTN_OPEN_CACHED"), NeBtnTone::Blue, IDI_INFORMATION, 0 },
+                    { IDNO,  Ls(L"BTN_SKIP"),        NeBtnTone::Red,  IDI_WARNING,     0 },
+                };
+                int r = Ne_ShowChoiceDialog(hwnd,
+                            Ls(L"DLG_SESSION_RESTORE"), msg, btns, 2, IDYES);
+                if (r == IDNO) { closeFailedTab(); continue; }
+                loadContent(t);
+            } else {
+                wchar_t msg[1024];
+                swprintf_s(msg, _countof(msg),
+                           Ls(L"MSG_SESSION_FTP_FAIL_NC"),
+                           t.ftpFriendly.c_str(), t.ftpRemotePath.c_str());
+                NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 };
+                Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SESSION_RESTORE"),
+                                    msg, &btn, 1, IDOK);
+                closeFailedTab();
+                continue;
+            }
+            if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+            Ne_UpdateToolbarMode(hwnd);
+            continue;
+        }
+
+        // ── Local file tab ────────────────────────────────────────────────────
+        if (!t.localPath.empty()) {
+            bool fileExists =
+                (GetFileAttributesW(t.localPath.c_str()) != INVALID_FILE_ATTRIBUTES);
+
+            if (!fileExists) {
+                if (!t.content.empty()) {
+                    wchar_t msg[MAX_PATH + 256];
+                    swprintf_s(msg, _countof(msg),
+                               Ls(L"MSG_SESSION_FILE_MISSING"),
+                               t.localPath.c_str());
+                    NeDialogButtonSpec btns[2] = {
+                        { IDYES, Ls(L"BTN_OPEN_CACHED"), NeBtnTone::Blue, IDI_INFORMATION, 0 },
+                        { IDNO,  Ls(L"BTN_SKIP"),        NeBtnTone::Red,  IDI_WARNING,     0 },
+                    };
+                    int r = Ne_ShowChoiceDialog(hwnd,
+                                Ls(L"DLG_SESSION_RESTORE"), msg, btns, 2, IDYES);
+                    if (r == IDNO) { closeFailedTab(); continue; }
+                    loadContent(t);
+                } else {
+                    wchar_t msg[MAX_PATH + 64];
+                    swprintf_s(msg, _countof(msg),
+                               Ls(L"MSG_SESSION_FILE_GONE"), t.localPath.c_str());
+                    NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"),
+                                              NeBtnTone::Red, IDI_WARNING, 0 };
+                    Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SESSION_RESTORE"),
+                                        msg, &btn, 1, IDOK);
+                    closeFailedTab();
+                    continue;
+                }
+                if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+                Ne_UpdateToolbarMode(hwnd);
+                continue;
+            }
+
+            // File exists on disk.
+            if (!t.content.empty()) {
+                // We have cached content. Check whether the disk file has been
+                // modified by another program since the session was saved by
+                // comparing bytes directly against the stored BLOB.
+                bool diskChanged = false;
+                HANDLE hf = CreateFileW(t.localPath.c_str(), GENERIC_READ,
+                                        FILE_SHARE_READ, NULL,
+                                        OPEN_EXISTING, 0, NULL);
+                if (hf != INVALID_HANDLE_VALUE) {
+                    LARGE_INTEGER sz = {};
+                    GetFileSizeEx(hf, &sz);
+                    if ((size_t)sz.QuadPart != t.content.size()) {
+                        diskChanged = true;
+                    } else if (sz.QuadPart > 0) {
+                        std::vector<uint8_t> disk(t.content.size());
+                        DWORD rd = 0;
+                        ReadFile(hf, disk.data(), (DWORD)disk.size(), &rd, NULL);
+                        diskChanged = (rd != disk.size() || disk != t.content);
+                    }
+                    CloseHandle(hf);
+                }
+
+                if (diskChanged) {
+                    wchar_t msg[MAX_PATH + 256];
+                    swprintf_s(msg, _countof(msg),
+                               Ls(L"MSG_SESSION_DISK_CHANGED"),
+                               t.localPath.c_str());
+                    NeDialogButtonSpec btns[2] = {
+                        { IDYES, Ls(L"BTN_RELOAD_REMOTE"), NeBtnTone::Blue,  IDI_INFORMATION, 0 },
+                        { IDNO,  Ls(L"BTN_KEEP_LOCAL"),    NeBtnTone::Green, IDI_WARNING,     0 },
+                    };
+                    int r = Ne_ShowChoiceDialog(hwnd,
+                                Ls(L"DLG_SESSION_RESTORE"), msg, btns, 2, IDYES);
+                    if (r == IDYES) {
+                        // Load fresh from disk.
+                        if (!Ne_LoadPathIntoEditor(hwnd, t.localPath)) {
+                            NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"),
+                                                      NeBtnTone::Red, IDI_ERROR, 0 };
+                            Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SESSION_RESTORE"),
+                                                Ls(L"MSG_OPEN_ERR"), &btn, 1, IDOK);
+                            closeFailedTab();
+                            continue;
+                        }
+                        Ne_MruAdd(t.localPath);
+                        if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+                        Ne_UpdateToolbarMode(hwnd);
+                        continue;
+                    }
+                }
+                // Keep cached (session) content.
+                loadContent(t);
+            } else {
+                // Tab was clean — load from disk.
+                if (!Ne_LoadPathIntoEditor(hwnd, t.localPath)) {
+                    NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"),
+                                              NeBtnTone::Red, IDI_ERROR, 0 };
+                    Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SESSION_RESTORE"),
+                                        Ls(L"MSG_OPEN_ERR"), &btn, 1, IDOK);
+                    closeFailedTab();
+                    continue;
+                }
+                Ne_MruAdd(t.localPath);
+            }
+            if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+            Ne_UpdateToolbarMode(hwnd);
+            continue;
+        }
+
+        // ── Untitled tab (no path) ────────────────────────────────────────────
+        if (!t.content.empty()) {
+            loadContent(t);
+            if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+            Ne_UpdateToolbarMode(hwnd);
+        } else {
+            // Truly empty untitled — skip; the app already has one on startup.
+            if (!reuseTab) closeFailedTab();
+        }
+    }
+
+    // Activate the tab that was active when the session was saved.
+    if (NeTabs_GetCount(hwnd) > 0) {
+        NeTabs_SetActive(hwnd, savedActiveTabIdx);
+        Ne_SyncScrollbarVisibility(hwnd);
+        Ne_UpdateToolbarMode(hwnd);
+        Ne_UpdateStatusText(hwnd);
+        Ne_UpdateTitle(hwnd);
+        HWND hEdit = NeTabs_GetActiveEdit(hwnd);
+        if (hEdit) {
+            Ne_SyncToolbar(hwnd, hEdit);
+            SetFocus(hEdit);
+        }
+    }
+}
+
 static bool Ne_CloseTabAt(HWND hwnd, int index)
 {
     if (!NeTabs_SetActive(hwnd, index)) return false;
@@ -10370,6 +10774,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         NeTabs_UpdateAllTitles(hwnd);
         Ne_UpdateToolbarMode(hwnd);
         Ne_UpdateStatusText(hwnd);
+
+        // ── Session autosave timer (installed version only) ───────────────────
+        if (NeProfiles_IsInstalled())
+            SetTimer(hwnd, NE_TIMER_SESSION, 60000, NULL);
+
         return 0;
     }
 
@@ -11742,8 +12151,15 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         return 0;
     }
 
+    // ── WM_TIMER — periodic session autosave ─────────────────────────────────
+    case WM_TIMER:
+        if (wParam == NE_TIMER_SESSION)
+            Ne_SessionSave(hwnd);
+        return 0;
+
     // ── WM_CLOSE — prompt if modified ────────────────────────────────────────
     case WM_CLOSE:
+        Ne_SessionSave(hwnd);  // snapshot before any tab is destroyed
         if (!Ne_CloseAllTabsForExit(hwnd)) return 0;
         DestroyWindow(hwnd);
         return 0;
@@ -11870,6 +12286,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     ShowWindow(s_hwndMain, nCmdShow);
     Ne_ApplyDarkFrame(s_hwndMain);
     UpdateWindow(s_hwndMain);
+
+    // ── Restore last session (installed version only, no command-line file) ───
+    if ((!lpCmdLine || !*lpCmdLine) && NeProfiles_IsInstalled() && NeSession_HasData())
+        Ne_SessionRestore(s_hwndMain);
 
     MSG msg;
     while (GetMessageW(&msg, NULL, 0, 0)) {

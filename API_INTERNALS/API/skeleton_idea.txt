@@ -200,6 +200,27 @@
     clicking OK — no busy-wait, no thread, no extra state.
     Useful for: FTP upload success, auto-save confirmations, brief info toasts.
 
+  Session restore pattern (crash-safe, installed-only)
+    ne_session.h / ne_session.cpp implement atomic session persistence via the
+    shared SQLite handle from ne_profiles.cpp.
+    Key design decisions:
+      • Gate on NeProfiles_IsInstalled() — portable mode keeps no session so
+        the DB stub on a USB drive is never written unexpectedly.
+      • Bypass when a file is passed on the command line — the user explicitly
+        asked for a specific file; don't override it with last session.
+      • Single atomic transaction (BEGIN / DELETE / INSERT... / COMMIT):
+        a crash mid-write leaves the PREVIOUS session intact, not a partial one.
+      • Content stored as BLOB in the DB row (not a sidecar temp file):
+        simpler, atomic, and survives TEMP folder clears.
+      • diskTimeLo/diskTimeHi store FILETIME components so remote-file change
+        detection works without a separate hash.
+      • 60-second SetTimer autosave (NE_TIMER_SESSION id 10) + explicit save
+        at WM_CLOSE — covers both graceful exit and background crashes.
+    Locale keys needed per dialog: DLG_SESSION_RESTORE, MSG_SESSION_FILE_MISSING,
+    BTN_OPEN_CACHED, BTN_SKIP, MSG_SESSION_FILE_GONE, MSG_SESSION_FTP_FAIL,
+    MSG_SESSION_FTP_FAIL_NC, MSG_SESSION_REMOTE_CHANGED, BTN_RELOAD_REMOTE,
+    BTN_KEEP_LOCAL.
+
   Localisation stub
     [ ] languages.h / languages.cpp  — locale loading, key lookup, ExpandEscapes
     [ ] locale\en_GB.txt             — seed file with skeleton keys only

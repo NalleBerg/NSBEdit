@@ -6,8 +6,9 @@
 #include <string>
 #include <vector>
 
-static sqlite3* s_db      = nullptr;
-static bool     s_isMemory = false;
+static sqlite3* s_db         = nullptr;
+static bool     s_isMemory   = false;
+static bool     s_isInstalled = false;
 
 // ── String helpers ────────────────────────────────────────────────────────────
 static std::string Np_W2U(const std::wstring& w)
@@ -55,7 +56,10 @@ bool NeProfiles_Init()
 {
     if (s_db) return true;
     std::wstring wpath = Np_GetDbPath();
-    s_isMemory = (wpath == L":memory:");
+    s_isMemory    = (wpath == L":memory:");
+    s_isInstalled = !s_isMemory && (wpath.size() > 10 &&
+                    wpath.substr(wpath.size() - 10) == L"nsbedit.db" &&
+                    wpath.find(L"AppData") != std::wstring::npos);
     if (s_isMemory) {
         MessageBoxW(NULL,
             L"NSBEdit could not find a database file.\n\n"
@@ -89,6 +93,22 @@ bool NeProfiles_Init()
         "CREATE TABLE IF NOT EXISTS settings ("
         "  key   TEXT PRIMARY KEY,"
         "  value TEXT NOT NULL"
+        ");"
+        // Session restore table.
+        "CREATE TABLE IF NOT EXISTS session_tabs ("
+        "  id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  sort_order      INTEGER NOT NULL DEFAULT 0,"
+        "  local_path      TEXT    NOT NULL DEFAULT '',"
+        "  is_ftp          INTEGER NOT NULL DEFAULT 0,"
+        "  ftp_profile_id  INTEGER NOT NULL DEFAULT -1,"
+        "  ftp_remote_path TEXT    NOT NULL DEFAULT '',"
+        "  ftp_friendly    TEXT    NOT NULL DEFAULT '',"
+        "  content         BLOB,"
+        "  content_is_rtf  INTEGER NOT NULL DEFAULT 0,"
+        "  is_active       INTEGER NOT NULL DEFAULT 0,"
+        "  disk_time_lo    INTEGER NOT NULL DEFAULT 0,"
+        "  disk_time_hi    INTEGER NOT NULL DEFAULT 0,"
+        "  disk_size       INTEGER NOT NULL DEFAULT 0"
         ");";
     char* err = nullptr;
     if (sqlite3_exec(s_db, schema, NULL, NULL, &err) != SQLITE_OK) {
@@ -100,14 +120,38 @@ bool NeProfiles_Init()
     // Migration: add web_url to existing databases (ignore error if column already exists).
     sqlite3_exec(s_db, "ALTER TABLE profiles ADD COLUMN web_url TEXT NOT NULL DEFAULT ''",
                  NULL, NULL, NULL);
+    // Migration: create session_tabs if it doesn't exist (old DB without the table).
+    sqlite3_exec(s_db,
+        "CREATE TABLE IF NOT EXISTS session_tabs ("
+        "  id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  sort_order      INTEGER NOT NULL DEFAULT 0,"
+        "  local_path      TEXT    NOT NULL DEFAULT '',"
+        "  is_ftp          INTEGER NOT NULL DEFAULT 0,"
+        "  ftp_profile_id  INTEGER NOT NULL DEFAULT -1,"
+        "  ftp_remote_path TEXT    NOT NULL DEFAULT '',"
+        "  ftp_friendly    TEXT    NOT NULL DEFAULT '',"
+        "  content         BLOB,"
+        "  content_is_rtf  INTEGER NOT NULL DEFAULT 0,"
+        "  is_active       INTEGER NOT NULL DEFAULT 0,"
+        "  disk_time_lo    INTEGER NOT NULL DEFAULT 0,"
+        "  disk_time_hi    INTEGER NOT NULL DEFAULT 0,"
+        "  disk_size       INTEGER NOT NULL DEFAULT 0"
+        ")", NULL, NULL, NULL);
     return true;
 }
 
-bool NeProfiles_IsMemory() { return s_isMemory; }
+bool NeProfiles_IsMemory()    { return s_isMemory; }
+bool NeProfiles_IsInstalled() { return s_isInstalled; }
+sqlite3* NeProfiles_GetDb()   { return s_db; }
 
 void NeProfiles_Close()
 {
-    if (s_db) { sqlite3_close(s_db); s_db = nullptr; s_isMemory = false; }
+    if (s_db) {
+        sqlite3_close(s_db);
+        s_db = nullptr;
+        s_isMemory    = false;
+        s_isInstalled = false;
+    }
 }
 
 // ── Generic settings ─────────────────────────────────────────────────────

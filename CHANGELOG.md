@@ -1,5 +1,17 @@
 # Changelog
 
+## v2026.05.25.14 (Session Restore) - 25.05.2026 14:02
+
+- **Session persistence**: The installed version saves the full tab list to the `session_tabs` SQLite table every 60 seconds and at clean exit. Each row stores the file path, FTP details, a content BLOB for unsaved/FTP files, and a disk timestamp. The save is a single `BEGIN … COMMIT` transaction — a crash mid-write cannot corrupt the previous session.
+- **Session restore on startup**: When the installed version is launched with no command-line file argument it automatically reopens every tab from the last session — local files, FTP/SFTP files, and unsaved (untitled) buffers.
+- **Unsaved-buffer recovery**: Tabs with unsaved changes have their full RTF or UTF-8 content stored in the DB BLOB; it is streamed back into a new tab on restore.
+- **FTP/SFTP tab reconnect**: Remote tabs reconnect on restore. If the server is unreachable and a cached copy exists, *Open Cached / Skip* dialog appears. If no cache exists, the tab is skipped with a warning.
+- **Remote-file conflict detection**: If the FTP file's last-write timestamp changed since the session was saved, a *Reload from Server / Keep Local* dialog is shown.
+- **Missing local file handling**: If a local file is gone, a dialog offers *Open Cached* (when content was stored) or warns and skips (when no content exists).
+- **Portable and command-line modes unaffected**: Session restore only activates for the installed version. Portable mode or a command-line file argument bypasses the feature.
+- **All dialogs fully i18n'd**: New locale keys `DLG_SESSION_RESTORE`, `MSG_SESSION_FILE_MISSING`, `BTN_OPEN_CACHED`, `BTN_SKIP`, `MSG_SESSION_FILE_GONE`, `MSG_SESSION_FTP_FAIL`, `MSG_SESSION_FTP_FAIL_NC`, `MSG_SESSION_REMOTE_CHANGED`, `BTN_RELOAD_REMOTE`, `BTN_KEEP_LOCAL` added to all 15 locale files.
+- **New module `ne_session.h / ne_session.cpp`**: SQLite CRUD wrapper (`NeSession_Save` / `NeSession_Load` / `NeSession_HasData` / `NeSession_Clear`) + `NeSessionTab` struct. `ne_profiles.cpp` extended with `NeProfiles_IsInstalled()` and `NeProfiles_GetDb()`.
+
 ## v2026.05.25.12 (Recent Files; Focus fix) - 25.05.2026 12:46
 
 - **Recent Files submenu**: The File menu now has a *Recent Files* submenu listing the last 10 opened or saved files. Selecting an entry opens the file; dead paths are silently removed. Persisted in the SQLite settings database (`recent_0`–`recent_9` keys). Translated in all 15 UI languages via the new `MENU_RECENT` and `MENU_RECENT_EMPTY` locale keys.

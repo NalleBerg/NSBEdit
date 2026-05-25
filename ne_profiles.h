@@ -39,3 +39,12 @@ bool NeProfiles_SetIntSetting(const char* key, int value);
 // Generic string settings (key/value store in DB).
 bool NeProfiles_GetStrSetting(const char* key, const std::string& defaultValue, std::string& out);
 bool NeProfiles_SetStrSetting(const char* key, const std::string& value);
+
+// True when using the installed database (%APPDATA%\NSBEdit\nsbedit.db).
+// False for portable mode (nsbedit.db next to exe) or in-memory fallback.
+bool NeProfiles_IsInstalled();
+
+// Expose the underlying sqlite3 handle.  Used only by ne_session.cpp.
+// Returns NULL if the database is not open.
+struct sqlite3;
+sqlite3* NeProfiles_GetDb();

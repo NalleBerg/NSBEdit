@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.25.12**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.25.14**
 
 ## Download
 
@@ -20,6 +20,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Hover tooltip on hyperlinks** — shows the URL and a Ctrl+Click hint as a two-line tooltip when hovering over a link
 - **URL validation** — regex check on save: requires a recognised scheme, valid host, and 2–4 character TLD
 - File menu: New, Open, Save, Save As, Print, Export as PDF (`Ctrl+Shift+P`)
+- **Session Restore** (installed version only) — on startup, all tabs from the previous session are automatically reopened: local files, FTP/SFTP files, and unsaved (untitled) buffers. Session state is saved to the SQLite database every 60 seconds and at clean exit using a single atomic transaction, so the session survives crashes and reboots. Missing or moved local files prompt *Open Cached / Skip*; FTP files reconnect automatically; if the remote file has been changed by another program a *Reload from Server / Keep Local* dialog appears. Disabled in portable mode and when a file is passed on the command line.
 - **Recent Files** — File menu *Recent Files* submenu lists the last 10 opened or saved files; persisted between sessions in the settings database
 - Edit menu: Undo, Redo, Cut, Copy, Paste, Select All — greyed dynamically
 - Right-click context menu on the editor with the same Edit operations

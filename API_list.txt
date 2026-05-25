@@ -135,6 +135,20 @@
                                                 Ne_SetTip/Ne_TipSubclassProc.
                                                 Control ID range: 201–230.
                                                 IDM range: 101–136 (core), 600+ (langs), 700+ (FTP profiles).
+                                                Session restore: Ne_SessionSave(HWND) snapshots
+                                                all tabs (incl. content BLOB for modified/FTP/
+                                                untitled) into session_tabs via NeSession_Save.
+                                                Ne_SessionRestore(HWND) reads session_tabs on
+                                                startup (installed, no cmd-line file) and reopens
+                                                every tab: local (load from disk or cached),
+                                                FTP (reconnect + remote-change check), untitled
+                                                (stream content back). NE_TIMER_SESSION (id 10)
+                                                SetTimer 60 s autosave in WM_CREATE; WM_TIMER
+                                                handler calls Ne_SessionSave. WM_CLOSE also
+                                                calls Ne_SessionSave before Ne_CloseAllTabsForExit.
+                                                wWinMain calls Ne_SessionRestore after
+                                                UpdateWindow when installed + no cmd-line arg +
+                                                NeSession_HasData().
                                                 Ne_ApplyLang(hSci, langIdx) — sends
                                                 SCI_SETKEYWORDS from s_langKws[] and
                                                 applies per-lexer style overrides.
@@ -507,6 +521,13 @@
                                                 NeProfiles_Init() / NeProfiles_Close().
                                                 NeProfiles_IsMemory() — true when running on
                                                 an in-memory DB.
+                                                NeProfiles_IsInstalled() — true when the DB
+                                                path is the AppData installed DB (contains
+                                                "AppData" and ends with "nsbedit.db"); used
+                                                by session restore to gate the feature.
+                                                NeProfiles_GetDb() — returns the raw sqlite3*
+                                                handle; used by ne_session.cpp to share the
+                                                same connection.
                                                 NeProfiles_Add/Update/Delete/List/GetById —
                                                 CRUD for NeProfile structs. Delete shows
                                                 MSG_PROFILE_DELETE_CONFIRM (MB_YESNO,
@@ -525,6 +546,32 @@
                                                 the ZIP; SQLite3 writes the schema on
                                                 first use. A 0-byte stub is skipped in
                                                 the portable path — AppData DB wins.
+                                                Schema includes session_tabs table (12
+                                                columns: id, sort_order, local_path,
+                                                is_ftp, ftp_profile_id, ftp_remote_path,
+                                                ftp_friendly, content BLOB, content_is_rtf,
+                                                is_active, disk_time_lo, disk_time_hi,
+                                                disk_size); migration creates it if absent.
+
+  ne_session.h / ne_session.cpp                 Session persistence — save and restore the
+                                                full tab list across sessions, crashes, and
+                                                reboots (installed version only).
+                                                NeSessionTab struct: sortOrder, localPath,
+                                                isFtp, ftpProfileId, ftpRemotePath,
+                                                ftpFriendly, content (vector<uint8_t> BLOB),
+                                                contentIsRtf, isActive, diskTimeLo/Hi
+                                                (FILETIME components for remote-change
+                                                detection), diskSize.
+                                                NeSession_Save(tabs) — atomic
+                                                BEGIN/DELETE/INSERT.../COMMIT into
+                                                session_tabs; safe against mid-write crash.
+                                                NeSession_Load(out) — SELECT ORDER BY
+                                                sort_order into out vector.
+                                                NeSession_HasData() — true when at least
+                                                one row exists.
+                                                NeSession_Clear() — DELETE all rows.
+                                                Uses NeProfiles_GetDb() for the shared
+                                                SQLite handle (no separate connection).
 
   ne_crypto.h / ne_crypto.cpp                   Lightweight password encryption helper.
                                                 NeCrypto_Init() / NeCrypto_Encrypt() /

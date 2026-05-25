@@ -1,6 +1,20 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 25 May 2026 &mdash; v2026.05.25.12 (12:46)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 25 May 2026 &mdash; v2026.05.25.14 (14:02)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.25.14 (Session Restore)</span></h3>
+<p><strong>Restore Session &mdash; reopens all tabs from your last session, even after a crash or reboot (25.05.2026, 14:02):</strong></p>
+<ul>
+<li><strong>Session persistence:</strong> The installed version (<code>%APPDATA%\NSBEdit\nsbedit.db</code>) now saves the full tab list to the <code>session_tabs</code> SQLite table every 60 seconds and at clean exit. Each row stores the file path, FTP connection details, a content BLOB for unsaved or FTP-linked files, and a disk timestamp for remote-change detection. The save is a single <code>BEGIN &hellip; COMMIT</code> transaction so a crash mid-write cannot corrupt the previous session.</li>
+<li><strong>Session restore on startup:</strong> When the installed version is launched with no command-line file argument, it automatically reopens every tab that was open at the end of the last session &mdash; local files, FTP/SFTP files, and unsaved (untitled) buffers alike.</li>
+<li><strong>Unsaved-buffer recovery:</strong> Tabs that had unsaved changes store their full content (RTF or UTF-8) in the database BLOB. On restore the cached content is streamed back into a new editor tab so no work is lost even after a crash.</li>
+<li><strong>FTP/SFTP tab reconnect:</strong> Remote tabs trigger a reconnection attempt on restore. If the server is unreachable and a cached copy exists, a dialog offers <em>Open Cached</em> or <em>Skip</em>. If no cached copy is available the tab is skipped with a warning.</li>
+<li><strong>Remote-file conflict detection:</strong> If an FTP-linked file is downloaded successfully but its last-write timestamp has changed since the session was saved, a <em>Reload from Server / Keep Local</em> dialog asks which version to keep.</li>
+<li><strong>Missing local file handling:</strong> If a local file no longer exists on disk, a dialog offers <em>Open Cached</em> (when content was saved) or warns and skips (when no content was stored).</li>
+<li><strong>Portable and command-line modes unaffected:</strong> Session restore only activates for the installed version. Running the portable exe (with <code>.\nsbedit.db</code>) or passing a file on the command line bypasses the feature entirely.</li>
+<li><strong>All dialogs fully i18n&apos;d:</strong> New locale keys <code>DLG_SESSION_RESTORE</code>, <code>MSG_SESSION_FILE_MISSING</code>, <code>BTN_OPEN_CACHED</code>, <code>BTN_SKIP</code>, <code>MSG_SESSION_FILE_GONE</code>, <code>MSG_SESSION_FTP_FAIL</code>, <code>MSG_SESSION_FTP_FAIL_NC</code>, <code>MSG_SESSION_REMOTE_CHANGED</code>, <code>BTN_RELOAD_REMOTE</code>, and <code>BTN_KEEP_LOCAL</code> added to all 15 locale files.</li>
+<li><strong>New module <code>ne_session.h / ne_session.cpp</code>:</strong> Thin SQLite wrapper (<code>NeSession_Save</code> / <code>NeSession_Load</code> / <code>NeSession_HasData</code> / <code>NeSession_Clear</code>) plus the <code>NeSessionTab</code> struct. <code>ne_profiles.cpp</code> extended with <code>NeProfiles_IsInstalled()</code> (detects AppData path) and <code>NeProfiles_GetDb()</code> (exposes the shared SQLite handle).</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.25.12 (Recent Files; Focus fix)</span></h3>
 <p><strong>Recent Files submenu; Alt+Tab focus fix (25.05.2026, 12:46):</strong></p>

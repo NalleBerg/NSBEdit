@@ -452,3 +452,25 @@ BTN_CHOOSE          = Вибрати…
 
 MENU_RECENT       = &Останні файли
 MENU_RECENT_EMPTY = (Немає)
+# -- Session restore -------------------------------------------------------
+DLG_SESSION_RESTORE         = Restore Session
+MSG_SESSION_FILE_MISSING    = The file "%s" could not be found on disk.
+
+A cached version from your last session is available.
+BTN_OPEN_CACHED             = Open Cached
+BTN_SKIP                    = Skip
+MSG_SESSION_FILE_GONE       = The file "%s" could not be found and no cached version is available.
+MSG_SESSION_FTP_FAIL        = Could not reconnect to "%s" for the file "%s".
+
+A cached version from your last session is available.
+MSG_SESSION_FTP_FAIL_NC     = Could not reconnect to "%s" for the file "%s".
+
+No cached version is available.
+MSG_SESSION_REMOTE_CHANGED  = The remote file "%s" on server "%s" has been modified by another program since your last session.
+
+Reload the latest version from the server, or keep your locally cached version?
+BTN_RELOAD_REMOTE           = Reload from Server
+BTN_KEEP_LOCAL              = Keep Local
+MSG_SESSION_DISK_CHANGED  = The file "%s" on disk has been modified by another program since your last session.
+
+Reload the latest version from disk, or keep your locally cached version?
