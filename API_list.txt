@@ -141,8 +141,15 @@
                                                 Ne_SessionRestore(HWND) reads session_tabs on
                                                 startup (installed, no cmd-line file) and reopens
                                                 every tab: local (load from disk or cached),
-                                                FTP (reconnect + remote-change check), untitled
-                                                (stream content back). NE_TIMER_SESSION (id 10)
+                                                FTP (reconnect + byte-level change check:
+                                                download → compare bytes vs content BLOB;
+                                                MSG_SESSION_REMOTE_CHANGED if different;
+                                                BTN_RELOAD_REMOTE / BTN_KEEP_LOCAL),
+                                                local (if content BLOB saved: compare
+                                                file bytes vs BLOB; MSG_SESSION_DISK_CHANGED
+                                                if different; BTN_RELOAD_DISK / BTN_KEEP_CACHED),
+                                                untitled (stream content back).
+                                                NE_TIMER_SESSION (id 10)
                                                 SetTimer 60 s autosave in WM_CREATE; WM_TIMER
                                                 handler calls Ne_SessionSave. WM_CLOSE also
                                                 calls Ne_SessionSave before Ne_CloseAllTabsForExit.
@@ -560,8 +567,9 @@
                                                 isFtp, ftpProfileId, ftpRemotePath,
                                                 ftpFriendly, content (vector<uint8_t> BLOB),
                                                 contentIsRtf, isActive, diskTimeLo/Hi
-                                                (FILETIME components for remote-change
-                                                detection), diskSize.
+                                                (FILETIME stored; change detection uses
+                                                BLOB byte comparison, not timestamps),
+                                                diskSize.
                                                 NeSession_Save(tabs) — atomic
                                                 BEGIN/DELETE/INSERT.../COMMIT into
                                                 session_tabs; safe against mid-write crash.

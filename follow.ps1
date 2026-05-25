@@ -1,5 +1,6 @@
-$log      = Join-Path $PSScriptRoot 'makeit.log'
-$countFile = Join-Path $PSScriptRoot 'makeit_count.txt'
+$scriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
+$log        = Join-Path $scriptDir 'makeit.log'
+$countFile  = Join-Path $scriptDir 'makeit_count.txt'
 $pos  = 0
 
 # Load persistent run counter; start at 0 if the file doesn't exist yet.
@@ -24,8 +25,8 @@ while ($true) {
         $info = Get-Item $log
         $size = $info.Length
 
-        # New run: file was truncated or we see content for the first time
-        if ($size -lt $pos -or ($run -eq 0 -and $size -gt 0)) {
+        # New run: file was truncated (tee overwrote it for a new build)
+        if ($size -lt $pos) {
             $run++
             Set-Content $countFile $run   # persist across restarts
             $pos = 0
