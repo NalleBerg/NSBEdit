@@ -1,6 +1,6 @@
 # Changelog
 
-## v2026.05.25.14 (Session Restore) - 25.05.2026 14:21
+## v2026.05.25.14 (Session Restore) - 25.05.2026 14:47
 
 - **Session persistence**: The installed version saves the full tab list to the `session_tabs` SQLite table every 60 seconds and at clean exit. Each row stores the file path, FTP details, a content BLOB for unsaved/FTP files, and a disk timestamp. The save is a single `BEGIN … COMMIT` transaction — a crash mid-write cannot corrupt the previous session.
 - **Session restore on startup**: When the installed version is launched with no command-line file argument it automatically reopens every tab from the last session — local files, FTP/SFTP files, and unsaved (untitled) buffers.
@@ -11,6 +11,7 @@
 - **Portable and command-line modes unaffected**: Session restore only activates for the installed version. Portable mode or a command-line file argument bypasses the feature.
 - **All dialogs fully i18n'd**: New locale keys `DLG_SESSION_RESTORE`, `MSG_SESSION_FILE_MISSING`, `BTN_OPEN_CACHED`, `BTN_SKIP`, `MSG_SESSION_FILE_GONE`, `MSG_SESSION_FTP_FAIL`, `MSG_SESSION_FTP_FAIL_NC`, `MSG_SESSION_REMOTE_CHANGED`, `BTN_RELOAD_REMOTE`, `BTN_KEEP_LOCAL` added to all 15 locale files.
 - **New module `ne_session.h / ne_session.cpp`**: SQLite CRUD wrapper (`NeSession_Save` / `NeSession_Load` / `NeSession_HasData` / `NeSession_Clear`) + `NeSessionTab` struct. `ne_profiles.cpp` extended with `NeProfiles_IsInstalled()` and `NeProfiles_GetDb()`.
+- **Fix false-positive "remote file changed" dialog on unmodified FTP files**: The remote-change and local disk-change dialogs during session restore now only fire when the file had unsaved edits in the previous session (`wasModified` flag). Clean FTP/local tabs load silently — no more false positives from CRLF vs LF differences between Scintilla text and raw server bytes. `was_modified` column added to `session_tabs` with an automatic `ALTER TABLE` migration.
 - **Fix `follow.ps1` run counter always showing #1**: Replaced `$PSScriptRoot` (empty when dot-sourced or invoked without `-File`) with a robust `$scriptDir` from `$MyInvocation.MyCommand.Path`. Removed the false-positive trigger `($run -eq 0 -and $size -gt 0)` that fired on startup when the log already had content; new runs now only trigger on genuine file truncation (`$size -lt $pos`).
 
 ## v2026.05.25.12 (Recent Files; Focus fix) - 25.05.2026 12:46

@@ -108,7 +108,8 @@ bool NeProfiles_Init()
         "  is_active       INTEGER NOT NULL DEFAULT 0,"
         "  disk_time_lo    INTEGER NOT NULL DEFAULT 0,"
         "  disk_time_hi    INTEGER NOT NULL DEFAULT 0,"
-        "  disk_size       INTEGER NOT NULL DEFAULT 0"
+        "  disk_size       INTEGER NOT NULL DEFAULT 0,"
+        "  was_modified    INTEGER NOT NULL DEFAULT 0"
         ");";
     char* err = nullptr;
     if (sqlite3_exec(s_db, schema, NULL, NULL, &err) != SQLITE_OK) {
@@ -135,8 +136,13 @@ bool NeProfiles_Init()
         "  is_active       INTEGER NOT NULL DEFAULT 0,"
         "  disk_time_lo    INTEGER NOT NULL DEFAULT 0,"
         "  disk_time_hi    INTEGER NOT NULL DEFAULT 0,"
-        "  disk_size       INTEGER NOT NULL DEFAULT 0"
+        "  disk_size       INTEGER NOT NULL DEFAULT 0,"
+        "  was_modified    INTEGER NOT NULL DEFAULT 0"
         ")", NULL, NULL, NULL);
+    // Migration: add was_modified to existing session_tabs (ignored if column already exists).
+    sqlite3_exec(s_db,
+        "ALTER TABLE session_tabs ADD COLUMN was_modified INTEGER NOT NULL DEFAULT 0",
+        NULL, NULL, NULL);
     return true;
 }
 

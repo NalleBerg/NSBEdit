@@ -142,12 +142,14 @@
                                                 startup (installed, no cmd-line file) and reopens
                                                 every tab: local (load from disk or cached),
                                                 FTP (reconnect + byte-level change check:
-                                                download → compare bytes vs content BLOB;
+                                                only when wasModified=true; download →
+                                                compare bytes vs content BLOB;
                                                 MSG_SESSION_REMOTE_CHANGED if different;
                                                 BTN_RELOAD_REMOTE / BTN_KEEP_LOCAL),
-                                                local (if content BLOB saved: compare
-                                                file bytes vs BLOB; MSG_SESSION_DISK_CHANGED
-                                                if different; BTN_RELOAD_DISK / BTN_KEEP_CACHED),
+                                                local (if wasModified and content BLOB:
+                                                compare file bytes vs BLOB;
+                                                MSG_SESSION_DISK_CHANGED if different;
+                                                BTN_RELOAD_DISK / BTN_KEEP_CACHED),
                                                 untitled (stream content back).
                                                 NE_TIMER_SESSION (id 10)
                                                 SetTimer 60 s autosave in WM_CREATE; WM_TIMER
@@ -566,7 +568,9 @@
                                                 NeSessionTab struct: sortOrder, localPath,
                                                 isFtp, ftpProfileId, ftpRemotePath,
                                                 ftpFriendly, content (vector<uint8_t> BLOB),
-                                                contentIsRtf, isActive, diskTimeLo/Hi
+                                                contentIsRtf, isActive, wasModified
+                                                (true = had unsaved edits; gates the
+                                                remote/disk conflict dialog), diskTimeLo/Hi
                                                 (FILETIME stored; change detection uses
                                                 BLOB byte comparison, not timestamps),
                                                 diskSize.

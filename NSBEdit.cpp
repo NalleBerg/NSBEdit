@@ -6233,6 +6233,7 @@ static void Ne_SessionSave(HWND hwnd)
         NeSessionTab t;
         t.sortOrder     = i;
         t.isActive      = (i == activeIdx);
+        t.wasModified   = doc->modified;
         t.localPath     = doc->path;
         t.isFtp         = doc->isFtpFile;
         t.ftpProfileId  = doc->ftpProfileId;
@@ -6390,10 +6391,12 @@ static void Ne_SessionRestore(HWND hwnd)
                 if (dlOk) {
                     // Check whether the remote file changed since the session
                     // by comparing the downloaded bytes directly against the
-                    // cached content BLOB (timestamp of a temp file is always
-                    // "now" and is not a reliable indicator of remote changes).
+                    // cached content BLOB.  Only warn when the file had unsaved
+                    // edits in the previous session — for clean tabs the BLOB is
+                    // just a cache and encoding differences (CRLF vs LF etc.)
+                    // would cause false positives.
                     bool remoteChanged = false;
-                    if (!t.content.empty()) {
+                    if (t.wasModified && !t.content.empty()) {
                         HANDLE hf = CreateFileW(localPath.c_str(), GENERIC_READ,
                                                 FILE_SHARE_READ, NULL,
                                                 OPEN_EXISTING, 0, NULL);
@@ -6516,10 +6519,9 @@ static void Ne_SessionRestore(HWND hwnd)
             }
 
             // File exists on disk.
-            if (!t.content.empty()) {
-                // We have cached content. Check whether the disk file has been
-                // modified by another program since the session was saved by
-                // comparing bytes directly against the stored BLOB.
+            if (t.wasModified && !t.content.empty()) {
+                // We have cached content from a modified file. Check whether
+                // another program also changed the disk file while we were away.
                 bool diskChanged = false;
                 HANDLE hf = CreateFileW(t.localPath.c_str(), GENERIC_READ,
                                         FILE_SHARE_READ, NULL,

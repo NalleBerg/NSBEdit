@@ -42,8 +42,8 @@ bool NeSession_Save(const std::vector<NeSessionTab>& tabs)
         " (sort_order, local_path, is_ftp, ftp_profile_id,"
         "  ftp_remote_path, ftp_friendly,"
         "  content, content_is_rtf, is_active,"
-        "  disk_time_lo, disk_time_hi, disk_size)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)";
+        "  disk_time_lo, disk_time_hi, disk_size, was_modified)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -71,6 +71,7 @@ bool NeSession_Save(const std::vector<NeSessionTab>& tabs)
         sqlite3_bind_int64 (stmt, 10, (int64_t)t.diskTimeLo);
         sqlite3_bind_int64 (stmt, 11, (int64_t)t.diskTimeHi);
         sqlite3_bind_int64 (stmt, 12, t.diskSize);
+        sqlite3_bind_int   (stmt, 13, t.wasModified ? 1 : 0);
         sqlite3_step(stmt);
     }
 
@@ -90,7 +91,7 @@ bool NeSession_Load(std::vector<NeSessionTab>& out)
         "SELECT sort_order, local_path, is_ftp, ftp_profile_id,"
         "       ftp_remote_path, ftp_friendly,"
         "       content, content_is_rtf, is_active,"
-        "       disk_time_lo, disk_time_hi, disk_size"
+        "       disk_time_lo, disk_time_hi, disk_size, was_modified"
         " FROM session_tabs ORDER BY sort_order";
 
     sqlite3_stmt* stmt = nullptr;
@@ -117,6 +118,7 @@ bool NeSession_Load(std::vector<NeSessionTab>& out)
         t.diskTimeLo   = (DWORD)sqlite3_column_int64(stmt, 9);
         t.diskTimeHi   = (DWORD)sqlite3_column_int64(stmt, 10);
         t.diskSize     = sqlite3_column_int64 (stmt, 11);
+        t.wasModified  = sqlite3_column_int   (stmt, 12) != 0;
         out.push_back(std::move(t));
     }
 

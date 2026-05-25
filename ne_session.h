@@ -24,6 +24,7 @@ struct NeSessionTab {
     bool           contentIsRtf  = false; // true = RTF bytes; false = UTF-8 text
 
     bool           isActive      = false; // was the active tab when session was saved
+    bool           wasModified   = false; // had unsaved edits when session was saved
 
     // Disk stamp at last load (used to detect remote FTP changes on restore).
     DWORD          diskTimeLo    = 0;
