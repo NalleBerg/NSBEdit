@@ -448,3 +448,6 @@ HRP_STYLE_DOTTED    = Punkteret
 HRP_STYLE_DASHED    = Stiplet
 HRP_STYLE_HAIRLINE  = Hårfin
 BTN_CHOOSE          = Vælg…
+
+MENU_RECENT       = Seneste &filer
+MENU_RECENT_EMPTY = (Ingen)

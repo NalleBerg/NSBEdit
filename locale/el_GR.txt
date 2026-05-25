@@ -448,3 +448,6 @@ HRP_STYLE_DOTTED    = Με τελείες
 HRP_STYLE_DASHED    = Διακεκομμένη
 HRP_STYLE_HAIRLINE  = Τριχοειδής
 BTN_CHOOSE          = Επιλογή…
+
+MENU_RECENT       = &Πρόσφατα αρχεία
+MENU_RECENT_EMPTY = (Κανένα)

@@ -448,3 +448,6 @@ HRP_STYLE_DOTTED    = Punteada
 HRP_STYLE_DASHED    = Discontinua
 HRP_STYLE_HAIRLINE  = Filete fino
 BTN_CHOOSE          = Elegir…
+
+MENU_RECENT       = Archivos &recientes
+MENU_RECENT_EMPTY = (Ninguno)

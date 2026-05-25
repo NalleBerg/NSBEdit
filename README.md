@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.24.13**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.25.12**
 
 ## Download
 
@@ -20,6 +20,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Hover tooltip on hyperlinks** — shows the URL and a Ctrl+Click hint as a two-line tooltip when hovering over a link
 - **URL validation** — regex check on save: requires a recognised scheme, valid host, and 2–4 character TLD
 - File menu: New, Open, Save, Save As, Print, Export as PDF (`Ctrl+Shift+P`)
+- **Recent Files** — File menu *Recent Files* submenu lists the last 10 opened or saved files; persisted between sessions in the settings database
 - Edit menu: Undo, Redo, Cut, Copy, Paste, Select All — greyed dynamically
 - Right-click context menu on the editor with the same Edit operations
 - Export as PDF via *Microsoft Print to PDF* — no third-party libraries
@@ -29,6 +30,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - Custom status bar with real-time word/char count and Saved/Unsaved indicator (shell32 icons)
 - Custom save-changes dialog with icon buttons (Save / Don't Save / Cancel)
 - On-focus external file change detection with Reload / Keep Current dialog
+- **Instant focus on Alt+Tab** — returning to NSBEdit via Alt+Tab or taskbar click immediately activates the editor; text selection stays live (blue)
 - Owner-draw menus at 12pt Segoe UI — white background, correct highlight/grayed states
 - All UI fonts at 12pt Segoe UI, DPI-aware — readable at any screen resolution or scale
 - Smart toolbar reflow — controls drop one at a time as the window narrows

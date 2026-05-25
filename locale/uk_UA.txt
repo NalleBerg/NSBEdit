@@ -449,3 +449,6 @@ HRP_STYLE_DOTTED    = Крапкова
 HRP_STYLE_DASHED    = Штрихова
 HRP_STYLE_HAIRLINE  = Волосяна
 BTN_CHOOSE          = Вибрати…
+
+MENU_RECENT       = &Останні файли
+MENU_RECENT_EMPTY = (Немає)

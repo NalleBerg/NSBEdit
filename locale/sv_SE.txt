@@ -412,3 +412,6 @@ FTP_PREVIEW_LOCKED   = Fliken är låst medan förhandsgranskning är aktiv.
 FTP_PREVIEW_URL      = Förhandsgransknings-URL:
 BTN_OPEN_BROWSER     = Öppna i webbläsaren
 BTN_OPEN_BROWSER_TIP = Genväg: [Enter] för att öppna i webbläsaren.
+
+MENU_RECENT       = Senaste &filer
+MENU_RECENT_EMPTY = (Inga)

@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.25.12 (Recent Files; Focus fix) - 25.05.2026 12:46
+
+- **Recent Files submenu**: The File menu now has a *Recent Files* submenu listing the last 10 opened or saved files. Selecting an entry opens the file; dead paths are silently removed. Persisted in the SQLite settings database (`recent_0`–`recent_9` keys). Translated in all 15 UI languages via the new `MENU_RECENT` and `MENU_RECENT_EMPTY` locale keys.
+- **Alt+Tab focus fix**: When returning to NSBEdit via Alt+Tab or a taskbar click, the active editor now immediately receives keyboard focus — text selection stays live (blue) instead of turning grey. Fixed by handling `WM_SETFOCUS` on the top-level frame and redirecting focus to the correct child editor (`hSci` for Scintilla code tabs, `hEdit` for RichEdit RTF tabs).
+
 ## v2026.05.24.13 (Dutch/Flemish locale fix) - 24.05.2026 13:33
 
 - **Dutch & Flemish — "GUI-taal" label**: `MENU_GUI_LANG` in `nl_NL.txt` and `nl_BE.txt` showed "Taal", identical to `MENU_LANGUAGE` ("&Taal"), making the GUI Language and Code Language menu items indistinguishable. `MENU_GUI_LANG` is now "GUI-taal" in both files, matching the English "GUI Lang" pattern.

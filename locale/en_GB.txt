@@ -448,3 +448,6 @@ HRP_STYLE_DOTTED    = Dotted
 HRP_STYLE_DASHED    = Dashed
 HRP_STYLE_HAIRLINE  = Hairline
 BTN_CHOOSE          = Choose…
+
+MENU_RECENT       = &Recent Files
+MENU_RECENT_EMPTY = (None)

@@ -448,3 +448,6 @@ HRP_STYLE_DOTTED    = Pontilhada
 HRP_STYLE_DASHED    = Tracejada
 HRP_STYLE_HAIRLINE  = Fio de cabelo
 BTN_CHOOSE          = Escolher…
+
+MENU_RECENT       = &Ficheiros recentes
+MENU_RECENT_EMPTY = (Nenhum)

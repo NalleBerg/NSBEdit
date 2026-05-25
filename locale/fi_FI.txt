@@ -448,3 +448,6 @@ HRP_STYLE_DOTTED    = Pisteytetty
 HRP_STYLE_DASHED    = Katkoviiva
 HRP_STYLE_HAIRLINE  = Hiusviiva
 BTN_CHOOSE          = Valitse…
+
+MENU_RECENT       = Viimeisimmät &tiedostot
+MENU_RECENT_EMPTY = (Ei mitään)

@@ -449,3 +449,6 @@ HRP_STYLE_DOTTED    = Čuohppan
 HRP_STYLE_DASHED    = Dahkkon
 HRP_STYLE_HAIRLINE  = Hiegan
 BTN_CHOOSE          = Válljehit…
+
+MENU_RECENT       = Ráhčan &fiillat
+MENU_RECENT_EMPTY = (Ii maidege)

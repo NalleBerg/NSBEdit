@@ -134,6 +134,8 @@ enum class NeEncoding {
 #define IDM_PREVIEW_FTP     134   // File/FTP menu + toolbar: "Preview online."
 #define IDM_PREFS           135   // Edit menu: Preferences
 #define IDM_FTP_CLOSE_CONN  136   // FTP menu: "Close connection" (picker dialog)
+#define IDM_RECENT_BASE      900   // Recent files: 900..909 (max 10)
+#define IDM_RECENT_MAX        10
 #define IDM_LANG_BASE        600  // Language menu: 600..600+NE_LANG_COUNT-1
 #define IDM_FTP_CONNECT_BASE 700  // FTP menu: profile entries 700..799
 #define IDM_LOCALE_BASE      800  // GUI language menu: locale entries 800..899
@@ -312,9 +314,63 @@ static const NeLang s_langs[] = {
 static const int NE_LANG_COUNT = (int)(sizeof(s_langs) / sizeof(s_langs[0]));
 
 // Menu handle for the Language popup (so we can update checkmarks).
-static HMENU s_hLangMenu = NULL;
+static HMENU s_hLangMenu   = NULL;
 static HMENU s_hFtpMenu    = NULL;
 static HMENU s_hLocaleMenu = NULL;
+static HMENU s_hRecentMenu = NULL;
+
+// ── Most-Recently-Used (MRU) file list ────────────────────────────────────────
+static std::vector<std::wstring> s_recentFiles; // most recent first, max IDM_RECENT_MAX
+
+static void Ne_MruLoad()
+{
+    s_recentFiles.clear();
+    for (int i = 0; i < IDM_RECENT_MAX; ++i) {
+        char key[32]; sprintf_s(key, "recent_%d", i);
+        std::string val;
+        if (!NeProfiles_GetStrSetting(key, "", val) || val.empty()) break;
+        // Convert UTF-8 stored path back to wide string.
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, val.c_str(), -1, NULL, 0);
+        if (wlen <= 1) break;
+        std::wstring wide(wlen - 1, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, val.c_str(), -1, &wide[0], wlen);
+        s_recentFiles.push_back(wide);
+    }
+}
+
+static void Ne_MruSave()
+{
+    for (int i = 0; i < IDM_RECENT_MAX; ++i) {
+        char key[32]; sprintf_s(key, "recent_%d", i);
+        if (i < (int)s_recentFiles.size()) {
+            const std::wstring& w = s_recentFiles[i];
+            int utf8len = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), -1, NULL, 0, NULL, NULL);
+            std::string utf8(utf8len - 1, '\0');
+            WideCharToMultiByte(CP_UTF8, 0, w.c_str(), -1, &utf8[0], utf8len, NULL, NULL);
+            NeProfiles_SetStrSetting(key, utf8);
+        } else {
+            NeProfiles_SetStrSetting(key, "");
+        }
+    }
+}
+
+static void Ne_MruAdd(const std::wstring& path)
+{
+    if (path.empty()) return;
+    // Remove existing entry for the same path (case-insensitive).
+    for (auto it = s_recentFiles.begin(); it != s_recentFiles.end(); ++it) {
+        if (_wcsicmp(it->c_str(), path.c_str()) == 0) {
+            s_recentFiles.erase(it);
+            break;
+        }
+    }
+    s_recentFiles.insert(s_recentFiles.begin(), path);
+    if ((int)s_recentFiles.size() > IDM_RECENT_MAX)
+        s_recentFiles.resize(IDM_RECENT_MAX);
+    Ne_MruSave();
+}
+
+static void Ne_RebuildRecentMenu(); // defined after Ne_AppendMenuOD below
 // Forward declaration — defined near WM_CREATE.
 static HFONT g_hMenuFont;
 static bool  s_lineNumsOn    = false; // persists across tabs; toggled by gutter click
@@ -5912,6 +5968,7 @@ static void Ne_Open(HWND hwnd)
         return;
     }
 
+    Ne_MruAdd(path);
     Ne_UpdateToolbarMode(hwnd);
     HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (hEdit) SetFocus(hEdit);
@@ -6068,6 +6125,7 @@ static bool Ne_SaveAs(HWND hwnd)
     bool wasRtfTab = doc && doc->hEdit && IsWindowVisible(doc->hEdit);
 
     if (!Ne_SaveToPath(hwnd, path)) return false;
+    Ne_MruAdd(path);
     if (doc) {
         doc->path = path;
         doc->modified = false;
@@ -6740,6 +6798,20 @@ static void Ne_UpdateFtpStatus(HWND hwnd);
 // Forward declaration — Ne_BuildMainMenu calls this.
 static void Ne_RebuildLocaleMenu(HWND hwnd);
 
+// Rebuild the Recent Files submenu contents.
+static void Ne_RebuildRecentMenu()
+{
+    while (GetMenuItemCount(s_hRecentMenu) > 0)
+        RemoveMenu(s_hRecentMenu, 0, MF_BYPOSITION);
+    if (s_recentFiles.empty()) {
+        Ne_AppendMenuOD(s_hRecentMenu, MF_STRING | MF_GRAYED, 0, Ls(L"MENU_RECENT_EMPTY"));
+        return;
+    }
+    for (int i = 0; i < (int)s_recentFiles.size(); ++i)
+        Ne_AppendMenuOD(s_hRecentMenu, MF_STRING,
+                        IDM_RECENT_BASE + i, s_recentFiles[i].c_str());
+}
+
 // Rebuild the entire menu bar from current locale strings.
 // Safe to call after WM_CREATE (replaces and destroys the old menu).
 static void Ne_BuildMainMenu(HWND hwnd)
@@ -6749,6 +6821,9 @@ static void Ne_BuildMainMenu(HWND hwnd)
     HMENU hFile  = CreatePopupMenu();
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_NEW,        Ls(L"MENU_NEW"));
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_OPEN,       Ls(L"MENU_OPEN"));
+    s_hRecentMenu = CreatePopupMenu();
+    Ne_AppendMenuOD(hFile, MF_POPUP | MF_STRING, (UINT_PTR)s_hRecentMenu, Ls(L"MENU_RECENT"));
+    Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0, NULL);
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE,       Ls(L"MENU_SAVE"));
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVEAS,     Ls(L"MENU_SAVEAS"));
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE_TO_FTP, Ls(L"MENU_SAVE_TO_FTP"));
@@ -10423,6 +10498,30 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (hEdit) Ne_EditHRuleProps(hwnd, hEdit);
             return 0;
         }
+        if (wmId >= IDM_RECENT_BASE && wmId < IDM_RECENT_BASE + IDM_RECENT_MAX) {
+            int idx = wmId - IDM_RECENT_BASE;
+            if (idx < (int)s_recentFiles.size()) {
+                const std::wstring& rpath = s_recentFiles[idx];
+                NeTabDoc* existingDoc = NeTabs_GetActiveDoc(hwnd);
+                bool reuseTab = existingDoc &&
+                                existingDoc->path.empty() &&
+                                !existingDoc->modified &&
+                                existingDoc->hEdit && !existingDoc->hSci;
+                if (!reuseTab) NeTabs_AddUntitled(hwnd);
+                if (!Ne_LoadPathIntoEditor(hwnd, rpath)) {
+                    MessageBoxW(hwnd, Ls(L"MSG_OPEN_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
+                    // Remove dead entry from MRU.
+                    s_recentFiles.erase(s_recentFiles.begin() + idx);
+                    Ne_MruSave();
+                } else {
+                    Ne_MruAdd(rpath);
+                    Ne_UpdateToolbarMode(hwnd);
+                    HWND hFocusEdit = NeTabs_GetActiveEdit(hwnd);
+                    if (hFocusEdit) SetFocus(hFocusEdit);
+                }
+            }
+            return 0;
+        }
         if (wmId == IDM_NEW || wmId == IDC_NE_TABCTRL + 10) { Ne_New(hwnd); return 0; }
         if (wmId == IDM_OPEN)       { Ne_Open(hwnd);              return 0; }
         if (wmId == IDM_SAVE)       { Ne_Save(hwnd);              return 0; }
@@ -11505,6 +11604,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             Ne_RebuildLocaleMenu(hwnd);
             return 0;
         }
+        // ── Recent files popup ────────────────────────────────────────────────
+        if (hPop == s_hRecentMenu) {
+            Ne_RebuildRecentMenu();
+            return 0;
+        }
 
         HWND hEdit = NeTabs_GetActiveEdit(hwnd);
         if (!hEdit) break;
@@ -11574,6 +11678,18 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         LRESULT lr = DefWindowProcW(hwnd, WM_NCACTIVATE, wParam, lParam);
         Ne_FillMenuBarGap(hwnd);
         return lr;
+    }
+    // ── WM_SETFOCUS — redirect focus from the frame to the active editor ─────
+    // When the app is activated (Alt+Tab, click on taskbar, etc.) Windows sets
+    // keyboard focus to the top-level window first, then sends WM_SETFOCUS here.
+    // We forward it to the active editor so the selection is immediately live.
+    case WM_SETFOCUS: {
+        NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+        if (doc) {
+            HWND hTarget = doc->hSci ? doc->hSci : doc->hEdit;
+            if (hTarget) SetFocus(hTarget);
+        }
+        return 0;
     }
 
     // ── Background colours ────────────────────────────────────────────────────
@@ -11732,11 +11848,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
         }
         if (!arg.empty()) {
             Ne_LoadPathIntoEditor(s_hwndMain, arg);
+            Ne_MruAdd(arg);
         }
     }
 
     NeFtp_Init();
-    // Load persistent zoom settings (DB already open from early init above).
+    // Load persistent zoom settings and MRU (DB already open from early init above).
+    Ne_MruLoad();
     NeProfiles_GetIntSetting("zoom_rtf", 100, g_zoomRtf);
     NeProfiles_GetIntSetting("zoom_sci",   0, g_zoomSci);
     // Clamp to valid ranges.

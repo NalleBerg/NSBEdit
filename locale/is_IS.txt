@@ -412,3 +412,6 @@ FTP_PREVIEW_LOCKED   = Flipinn er læstur á meðan forskoðun er virk.
 FTP_PREVIEW_URL      = Forskoðunarslóð:
 BTN_OPEN_BROWSER     = Opna í vafra
 BTN_OPEN_BROWSER_TIP = Flýtilykill: [Enter] til að opna í vafra.
+
+MENU_RECENT       = Nýlegar &skrár
+MENU_RECENT_EMPTY = (Engar)

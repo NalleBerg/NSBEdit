@@ -448,3 +448,6 @@ HRP_STYLE_DOTTED    = Gepunktet
 HRP_STYLE_DASHED    = Gestrichelt
 HRP_STYLE_HAIRLINE  = Haarlinie
 BTN_CHOOSE          = Auswählen…
+
+MENU_RECENT       = &Zuletzt geöffnet
+MENU_RECENT_EMPTY = (Keine)
