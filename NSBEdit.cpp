@@ -240,9 +240,8 @@ static void Ne_SyncScrollbarVisibility(HWND hwnd)
             auto it = m.find(hWin);
             if (it == m.end() || !it->second) return;
             bool vis = IsWindowVisible(hWin) != FALSE;
-            HWND hBar = msb_get_bar_hwnd(it->second);
             if (!vis) {
-                if (hBar) ShowWindow(hBar, SW_HIDE);
+                msb_hide(it->second);
             } else {
                 msb_reposition(it->second);
                 msb_sync(it->second);

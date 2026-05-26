@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.26.10 (Scrollbar tab-switch fix) - 26.05.2026 10:53
+
+- **Fix: custom scrollbars vanish after switching tabs**: Switching away from a tab and back caused the custom scrollbar windows to disappear permanently. Root cause: `Ne_SyncScrollbarVisibility` called `ShowWindow(hBar, SW_HIDE)` directly on the bar HWND, bypassing the scrollbar library's internal `fadeState`. On re-activation, `msb_reposition` → `Msb_UpdateVisibility` only re-shows the bar when `fadeState == FADE_INVISIBLE`; since that was never set, the bar stayed hidden forever. Fixed by adding `msb_hide(HMSB)` to the public API: resets `fadeState` to `FADE_INVISIBLE`, kills any fade timer, then hides the window. `Ne_SyncScrollbarVisibility` now calls `msb_hide()` instead of `ShowWindow` directly. Affects all four bar handles (RichEdit V/H and Scintilla V/H).
+
 ## v2026.05.25.14 (Session Restore) - 25.05.2026 14:47
 
 - **Session persistence**: The installed version saves the full tab list to the `session_tabs` SQLite table every 60 seconds and at clean exit. Each row stores the file path, FTP details, a content BLOB for unsaved/FTP files, and a disk timestamp. The save is a single `BEGIN … COMMIT` transaction — a crash mid-write cannot corrupt the previous session.

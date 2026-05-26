@@ -2195,6 +2195,17 @@ HMSB msb_attach(HWND hTarget, DWORD flags)
     return (HMSB)ctx;
 }
 
+void msb_hide(HMSB h)
+{
+    if (!h) return;
+    MsbCtx* ctx = (MsbCtx*)h;
+    if (!ctx->hBar || !IsWindow(ctx->hBar)) return;
+    KillTimer(ctx->hBar, 3);   /* cancel any fade-out animation */
+    ctx->fadeState = FADE_INVISIBLE;
+    ctx->fadeWidth = 0.0f;
+    ShowWindow(ctx->hBar, SW_HIDE);
+}
+
 void msb_detach(HMSB h)
 {
     if (!h) return;

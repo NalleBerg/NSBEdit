@@ -146,6 +146,16 @@ void msb_set_edge_gap(HMSB h, int gap);
  */
 void msb_reposition(HMSB h);
 
+/*
+ * msb_hide — forcibly hide the bar and reset its fade state to FADE_INVISIBLE.
+ * Unlike ShowWindow(bar, SW_HIDE) directly, this keeps the internal fade state
+ * consistent so the next msb_reposition / msb_sync call will correctly
+ * re-show the bar when the target becomes visible again.
+ * Use this (rather than ShowWindow on the bar HWND) when hiding the bar
+ * because the target window is temporarily off-screen (e.g. inactive tab).
+ */
+void msb_hide(HMSB h);
+
 #ifdef __cplusplus
 }
 #endif
