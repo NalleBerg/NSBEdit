@@ -289,6 +289,7 @@ struct NeLang {
 
 static const NeLang s_langs[] = {
     { L"Plain Text",   nullptr,       L"txt|text|log"             },
+    { L"Bash / Shell", "bash",        L"sh|bash|zsh|ksh|bashrc|bash_profile|bash_aliases|bash_login|bash_logout|zshrc|zshenv|zprofile" },
     { L"Batch",        "batch",       L"bat|cmd"                  },
     { L"C / C++",      "cpp",         L"c|cpp|cxx|cc|h|hpp|hxx|inl" },
     { L"C#",           "cpp",         L"cs"                       },
@@ -406,6 +407,51 @@ static int Ne_LangFromExt(const std::wstring& path)
         }
     }
     return 0; // Plain Text
+}
+
+// Returns the s_langs[] index for a file whose first line is a shebang,
+// or -1 if no recognized shebang is found.  Handles:
+//   #!/bin/bash   #!/usr/bin/bash   #!/bin/sh   #!/usr/bin/env bash
+//   #!/bin/zsh    #!/usr/bin/env zsh   #!/bin/ksh  #!/bin/dash  etc.
+static int Ne_LangFromShebang(const std::string& utf8)
+{
+    if (utf8.size() < 2 || utf8[0] != '#' || utf8[1] != '!')
+        return -1;
+    size_t nl = utf8.find('\n');
+    std::string line = (nl == std::string::npos) ? utf8 : utf8.substr(0, nl);
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+    // Extract the interpreter path (between #! and first space/end).
+    size_t sp = line.find(' ', 2);
+    std::string interp = line.substr(2, sp == std::string::npos ? std::string::npos : sp - 2);
+    // Strip leading/trailing whitespace around the path.
+    while (!interp.empty() && interp.front() == ' ') interp.erase(interp.begin());
+    // Get the basename of the interpreter.
+    size_t sl = interp.rfind('/');
+    std::string name = (sl == std::string::npos) ? interp : interp.substr(sl + 1);
+    // Handle  #!/usr/bin/env <name>  or  #!/usr/bin/env -S <name>
+    if (name == "env" && sp != std::string::npos) {
+        size_t start = line.find_first_not_of(' ', sp + 1);
+        if (start != std::string::npos) {
+            // Skip optional env flags like -S, -u VAR, etc.
+            while (start != std::string::npos && line[start] == '-') {
+                size_t next = line.find(' ', start);
+                if (next == std::string::npos) { start = next; break; }
+                start = line.find_first_not_of(' ', next);
+            }
+            if (start != std::string::npos) {
+                size_t end = line.find(' ', start);
+                name = line.substr(start, end == std::string::npos ? std::string::npos : end - start);
+            }
+        }
+    }
+    if (name == "bash" || name == "sh" || name == "dash" ||
+        name == "zsh"  || name == "ksh" || name == "mksh" ||
+        name == "fish" || name == "ash") {
+        for (int i = 0; i < NE_LANG_COUNT; ++i)
+            if (s_langs[i].lexer && strcmp(s_langs[i].lexer, "bash") == 0)
+                return i;
+    }
+    return -1;
 }
 
 // Apply a light-theme color scheme to a Scintilla window.
@@ -797,30 +843,31 @@ static std::string Ne_SciGetText(HWND hSci)
 // Empty string = no autocomplete for that language.
 static const char* s_langKws[] = {
     /* 0 Plain Text  */ "",
-    /* 1 Batch       */ "break call cd chdir cls color copy del dir do echo else endlocal errorlevel exit for goto if md mkdir move not pause pushd rem rd rmdir set setlocal shift start title type",
-    /* 2 C / C++     */ "alignas alignof auto bool break case catch char char16_t char32_t char8_t class concept const const_cast consteval constexpr constinit continue co_await co_return co_yield decltype default delete do double dynamic_cast else enum explicit export extern false final float for friend goto if inline int long mutable namespace new noexcept nullptr operator override private protected public reinterpret_cast requires return short signed sizeof static static_assert static_cast struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while",
-    /* 3 C#          */ "abstract as base bool break byte case catch char checked class const continue decimal default delegate do double else enum event explicit extern false finally fixed float for foreach goto if implicit in int interface internal is lock long namespace new null object operator out override params private protected public readonly ref return sbyte sealed short sizeof stackalloc static string struct switch this throw true try typeof uint ulong unchecked unsafe ushort using virtual void volatile while",
-    /* 4 CSS         */ "align-content align-items align-self animation background background-color background-image border border-radius bottom box-shadow color content display flex flex-direction float font font-family font-size font-weight gap grid height justify-content left letter-spacing line-height margin max-height max-width min-height min-width opacity overflow padding position right text-align text-decoration top transform transition visibility white-space width z-index",
-    /* 5 HTML        */ "a abbr address area article aside audio b base blockquote body br button canvas caption cite code col colgroup data datalist dd details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script section select small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr",
-    /* 6 INI         */ "",
-    /* 7 Java        */ "abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new null package private protected public return short static strictfp super switch synchronized this throw throws transient true try var void volatile while",
-    /* 8 JavaScript  */ "async await break case catch class const continue debugger default delete do else export extends false finally for from function get if import in instanceof let new null of return set static super switch this throw true try typeof undefined var void while with yield",
-    /* 9 JSON        */ "false null true",
-    /* 10 Lua        */ "and break do else elseif end false for function goto if in local nil not or repeat return then true until while",
-    /* 11 Makefile   */ "define else endef endif export ifdef ifndef ifeq ifneq include override private undefine unexport vpath",
-    /* 12 Markdown   */ "",
-    /* 13 Pascal     */ "and array as begin boolean break byte case char class const constructor continue default destructor div do downto else end except exit extended false file finalization finally for function goto if implementation in inherited initialization inline integer interface is label library longint mod nil not object of on or out overload override packed pointer procedure program property protected public published raise real record repeat result self set shortint shl shr single string then to true try type unit until uses var while with word xor",
-    /* 14 Perl       */ "chomp chop chr close connect delete die do each else elsif eval exit exists for foreach format goto if index join keys last length local map my next no our package pop print printf push q qq qr qw qx ref return reverse scalar shift sort splice split sprintf sub substr system tie tied undef unless until use values wantarray while",
-    /* 15 PHP        */ "abstract and array break callable case catch class clone const continue declare default die do echo else elseif empty enddeclare endfor endforeach endif endswitch endwhile extends final finally fn for foreach function global goto if implements include include_once instanceof insteadof interface isset list match namespace new null or print private protected public readonly require require_once return static switch throw trait try unset use var while xor yield",
-    /* 16 PowerShell */ "begin break catch class continue data define do dynamicparam else elseif end exit filter finally for foreach from function if in param process return switch throw trap try until using while",
-    /* 17 Python     */ "False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda match nonlocal not or pass raise return try while with yield",
-    /* 18 Ruby       */ "alias and begin break case class def defined do else elsif end ensure false for if in module next nil not or redo rescue retry return self super then true undef unless until when while yield",
-    /* 19 Rust       */ "as async await break const continue crate dyn else enum extern false fn for if impl in let loop match mod move mut pub ref return self static struct super trait true type union unsafe use where while",
-    /* 20 SQL        */ "add all alter and any as asc authorization backup begin between break by cascade case check close clustered coalesce column commit constraint contains continue convert create cross current cursor database declare default delete deny desc distinct do drop else end exec execute exists exit fetch for foreign from full function goto grant group having identity if index inner insert intersect into is join key left like load merge national not null nullif of off on open option or order outer over percent pivot primary print proc procedure public raiserror read reconfigure references replication restore return revoke right rollback rowcount rule save schema select set statistics table then to top tran transaction trigger truncate union unique unpivot update use user values view when where while with",
-    /* 21 TypeScript */ "abstract any as async at await boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get if implements import in infer instanceof interface is keyof let module namespace never new null number object of out override private protected public readonly return set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield",
-    /* 22 VBScript   */ "and as boolean byref byval call case class const date dim do each else elseif empty end enum erase error event exit explicit false for function get if imp in is let like loop me mod new next not nothing null object on option or preserve private property public randomize redim rem resume select set step string sub then to true type until wend while with",
-    /* 23 XML        */ "",
-    /* 24 YAML       */ "false null true",
+    /* 1 Bash        */ "alias bg bind break builtin caller case cd command compgen complete compopt continue declare dirs disown do done echo elif else enable esac eval exec exit export false fc fg fi for function getopts hash help history if in jobs kill let local logout mapfile popd printf pushd pwd read readarray readonly return select set shift shopt source suspend test then time trap true type typeset ulimit umask unalias unset until wait while",
+    /* 2 Batch       */ "break call cd chdir cls color copy del dir do echo else endlocal errorlevel exit for goto if md mkdir move not pause pushd rem rd rmdir set setlocal shift start title type",
+    /* 3 C / C++     */ "alignas alignof auto bool break case catch char char16_t char32_t char8_t class concept const const_cast consteval constexpr constinit continue co_await co_return co_yield decltype default delete do double dynamic_cast else enum explicit export extern false final float for friend goto if inline int long mutable namespace new noexcept nullptr operator override private protected public reinterpret_cast requires return short signed sizeof static static_assert static_cast struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while",
+    /* 4 C#          */ "abstract as base bool break byte case catch char checked class const continue decimal default delegate do double else enum event explicit extern false finally fixed float for foreach goto if implicit in int interface internal is lock long namespace new null object operator out override params private protected public readonly ref return sbyte sealed short sizeof stackalloc static string struct switch this throw true try typeof uint ulong unchecked unsafe ushort using virtual void volatile while",
+    /* 5 CSS         */ "align-content align-items align-self animation background background-color background-image border border-radius bottom box-shadow color content display flex flex-direction float font font-family font-size font-weight gap grid height justify-content left letter-spacing line-height margin max-height max-width min-height min-width opacity overflow padding position right text-align text-decoration top transform transition visibility white-space width z-index",
+    /* 6 HTML        */ "a abbr address area article aside audio b base blockquote body br button canvas caption cite code col colgroup data datalist dd details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 head header hr html i iframe img input ins kbd label legend li link main map mark menu meta meter nav noscript object ol optgroup option output p picture pre progress q rp rt ruby s samp script section select small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr",
+    /* 7 INI         */ "",
+    /* 8 Java        */ "abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new null package private protected public return short static strictfp super switch synchronized this throw throws transient true try var void volatile while",
+    /* 9 JavaScript  */ "async await break case catch class const continue debugger default delete do else export extends false finally for from function get if import in instanceof let new null of return set static super switch this throw true try typeof undefined var void while with yield",
+    /* 10 JSON       */ "false null true",
+    /* 11 Lua        */ "and break do else elseif end false for function goto if in local nil not or repeat return then true until while",
+    /* 12 Makefile   */ "define else endef endif export ifdef ifndef ifeq ifneq include override private undefine unexport vpath",
+    /* 13 Markdown   */ "",
+    /* 14 Pascal     */ "and array as begin boolean break byte case char class const constructor continue default destructor div do downto else end except exit extended false file finalization finally for function goto if implementation in inherited initialization inline integer interface is label library longint mod nil not object of on or out overload override packed pointer procedure program property protected public published raise real record repeat result self set shortint shl shr single string then to true try type unit until uses var while with word xor",
+    /* 15 Perl       */ "chomp chop chr close connect delete die do each else elsif eval exit exists for foreach format goto if index join keys last length local map my next no our package pop print printf push q qq qr qw qx ref return reverse scalar shift sort splice split sprintf sub substr system tie tied undef unless until use values wantarray while",
+    /* 16 PHP        */ "abstract and array break callable case catch class clone const continue declare default die do echo else elseif empty enddeclare endfor endforeach endif endswitch endwhile extends final finally fn for foreach function global goto if implements include include_once instanceof insteadof interface isset list match namespace new null or print private protected public readonly require require_once return static switch throw trait try unset use var while xor yield",
+    /* 17 PowerShell */ "begin break catch class continue data define do dynamicparam else elseif end exit filter finally for foreach from function if in param process return switch throw trap try until using while",
+    /* 18 Python     */ "False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda match nonlocal not or pass raise return try while with yield",
+    /* 19 Ruby       */ "alias and begin break case class def defined do else elsif end ensure false for if in module next nil not or redo rescue retry return self super then true undef unless until when while yield",
+    /* 20 Rust       */ "as async await break const continue crate dyn else enum extern false fn for if impl in let loop match mod move mut pub ref return self static struct super trait true type union unsafe use where while",
+    /* 21 SQL        */ "add all alter and any as asc authorization backup begin between break by cascade case check close clustered coalesce column commit constraint contains continue convert create cross current cursor database declare default delete deny desc distinct do drop else end exec execute exists exit fetch for foreign from full function goto grant group having identity if index inner insert intersect into is join key left like load merge national not null nullif of off on open option or order outer over percent pivot primary print proc procedure public raiserror read reconfigure references replication restore return revoke right rollback rowcount rule save schema select set statistics table then to top tran transaction trigger truncate union unique unpivot update use user values view when where while with",
+    /* 22 TypeScript */ "abstract any as async at await boolean break case catch class const constructor continue debugger declare default delete do else enum export extends false finally for from function get if implements import in infer instanceof interface is keyof let module namespace never new null number object of out override private protected public readonly return set static string super switch symbol this throw true try type typeof undefined unique unknown var void while with yield",
+    /* 23 VBScript   */ "and as boolean byref byval call case class const date dim do each else elseif empty end enum erase error event exit explicit false for function get if imp in is let like loop me mod new next not nothing null object on option or preserve private property public randomize redim rem resume select set step string sub then to true type until wend while with",
+    /* 24 XML        */ "",
+    /* 25 YAML       */ "false null true",
 };
 static_assert(sizeof(s_langKws)/sizeof(s_langKws[0]) == NE_LANG_COUNT,
               "s_langKws length must match NE_LANG_COUNT");
@@ -891,6 +938,29 @@ static void Ne_ApplyLang(HWND hSci, int langIdx)
         sc(SCI_STYLESETFORE, 10, hEnt);
         sc(SCI_STYLESETFORE, 12, hXml);
         sc(SCI_STYLESETFORE, 13, hXml);
+    }
+
+    if (strcmp(lexerName, "bash") == 0) {
+        // Override generic style mapping for SCE_SH_* indices.
+        // Generic setup gets comment (2) right but misassigns 3,4,5.
+        // SCE_SH_*: 2=commentline 3=number 4=keyword 5=dqstring 6=sqstring
+        //           7=operator  9=$scalar  10=$param  11=backticks
+        //           12=heredoc_delim  13=heredoc_str
+        bool darkEd = g_darkMode || g_darkEditor;
+        COLORREF bFg  = darkEd ? RGB(212,212,212) : RGB(  0,  0,  0);
+        COLORREF bNum = darkEd ? RGB(181,206,168) : RGB(  9,136, 90);
+        COLORREF bKw  = darkEd ? RGB( 86,156,214) : RGB(  0,  0,200);
+        COLORREF bStr = darkEd ? RGB(206,145,120) : RGB(163, 21, 21);
+        COLORREF bVar = darkEd ? RGB(156,220,254) : RGB(128,  0,128);
+        sc(SCI_STYLESETFORE, 3,  bNum);
+        sc(SCI_STYLESETFORE, 4,  bKw);  sc(SCI_STYLESETBOLD, 4, TRUE);
+        sc(SCI_STYLESETFORE, 5,  bStr);
+        sc(SCI_STYLESETFORE, 7,  bFg);  // operator → plain text colour
+        sc(SCI_STYLESETFORE, 9,  bVar); // $scalar variable
+        sc(SCI_STYLESETFORE, 10, bVar); // $param / positional param
+        sc(SCI_STYLESETFORE, 11, bStr); // backtick substitution
+        sc(SCI_STYLESETFORE, 12, bKw);  // heredoc delimiter (<<EOF)
+        sc(SCI_STYLESETFORE, 13, bStr); // heredoc body
     }
 }
 
@@ -1571,6 +1641,7 @@ static void Ne_ToggleWordWrap(HWND hwnd, HWND hEdit)
 {
     s_wordWrapOn = !s_wordWrapOn;
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (doc) doc->wordWrap = s_wordWrapOn;
     if (doc && doc->hSci) {
         // Scintilla: use SCI_SETWRAPMODE
         SendMessageW(doc->hSci, SCI_SETWRAPMODE, s_wordWrapOn ? SC_WRAP_WORD : SC_WRAP_NONE, 0);
@@ -5871,8 +5942,14 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
         if (!doc->hSci) return false;
 
         // Detect language from extension (unless user has overridden it).
-        if (!doc->langUserSet)
+        // For files without a recognised extension fall back to shebang detection.
+        if (!doc->langUserSet) {
             doc->langId = Ne_LangFromExt(path);
+            if (doc->langId == 0) {
+                int sh = Ne_LangFromShebang(utf8);
+                if (sh > 0) doc->langId = sh;
+            }
+        }
 
         Ne_ApplyLang(doc->hSci, doc->langId);
 
@@ -5892,6 +5969,7 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
 
         // Non-RTF files default to no wrap; reset global state and apply it.
         s_wordWrapOn = false;
+        doc->wordWrap = false;
         SendMessageW(doc->hSci, SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
 
         doc->path = path;
@@ -5919,6 +5997,7 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
     ShowWindow(hEdit, SW_SHOW);
     // RTF files always open with word wrap on.
     s_wordWrapOn = true;
+    doc->wordWrap = true;
     SendMessageW(hEdit, EM_SETZOOM, (WPARAM)g_zoomRtf, 100);
     SendMessageW(hEdit, EM_SETTARGETDEVICE, 0, 0); // wrap on
 
@@ -6225,10 +6304,6 @@ static void Ne_SessionSave(HWND hwnd)
         NeTabDoc* doc = NeTabs_GetDocByIndex(hwnd, i);
         if (!doc) continue;
 
-        // Skip a completely empty untitled tab — nothing worth restoring.
-        if (doc->path.empty() && !doc->isFtpFile && !doc->modified)
-            continue;
-
         NeSessionTab t;
         t.sortOrder     = i;
         t.isActive      = (i == activeIdx);
@@ -6244,9 +6319,23 @@ static void Ne_SessionSave(HWND hwnd)
             t.diskSize   = (int64_t)doc->diskFileSize;
         }
 
-        // Store content for: modified tabs, any FTP tab (remote may be
-        // unreachable on restore), and untitled tabs that have content.
-        bool needContent = doc->modified || doc->path.empty() || doc->isFtpFile;
+        // Per-tab editor state: type, word-wrap, caret position, scroll line.
+        t.isSciTab = (doc->hSci && IsWindowVisible(doc->hSci));
+        if (t.isSciTab) {
+            t.wordWrap   = (SendMessageW(doc->hSci, SCI_GETWRAPMODE, 0, 0) != SC_WRAP_NONE);
+            t.caretPos   = (int)SendMessageW(doc->hSci, SCI_GETCURRENTPOS, 0, 0);
+            t.scrollLine = (int)SendMessageW(doc->hSci, SCI_GETFIRSTVISIBLELINE, 0, 0);
+        } else if (doc->hEdit) {
+            t.wordWrap   = doc->wordWrap;
+            CHARRANGE cr = {};
+            SendMessageW(doc->hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+            t.caretPos   = (int)cr.cpMin;
+            t.scrollLine = (int)SendMessageW(doc->hEdit, EM_GETFIRSTVISIBLELINE, 0, 0);
+        }
+
+        // Store content for modified tabs and FTP tabs (remote may be unreachable
+        // on restore).  Clean local-file tabs are reloaded from disk.
+        bool needContent = doc->modified || doc->isFtpFile;
         if (needContent) {
             if (doc->hSci && IsWindowVisible(doc->hSci)) {
                 std::string utf8 = Ne_SciGetText(doc->hSci);
@@ -6299,9 +6388,10 @@ static void Ne_SessionRestore(HWND hwnd)
             if (!doc->hEdit) return;
             Ne_AttachScrollbars(doc->hEdit);
             ShowWindow(doc->hEdit, SW_SHOW);
-            s_wordWrapOn = true;
+            doc->wordWrap = t.wordWrap;
+            s_wordWrapOn  = t.wordWrap;
             SendMessageW(doc->hEdit, EM_SETZOOM, (WPARAM)g_zoomRtf, 100);
-            SendMessageW(doc->hEdit, EM_SETTARGETDEVICE, 0, 0); // wrap on
+            SendMessageW(doc->hEdit, EM_SETTARGETDEVICE, 0, t.wordWrap ? 0 : 30000);
             std::string rtf(t.content.begin(), t.content.end());
             doc->suppressChange = true;
             Ne_StreamIn(doc->hEdit, rtf, true);
@@ -6334,6 +6424,25 @@ static void Ne_SessionRestore(HWND hwnd)
             Ne_RebuildHRList(doc->hEdit);
             InvalidateRect(doc->hEdit, NULL, FALSE);
             Ne_SyncRichGutters(hwnd);
+            // Restore caret and first visible line.
+            if (t.caretPos > 0 || t.scrollLine > 0) {
+                // Move to the first char of the saved scroll line so
+                // EM_SCROLLCARET makes it visible, then fine-adjust so
+                // that saved line becomes the topmost visible line.
+                int lc = (int)SendMessageW(doc->hEdit, EM_LINEINDEX,
+                                           (WPARAM)t.scrollLine, 0);
+                if (lc < 0) lc = 0;
+                SendMessageW(doc->hEdit, EM_SETSEL, (WPARAM)lc, (LPARAM)lc);
+                SendMessageW(doc->hEdit, EM_SCROLLCARET, 0, 0);
+                int firstNow = (int)SendMessageW(doc->hEdit,
+                                                  EM_GETFIRSTVISIBLELINE, 0, 0);
+                if (firstNow != t.scrollLine)
+                    SendMessageW(doc->hEdit, EM_LINESCROLL, 0,
+                                 (LPARAM)(t.scrollLine - firstNow));
+                // Place the actual caret.
+                SendMessageW(doc->hEdit, EM_SETSEL,
+                             (WPARAM)t.caretPos, (LPARAM)t.caretPos);
+            }
         } else {
             // UTF-8 → Scintilla
             if (!doc->hSci) {
@@ -6353,6 +6462,11 @@ static void Ne_SessionRestore(HWND hwnd)
             if (!doc->hSci) return;
             if (!t.localPath.empty())
                 doc->langId = Ne_LangFromExt(t.localPath);
+            if (doc->langId == 0 && !t.content.empty()) {
+                std::string shContent(t.content.begin(), t.content.end());
+                int sh = Ne_LangFromShebang(shContent);
+                if (sh > 0) doc->langId = sh;
+            }
             Ne_ApplyLang(doc->hSci, doc->langId);
             std::string utf8(t.content.begin(), t.content.end());
             SendMessageW(doc->hSci, SCI_SETTEXT, 0, (LPARAM)utf8.c_str());
@@ -6361,10 +6475,18 @@ static void Ne_SessionRestore(HWND hwnd)
             ShowWindow(doc->hSci, SW_SHOW);
             SetFocus(doc->hSci);
             SendMessageW(doc->hSci, SCI_SETZOOM, (WPARAM)g_zoomSci, 0);
-            s_wordWrapOn = false;
-            SendMessageW(doc->hSci, SCI_SETWRAPMODE, SC_WRAP_NONE, 0);
+            doc->wordWrap = t.wordWrap;
+            s_wordWrapOn  = t.wordWrap;
+            SendMessageW(doc->hSci, SCI_SETWRAPMODE,
+                         t.wordWrap ? SC_WRAP_WORD : SC_WRAP_NONE, 0);
             Ne_SyncRichGutters(hwnd);
             Ne_SyncScrollbarVisibility(hwnd);
+            // Restore caret position and first visible line.
+            // SCI_SETSEL scrolls into view; we override with saved first line.
+            SendMessageW(doc->hSci, SCI_SETSEL,
+                         (WPARAM)t.caretPos, (LPARAM)t.caretPos);
+            SendMessageW(doc->hSci, SCI_SETFIRSTVISIBLELINE,
+                         (WPARAM)t.scrollLine, 0);
         }
 
         doc->path     = t.localPath;   // may be empty for untitled
@@ -6440,25 +6562,14 @@ static void Ne_SessionRestore(HWND hwnd)
                     }
 
                     if (remoteChanged) {
-                        // Ask: keep cached (session) content or reload from server.
-                        wchar_t msg[1024];
-                        swprintf_s(msg, _countof(msg),
-                                   Ls(L"MSG_SESSION_REMOTE_CHANGED"),
-                                   t.ftpRemotePath.c_str(), t.ftpFriendly.c_str());
-                        NeDialogButtonSpec btns[2] = {
-                            { IDYES, Ls(L"BTN_RELOAD_REMOTE"), NeBtnTone::Blue,  IDI_INFORMATION, 0 },
-                            { IDNO,  Ls(L"BTN_KEEP_LOCAL"),    NeBtnTone::Green, IDI_WARNING,     0 },
-                        };
-                        int r = Ne_ShowChoiceDialog(hwnd,
-                                    Ls(L"DLG_SESSION_RESTORE"), msg, btns, 2, IDYES);
-                        if (r == IDNO) {
-                            // Use cached session content instead of the downloaded file.
-                            DeleteFileW(localPath.c_str());
-                            loadContent(t);
-                            if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
-                            Ne_UpdateToolbarMode(hwnd);
-                            continue;
-                        }
+                        // Remote changed while we had unsaved edits — silently
+                        // restore our cached edits (user can reload from server
+                        // manually if they want the server version).
+                        DeleteFileW(localPath.c_str());
+                        loadContent(t);
+                        if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+                        Ne_UpdateToolbarMode(hwnd);
+                        continue;
                     }
 
                     // Load the fresh download (or non-changed remote file).
@@ -6477,19 +6588,8 @@ static void Ne_SessionRestore(HWND hwnd)
                 // Download failed — fall through to the "can't connect" path.
             }
 
-            // Could not connect / download.
+            // Could not connect / download — restore from cache silently.
             if (!t.content.empty()) {
-                wchar_t msg[1024];
-                swprintf_s(msg, _countof(msg),
-                           Ls(L"MSG_SESSION_FTP_FAIL"),
-                           t.ftpFriendly.c_str(), t.ftpRemotePath.c_str());
-                NeDialogButtonSpec btns[2] = {
-                    { IDYES, Ls(L"BTN_OPEN_CACHED"), NeBtnTone::Blue, IDI_INFORMATION, 0 },
-                    { IDNO,  Ls(L"BTN_SKIP"),        NeBtnTone::Red,  IDI_WARNING,     0 },
-                };
-                int r = Ne_ShowChoiceDialog(hwnd,
-                            Ls(L"DLG_SESSION_RESTORE"), msg, btns, 2, IDYES);
-                if (r == IDNO) { closeFailedTab(); continue; }
                 loadContent(t);
             } else {
                 wchar_t msg[1024];
@@ -6514,17 +6614,7 @@ static void Ne_SessionRestore(HWND hwnd)
 
             if (!fileExists) {
                 if (!t.content.empty()) {
-                    wchar_t msg[MAX_PATH + 256];
-                    swprintf_s(msg, _countof(msg),
-                               Ls(L"MSG_SESSION_FILE_MISSING"),
-                               t.localPath.c_str());
-                    NeDialogButtonSpec btns[2] = {
-                        { IDYES, Ls(L"BTN_OPEN_CACHED"), NeBtnTone::Blue, IDI_INFORMATION, 0 },
-                        { IDNO,  Ls(L"BTN_SKIP"),        NeBtnTone::Red,  IDI_WARNING,     0 },
-                    };
-                    int r = Ne_ShowChoiceDialog(hwnd,
-                                Ls(L"DLG_SESSION_RESTORE"), msg, btns, 2, IDYES);
-                    if (r == IDNO) { closeFailedTab(); continue; }
+                    // File gone but we have cached content — restore silently.
                     loadContent(t);
                 } else {
                     wchar_t msg[MAX_PATH + 64];
@@ -6565,31 +6655,8 @@ static void Ne_SessionRestore(HWND hwnd)
                 }
 
                 if (diskChanged) {
-                    wchar_t msg[MAX_PATH + 256];
-                    swprintf_s(msg, _countof(msg),
-                               Ls(L"MSG_SESSION_DISK_CHANGED"),
-                               t.localPath.c_str());
-                    NeDialogButtonSpec btns[2] = {
-                        { IDYES, Ls(L"BTN_RELOAD_REMOTE"), NeBtnTone::Blue,  IDI_INFORMATION, 0 },
-                        { IDNO,  Ls(L"BTN_KEEP_LOCAL"),    NeBtnTone::Green, IDI_WARNING,     0 },
-                    };
-                    int r = Ne_ShowChoiceDialog(hwnd,
-                                Ls(L"DLG_SESSION_RESTORE"), msg, btns, 2, IDYES);
-                    if (r == IDYES) {
-                        // Load fresh from disk.
-                        if (!Ne_LoadPathIntoEditor(hwnd, t.localPath)) {
-                            NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"),
-                                                      NeBtnTone::Red, IDI_ERROR, 0 };
-                            Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SESSION_RESTORE"),
-                                                Ls(L"MSG_OPEN_ERR"), &btn, 1, IDOK);
-                            closeFailedTab();
-                            continue;
-                        }
-                        Ne_MruAdd(t.localPath);
-                        if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
-                        Ne_UpdateToolbarMode(hwnd);
-                        continue;
-                    }
+                    // Disk changed while we had unsaved edits — silently keep
+                    // our cached version (user can reload from disk manually).
                 }
                 // Keep cached (session) content.
                 loadContent(t);
@@ -6616,14 +6683,61 @@ static void Ne_SessionRestore(HWND hwnd)
             if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
             Ne_UpdateToolbarMode(hwnd);
         } else {
-            // Truly empty untitled — skip; the app already has one on startup.
-            if (!reuseTab) closeFailedTab();
+            // Empty untitled tab — restore as a placeholder with correct editor
+            // type and word-wrap state.
+            NeTabDoc* docE = NeTabs_GetActiveDoc(hwnd);
+            if (docE) {
+                if (t.isSciTab && !docE->hSci) {
+                    // Create an empty Scintilla for this plain-text tab.
+                    HWND hEditE = docE->hEdit;
+                    if (hEditE) {
+                        RECT rc; GetWindowRect(hEditE, &rc);
+                        POINT pt = { rc.left, rc.top };
+                        ScreenToClient(hwnd, &pt);
+                        docE->hSci = Ne_CreateScintilla(hwnd, pt.x, pt.y,
+                                                        rc.right - rc.left,
+                                                        rc.bottom - rc.top);
+                        if (docE->hSci) {
+                            SetWindowSubclass(docE->hSci, Ne_SciWrapSubclassProc, 2, 0);
+                            Ne_AttachSciScrollbars(docE->hSci);
+                            Ne_ApplyLang(docE->hSci, -1);
+                            SendMessageW(docE->hSci, SCI_SETZOOM, (WPARAM)g_zoomSci, 0);
+                            ShowWindow(hEditE, SW_HIDE);
+                            ShowWindow(docE->hSci, SW_SHOW);
+                        }
+                    }
+                }
+                docE->wordWrap = t.wordWrap;
+                if (docE->hSci && IsWindowVisible(docE->hSci))
+                    SendMessageW(docE->hSci, SCI_SETWRAPMODE,
+                                 t.wordWrap ? SC_WRAP_WORD : SC_WRAP_NONE, 0);
+                else if (docE->hEdit)
+                    SendMessageW(docE->hEdit, EM_SETTARGETDEVICE,
+                                 0, t.wordWrap ? 0 : 30000);
+            }
+            if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
+            Ne_UpdateToolbarMode(hwnd);
         }
     }
 
     // Activate the tab that was active when the session was saved.
     if (NeTabs_GetCount(hwnd) > 0) {
         NeTabs_SetActive(hwnd, savedActiveTabIdx);
+        // Sync s_wordWrapOn and the wrap button to the restored active tab.
+        {
+            NeTabDoc* docA = NeTabs_GetActiveDoc(hwnd);
+            if (docA) {
+                s_wordWrapOn = (docA->hSci && IsWindowVisible(docA->hSci))
+                    ? (SendMessageW(docA->hSci, SCI_GETWRAPMODE, 0, 0) != SC_WRAP_NONE)
+                    : docA->wordWrap;
+                HWND hWBtn = GetDlgItem(hwnd, IDC_NE_WORDWRAP);
+                if (hWBtn) {
+                    SendMessageW(hWBtn, BM_SETCHECK,
+                                 s_wordWrapOn ? BST_CHECKED : BST_UNCHECKED, 0);
+                    InvalidateRect(hWBtn, NULL, FALSE);
+                }
+            }
+        }
         Ne_SyncScrollbarVisibility(hwnd);
         Ne_UpdateToolbarMode(hwnd);
         Ne_UpdateStatusText(hwnd);
@@ -11131,6 +11245,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             doc->modified = true;
             // Plain text is not WYSIWYG — turn word wrap off.
             s_wordWrapOn = false;
+            doc->wordWrap = false;
             SendMessageW(hEd, EM_SETTARGETDEVICE, 0, 30000);
             { HWND hWBtn = GetDlgItem(hwnd, IDC_NE_WORDWRAP);
               if (hWBtn) { SendMessageW(hWBtn, BM_SETCHECK, BST_UNCHECKED, 0); InvalidateRect(hWBtn, NULL, FALSE); } }

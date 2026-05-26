@@ -30,6 +30,12 @@ struct NeSessionTab {
     DWORD          diskTimeLo    = 0;
     DWORD          diskTimeHi    = 0;
     int64_t        diskSize      = 0;
+
+    // Per-tab editor state saved at session close, restored at startup.
+    bool           wordWrap      = true;   // word-wrap on/off
+    bool           isSciTab      = false;  // true = Scintilla (plain-text); false = RichEdit
+    int            caretPos      = 0;      // caret character position
+    int            scrollLine    = 0;      // first visible line number
 };
 
 // ── API ───────────────────────────────────────────────────────────────────────

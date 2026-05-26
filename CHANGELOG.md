@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.05.26.12 (Deep session restore + Bash syntax) - 26.05.2026 12:57
+
+- **Session restore — per-tab state saved and restored**: Every tab now records its word-wrap on/off state, editor type (Scintilla code vs RichEdit RTF), caret character position, and first visible line to `session_tabs`. On restore all four are reapplied — same line, same scroll position, same wrap mode.
+- **Empty untitled tabs restored**: Blank placeholder tabs are now fully preserved. The editor type is stored in the new `is_sci_tab` column; on restore the correct editor window is created and word-wrap applied even with no content.
+- **Silent restore — no "open cached?" dialogs**: The session restore loop is now completely silent for unsaved, locally-changed, disk-changed, and FTP-unreachable files. Unsaved content and FTP files load silently from the cache BLOB; locally-changed files silently keep the cached version. Only a genuine unrecoverable error (no cache and no disk file) shows a message.
+- **Word-wrap button synced after restore**: The toolbar wrap-toggle button reflects the restored active tab's state immediately on startup.
+- **Bash / Shell syntax highlighting**: New "Bash / Shell" language in the Language menu. Extension detection: `.sh`, `.bash`, `.zsh`, `.ksh`, `.bashrc`, `.bash_profile`, `.bash_aliases`, `.bash_login`, `.bash_logout`, `.zshrc`, `.zshenv`, `.zprofile`. Extensionless scripts auto-detected by shebang: `#!/bin/bash`, `#!/usr/bin/env bash`, `#!/bin/sh`, `#!/usr/bin/env zsh`, `#!/bin/dash`, `#!/bin/fish`, etc. Colours: keywords bold-blue, strings, comments, numbers, `$scalar`/`$param` variables (purple), heredoc delimiters and bodies, backticks.
+
 ## v2026.05.26.11 (Session restore colour fix) - 26.05.2026 11:18
 
 - **Fix: wrong foreground colour on session-restored plain-text-in-RichEdit files**: When a file was converted from RTF to plain text (*Convert → To Plain Text*) the RichEdit retained the dark-editor character colour (`RGB(220,220,220)` light-grey). The session serialiser, seeing no Scintilla window, streamed the content out as RTF — embedding those colour runs in the BLOB. On restore the RTF was loaded back into a fresh RichEdit (default white background), producing light-grey text on white. Fixed in `Ne_SessionRestore`'s `loadContent` helper: after `Ne_StreamIn`, if the path does not end in `.rtf`, the correct editor colours are re-applied via `EM_SETBKGNDCOLOR` and `EM_SETCHARFORMAT`, respecting `g_darkMode` / `g_darkEditor`. Genuine `.rtf` files are unaffected.

@@ -29,6 +29,8 @@ struct NeTabDoc {
     int64_t      ftpProfileId       = -1;    // NeProfile::id of the active server
     std::wstring ftpRemotePath;              // absolute path on the server
     std::wstring ftpFriendlyName;            // display name of the server (for tooltip)
+    // ── Per-tab editor state (saved/restored with session) ───────────────────
+    bool         wordWrap           = true;  // word-wrap on/off for this tab
 };
 
 struct NeTabsCreateParams {
