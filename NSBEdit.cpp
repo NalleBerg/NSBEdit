@@ -6306,6 +6306,31 @@ static void Ne_SessionRestore(HWND hwnd)
             doc->suppressChange = true;
             Ne_StreamIn(doc->hEdit, rtf, true);
             doc->suppressChange = false;
+            // If this is plain text that was stored as RTF by the session serialiser
+            // (e.g., a .txt file converted from RTF, still held in a RichEdit), the
+            // blob may carry stale colour runs from a previous dark-editor session.
+            // Re-apply the correct editor colours unless this is a genuine .rtf file.
+            {
+                bool isRealRtf = false;
+                if (!t.localPath.empty()) {
+                    size_t dot = t.localPath.rfind(L'.');
+                    if (dot != std::wstring::npos) {
+                        std::wstring ext = t.localPath.substr(dot + 1);
+                        for (auto& c : ext) c = (wchar_t)towlower(c);
+                        isRealRtf = (ext == L"rtf");
+                    }
+                }
+                if (!isRealRtf) {
+                    bool darkEd = g_darkMode || g_darkEditor;
+                    SendMessageW(doc->hEdit, EM_SETBKGNDCOLOR, 0,
+                                 darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
+                    CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
+                    cfD.dwMask      = CFM_COLOR | CFM_EFFECTS;
+                    cfD.dwEffects   = darkEd ? 0 : CFE_AUTOCOLOR;
+                    cfD.crTextColor = darkEd ? RGB(220, 220, 220) : 0;
+                    SendMessageW(doc->hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
+                }
+            }
             Ne_RebuildHRList(doc->hEdit);
             InvalidateRect(doc->hEdit, NULL, FALSE);
             Ne_SyncRichGutters(hwnd);

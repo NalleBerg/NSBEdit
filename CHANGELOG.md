@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.26.11 (Session restore colour fix) - 26.05.2026 11:18
+
+- **Fix: wrong foreground colour on session-restored plain-text-in-RichEdit files**: When a file was converted from RTF to plain text (*Convert → To Plain Text*) the RichEdit retained the dark-editor character colour (`RGB(220,220,220)` light-grey). The session serialiser, seeing no Scintilla window, streamed the content out as RTF — embedding those colour runs in the BLOB. On restore the RTF was loaded back into a fresh RichEdit (default white background), producing light-grey text on white. Fixed in `Ne_SessionRestore`'s `loadContent` helper: after `Ne_StreamIn`, if the path does not end in `.rtf`, the correct editor colours are re-applied via `EM_SETBKGNDCOLOR` and `EM_SETCHARFORMAT`, respecting `g_darkMode` / `g_darkEditor`. Genuine `.rtf` files are unaffected.
+
 ## v2026.05.26.10 (Scrollbar tab-switch fix) - 26.05.2026 10:53
 
 - **Fix: custom scrollbars vanish after switching tabs**: Switching away from a tab and back caused the custom scrollbar windows to disappear permanently. Root cause: `Ne_SyncScrollbarVisibility` called `ShowWindow(hBar, SW_HIDE)` directly on the bar HWND, bypassing the scrollbar library's internal `fadeState`. On re-activation, `msb_reposition` → `Msb_UpdateVisibility` only re-shows the bar when `fadeState == FADE_INVISIBLE`; since that was never set, the bar stayed hidden forever. Fixed by adding `msb_hide(HMSB)` to the public API: resets `fadeState` to `FADE_INVISIBLE`, kills any fade timer, then hides the window. `Ne_SyncScrollbarVisibility` now calls `msb_hide()` instead of `ShowWindow` directly. Affects all four bar handles (RichEdit V/H and Scintilla V/H).

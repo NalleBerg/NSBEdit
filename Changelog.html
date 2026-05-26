@@ -1,6 +1,12 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 26 May 2026 &mdash; v2026.05.26.10 (10:53)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 26 May 2026 &mdash; v2026.05.26.11 (11:18)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.26.11 (Session restore colour fix)</span></h3>
+<p><strong>Fix stale dark-editor colours on session-restored plain-text files (26.05.2026, 11:18):</strong></p>
+<ul>
+<li><strong>Fix: wrong foreground colour on session-restored plain-text-in-RichEdit files:</strong> When a file was converted from RTF to plain text (<em>Convert &rarr; To Plain Text</em>) the RichEdit retained the dark-editor character colour (<code>RGB(220,220,220)</code> light-grey). The session serialiser, seeing no Scintilla window, streamed the content out as RTF &mdash; embedding those colour runs in the BLOB. On restore the RTF was loaded back into a fresh RichEdit which has a default white background, resulting in light-grey text on a white background. Fixed in <code>Ne_SessionRestore</code>&rsquo;s <code>loadContent</code> helper: after <code>Ne_StreamIn</code>, if the file path does not end in <code>.rtf</code>, the correct editor colours are re-applied via <code>EM_SETBKGNDCOLOR</code> and <code>EM_SETCHARFORMAT</code>, respecting the current <code>g_darkMode</code> / <code>g_darkEditor</code> settings. Genuine <code>.rtf</code> files are unaffected &mdash; their own embedded colours are preserved.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.26.10 (Scrollbar tab-switch fix)</span></h3>
 <p><strong>Custom scrollbar fade-state fix &mdash; bars no longer disappear after switching tabs (26.05.2026, 10:53):</strong></p>
