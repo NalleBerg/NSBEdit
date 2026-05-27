@@ -2,7 +2,7 @@
 
 ## v2026.05.27.14 (Feature: indent guides) - 27.05.2026 14:25
 
-- **Feature: indent guides (dotted vertical lines)**: Scintilla's built-in indentation guide support (`SC_IV_LOOKBOTH`) is now enabled in all file types. Dotted vertical lines mark each indentation level so it is easy to follow nested code blocks visually. The guide colour is theme-aware: `RGB(95,95,95)` against the dark editor background and `RGB(145,145,145)` against the white background — clearly visible in both modes without being distracting.
+- **Feature: indent guides (dotted vertical lines)**: Scintilla's built-in indentation guide support (`SC_IV_LOOKBOTH`) is now enabled in all file types. Dotted vertical lines mark each indentation level so it is easy to follow nested code blocks visually. The guide colour is theme-aware: `RGB(115,115,115)` against the dark editor background and `RGB(130,130,130)` against the white background — clearly visible in both modes without being distracting.
 
 ## v2026.05.27.13 (Fix: dialog focus restore; PHP/JS/Python typeahead) - 27.05.2026 13:21
 

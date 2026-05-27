@@ -515,7 +515,7 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     sci(SCI_SETBACKSPACEUNINDENTS, TRUE, 0);
     // Indentation guides (dotted vertical lines)
     sci(SCI_SETINDENTATIONGUIDES, SC_IV_LOOKBOTH, 0);
-    sci(SCI_STYLESETFORE, STYLE_INDENTGUIDE, darkEd ? RGB(95,95,95) : RGB(145,145,145));
+    sci(SCI_STYLESETFORE, STYLE_INDENTGUIDE, darkEd ? RGB(115,115,115) : RGB(130,130,130));
     sci(SCI_STYLESETBACK, STYLE_INDENTGUIDE, bg);
     // Line number margin (margin 0)
     sci(SCI_SETMARGINTYPEN,  0, SC_MARGIN_NUMBER);
