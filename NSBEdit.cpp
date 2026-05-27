@@ -1128,6 +1128,27 @@ static void Ne_SciAutoComplete(HWND hSci, int langIdx)
     NeAutoComplete_Hide(); // ensure custom popup is gone
     if (langIdx < 0 || langIdx >= NE_LANG_COUNT) return;
     const char* kws = s_langKws[langIdx];
+    std::string kwStorage; // owns memory for dynamically built attribute lists
+
+    // For hypertext files (HTML + PHP), merge all sub-language keyword sets
+    // into one combined list so completions work everywhere in the file
+    // without needing to know which region (HTML markup / JS / PHP) the
+    // caret is in.  HTML tags, JS keywords, CSS properties, and (for PHP
+    // files) PHP keywords are all offered throughout.
+    if (s_langs[langIdx].lexer &&
+        strcmp(s_langs[langIdx].lexer, "hypertext") == 0) {
+        kwStorage  = s_langKws[6];   // HTML tag names      (index 6)
+        kwStorage += " ";
+        kwStorage += s_langKws[9];   // JavaScript keywords (index 9)
+        kwStorage += " ";
+        kwStorage += s_langKws[5];   // CSS keywords        (index 5)
+        if (langIdx == 16) {         // PHP file: also include PHP keywords
+            kwStorage += " ";
+            kwStorage += s_langKws[16];
+        }
+        kws = kwStorage.c_str();
+    }
+
     if (!kws || !*kws) return;
 
     Sci_Position wordStart = (Sci_Position)SendMessageW(hSci, SCI_WORDSTARTPOSITION, (WPARAM)pos, TRUE);
@@ -1163,6 +1184,30 @@ static void Ne_SciAutoComplete(HWND hSci, int langIdx)
 
     std::sort(kwMatches.begin(), kwMatches.end(),
         [](const std::string& a, const std::string& b){ return _stricmp(a.c_str(), b.c_str()) < 0; });
+
+    // Match the case style of the typed prefix so completions look natural.
+    // All-caps prefix (e.g. "DI") → upper-case all completions ("DIV", "DIV").
+    // Title-case prefix (e.g. "Di") → capitalise first letter of each completion.
+    // Lower-case prefix → leave completions as-is (already lowercase).
+    {
+        bool hasAlpha = false, allUpper = true, firstUpper = false;
+        for (size_t i = 0; i < prefix.size(); ++i) {
+            unsigned char c = (unsigned char)prefix[i];
+            if (isalpha(c)) {
+                hasAlpha = true;
+                if (!isupper(c)) allUpper = false;
+                if (i == 0 && isupper(c)) firstUpper = true;
+            }
+        }
+        bool titleCase = hasAlpha && firstUpper && !allUpper;
+        if (hasAlpha && allUpper) {
+            for (auto& s : kwMatches)
+                for (auto& c : s) c = (char)toupper((unsigned char)c);
+        } else if (titleCase) {
+            for (auto& s : kwMatches)
+                if (!s.empty()) s[0] = (char)toupper((unsigned char)s[0]);
+        }
+    }
 
     SendMessageW(hSci, SCI_AUTOCCANCEL, 0, 0); // close built-in if open
     NeAutoComplete_Show(hSci, kwMatches, prefixLen,
@@ -2082,6 +2127,7 @@ struct NeDialogData {
     HICON hMsgIcon = NULL;   // optional left-side icon (e.g. IDI_WARNING)
     HFONT hDlgFont = NULL;   // created in WM_CREATE, deleted in WM_NCDESTROY
     int autoCloseMs = 0;     // if > 0, dialog auto-closes after this many ms
+    bool restoreOnClose = false; // parent was foreground at creation — restore it on close
 };
 
 static bool Ne_PromptSaveIfModified(HWND hwnd); // forward
@@ -2400,6 +2446,12 @@ static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wst
     dd.hMsgIcon = hMsgIcon;
     dd.autoCloseMs = autoCloseMs;
 
+    // Record whether the parent is currently in the foreground BEFORE we
+    // disable it and show the dialog.  Used at close time to decide whether
+    // to bring the parent back to the front.
+    dd.restoreOnClose = (parent && IsWindow(parent) &&
+                         GetForegroundWindow() == parent);
+
     HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME,
         wc.lpszClassName, dd.title.c_str(),
         WS_POPUP | WS_CAPTION | WS_SYSMENU,
@@ -2420,13 +2472,18 @@ static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wst
     }
     if (parent && IsWindow(parent)) {
         EnableWindow(parent, TRUE);
-        // Only restore foreground to the parent if NSBEdit still owns it.
-        // If the user switched to another app while the dialog was visible
-        // (e.g. Alt+Tabbed to Opera during the FTP-saved notification),
-        // don't steal focus back when the dialog auto-closes.
-        HWND fg = GetForegroundWindow();
-        if (fg == dlg || fg == parent || IsChild(parent, fg))
-            SetForegroundWindow(parent);
+        if (dd.restoreOnClose) {
+            // Parent was in the foreground when this dialog was created, so
+            // restore it now using the TOPMOST trick:
+            //   1. Briefly set HWND_TOPMOST — forces the window above any
+            //      interloper that grabbed focus while EnableWindow fired.
+            //   2. Immediately remove TOPMOST — window stays focused but is
+            //      no longer pinned above everything.
+            SetWindowPos(parent, HWND_TOPMOST,
+                         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            SetWindowPos(parent, HWND_NOTOPMOST,
+                         0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        }
     }
     return dd.result;
 }

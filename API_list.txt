@@ -178,6 +178,19 @@
                                                 wrapper lines → delete them; (2) inside
                                                 outer block → split block to exclude
                                                 selection; (3) else → wrap in new block.
+                                                Ne_SciAutoComplete (hypertext sub-lang
+                                                dispatch): SCI_GETSTYLEAT(pos-1) picks
+                                                keyword set by Scintilla style code:
+                                                1–2 → HTML tag names (s_langKws[6]);
+                                                3–4 → tag attribute names
+                                                (Ne_HtmlAttrsForTag for the tag at pos);
+                                                6–7 or 9 → "" (quoted attr value /
+                                                HTML comment — no popup);
+                                                40–89 → JavaScript (s_langKws[9]);
+                                                90–117 → Python (s_langKws[18]);
+                                                118+ → PHP (s_langKws[16]);
+                                                style 0 / unmatched → falls through
+                                                to file's default language kws.
                                                 IDC_NE_COMMENT (266) WM_COMMAND: when
                                                 lexer = "hypertext" AND Ne_PosIsHtml at
                                                 selection start, calls
@@ -288,7 +301,17 @@
                                                 auto-close); if > 0 a WM_TIMER (id 1) is
                                                 set in WM_CREATE and Ne_DialogWndProc
                                                 posts WM_CLOSE on expiry. NeDialogData
-                                                gains int autoCloseMs = 0.
+                                                gains int autoCloseMs = 0 and bool
+                                                restoreOnClose = false. restoreOnClose
+                                                is set at creation time to
+                                                (GetForegroundWindow() == parent);
+                                                on close, if restoreOnClose, the TOPMOST
+                                                trick restores focus: SetWindowPos
+                                                HWND_TOPMOST then HWND_NOTOPMOST
+                                                (SWP_NOMOVE|SWP_NOSIZE) — reliably
+                                                brings parent to front without pinning
+                                                it as always-on-top. See
+                                                focus_restore_INTERNALS.txt §3–4.
                                                 FTP Preview Online: IDM_PREVIEW_FTP
                                                 (134) / IDC_NE_PREVIEW (265, violet).
                                                 Button shown only when active tab is
