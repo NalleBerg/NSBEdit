@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.27.11 (Fix: Opera focus steal — FTP dialog + debounce) - 27.05.2026 11:35
+
+- **Fix: FTP "file saved" dialog steals focus from Opera/browser**: When saving a file via FTP, an auto-close choice dialog ("File saved — X seconds ago") was shown. Its close path called `SetForegroundWindow(parent)` unconditionally, yanking focus back to NSBEdit even if the user had already switched to a browser. Fixed two ways: (1) the auto-close timeout is reduced from 2500 ms to 1000 ms so the window disappears before a typical Alt+Tab completes; (2) `Ne_ShowChoiceDialog` now only calls `SetForegroundWindow(parent)` if NSBEdit or the dialog itself still owns the foreground at close time — if the user has moved to another app, focus stays there.
+- **Fix: Alt+Tab to Opera then Ctrl+R (or just Ctrl) jumps focus back to NSBEdit**: Chromium-based browsers briefly fire `WM_ACTIVATEAPP(TRUE)` back to the previous foreground window as part of their own activation settling, which was resetting the `s_appIsActive` guard and letting the "file changed on disk" dialog fire during that transient re-activation. The dialog's close code then called `SetForegroundWindow(NSBEdit)`, locking NSBEdit to the front. Fixed by adding a 500 ms debounce: `s_deactivatedAt` is recorded when `WM_ACTIVATEAPP(FALSE)` fires, and `Ne_CheckExternalFileChangeOnFocus` suppresses the check for 500 ms after the last deactivation — long enough to outlast Opera's spurious `WM_ACTIVATEAPP(TRUE)` bounce.
+- **Build tooling**: `makeit.bat` rewritten with 6 explicit build steps, integrated zip packaging (prune to 3 zips), and a total-time banner. `follow.ps1` rewritten with coloured progress bars, step counters, error/warning highlighting, and a build-time summary.
+
 ## v2026.05.27.10 (Tab drag-to-reorder; fix Opera focus steal) - 27.05.2026 10:40
 
 - **Feature: tabs can be reordered by dragging**: click and hold any tab, drag left or right — a blue vertical insertion line shows the drop position, release to move the tab there. The active tab tracks through the reorder. The close (×) button is excluded from drag initiation. If mouse capture is lost (Alt+Tab, modal dialog) the drag is cancelled cleanly.

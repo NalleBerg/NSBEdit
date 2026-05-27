@@ -7,71 +7,53 @@ if "%1" neq "__logged__" (
     exit /b !ERRORLEVEL!
 )
 
-echo on
+:: ── Timer start ──────────────────────────────────────────────────────────────
+for /f %%T in ('powershell -NoProfile -Command "(Get-Date).Ticks"') do set BUILD_TICKS=%%T
 
 echo ============================================================
-echo  NSBEdit build started
+echo   NSBEdit Build  --  %DATE%  %TIME%
 echo ============================================================
+echo.
 
-:: ── Generate ne_version.h from curver.txt ─────────────────────────
-echo [pre] Generating ne_version.h from curver.txt...
+:: ─────────────────────────────────────────────────────────────────────────────
+echo [STEP 1/6] Prepare  --  version header  +  kill running instance
 powershell -NoProfile -Command "& { $l = gc 'curver.txt'; $p = ($l -match '^Published: ')[0] -replace '^Published: ',''; $v = ($l -match '^Version: ')[0] -replace '^Version: ',''; $q = [char]34; [IO.File]::WriteAllText([IO.Path]::GetFullPath('ne_version.h'), '#pragma once' + [char]10 + '#define NE_PUBLISHED L' + $q + $p + $q + [char]10 + '#define NE_VERSION   L' + $q + $v + $q, [Text.Encoding]::UTF8) }"
-@if !ERRORLEVEL! neq 0 (
-    echo [ERROR] ne_version.h generation FAILED  ^(exit code !ERRORLEVEL!^)
-    exit /b 1
-)
-echo       Done.
-echo.
-
-:: ── Kill running instance ────────────────────────────────────
-echo [1/5] Killing running NSBEdit.exe (if any)...
-taskkill /F /IM NSBEdit.exe
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] ne_version.h generation FAILED & exit /b 1 )
+echo   ne_version.h  OK
+taskkill /F /IM NSBEdit.exe 2>nul
 if !ERRORLEVEL! equ 0 (
-    echo       Killed. Waiting for file handles to release...
-    timeout /T 1 /NOBREAK
+    echo   NSBEdit.exe killed  --  waiting 1 s for handles to release
+    timeout /T 1 /NOBREAK >nul
 ) else (
-    echo       Not running, nothing to kill.
+    echo   NSBEdit.exe not running
 )
+echo [STEP_DONE 1/6]
 echo.
 
-:: ── Compile resource ─────────────────────────────────────────
-echo [2/5] Compiling resource (windres)...
-echo       windres  ^|  NSBEdit.rc  -^>  NSBEdit.res  ^|  Win32 resource compiler
-@windres NSBEdit.rc -o NSBEdit.res --output-format=coff
-@if !ERRORLEVEL! neq 0 (
-    echo [ERROR] windres FAILED  ^(exit code !ERRORLEVEL!^)
-    exit /b 1
-)
-echo       Done.
+:: ─────────────────────────────────────────────────────────────────────────────
+echo [STEP 2/6] Resources  --  windres  NSBEdit.rc  -^>  NSBEdit.res
+windres NSBEdit.rc -o NSBEdit.res --output-format=coff
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] windres FAILED & exit /b 1 )
+echo [STEP_DONE 2/6]
 echo.
 
-:: ── Compile sqlite3 ──────────────────────────────────────────
-echo [3/5] Compiling sqlite3...
-echo       gcc  ^|  sqlite3\sqlite3.c  -^>  sqlite3\sqlite3.o  ^|  SQLite3 amalgamation (single-file C library)
-@gcc -v -O2 -DSQLITE_THREADSAFE=0 -DSQLITE_DEFAULT_MEMSTATUS=0 -c sqlite3\sqlite3.c -o sqlite3\sqlite3.o
-@if !ERRORLEVEL! neq 0 (
-    echo [ERROR] sqlite3 compile FAILED  ^(exit code !ERRORLEVEL!^)
-    exit /b 1
-)
-echo       Done.
+:: ─────────────────────────────────────────────────────────────────────────────
+echo [STEP 3/6] SQLite3  --  sqlite3.c  -^>  sqlite3.o
+gcc -v -O2 -DSQLITE_THREADSAFE=0 -DSQLITE_DEFAULT_MEMSTATUS=0 -c sqlite3\sqlite3.c -o sqlite3\sqlite3.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] sqlite3 compile FAILED & exit /b 1 )
+echo [STEP_DONE 3/6]
 echo.
 
-:: ── Compile QUIC stubs ───────────────────────────────────────
-echo [4/5] Compiling QUIC stubs...
-echo       gcc  ^|  curl\lib\quic_stubs.c  -^>  quic_stubs.o  ^|  QUIC/HTTP3 stub functions for libcurl
-@gcc -v -O2 -c curl\lib\quic_stubs.c -o curl\lib\quic_stubs.o
-@if !ERRORLEVEL! neq 0 (
-    echo [ERROR] quic_stubs compile FAILED  ^(exit code !ERRORLEVEL!^)
-    exit /b 1
-)
-echo       Done.
+:: ─────────────────────────────────────────────────────────────────────────────
+echo [STEP 4/6] QUIC stubs  --  quic_stubs.c  -^>  quic_stubs.o
+gcc -v -O2 -c curl\lib\quic_stubs.c -o curl\lib\quic_stubs.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] quic_stubs compile FAILED & exit /b 1 )
+echo [STEP_DONE 4/6]
 echo.
 
-:: ── Compile + link NSBEdit ───────────────────────────────────
-echo [5/5] Compiling and linking NSBEdit.cpp...
-echo       g++  ^|  NSBEdit.cpp + all sources + prebuilt .o  -^>  NSBEdit.exe  ^|  C++17, -Wall, static runtime
-echo ............................................................
-@g++ -v -std=c++17 -O2 -Wall -mwindows -municode ^
+:: ─────────────────────────────────────────────────────────────────────────────
+echo [STEP 5/6] Compile ^& link  --  NSBEdit.cpp + all sources  -^>  NSBEdit.exe
+g++ -v -std=c++17 -O2 -Wall -mwindows -municode ^
     -I. -Isqlite3 -Icurl\include ^
     -DCURL_STATICLIB ^
     -Iscintilla_src\scintilla\include -Ilexilla_src\lexilla\include ^
@@ -87,19 +69,22 @@ echo ............................................................
     -lws2_32 -lcrypt32 -lbcrypt -lwinhttp -lwldap32 -lsecur32 -liphlpapi -lntdll ^
     -static -static-libgcc -static-libstdc++ ^
     -o NSBEdit.exe
-echo ............................................................
-@if !ERRORLEVEL! neq 0 (
-    echo.
-    echo [ERROR] Compile/link FAILED  ^(exit code !ERRORLEVEL!^)
-    exit /b 1
-)
-echo       Done.
+@if !ERRORLEVEL! neq 0 ( echo. & echo [ERROR] Compile/link FAILED & exit /b 1 )
+echo [STEP_DONE 5/6]
 echo.
 
-:: ── Assets ───────────────────────────────────────────────────
-copy /Y NSB.png NSB.png
-copy /Y curver.txt curver.txt
+:: ─────────────────────────────────────────────────────────────────────────────
+echo [STEP 6/6] Package  --  zip release  +  prune to 3 zips
+powershell -NoProfile -File ".\pack.ps1"
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] pack.ps1 FAILED & exit /b 1 )
+powershell -NoProfile -Command "Get-ChildItem zip\*.zip | Sort-Object LastWriteTime -Descending | Select-Object -Skip 3 | Remove-Item -Force; Get-ChildItem zip\*.zip | Sort-Object LastWriteTime -Descending | ForEach-Object { Write-Output \"  kept: $($_.Name)\" }"
+echo [STEP_DONE 6/6]
+echo.
 
+:: ── Timer end + final banner ─────────────────────────────────────────────────
+powershell -NoProfile -Command "$e = [math]::Round(([long](Get-Date).Ticks - [long]$env:BUILD_TICKS) / 1e7, 1); Write-Output \"[BUILD_TIME: $e s]\""
 echo ============================================================
-echo  BUILD SUCCEEDED  --  NSBEdit.exe updated
+echo   BUILD SUCCEEDED  --  NSBEdit.exe + zip updated
 echo ============================================================
+
+

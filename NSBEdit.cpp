@@ -1523,8 +1523,9 @@ static void Ne_InsertHRule(HWND hwnd, HWND hEdit);    // defined after Ne_ShowHR
 static void Ne_EditHRuleProps(HWND hwnd, HWND hEdit);  // defined after Ne_ShowHRulePropsDialog
 static void Ne_RebuildHRList(HWND hEdit);              // defined near Ne_PaintHRules
 static bool s_wordWrapOn = true;                       // forward-declared for Ne_RichWrapSubclassProc
-static bool s_suppressDiskCheck = false;               // suppresses external-file-change check during any open operation
-static bool s_appIsActive      = true;                 // false while another application is in the foreground
+static bool  s_suppressDiskCheck = false;              // suppresses external-file-change check during any open operation
+static bool  s_appIsActive      = true;                // false while another application is in the foreground
+static DWORD s_deactivatedAt    = 0;                   // GetTickCount() when app last went to background (debounce)
 
 // ── Soft-wrap indicator: draw dark-green ↲ at the end of each visually-wrapped line ──
 static LRESULT CALLBACK Ne_RichWrapSubclassProc(
@@ -2419,7 +2420,13 @@ static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wst
     }
     if (parent && IsWindow(parent)) {
         EnableWindow(parent, TRUE);
-        SetForegroundWindow(parent);
+        // Only restore foreground to the parent if NSBEdit still owns it.
+        // If the user switched to another app while the dialog was visible
+        // (e.g. Alt+Tabbed to Opera during the FTP-saved notification),
+        // don't steal focus back when the dialog auto-closes.
+        HWND fg = GetForegroundWindow();
+        if (fg == dlg || fg == parent || IsChild(parent, fg))
+            SetForegroundWindow(parent);
     }
     return dd.result;
 }
@@ -2429,11 +2436,14 @@ static bool Ne_CheckExternalFileChangeOnFocus(HWND hwnd)
     // Never fire while a file-open operation is in progress (the old stamp is
     // stale by design — Ne_LoadPathIntoEditor will write the fresh stamp).
     if (s_suppressDiskCheck) return true;
-    // Don't pop up a dialog while NSBEdit is in the background.  A spurious
-    // EN_SETFOCUS can arrive (e.g. Opera briefly yields activation during a
-    // page refresh) before the OS has fully committed focus elsewhere, so we
-    // guard against that with a WM_ACTIVATEAPP-maintained flag.
+    // Don't pop up a dialog while NSBEdit is in the background, or within a
+    // short settling window after going to the background.  Chromium-based
+    // browsers (Opera, Edge, Chrome) briefly fire WM_ACTIVATEAPP(TRUE) back to
+    // the previous foreground window as part of their own activation sequence,
+    // which would reset s_appIsActive to true before the spurious EN_SETFOCUS
+    // arrives.  The 500 ms debounce catches that transient re-activation.
     if (!s_appIsActive) return true;
+    if (GetTickCount() - s_deactivatedAt < 500) return true;
 
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
     if (!doc || doc->path.empty()) return true;
@@ -6280,7 +6290,7 @@ static bool Ne_Save(HWND hwnd)
         NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Green,
                                      IDI_INFORMATION, 0 };
         Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_STATUS"),
-                            Ls(L"MSG_FTP_UPLOAD_OK"), &okBtn, 1, IDOK, NULL, 2500);
+                            Ls(L"MSG_FTP_UPLOAD_OK"), &okBtn, 1, IDOK, NULL, 1000);
         return true;
     }
 
@@ -12256,6 +12266,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // Ne_CheckExternalFileChangeOnFocus against spurious EN_SETFOCUS
         // notifications that arrive while another app (e.g. Opera) is active.
         s_appIsActive = (wParam != 0);
+        if (!s_appIsActive) s_deactivatedAt = GetTickCount();
         return DefWindowProcW(hwnd, WM_ACTIVATEAPP, wParam, lParam);
     case WM_NCACTIVATE: {
         // DefWindowProc re-paints the NC area on activation changes; re-fill
