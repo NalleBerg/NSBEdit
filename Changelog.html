@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 26 May 2026 &mdash; v2026.05.26.12 (12:57)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 27 May 2026 &mdash; v2026.05.27.09 (09:55)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.27.09 (RTF-safe FTP open; suppress disk-check on open)</span></h3>
+<p><strong>Fix: code files with accidental RTF content now always open in Scintilla; no false &ldquo;file changed on disk&rdquo; dialog on open (27.05.2026, 09:55):</strong></p>
+<ul>
+<li><strong>Fix: files with code extensions never misdetected as RTF:</strong> <code>Ne_LoadPathIntoEditor</code> now checks the file extension after the <code>{\rtf</code> header scan. If the extension maps to a known code language (<code>.php</code>, <code>.js</code>, <code>.py</code>, <code>.cpp</code>, etc.) the RTF flag is overridden and the file always loads in Scintilla &mdash; even if the server copy was accidentally overwritten with RTF content. This prevents a blank-white &ldquo;Rik tekst&rdquo; result when an FTP code file had been corrupted by a prior erroneous RTF save.</li>
+<li><strong>Fix: spurious &ldquo;file changed on disk&rdquo; dialog on File &rsaquo; Open and FTP open:</strong> Opening a file via <em>File &rsaquo; Open</em> or the FTP browser no longer triggers the external-change check. A <code>s_suppressDiskCheck</code> flag is raised for the entire open sequence &mdash; including the <code>EN_SETFOCUS</code> message fired when the dialog closes &mdash; and cleared only after <code>Ne_LoadPathIntoEditor</code> has written the correct fresh disk stamp. Any old cache is silently overwritten; there is never a conflict when loading from disk or FTP.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.26.12 (Deep session restore + Bash syntax)</span></h3>
 <p><strong>Perfect session restore &mdash; everything back where you left it; Bash / Shell syntax highlighting (26.05.2026, 12:57):</strong></p>

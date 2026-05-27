@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.27.09 (RTF-safe FTP open; suppress disk-check on open) - 27.05.2026 09:55
+
+- **Fix: files with code extensions never misdetected as RTF**: `Ne_LoadPathIntoEditor` now checks `Ne_LangFromExt(path)` after the `{\rtf` header scan. If the file extension is a known code type (`.php`, `.js`, `.py`, `.cpp`, etc.) the RTF flag is overridden and the file always loads in Scintilla, even if the server copy was accidentally overwritten with RTF content.
+- **Fix: spurious "file changed on disk" dialog on File > Open and FTP open**: Opening a file via *File › Open* or the FTP browser no longer triggers the external-change check. A `s_suppressDiskCheck` flag is raised for the entire open sequence (including the `EN_SETFOCUS` fired when the dialog closes) and cleared only after `Ne_LoadPathIntoEditor` has written the correct fresh disk stamp.
+
 ## v2026.05.26.12 (Deep session restore + Bash syntax) - 26.05.2026 12:57
 
 - **Session restore — per-tab state saved and restored**: Every tab now records its word-wrap on/off state, editor type (Scintilla code vs RichEdit RTF), caret character position, and first visible line to `session_tabs`. On restore all four are reapplied — same line, same scroll position, same wrap mode.

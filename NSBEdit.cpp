@@ -1523,6 +1523,7 @@ static void Ne_InsertHRule(HWND hwnd, HWND hEdit);    // defined after Ne_ShowHR
 static void Ne_EditHRuleProps(HWND hwnd, HWND hEdit);  // defined after Ne_ShowHRulePropsDialog
 static void Ne_RebuildHRList(HWND hEdit);              // defined near Ne_PaintHRules
 static bool s_wordWrapOn = true;                       // forward-declared for Ne_RichWrapSubclassProc
+static bool s_suppressDiskCheck = false;               // suppresses external-file-change check during any open operation
 
 // ── Soft-wrap indicator: draw dark-green ↲ at the end of each visually-wrapped line ──
 static LRESULT CALLBACK Ne_RichWrapSubclassProc(
@@ -2424,6 +2425,10 @@ static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wst
 
 static bool Ne_CheckExternalFileChangeOnFocus(HWND hwnd)
 {
+    // Never fire while a file-open operation is in progress (the old stamp is
+    // stale by design — Ne_LoadPathIntoEditor will write the fresh stamp).
+    if (s_suppressDiskCheck) return true;
+
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
     if (!doc || doc->path.empty()) return true;
 
@@ -5886,6 +5891,11 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
     if (!hEdit || !doc) return false;
 
     bool isRtf = Ne_IsRtf(bytes);
+    // Files with a recognised code extension are never loaded as RTF — the
+    // {\rtf header could appear in minified JS, PHP doc-blocks, or a file that
+    // was accidentally overwritten with RTF content.  The extension wins.
+    if (isRtf && Ne_LangFromExt(path) > 0)
+        isRtf = false;
 
     if (!isRtf) {
         // ── Non-RTF file: use Scintilla ─────────────────────────────────────
@@ -6032,7 +6042,12 @@ static void Ne_Open(HWND hwnd)
     ofn.nMaxFile    = MAX_PATH;
     ofn.Flags       = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
     ofn.lpstrTitle  = Ls(L"DLG_OPEN");
-    if (!GetOpenFileNameW(&ofn)) return;
+    // Suppress disk-change check for the whole open sequence: the EN_SETFOCUS
+    // fired when the system dialog closes would see a stale stamp, and
+    // Ne_LoadPathIntoEditor writes the correct fresh stamp at its end.
+    s_suppressDiskCheck = true;
+    bool got = GetOpenFileNameW(&ofn);
+    if (!got) { s_suppressDiskCheck = false; return; }
 
     // If the active tab is an untouched untitled RichEdit, reuse it instead of
     // opening a new tab.
@@ -6042,13 +6057,15 @@ static void Ne_Open(HWND hwnd)
                     !existingDoc->modified &&
                     existingDoc->hEdit && !existingDoc->hSci;
     if (!reuseTab) {
-        if (!NeTabs_AddUntitled(hwnd)) return;
+        if (!NeTabs_AddUntitled(hwnd)) { s_suppressDiskCheck = false; return; }
     }
 
     if (!Ne_LoadPathIntoEditor(hwnd, path)) {
+        s_suppressDiskCheck = false;
         MessageBoxW(hwnd, Ls(L"MSG_OPEN_ERR"), Ls(L"APP_NAME"), MB_OK | MB_ICONERROR);
         return;
     }
+    s_suppressDiskCheck = false;
 
     Ne_MruAdd(path);
     Ne_UpdateToolbarMode(hwnd);
@@ -9476,6 +9493,11 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
         }
         Ne_FtpTreeExpandToPath(&d, expandTo);
     }
+    // Suppress disk-change check for the whole FTP open sequence: the
+    // EN_SETFOCUS fired when the browser closes would see a stale stamp for
+    // the previously-open (or re-downloaded) temp file. Ne_LoadPathIntoEditor
+    // writes the correct fresh stamp at its end.
+    s_suppressDiskCheck = true;
     MSG m;
     while (GetMessageW(&m, NULL, 0, 0)) {
         if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
@@ -9505,6 +9527,7 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
         HWND hEditOpen = NeTabs_GetActiveEdit(parent);
         if (hEditOpen) SetFocus(hEditOpen);
     }
+    s_suppressDiskCheck = false;
 }
 
 // ── FTP profile selection dialog ──────────────────────────────────────────────
