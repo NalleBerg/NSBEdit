@@ -1,11 +1,12 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 27 May 2026 &mdash; v2026.05.27.10 (10:14)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 27 May 2026 &mdash; v2026.05.27.10 (10:40)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
-<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.27.10 (Tab drag-to-reorder)</span></h3>
-<p><strong>Feature: reorder tabs by dragging (27.05.2026, 10:14):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.27.10 (Tab drag-to-reorder; fix Opera focus steal)</span></h3>
+<p><strong>Tab reorder by drag; fix: browser Ctrl+R steals focus back to NSBEdit (27.05.2026, 10:40):</strong></p>
 <ul>
 <li><strong>Tab drag-to-reorder:</strong> Click and hold any tab, then drag it left or right. A blue vertical insertion line (matching the active-tab accent colour) shows where the tab will land. Release the mouse to drop it there. The active tab is correctly tracked through the reorder. The &times; close button is excluded from drag initiation so accidental drags cannot be triggered while closing. If mouse capture is lost externally (Alt+Tab, a modal dialog appearing) the drag is cancelled cleanly and the tab strip is left unchanged.</li>
+<li><strong>Fix: browser Ctrl+R steals focus back to NSBEdit:</strong> The &ldquo;file changed on disk&rdquo; reload dialog could fire while NSBEdit was in the background. Opera briefly yields activation during its first page refresh after being switched to, which triggered a spurious <code>EN_SETFOCUS</code> &mdash; causing the disk-change check to pop up a dialog and bring NSBEdit to the front. A <code>WM_ACTIVATEAPP</code> handler now maintains a flag indicating whether NSBEdit is the foreground application; <code>Ne_CheckExternalFileChangeOnFocus</code> returns immediately when the flag is false, so the dialog can never appear while another app owns the foreground.</li>
 </ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.27.09 (RTF-safe FTP open; suppress disk-check on open)</span></h3>

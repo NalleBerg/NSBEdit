@@ -1524,6 +1524,7 @@ static void Ne_EditHRuleProps(HWND hwnd, HWND hEdit);  // defined after Ne_ShowH
 static void Ne_RebuildHRList(HWND hEdit);              // defined near Ne_PaintHRules
 static bool s_wordWrapOn = true;                       // forward-declared for Ne_RichWrapSubclassProc
 static bool s_suppressDiskCheck = false;               // suppresses external-file-change check during any open operation
+static bool s_appIsActive      = true;                 // false while another application is in the foreground
 
 // ── Soft-wrap indicator: draw dark-green ↲ at the end of each visually-wrapped line ──
 static LRESULT CALLBACK Ne_RichWrapSubclassProc(
@@ -2428,6 +2429,11 @@ static bool Ne_CheckExternalFileChangeOnFocus(HWND hwnd)
     // Never fire while a file-open operation is in progress (the old stamp is
     // stale by design — Ne_LoadPathIntoEditor will write the fresh stamp).
     if (s_suppressDiskCheck) return true;
+    // Don't pop up a dialog while NSBEdit is in the background.  A spurious
+    // EN_SETFOCUS can arrive (e.g. Opera briefly yields activation during a
+    // page refresh) before the OS has fully committed focus elsewhere, so we
+    // guard against that with a WM_ACTIVATEAPP-maintained flag.
+    if (!s_appIsActive) return true;
 
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
     if (!doc || doc->path.empty()) return true;
@@ -12245,6 +12251,12 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         Ne_FillMenuBarGap(hwnd);
         return lr;
     }
+    case WM_ACTIVATEAPP:
+        // Track whether NSBEdit is the foreground application.  This guards
+        // Ne_CheckExternalFileChangeOnFocus against spurious EN_SETFOCUS
+        // notifications that arrive while another app (e.g. Opera) is active.
+        s_appIsActive = (wParam != 0);
+        return DefWindowProcW(hwnd, WM_ACTIVATEAPP, wParam, lParam);
     case WM_NCACTIVATE: {
         // DefWindowProc re-paints the NC area on activation changes; re-fill
         // the menu bar gap afterwards so it stays dark.

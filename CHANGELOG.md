@@ -1,8 +1,9 @@
 # Changelog
 
-## v2026.05.27.10 (Tab drag-to-reorder) - 27.05.2026 10:14
+## v2026.05.27.10 (Tab drag-to-reorder; fix Opera focus steal) - 27.05.2026 10:40
 
 - **Feature: tabs can be reordered by dragging**: click and hold any tab, drag left or right — a blue vertical insertion line shows the drop position, release to move the tab there. The active tab tracks through the reorder. The close (×) button is excluded from drag initiation. If mouse capture is lost (Alt+Tab, modal dialog) the drag is cancelled cleanly.
+- **Fix: Alt+Tab to Opera then Ctrl+R jumps focus back to NSBEdit**: The "file changed on disk" dialog could fire while NSBEdit was in the background if Opera briefly yielded activation during its first page refresh. A new `WM_ACTIVATEAPP` handler tracks whether NSBEdit is the foreground application; `Ne_CheckExternalFileChangeOnFocus` now returns immediately when the flag is false, so the dialog is never shown while another app owns the foreground.
 
 ## v2026.05.27.09 (RTF-safe FTP open; suppress disk-check on open) - 27.05.2026 09:55
 
