@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.27.14 (Feature: indent guides) - 27.05.2026 14:25
+
+- **Feature: indent guides (dotted vertical lines)**: Scintilla's built-in indentation guide support (`SC_IV_LOOKBOTH`) is now enabled in all file types. Dotted vertical lines mark each indentation level so it is easy to follow nested code blocks visually. The guide colour is theme-aware: `RGB(95,95,95)` against the dark editor background and `RGB(145,145,145)` against the white background — clearly visible in both modes without being distracting.
+
 ## v2026.05.27.13 (Fix: dialog focus restore; PHP/JS/Python typeahead) - 27.05.2026 13:21
 
 - **Fix: NSBEdit loses focus after FTP save dialog closes**: After the "File saved" auto-close dialog dismissed, `EnableWindow(parent, TRUE)` occasionally handed focus to another window (e.g. Explorer) instead of giving it back to NSBEdit. Fixed with the TOPMOST trick: when the dialog closes, `SetWindowPos(parent, HWND_TOPMOST, …)` is called immediately followed by `SetWindowPos(parent, HWND_NOTOPMOST, …)` — this atomically brings the parent to the front and removes the always-on-top pin. The trick is only applied when `restoreOnClose` is set, which is recorded at dialog-creation time (true when NSBEdit was the foreground window as the dialog opened, meaning the user hadn't already switched away).
