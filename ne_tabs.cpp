@@ -42,6 +42,12 @@ static HWND g_tipTab = NULL;
 static int g_tipIndex = -1;
 static bool s_darkMode = false;
 
+// Tab drag-reorder state
+static int   s_dragSrcIdx    = -1;   // index of tab being dragged (-1 = none)
+static int   s_dragInsertSlot = -1;  // 0..n insertion slot
+static POINT s_dragStartPt   = {};   // LButtonDown position (tab client coords)
+static bool  s_dragging      = false;
+
 static void NeTabs_RepositionBtnNew(); // forward declaration
 
 // IDs used inside the tab context menu
@@ -170,6 +176,42 @@ static void NeTabs_DrawCloseGlyphs(HWND hwnd)
     ReleaseDC(hwnd, hdc);
 }
 
+// Draws a vertical blue insertion indicator while a drag is in progress.
+static void NeTabs_DrawDragIndicator(HWND hwnd)
+{
+    if (!s_dragging || s_dragInsertSlot < 0) return;
+
+    int n = (int)g_tabs.docs.size();
+    int x = -1, y1 = -1, y2 = -1;
+
+    if (s_dragInsertSlot < n) {
+        RECT ir = {};
+        if (TabCtrl_GetItemRect(hwnd, s_dragInsertSlot, &ir)) {
+            x  = ir.left;
+            y1 = ir.top    + S(2);
+            y2 = ir.bottom - S(2);
+        }
+    } else if (n > 0) {
+        RECT ir = {};
+        if (TabCtrl_GetItemRect(hwnd, n - 1, &ir)) {
+            x  = ir.right;
+            y1 = ir.top    + S(2);
+            y2 = ir.bottom - S(2);
+        }
+    }
+    if (x < 0) return;
+
+    HDC hdc = GetDC(hwnd);
+    if (!hdc) return;
+    HPEN hp  = CreatePen(PS_SOLID, S(2) + 1, RGB(0, 120, 212));
+    HPEN old = (HPEN)SelectObject(hdc, hp);
+    MoveToEx(hdc, x, y1, NULL);
+    LineTo  (hdc, x, y2);
+    SelectObject(hdc, old);
+    DeleteObject(hp);
+    ReleaseDC(hwnd, hdc);
+}
+
 static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
@@ -187,6 +229,7 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             // Light mode: let the system draw, then overlay × glyphs.
             LRESULT r = CallWindowProcW(g_tabs.tabPrevProc, hwnd, msg, wParam, lParam);
             NeTabs_DrawCloseGlyphs(hwnd);
+            NeTabs_DrawDragIndicator(hwnd);
             if (g_tabs.hBtnNew && IsWindowVisible(g_tabs.hBtnNew))
                 RedrawWindow(g_tabs.hBtnNew, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
             return r;
@@ -259,12 +302,40 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         EndPaint(hwnd, &ps);
 
         NeTabs_DrawCloseGlyphs(hwnd);
+        NeTabs_DrawDragIndicator(hwnd);
         if (g_tabs.hBtnNew && IsWindowVisible(g_tabs.hBtnNew))
             RedrawWindow(g_tabs.hBtnNew, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
         return 0;
     }
     case WM_MOUSEMOVE: {
         POINT p = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+
+        // ── Drag-to-reorder ─────────────────────────────────────────────────
+        if (s_dragSrcIdx >= 0) {
+            if (!s_dragging) {
+                if (abs(p.x - s_dragStartPt.x) >= GetSystemMetrics(SM_CXDRAG) ||
+                    abs(p.y - s_dragStartPt.y) >= GetSystemMetrics(SM_CYDRAG)) {
+                    s_dragging = true;
+                    SetCapture(hwnd);
+                    HideTooltip();
+                    g_tipIndex = -1;
+                }
+            }
+            if (s_dragging) {
+                int n2 = (int)g_tabs.docs.size();
+                int newSlot = n2;
+                for (int i = 0; i < n2; ++i) {
+                    RECT ir2 = {};
+                    if (!TabCtrl_GetItemRect(hwnd, i, &ir2)) continue;
+                    if (p.x < (ir2.left + ir2.right) / 2) { newSlot = i; break; }
+                }
+                if (newSlot != s_dragInsertSlot) {
+                    s_dragInsertSlot = newSlot;
+                    InvalidateRect(hwnd, NULL, FALSE);
+                }
+                return 0; // consume — no hover/tooltip while dragging
+            }
+        }
 
         // Hover-close tracking: check if cursor is in a × rect
         int newHover = -1;
@@ -305,8 +376,70 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             InvalidateRect(hwnd, NULL, FALSE);
         }
         break;
+    case WM_LBUTTONDOWN: {
+        POINT p = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        // Only start drag tracking when the click is NOT on a × close button.
+        if (NeTabs_HitCloseIndex(p) < 0) {
+            TCHITTESTINFO hti = {}; hti.pt = p;
+            int idx = TabCtrl_HitTest(hwnd, &hti);
+            if (idx >= 0) {
+                s_dragSrcIdx   = idx;
+                s_dragStartPt  = p;
+                s_dragging     = false;
+                s_dragInsertSlot = -1;
+            }
+        }
+        break; // fall through to default so TabCtrl handles normal selection
+    }
     case WM_LBUTTONUP: {
         POINT p = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        if (s_dragging) {
+            // Capture locals BEFORE ReleaseCapture(): it synchronously fires
+            // WM_CAPTURECHANGED which would zero out the drag-state variables.
+            int from = s_dragSrcIdx;
+            int slot  = s_dragInsertSlot;
+            s_dragging       = false;
+            s_dragSrcIdx     = -1;
+            s_dragInsertSlot = -1;
+            ReleaseCapture();
+            InvalidateRect(hwnd, NULL, FALSE);
+
+            int n = (int)g_tabs.docs.size();
+            // slot > from → insert after from → dest index = slot - 1
+            // slot ≤ from → insert before from → dest index = slot
+            int to = (slot > from) ? slot - 1 : slot;
+            if (to >= 0 && to < n && to != from) {
+                if (from < to)
+                    std::rotate(g_tabs.docs.begin() + from,
+                                g_tabs.docs.begin() + from + 1,
+                                g_tabs.docs.begin() + to + 1);
+                else
+                    std::rotate(g_tabs.docs.begin() + to,
+                                g_tabs.docs.begin() + from,
+                                g_tabs.docs.begin() + from + 1);
+
+                // Track activeIndex through the rotation
+                int& ai = g_tabs.activeIndex;
+                if      (ai == from)                              ai = to;
+                else if (from < to && ai > from && ai <= to)      --ai;
+                else if (from > to && ai >= to  && ai <  from)    ++ai;
+
+                // Rebuild the TabCtrl item list to match the new order
+                TabCtrl_DeleteAllItems(hwnd);
+                for (int i = 0; i < n; ++i) {
+                    TCITEMW ti = {}; ti.mask = TCIF_TEXT;
+                    std::wstring t = NeTabs_TitleFor(g_tabs.docs[i], g_tabs.untitled);
+                    ti.pszText = (LPWSTR)t.c_str();
+                    TabCtrl_InsertItem(hwnd, i, &ti);
+                }
+                TabCtrl_SetCurSel(hwnd, ai);
+                NeTabs_RepositionBtnNew();
+            }
+            return 0;
+        }
+        // Not dragging — clear any pending drag state and handle close
+        s_dragSrcIdx     = -1;
+        s_dragInsertSlot = -1;
         int idx = NeTabs_HitCloseIndex(p);
         if (idx >= 0 && g_tabs.hwndParent) {
             PostMessageW(g_tabs.hwndParent, NE_WM_TABCLOSE, (WPARAM)idx, 0);
@@ -338,6 +471,21 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             PostMessageW(g_tabs.hwndParent, NE_WM_TABCLOSE, (WPARAM)tabIdx, 0);
         return 0;
     }
+    case WM_CAPTURECHANGED:
+        // Drag cancelled externally (e.g. Alt+Tab, modal dialog)
+        if (s_dragging) {
+            s_dragging       = false;
+            s_dragSrcIdx     = -1;
+            s_dragInsertSlot = -1;
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+        break;
+    case WM_SETCURSOR:
+        if (s_dragging) {
+            SetCursor(LoadCursor(NULL, IDC_SIZEALL));
+            return TRUE;
+        }
+        break;
     }
     return CallWindowProcW(g_tabs.tabPrevProc, hwnd, msg, wParam, lParam);
 }

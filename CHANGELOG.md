@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.27.10 (Tab drag-to-reorder) - 27.05.2026 10:14
+
+- **Feature: tabs can be reordered by dragging**: click and hold any tab, drag left or right — a blue vertical insertion line shows the drop position, release to move the tab there. The active tab tracks through the reorder. The close (×) button is excluded from drag initiation. If mouse capture is lost (Alt+Tab, modal dialog) the drag is cancelled cleanly.
+
 ## v2026.05.27.09 (RTF-safe FTP open; suppress disk-check on open) - 27.05.2026 09:55
 
 - **Fix: files with code extensions never misdetected as RTF**: `Ne_LoadPathIntoEditor` now checks `Ne_LangFromExt(path)` after the `{\rtf` header scan. If the file extension is a known code type (`.php`, `.js`, `.py`, `.cpp`, etc.) the RTF flag is overridden and the file always loads in Scintilla, even if the server copy was accidentally overwritten with RTF content.
