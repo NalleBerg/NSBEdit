@@ -82,7 +82,7 @@ echo [STEP_DONE 6/6]
 echo.
 
 :: ── Timer end + final banner ─────────────────────────────────────────────────
-powershell -NoProfile -Command "$e = [math]::Round(([long](Get-Date).Ticks - [long]$env:BUILD_TICKS) / 1e7, 1); Write-Output \"[BUILD_TIME: $e s]\""
+powershell -NoProfile -Command "$e = [math]::Round(([long](Get-Date).Ticks - [long]$env:BUILD_TICKS) / 1e7, 1); if ($e -ge 60) { $m = [math]::Floor($e / 60); $s = [math]::Round($e - $m * 60, 1); Write-Output \"[BUILD_TIME: $m m, $s s]\" } else { Write-Output \"[BUILD_TIME: $e s]\" }"
 echo ============================================================
 echo   BUILD SUCCEEDED  --  NSBEdit.exe + zip updated
 echo ============================================================

@@ -145,6 +145,7 @@ enum class NeEncoding {
 #define IDC_NE_ZOOM         229
 #define IDC_NE_DLG_TEXT     230
 #define IDC_NE_TABCTRL      231
+#define NE_IND_TAGMATCH       9   // Scintilla indicator for HTML tag-pair highlighting
 #define IDC_NE_WORDWRAP     232
 #define IDC_NE_CASE         233
 #define IDC_NE_PARSPACE     234
@@ -517,6 +518,18 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     sci(SCI_SETINDENTATIONGUIDES, SC_IV_LOOKBOTH, 0);
     sci(SCI_STYLESETFORE, STYLE_INDENTGUIDE, darkEd ? RGB(115,115,115) : RGB(130,130,130));
     sci(SCI_STYLESETBACK, STYLE_INDENTGUIDE, bg);
+    // Brace-pair highlight styles
+    sci(SCI_STYLESETFORE, STYLE_BRACELIGHT, darkEd ? RGB(255,215,100) : RGB(  0, 90,180));
+    sci(SCI_STYLESETBACK, STYLE_BRACELIGHT, darkEd ? RGB( 50, 50, 80) : RGB(200,230,255));
+    sci(SCI_STYLESETBOLD, STYLE_BRACELIGHT, TRUE);
+    sci(SCI_STYLESETFORE, STYLE_BRACEBAD,   RGB(210, 40, 40));
+    sci(SCI_STYLESETBACK, STYLE_BRACEBAD,   darkEd ? RGB( 70, 30, 30) : RGB(255,210,210));
+    sci(SCI_STYLESETBOLD, STYLE_BRACEBAD,   TRUE);
+    // HTML tag-pair indicator: a box outline around the whole tag
+    sci(SCI_INDICSETSTYLE, NE_IND_TAGMATCH, INDIC_BOX);
+    sci(SCI_INDICSETFORE,  NE_IND_TAGMATCH, darkEd ? RGB( 80,160,220) : RGB(  0,110,200));
+    sci(SCI_INDICSETALPHA, NE_IND_TAGMATCH, 60);
+    sci(SCI_INDICSETOUTLINEALPHA, NE_IND_TAGMATCH, 200);
     // Line number margin (margin 0)
     sci(SCI_SETMARGINTYPEN,  0, SC_MARGIN_NUMBER);
     sci(SCI_SETMARGINWIDTHN, 0, s_lineNumsOn ? S(44) : 0);
@@ -1686,6 +1699,291 @@ static void Ne_DrawSciWrapIndicators(HWND hSci)
     if (hOld) SelectObject(hdc, hOld);
     if (hf)   DeleteObject(hf);
     ReleaseDC(hSci, hdc);
+}
+
+// ── Brace & HTML tag-pair highlighting ───────────────────────────────────────
+// Called from SCN_UPDATEUI on every caret move.
+// • For all code: highlights matching () {} [] brace pair using STYLE_BRACELIGHT.
+// • For hypertext (HTML/PHP): draws an indicator box around both matching tags
+//   (e.g. <h3> ↔ </h3>) so the partner is visible when you scroll to it.
+
+static void Ne_DoBracePairHighlight(HWND hSci, int langId)
+{
+    auto sci = [hSci](UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+        return SendMessageW(hSci, msg, wp, lp);
+    };
+    int pos    = (int)sci(SCI_GETCURRENTPOS, 0, 0);
+    int docLen = (int)sci(SCI_GETLENGTH, 0, 0);
+
+    // ── 1. Brace matching: () {} [] ──────────────────────────────────────────
+    static const char braces[] = "(){}[]";
+    auto gch = [&](int p) -> char {
+        return (p >= 0 && p < docLen) ? (char)sci(SCI_GETCHARAT, p, 0) : '\0';
+    };
+    char ch     = gch(pos);
+    char chPrev = pos > 0 ? gch(pos - 1) : '\0';
+    int bracePos = -1;
+    if      (ch     && strchr(braces, ch))      bracePos = pos;
+    else if (chPrev && strchr(braces, chPrev))  bracePos = pos - 1;
+
+    if (bracePos >= 0) {
+        int matchPos = (int)sci(SCI_BRACEMATCH, bracePos, 0);
+        if (matchPos >= 0) sci(SCI_BRACEHIGHLIGHT, bracePos, matchPos);
+        else               sci(SCI_BRACEBADLIGHT,  bracePos, 0);
+    } else {
+        sci(SCI_BRACEHIGHLIGHT, -1, -1);
+    }
+
+    // ── 2. Tag / keyword-pair indicator ──────────────────────────────────────
+    sci(SCI_SETINDICATORCURRENT, NE_IND_TAGMATCH, 0);
+    sci(SCI_INDICATORCLEARRANGE, 0, docLen);
+
+    if (langId < 0 || langId >= NE_LANG_COUNT || !s_langs[langId].lexer) return;
+    const char* lexer = s_langs[langId].lexer;
+
+    const int NEARWIN = 500;
+    const int HALF    = 50000;
+
+    // ── 2a. HTML tag-pair (hypertext lexer) ──────────────────────────────────
+    if (strcmp(lexer, "hypertext") == 0) do {
+        if ((int)sci(SCI_GETSTYLEAT, pos, 0) >= 118) break; // PHP region
+
+        // Find enclosing < ... > around the caret
+        int lt = -1;
+        for (int i = pos; i >= 0 && i >= pos - NEARWIN; --i) {
+            char c = gch(i);
+            if (c == '<') { lt = i; break; }
+            if (c == '>') break;
+        }
+        if (lt < 0) break;
+        int gt = -1;
+        for (int i = lt + 1; i < docLen && i < lt + NEARWIN; ++i) {
+            char c = gch(i);
+            if (c == '>') { gt = i; break; }
+            if (c == '<') break;
+        }
+        if (gt < 0 || pos > gt) break;
+
+        int nameStart = lt + 1;
+        bool isClose  = (gch(nameStart) == '/');
+        if (isClose) nameStart++;
+        if (gch(nameStart) == '!') break; // <!-- comment --> or <!DOCTYPE>
+
+        char tagName[64] = {};
+        {
+            int n = 0;
+            for (int i = nameStart; i < docLen && n < 63; ++i) {
+                char c = gch(i);
+                if (!c || c == '>' || c == '/' || c == ' ' ||
+                    c == '\t' || c == '\r' || c == '\n') break;
+                tagName[n++] = (char)tolower((unsigned char)c);
+            }
+        }
+        if (tagName[0] == '\0') break;
+        if (gch(gt - 1) == '/') break; // self-closing <br/>
+
+        int tagLen = (int)strlen(tagName);
+        int readStart, readEnd;
+        if (!isClose) {
+            readStart = gt + 1;
+            readEnd   = (docLen < gt + 1 + HALF) ? docLen : gt + 1 + HALF;
+        } else {
+            readStart = (lt - HALF > 0) ? lt - HALF : 0;
+            readEnd   = lt;
+        }
+        if (readStart >= readEnd) break;
+
+        int bufLen = readEnd - readStart;
+        std::string buf(bufLen + 1, '\0');
+        Sci_TextRange tr{};
+        tr.chrg.cpMin = readStart; tr.chrg.cpMax = readEnd; tr.lpstrText = buf.data();
+        sci(SCI_GETTEXTRANGE, 0, (LPARAM)&tr);
+
+        auto extractName = [&](int j, char* out) {
+            int n = 0;
+            for (int k = j; k < bufLen && n < 63; ++k) {
+                char c = buf[k];
+                if (!c || c == '>' || c == '/' || c == ' ' ||
+                    c == '\t' || c == '\r' || c == '\n') break;
+                out[n++] = (char)tolower((unsigned char)c);
+            }
+            out[n] = '\0';
+        };
+        auto findGt = [&](int i) -> int {
+            for (int k = i + 1; k < bufLen && k < i + NEARWIN; ++k)
+                if (buf[k] == '>') return k;
+            return -1;
+        };
+
+        int depth = 0, matchDocStart = -1, matchDocEnd = -1;
+        if (!isClose) {
+            for (int i = 0; i < bufLen; ++i) {
+                if (buf[i] != '<') continue;
+                int j = i + 1;
+                bool c = (j < bufLen && buf[j] == '/'); if (c) j++;
+                if (j < bufLen && buf[j] == '!') continue;
+                char nm[64] = {}; extractName(j, nm);
+                if (strcmp(nm, tagName) != 0) continue;
+                char after = (j + tagLen < bufLen) ? buf[j + tagLen] : '\0';
+                if (after && after != '>' && after != '/' &&
+                    after != ' ' && after != '\t' && after != '\r' && after != '\n') continue;
+                if (!c) { depth++; continue; }
+                if (depth > 0) { depth--; continue; }
+                int mgt = findGt(i); if (mgt < 0) continue;
+                matchDocStart = readStart + i; matchDocEnd = readStart + mgt; break;
+            }
+        } else {
+            for (int i = bufLen - 1; i >= 0; --i) {
+                if (buf[i] != '<') continue;
+                int j = i + 1;
+                bool c = (j < bufLen && buf[j] == '/'); if (c) j++;
+                if (j < bufLen && buf[j] == '!') continue;
+                char nm[64] = {}; extractName(j, nm);
+                if (strcmp(nm, tagName) != 0) continue;
+                char after = (j + tagLen < bufLen) ? buf[j + tagLen] : '\0';
+                if (after && after != '>' && after != '/' &&
+                    after != ' ' && after != '\t' && after != '\r' && after != '\n') continue;
+                if (c) { depth++; continue; }
+                if (depth > 0) { depth--; continue; }
+                int mgt = findGt(i); if (mgt < 0) continue;
+                if (buf[mgt - 1] == '/') continue;
+                matchDocStart = readStart + i; matchDocEnd = readStart + mgt; break;
+            }
+        }
+        if (matchDocStart >= 0) {
+            sci(SCI_INDICATORFILLRANGE, lt,            gt  - lt  + 1);
+            sci(SCI_INDICATORFILLRANGE, matchDocStart, matchDocEnd - matchDocStart + 1);
+        }
+    } while (false);
+
+    // ── 2b. Bash keyword-pairs: if/fi  case/esac  for|while|until|do / done ──
+    else if (strcmp(lexer, "bash") == 0) do {
+        // Only trigger when the caret is on a keyword token (SCE_SH_WORD = 4)
+        int wordStart = (int)sci(SCI_WORDSTARTPOSITION, pos, TRUE);
+        int wordEnd   = (int)sci(SCI_WORDENDPOSITION,   pos, TRUE);
+        int wordLen   = wordEnd - wordStart;
+        if (wordLen <= 0 || wordLen > 10) break;
+        if ((int)sci(SCI_GETSTYLEAT, wordStart, 0) != 4) break; // SCE_SH_WORD
+
+        char kw[16] = {};
+        { Sci_TextRange tr2{}; tr2.chrg.cpMin = wordStart; tr2.chrg.cpMax = wordEnd;
+          tr2.lpstrText = kw; sci(SCI_GETTEXTRANGE, 0, (LPARAM)&tr2); }
+        for (int i = 0; kw[i]; i++) kw[i] = (char)tolower((unsigned char)kw[i]);
+
+        // Classify keyword
+        // opener/closer: simple symmetric pairs (if/fi, case/esac)
+        // doLoop: for/while/until/do → done  (skip first "do" for for/while/until)
+        // doneKw: done → backward to do
+        const char* opener  = nullptr;
+        const char* closer  = nullptr;
+        bool searchFwd   = true;
+        bool isDoLoop    = false; // for/while/until: forward, skip first "do"
+        bool isDoneKw    = false; // done: backward search for "do"
+
+        if      (strcmp(kw, "if")    == 0) { opener="if";   closer="fi";   searchFwd=true;  }
+        else if (strcmp(kw, "fi")    == 0) { opener="if";   closer="fi";   searchFwd=false; }
+        else if (strcmp(kw, "case")  == 0) { opener="case"; closer="esac"; searchFwd=true;  }
+        else if (strcmp(kw, "esac")  == 0) { opener="case"; closer="esac"; searchFwd=false; }
+        else if (strcmp(kw, "for")   == 0 || strcmp(kw, "while") == 0 ||
+                 strcmp(kw, "until") == 0) { isDoLoop = true; searchFwd = true; }
+        else if (strcmp(kw, "do")    == 0) { opener="do"; closer="done"; searchFwd=true; }
+        else if (strcmp(kw, "done")  == 0) { isDoneKw = true; searchFwd = false; }
+        else break; // not a paired keyword
+
+        int readStart, readEnd;
+        if (searchFwd) {
+            readStart = wordEnd;
+            readEnd   = (wordEnd + HALF < docLen) ? wordEnd + HALF : docLen;
+        } else {
+            readStart = (wordStart - HALF > 0) ? wordStart - HALF : 0;
+            readEnd   = wordStart;
+        }
+        if (readStart >= readEnd) break;
+
+        int bufLen = readEnd - readStart;
+        std::string buf(bufLen + 1, '\0');
+        Sci_TextRange tr{};
+        tr.chrg.cpMin = readStart; tr.chrg.cpMax = readEnd; tr.lpstrText = buf.data();
+        sci(SCI_GETTEXTRANGE, 0, (LPARAM)&tr);
+
+        // Whole-word match helper: word must not be preceded/followed by [a-zA-Z0-9_]
+        auto isWC = [](char c) { return (bool)(isalnum((unsigned char)c) || c == '_'); };
+        auto matchW = [&](int i, const char* word) -> bool {
+            int wl = (int)strlen(word);
+            if (i + wl > bufLen) return false;
+            if (i > 0 && isWC(buf[i-1])) return false;
+            for (int k = 0; k < wl; k++)
+                if (tolower((unsigned char)buf[i+k]) != (unsigned char)word[k]) return false;
+            char a = (i + wl < bufLen) ? buf[i + wl] : '\0';
+            return !a || !isWC(a);
+        };
+
+        int depth = 0, matchDocStart = -1, matchDocEnd = -1;
+
+        if (isDoLoop) {
+            // for/while/until → done: advance past first "do" (belongs to current loop),
+            // then count do/done pairs for nesting.
+            bool skippedFirstDo = false;
+            for (int i = 0; i < bufLen; ) {
+                if (!skippedFirstDo && matchW(i, "do")) {
+                    skippedFirstDo = true; i += 2; continue;
+                }
+                if (matchW(i, "done")) {
+                    if (depth == 0) {
+                        matchDocStart = readStart + i;
+                        matchDocEnd   = matchDocStart + 4; break;
+                    }
+                    depth--; i += 4; continue;
+                }
+                if (matchW(i, "do")) { depth++; i += 2; continue; }
+                i++;
+            }
+        } else if (!isDoneKw && searchFwd) {
+            // if→fi or case→esac: forward, count same opener for nesting
+            for (int i = 0; i < bufLen; ) {
+                if (matchW(i, closer)) {
+                    if (depth == 0) {
+                        matchDocStart = readStart + i;
+                        matchDocEnd   = matchDocStart + (int)strlen(closer); break;
+                    }
+                    depth--; i += (int)strlen(closer); continue;
+                }
+                if (matchW(i, opener)) { depth++; i += (int)strlen(opener); continue; }
+                i++;
+            }
+        } else if (!isDoneKw && !searchFwd) {
+            // fi→if or esac→case: backward
+            for (int i = bufLen - 1; i >= 0; --i) {
+                if (i > 0 && isWC(buf[i-1])) continue; // only word-start positions
+                if (matchW(i, closer)) { depth++; }
+                else if (matchW(i, opener)) {
+                    if (depth == 0) {
+                        matchDocStart = readStart + i;
+                        matchDocEnd   = matchDocStart + (int)strlen(opener); break;
+                    }
+                    depth--;
+                }
+            }
+        } else {
+            // done → backward to matching "do"
+            for (int i = bufLen - 1; i >= 0; --i) {
+                if (i > 0 && isWC(buf[i-1])) continue;
+                if (matchW(i, "done")) { depth++; }
+                else if (matchW(i, "do")) {
+                    if (depth == 0) {
+                        matchDocStart = readStart + i;
+                        matchDocEnd   = matchDocStart + 2; break;
+                    }
+                    depth--;
+                }
+            }
+        }
+
+        if (matchDocStart >= 0) {
+            sci(SCI_INDICATORFILLRANGE, wordStart,     wordLen);
+            sci(SCI_INDICATORFILLRANGE, matchDocStart, matchDocEnd - matchDocStart);
+        }
+    } while (false);
 }
 
 // ── Toggle word wrap (wrap to window ↔ no wrap) ───────────────────────────────
@@ -11823,6 +12121,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                             }
                         }
                     }
+                    Ne_DoBracePairHighlight(hSciActive, docUI ? docUI->langId : -1);
                 }
                 // Sync custom scrollbar thumb with current scroll position/content
                 {

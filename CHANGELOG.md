@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.05.28.10 (Feature: brace-pair & HTML tag-pair & Bash keyword-pair highlighting) - 28.05.2026 10:50
+
+- **Feature: brace-pair highlighting `(){}[]`**: When the caret is on or adjacent to a bracket character, Scintilla's built-in `SCI_BRACEHIGHLIGHT` / `SCI_BRACEBADLIGHT` API is used to highlight the matching pair. Theme-aware colours: dark editor — golden `RGB(255,215,100)` on a dark-blue background; light editor — deep-blue `RGB(0,90,180)` on a pale-blue background. Unmatched brackets are highlighted in red (`STYLE_BRACEBAD`). Applied on every `SCN_UPDATEUI`.
+- **Feature: HTML tag-pair highlighting**: When the caret is inside an HTML tag in a `hypertext`-lexer file (HTML / PHP), both the opening and closing tags are outlined with a box indicator (`NE_IND_TAGMATCH`, `INDIC_BOX`, indicator index 9) — blue tint on dark, deeper blue on light. Nesting depth is tracked correctly so `<div>` highlights its own `</div>` even when inner divs are present. Scans up to 50 000 characters in each direction. Self-closing (`<br/>`) and comment/doctype tags are excluded. Does not fire inside PHP regions (Scintilla style ≥ 118).
+- **Feature: Bash keyword-pair highlighting**: When the caret rests on a paired shell keyword, the same box indicator highlights the partner keyword up to 50 000 characters away. Pairs covered: `if` ↔ `fi`, `case` ↔ `esac`, `for` / `while` / `until` → `done`, `do` → `done`, `done` ← `do`. Full nesting depth tracked in both forward and backward searches. Only fires when the word is a Scintilla `SCE_SH_WORD` (style 4) token.
+- **File-open filter extended for Shell/Bash**: `FILTER_OPEN` in all 15 locale files now includes `.sh`, `.bash`, `.zsh`, `.ksh`, `.csh` in the "All supported files" group and adds a dedicated "Shell / Bash (*.sh)" filter entry.
+
 ## v2026.05.28.09 (Fix: FTP save-as tab; strip-RTF dialog style; status bar i18n) - 28.05.2026 09:45
 
 - **Fix: FTP save-as tab name and language not updating**: After saving a new or renamed file to FTP with a different extension (e.g. saving an untitled plain-text buffer as `index.php`), the tab now immediately shows the remote filename and re-applies the correct syntax highlighting for the new extension. Previously the tab kept the old name and language until the file was closed and reopened from FTP.
