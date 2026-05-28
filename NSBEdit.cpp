@@ -62,6 +62,9 @@
 #define IDM_SELECTALL       115
 #define IDM_FIND            116
 #define IDM_REPLACE         117
+#define IDM_GOTO            118
+#define IDM_BOOKMARK        119
+#define IDM_BOOKMARK_NEXT   200
 #define IDR_LOCALE_EN_GB    10
 #define IDR_LOCALE_NO_NB    11
 #define IDR_LOCALE_IS_IS    14
@@ -537,6 +540,38 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     sci(SCI_STYLESETFORE, STYLE_LINENUMBER, lnfg);
     sci(SCI_STYLESETSIZE, STYLE_LINENUMBER, 8);
     sci(SCI_STYLESETFONT, STYLE_LINENUMBER, (LPARAM)"Consolas");
+    // Fold margin (margin 2) — symbols only, no line numbers affected
+    sci(SCI_SETMARGINTYPEN,  2, SC_MARGIN_SYMBOL);
+    sci(SCI_SETMARGINMASKN,  2, SC_MASK_FOLDERS);
+    sci(SCI_SETMARGINWIDTHN, 2, S(14));
+    sci(SCI_SETMARGINSENSITIVEN, 2, TRUE);
+    sci(SCI_SETMARGINBACKN,       2, lnbg);
+    // Scintilla fills fold margins with a stipple brush (selbar/selbarlight).
+    // Override both fill and stripe to match the line-number margin background.
+    sci(SCI_SETFOLDMARGINCOLOUR,   TRUE, lnbg);
+    sci(SCI_SETFOLDMARGINHICOLOUR, TRUE, lnbg);
+    // Fold marker styles — arrows (▶ collapsed, ▼ expanded), white on black
+    sci(SCI_MARKERDEFINE, SC_MARKNUM_FOLDER,        SC_MARK_ARROWDOWN);
+    sci(SCI_MARKERDEFINE, SC_MARKNUM_FOLDEROPEN,    SC_MARK_ARROW);
+    sci(SCI_MARKERDEFINE, SC_MARKNUM_FOLDERSUB,     SC_MARK_EMPTY);
+    sci(SCI_MARKERDEFINE, SC_MARKNUM_FOLDEREND,     SC_MARK_ARROWDOWN);
+    sci(SCI_MARKERDEFINE, SC_MARKNUM_FOLDEROPENMID, SC_MARK_ARROW);
+    sci(SCI_MARKERDEFINE, SC_MARKNUM_FOLDERMIDTAIL, SC_MARK_EMPTY);
+    sci(SCI_MARKERDEFINE, SC_MARKNUM_FOLDERTAIL,    SC_MARK_EMPTY);
+    for (int m = SC_MARKNUM_FOLDEREND; m <= SC_MARKNUM_FOLDER; ++m) {
+        sci(SCI_MARKERSETFORE, m, lnbg); // arrow: same as margin bg (invisible for EMPTY)
+        sci(SCI_MARKERSETBACK, m, lnfg); // arrow fill: line-number foreground colour
+    }
+    sci(SCI_SETFOLDFLAGS, SC_FOLDFLAG_LINEAFTER_CONTRACTED, 0);
+    // Bookmark margin (margin 1) — small circle glyph, thin strip
+    sci(SCI_SETMARGINTYPEN,    1, SC_MARGIN_SYMBOL);
+    sci(SCI_SETMARGINMASKN,    1, 1 << 0); // marker 0 only
+    sci(SCI_SETMARGINWIDTHN,   1, S(10));
+    sci(SCI_SETMARGINSENSITIVEN, 1, FALSE);
+    sci(SCI_SETMARGINBACKN,    1, lnbg);
+    sci(SCI_MARKERDEFINE,   0, SC_MARK_CIRCLE);
+    sci(SCI_MARKERSETFORE,  0, darkEd ? RGB( 50,150,255) : RGB(  0, 90,200));
+    sci(SCI_MARKERSETBACK,  0, darkEd ? RGB( 50,150,255) : RGB(  0, 90,200));
     // Autocomplete settings
     sci(SCI_AUTOCSETIGNORECASE, TRUE, 0);
     sci(SCI_AUTOCSETAUTOHIDE,   TRUE, 0);
@@ -979,6 +1014,16 @@ static void Ne_ApplyLang(HWND hSci, int langIdx)
         sc(SCI_STYLESETFORE, 12, bKw);  // heredoc delimiter (<<EOF)
         sc(SCI_STYLESETFORE, 13, bStr); // heredoc body
     }
+
+    // Enable folding for all languages that have a real lexer
+    auto sp = [hSci](const char* k, const char* v) {
+        SendMessageA(hSci, SCI_SETPROPERTY, (WPARAM)k, (LPARAM)v);
+    };
+    sp("fold",               "1");
+    sp("fold.compact",       "0");
+    sp("fold.comment",       "1");
+    sp("fold.preprocessor", "1");
+    sp("fold.html",          "1"); // enables folding for hypertext (HTML/PHP) lexer
 }
 
 // Show Scintilla autocomplete — phrase completion from document + keyword fallback.
@@ -2433,6 +2478,8 @@ struct NeDialogData {
 };
 
 static bool Ne_PromptSaveIfModified(HWND hwnd); // forward
+static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out,
+                               const std::wstring& initialValue); // forward
 static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path);
 
 static bool Ne_GetFileStamp(const std::wstring& path, FILETIME* outWrite, ULONGLONG* outSize)
@@ -3064,6 +3111,10 @@ static const ShortcutRow s_shortcuts[] = {
     { L"[Ctrl]+P",             L"SCF_PRINT",         L"SCD_PRINT" },
     { L"[Ctrl]+[Shift]+P",     L"SCF_EXPORT_PDF",    L"SCD_EXPORT_PDF" },
     { L"[Ctrl]+[Shift]+H",     L"SCF_PREVIEW",       L"SCD_PREVIEW" },
+    { L"[Ctrl]+G",             L"SCF_GOTO_LINE",       L"SCD_GOTO_LINE" },
+    { L"[F2]",                 L"SCF_BOOKMARK_TOGGLE", L"SCD_BOOKMARK_TOGGLE" },
+    { L"[Shift]+[F2]",         L"SCF_BOOKMARK_PREV",   L"SCD_BOOKMARK_PREV" },
+    { L"[Ctrl]+[F2]",          L"SCF_BOOKMARK_NEXT",   L"SCD_BOOKMARK_NEXT" },
     // ── Navigation ────────────────────────────────────────────────────────────
     { L"[Ctrl]+[Home]",        L"SCF_GO_START",      L"SCD_GO_START" },
     { L"[Ctrl]+[End]",         L"SCF_GO_END",        L"SCD_GO_END" },
@@ -3475,6 +3526,68 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
     }
     }
     return DefWindowProcW(h, m, w, l);
+}
+
+// Go to Line: show input dialog and scroll Scintilla to the requested line.
+static void Ne_GoToLine(HWND hwndMain)
+{
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwndMain);
+    if (!doc || !doc->hSci) return; // only works for code (Scintilla) tabs
+    HWND hSci = doc->hSci;
+
+    int totalLines = (int)SendMessageW(hSci, SCI_GETLINECOUNT, 0, 0);
+    std::wstring input;
+    if (!Ne_ShowInputDialog(hwndMain, Ls(L"DLG_GOTO_TITLE"), Ls(L"DLG_GOTO_PROMPT"), input, L""))
+        return;
+    // Parse — accept leading/trailing spaces and an optional trailing newline
+    std::wstring trimmed;
+    for (wchar_t c : input)
+        if (c >= L'0' && c <= L'9') trimmed += c;
+        else if (!trimmed.empty()) break; // stop at first non-digit after digits
+    if (trimmed.empty()) return;
+    int line = _wtoi(trimmed.c_str());
+    if (line < 1)          line = 1;
+    if (line > totalLines) line = totalLines; // clamp to last line
+    line--; // Scintilla is 0-based
+    SendMessageW(hSci, SCI_ENSUREVISIBLE, line, 0);
+    SendMessageW(hSci, SCI_GOTOLINE, line, 0);
+    SetFocus(hSci);
+}
+
+// Bookmark helpers — marker 0 is reserved for bookmarks.
+#define NE_BOOKMARK_MARKER 0
+
+static void Ne_ToggleBookmark(HWND hSci)
+{
+    int line = (int)SendMessageW(hSci, SCI_LINEFROMPOSITION,
+                   SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0), 0);
+    int mask = (int)SendMessageW(hSci, SCI_MARKERGET, line, 0);
+    if (mask & (1 << NE_BOOKMARK_MARKER))
+        SendMessageW(hSci, SCI_MARKERDELETE, line, NE_BOOKMARK_MARKER);
+    else
+        SendMessageW(hSci, SCI_MARKERADD,    line, NE_BOOKMARK_MARKER);
+}
+
+static void Ne_CycleBookmark(HWND hSci, bool forward)
+{
+    int curLine = (int)SendMessageW(hSci, SCI_LINEFROMPOSITION,
+                      SendMessageW(hSci, SCI_GETCURRENTPOS, 0, 0), 0);
+    int found = (int)SendMessageW(hSci,
+        forward ? SCI_MARKERNEXT : SCI_MARKERPREVIOUS,
+        forward ? curLine + 1 : curLine - 1,
+        (LPARAM)(1 << NE_BOOKMARK_MARKER));
+    if (found < 0) {
+        // Wrap around
+        int total = (int)SendMessageW(hSci, SCI_GETLINECOUNT, 0, 0);
+        found = (int)SendMessageW(hSci,
+            forward ? SCI_MARKERNEXT : SCI_MARKERPREVIOUS,
+            forward ? 0 : total - 1,
+            (LPARAM)(1 << NE_BOOKMARK_MARKER));
+    }
+    if (found >= 0) {
+        SendMessageW(hSci, SCI_ENSUREVISIBLE, found, 0);
+        SendMessageW(hSci, SCI_GOTOLINE,      found, 0);
+    }
 }
 
 static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
@@ -7780,6 +7893,11 @@ static void Ne_BuildMainMenu(HWND hwnd)
     Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
     Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
     Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,             NULL);
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_GOTO,          Ls(L"MENU_GOTO"));
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_FIND,          Ls(L"MENU_FIND"));
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_BOOKMARK,      Ls(L"MENU_BOOKMARK"));
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_BOOKMARK_NEXT, Ls(L"MENU_BOOKMARK_NEXT"));
+    Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,                 NULL);
     Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PREFS,     Ls(L"MENU_PREFS"));
     Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hEdit2, Ls(L"MENU_EDIT"), true);
     // ── Convert menu ──────────────────────────────────────────────────────
@@ -11933,6 +12051,18 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (wmId == IDC_NE_LINESPACE)  { Ne_ShowLineSpaceDialog(hwnd, hEdit); return 0; }
         if (wmId == IDC_NE_PARSPACE)   { Ne_ShowParSpaceDialog(hwnd, hEdit);  return 0; }
         if (wmId == IDC_NE_FIND)       { Ne_ShowFindDialog(hwnd, hEdit);      return 0; }
+        if (wmId == IDM_FIND)           { Ne_ShowFindDialog(hwnd, hEdit);      return 0; }
+        if (wmId == IDM_GOTO)           { Ne_GoToLine(hwnd);                   return 0; }
+        if (wmId == IDM_BOOKMARK) {
+            NeTabDoc* bd = NeTabs_GetActiveDoc(hwnd);
+            if (bd && bd->hSci) Ne_ToggleBookmark(bd->hSci);
+            return 0;
+        }
+        if (wmId == IDM_BOOKMARK_NEXT) {
+            NeTabDoc* bd = NeTabs_GetActiveDoc(hwnd);
+            if (bd && bd->hSci) { Ne_CycleBookmark(bd->hSci, true); SetFocus(bd->hSci); }
+            return 0;
+        }
         if (wmId == IDC_NE_LINK)       { Ne_ShowLinkDialog(hwnd, hEdit);      return 0; }
         if (wmId == IDC_NE_TABLE) {
             Ne_ShowTablePropsDialog(hwnd, hEdit);
@@ -12173,6 +12303,13 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 if (scn->nmhdr.hwndFrom == hSciActive) {
                     g_zoomSci = (int)SendMessageW(hSciActive, SCI_GETZOOM, 0, 0);
                     NeProfiles_SetIntSetting("zoom_sci", g_zoomSci);
+                }
+            } else if (scn->nmhdr.code == SCN_MARGINCLICK) {
+                if (scn->margin == 2) {
+                    int line = (int)SendMessageW((HWND)scn->nmhdr.hwndFrom,
+                                    SCI_LINEFROMPOSITION, (WPARAM)scn->position, 0);
+                    SendMessageW((HWND)scn->nmhdr.hwndFrom,
+                                    SCI_TOGGLEFOLD, (WPARAM)line, 0);
                 }
             } else if (scn->nmhdr.code == SCN_PAINTED && s_wordWrapOn) {
                 Ne_DrawSciWrapIndicators((HWND)scn->nmhdr.hwndFrom);
@@ -12588,6 +12725,13 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             EnableMenuItem(hPop, IDM_REDO,  MF_BYCOMMAND | (canRedo ? MF_ENABLED : MF_GRAYED));
             EnableMenuItem(hPop, IDM_CUT,   MF_BYCOMMAND | (hasSel  ? MF_ENABLED : MF_GRAYED));
             EnableMenuItem(hPop, IDM_COPY,  MF_BYCOMMAND | (hasSel  ? MF_ENABLED : MF_GRAYED));
+            // Grey "Go to bookmark" when no bookmarks exist in this document
+            NeTabDoc* bkDoc = NeTabs_GetActiveDoc(hwnd);
+            bool hasBk = (bkDoc && bkDoc->hSci &&
+                          SendMessageW(bkDoc->hSci, SCI_MARKERNEXT, 0,
+                                       (LPARAM)(1 << NE_BOOKMARK_MARKER)) >= 0);
+            EnableMenuItem(hPop, IDM_BOOKMARK_NEXT,
+                           MF_BYCOMMAND | (hasBk ? MF_ENABLED : MF_GRAYED));
             return 0;
         }
 
@@ -12898,6 +13042,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
                 }
                 continue;
             }
+            // Ctrl+G — Go to Line (works regardless of focus target)
+            if (msg.wParam == 'G') { SendMessageW(s_hwndMain, WM_COMMAND, IDM_GOTO, 0); continue; }
             // Ctrl+B/I/U/F for text formatting / find (only when editor has focus).
             if (GetFocus() == NeTabs_GetActiveEdit(s_hwndMain)) {
                 if (msg.wParam == 'B') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_BOLD,      0); continue; }
@@ -12929,6 +13075,40 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
         if (msg.message == WM_KEYDOWN && msg.wParam == VK_F1) {
             SendMessageW(s_hwndMain, WM_COMMAND, IDM_SHORTCUTS, 0);
             continue;
+        }
+        // F2 / Shift+F2 → toggle/cycle bookmarks (Scintilla tabs only)
+        if (msg.message == WM_KEYDOWN && msg.wParam == VK_F2) {
+            NeTabDoc* fd = NeTabs_GetActiveDoc(s_hwndMain);
+            HWND hSciF = fd ? fd->hSci : NULL;
+            if (hSciF) {
+                bool ctrl  = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+                bool shift = (GetKeyState(VK_SHIFT)   & 0x8000) != 0;
+                if (ctrl) {
+                    // Ctrl+F2 — go to next bookmark (same as menu)
+                    SendMessageW(s_hwndMain, WM_COMMAND, IDM_BOOKMARK_NEXT, 0);
+                } else if (shift) {
+                    Ne_CycleBookmark(hSciF, false);
+                } else {
+                    // Plain F2: if there are bookmarks in the doc, cycle forward;
+                    // otherwise toggle on current line.
+                    int found = (int)SendMessageW(hSciF, SCI_MARKERNEXT, 0,
+                                    (LPARAM)(1 << NE_BOOKMARK_MARKER));
+                    int curLine = (int)SendMessageW(hSciF, SCI_LINEFROMPOSITION,
+                                      SendMessageW(hSciF, SCI_GETCURRENTPOS, 0, 0), 0);
+                    if (found < 0) {
+                        // No bookmarks yet — set one
+                        Ne_ToggleBookmark(hSciF);
+                    } else {
+                        // Toggle on current line if it already has a bookmark, else cycle
+                        int mask = (int)SendMessageW(hSciF, SCI_MARKERGET, curLine, 0);
+                        if (mask & (1 << NE_BOOKMARK_MARKER))
+                            Ne_ToggleBookmark(hSciF);
+                        else
+                            Ne_CycleBookmark(hSciF, true);
+                    }
+                }
+                continue;
+            }
         }
         TranslateMessage(&msg);
         DispatchMessageW(&msg);

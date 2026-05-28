@@ -1,4 +1,4 @@
-# NSBEdit locale file — fr_FR (Français)
+﻿# NSBEdit locale file — fr_FR (Français)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -22,7 +22,9 @@ MENU_REDO         = &Rétablir\tCtrl+Y
 MENU_CUT          = &Couper\tCtrl+X
 MENU_COPY         = &Copier\tCtrl+C
 MENU_PASTE        = &Coller\tCtrl+V
-MENU_SELECTALL    = &Tout sélectionner\tCtrl+A
+MENU_SELECTALL    = &Tout sélectionner\tCtrl+AMENU_FIND         = &Rechercher / Remplacer...	Ctrl+FMENU_GOTO         = Aller à la &ligne...\tCtrl+G
+MENU_BOOKMARK     = Basculer le &signet\tF2
+MENU_BOOKMARK_NEXT = Aller au &signet\tCtrl+F2
 MENU_PREFS        = &Préférences...
 PREF_TITLE        = Préférences
 PREF_SEC_APPEARANCE = Apparence
@@ -328,6 +330,16 @@ SCD_DELETE        = Supprimer le caractère à droite
 SCD_BACKSPACE     = Supprimer le caractère à gauche
 SCD_DEL_WORD_R    = Supprimer le mot à droite du curseur
 SCD_DEL_WORD_L    = Supprimer le mot à gauche du curseur
+SCF_GOTO_LINE     = Aller à la ligne
+SCF_BOOKMARK_TOGGLE = Basculer le signet
+SCF_BOOKMARK_NEXT = Signet suivant
+SCF_BOOKMARK_PREV = Signet précédent
+SCD_GOTO_LINE     = Ouvrir la boîte Aller à la ligne
+SCD_BOOKMARK_TOGGLE = Définir ou supprimer un signet sur la ligne courante
+SCD_BOOKMARK_NEXT = Aller au signet suivant
+SCD_BOOKMARK_PREV = Aller au signet précédent
+DLG_GOTO_TITLE    = Aller à la ligne
+DLG_GOTO_PROMPT   = Numéro de ligne :
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.

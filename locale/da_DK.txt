@@ -1,4 +1,4 @@
-# NSBEdit locale file — da_DK (Dansk)
+﻿# NSBEdit locale file — da_DK (Dansk)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -23,6 +23,10 @@ MENU_CUT          = &Klip\tCtrl+X
 MENU_COPY         = &Kopiér\tCtrl+C
 MENU_PASTE        = &Sæt ind\tCtrl+V
 MENU_SELECTALL    = Vælg &alt\tCtrl+A
+MENU_FIND         = &Find / Erstat...\tCtrl+F
+MENU_GOTO         = Gå til &linje...\tCtrl+G
+MENU_BOOKMARK     = Slå &bogmærke til/fra\tF2
+MENU_BOOKMARK_NEXT = Gå til &bogmærke\tCtrl+F2
 MENU_PREFS        = &Indstillinger...
 PREF_TITLE        = Indstillinger
 PREF_SEC_APPEARANCE = Udseende
@@ -326,6 +330,16 @@ SCD_DELETE        = Slet tegnet til højre
 SCD_BACKSPACE     = Slet tegnet til venstre
 SCD_DEL_WORD_R    = Slet ord til højre for markøren
 SCD_DEL_WORD_L    = Slet ord til venstre for markøren
+SCF_GOTO_LINE     = Gå til linje
+SCF_BOOKMARK_TOGGLE = Slå bogmærke til/fra
+SCF_BOOKMARK_NEXT = Næste bogmærke
+SCF_BOOKMARK_PREV = Forrige bogmærke
+SCD_GOTO_LINE     = Åbn dialogen Gå til linje
+SCD_BOOKMARK_TOGGLE = Sæt eller fjern bogmærke på den aktuelle linje
+SCD_BOOKMARK_NEXT = Hop til næste bogmærke
+SCD_BOOKMARK_PREV = Hop til forrige bogmærke
+DLG_GOTO_TITLE    = Gå til linje
+DLG_GOTO_PROMPT   = Linjenummer:
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.

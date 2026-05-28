@@ -1,4 +1,4 @@
-# NSBEdit locale file — is_IS (Íslenska)
+﻿# NSBEdit locale file — is_IS (Íslenska)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -23,6 +23,10 @@ MENU_CUT          = &Klippa\tCtrl+X
 MENU_COPY         = &Afrita\tCtrl+C
 MENU_PASTE        = &Líma\tCtrl+V
 MENU_SELECTALL    = Velja &allt\tCtrl+A
+MENU_FIND         = &Leita / Skipta...\tCtrl+F
+MENU_GOTO         = Fara í &línu...\tCtrl+G
+MENU_BOOKMARK     = Skipta &bókamerki\tF2
+MENU_BOOKMARK_NEXT = Fara í &bókamerki\tCtrl+F2
 MENU_PREFS        = &Stillingar...
 PREF_TITLE        = Stillingar
 PREF_SEC_APPEARANCE = Útlit
@@ -328,6 +332,16 @@ SCD_DELETE        = Eyða staf til hægri
 SCD_BACKSPACE     = Eyða staf til vinstri
 SCD_DEL_WORD_R    = Eyða orði til hægri við bendil
 SCD_DEL_WORD_L    = Eyða orði til vinstri við bendil
+SCF_GOTO_LINE     = Fara í línu
+SCF_BOOKMARK_TOGGLE = Víxla bókamerki
+SCF_BOOKMARK_NEXT = Næsta bókamerki
+SCF_BOOKMARK_PREV = Fyrra bókamerki
+SCD_GOTO_LINE     = Opna Fara í línu-glugga
+SCD_BOOKMARK_TOGGLE = Setja eða eyða bókamerki á núverandi línu
+SCD_BOOKMARK_NEXT = Hoppa á næsta bókamerki
+SCD_BOOKMARK_PREV = Hoppa á fyrra bókamerki
+DLG_GOTO_TITLE    = Fara í línu
+DLG_GOTO_PROMPT   = Línunúmer:
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.

@@ -1,4 +1,4 @@
-# NSBEdit locale file — no_nb (Norsk bokmål)
+﻿# NSBEdit locale file — no_nb (Norsk bokmål)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -23,6 +23,10 @@ MENU_CUT          = Klipp u&t\tCtrl+X
 MENU_COPY         = &Kopier\tCtrl+C
 MENU_PASTE        = &Lim inn\tCtrl+V
 MENU_SELECTALL    = Merk &alt\tCtrl+A
+MENU_FIND         = &Søk / Erstatt...\tCtrl+F
+MENU_GOTO         = Gå til &linje...\tCtrl+G
+MENU_BOOKMARK     = Sett/fjern &bokmerke\tF2
+MENU_BOOKMARK_NEXT = Gå til &bokmerke\tCtrl+F2
 MENU_PREFS        = &Innstillinger...
 PREF_TITLE        = Innstillinger
 PREF_SEC_APPEARANCE = Utseende
@@ -328,6 +332,16 @@ SCD_DELETE        = Slett tegnet til høyre
 SCD_BACKSPACE     = Slett tegnet til venstre
 SCD_DEL_WORD_R    = Slett ord til høyre for markøren
 SCD_DEL_WORD_L    = Slett ord til venstre for markøren
+SCF_GOTO_LINE     = Gå til linje
+SCF_BOOKMARK_TOGGLE = Veksle bokmerke
+SCF_BOOKMARK_NEXT = Neste bokmerke
+SCF_BOOKMARK_PREV = Forrige bokmerke
+SCD_GOTO_LINE     = Åpne Gå til linje-dialogen
+SCD_BOOKMARK_TOGGLE = Sett eller fjern bokmerke på gjeldende linje
+SCD_BOOKMARK_NEXT = Hopp til neste bokmerke
+SCD_BOOKMARK_PREV = Hopp til forrige bokmerke
+DLG_GOTO_TITLE    = Gå til linje
+DLG_GOTO_PROMPT   = Linjenummer:
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.

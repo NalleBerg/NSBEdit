@@ -1,4 +1,4 @@
-# NSBEdit locale file — sv_SE (Svenska)
+﻿# NSBEdit locale file — sv_SE (Svenska)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -22,7 +22,9 @@ MENU_REDO         = &Gör om\tCtrl+Y
 MENU_CUT          = Klipp u&t\tCtrl+X
 MENU_COPY         = &Kopiera\tCtrl+C
 MENU_PASTE        = K&listra in\tCtrl+V
-MENU_SELECTALL    = Markera &allt\tCtrl+A
+MENU_SELECTALL    = Markera &allt\tCtrl+AMENU_FIND         = &Sök / Ersätt...	Ctrl+FMENU_GOTO         = Gå till &rad...\tCtrl+G
+MENU_BOOKMARK     = Växla &bokmärke\tF2
+MENU_BOOKMARK_NEXT = Gå till &bokmärke\tCtrl+F2
 MENU_PREFS        = &Inställningar...
 PREF_TITLE        = Inställningar
 PREF_SEC_APPEARANCE = Utseende
@@ -328,6 +330,16 @@ SCD_DELETE        = Ta bort tecknet till höger
 SCD_BACKSPACE     = Ta bort tecknet till vänster
 SCD_DEL_WORD_R    = Ta bort ord till höger om markören
 SCD_DEL_WORD_L    = Ta bort ord till vänster om markören
+SCF_GOTO_LINE     = Gå till rad
+SCF_BOOKMARK_TOGGLE = Växla bokmärke
+SCF_BOOKMARK_NEXT = Nästa bokmärke
+SCF_BOOKMARK_PREV = Föregående bokmärke
+SCD_GOTO_LINE     = Öppna dialogrutan Gå till rad
+SCD_BOOKMARK_TOGGLE = Sätt eller ta bort bokmärke på den aktuella raden
+SCD_BOOKMARK_NEXT = Hoppa till nästa bokmärke
+SCD_BOOKMARK_PREV = Hoppa till föregående bokmärke
+DLG_GOTO_TITLE    = Gå till rad
+DLG_GOTO_PROMPT   = Radnummer:
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.

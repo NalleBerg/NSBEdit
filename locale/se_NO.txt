@@ -1,4 +1,4 @@
-# NSBEdit locale file — se_NO (Davvisámegiella / North Sami)
+﻿# NSBEdit locale file — se_NO (Davvisámegiella / North Sami)
 # Format:  KEY = value
 # Escape sequences:  \n = CR+LF,  \t = tab,  \\ = backslash
 # North Sami (Davvisámegiella) is spoken in Norway, Sweden and Finland.
@@ -24,7 +24,9 @@ MENU_REDO         = &Fas dahkat\tCtrl+Y
 MENU_CUT          = &Bávččat\tCtrl+X
 MENU_COPY         = &Kopiiret\tCtrl+C
 MENU_PASTE        = &Liimet\tCtrl+V
-MENU_SELECTALL    = Válljehit &buot\tCtrl+A
+MENU_SELECTALL    = Válljehit &buot\tCtrl+AMENU_FIND         = &Ohcat / Nuppástuhttit...	Ctrl+FMENU_GOTO         = Mana &linjii...\tCtrl+G
+MENU_BOOKMARK     = Nuppástuhte &mearkka\tF2
+MENU_BOOKMARK_NEXT = Vuolgit &mearkii\tCtrl+F2
 MENU_PREFS        = &Ásahusat...
 PREF_TITLE        = Ásahusat
 PREF_SEC_APPEARANCE = Govvádus
@@ -330,6 +332,16 @@ SCD_DELETE        = Mearka olgeš beallái sihkut
 SCD_BACKSPACE     = Mearka gurut beallái sihkut
 SCD_DEL_WORD_R    = Sátni gursora olgeš beallái sihkut
 SCD_DEL_WORD_L    = Sátni gursora gurut beallái sihkut
+SCF_GOTO_LINE     = Mana linjii
+SCF_BOOKMARK_TOGGLE = Nuppástuhtte mearkka
+SCF_BOOKMARK_NEXT = Boahtte mearka
+SCF_BOOKMARK_PREV = Ovddit mearka
+SCD_GOTO_LINE     = Rahpat Mana linjii-dialogga
+SCD_BOOKMARK_TOGGLE = Bija dahje sihku mearka dálá linjái
+SCD_BOOKMARK_NEXT = Njuiket boahtte mearkkai
+SCD_BOOKMARK_PREV = Njuiket ovddit mearkkai
+DLG_GOTO_TITLE    = Mana linjii
+DLG_GOTO_PROMPT   = Linjenummár:
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 ABOUT_TITLE       = NSBEdit birra

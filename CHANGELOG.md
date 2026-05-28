@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.05.28.12 (Feature: Go to Line; Bookmarks) - 28.05.2026 12:15
+
+- **Feature: Go to Line (Ctrl+G)**: New *Edit → Go to Line…* command (also Ctrl+G anywhere). A compact input dialog asks for a line number; the editor scrolls to that line and places the caret there. The number is clamped to the last line so any out-of-range value goes to the end of the document. Works in all Scintilla (code) tabs. Ctrl+G is intercepted globally in the message pump — it fires even when the editor does not have keyboard focus.
+- **Feature: Bookmarks (F2 / Shift+F2 / Ctrl+F2)**: Bookmarks can be toggled on any line with F2 (or *Edit → Toggle Bookmark*). A blue filled-circle glyph (SC_MARK_CIRCLE) is drawn in margin 1 (10 px, left of the fold margin). Shift+F2 cycles to the previous bookmark; Ctrl+F2 (or *Edit → Go to Bookmark*) cycles to the next. All three keys are listed in the Help → Shortcuts dialog. The *Go to Bookmark* menu item is greyed automatically when no bookmarks exist in the active document.
+
 ## v2026.05.28.10 (Feature: brace-pair & HTML tag-pair & Bash keyword-pair highlighting) - 28.05.2026 10:50
 
 - **Feature: brace-pair highlighting `(){}[]`**: When the caret is on or adjacent to a bracket character, Scintilla's built-in `SCI_BRACEHIGHLIGHT` / `SCI_BRACEBADLIGHT` API is used to highlight the matching pair. Theme-aware colours: dark editor — golden `RGB(255,215,100)` on a dark-blue background; light editor — deep-blue `RGB(0,90,180)` on a pale-blue background. Unmatched brackets are highlighted in red (`STYLE_BRACEBAD`). Applied on every `SCN_UPDATEUI`.

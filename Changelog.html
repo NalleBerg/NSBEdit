@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 28 May 2026 &mdash; v2026.05.28.10 (10:50)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 28 May 2026 &mdash; v2026.05.28.12 (12:15)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.28.12 (Feature: Go to Line; Bookmarks)</span></h3>
+<p><strong>Feature: Go to Line (Ctrl+G) and Bookmarks (F2 / Shift+F2 / Ctrl+F2) (28.05.2026, 12:15):</strong></p>
+<ul>
+<li><strong>Feature: Go to Line (Ctrl+G):</strong> New <em>Edit &rsaquo; Go to Line&hellip;</em> command, also triggered by Ctrl+G from anywhere. A compact input dialog prompts for a line number; the editor scrolls to that line and places the caret there. The number is clamped to the last line so any out-of-range value goes to the end of the document. Works in all Scintilla (code) tabs. Ctrl+G is intercepted globally in the message pump &mdash; it fires even when the editor does not have keyboard focus.</li>
+<li><strong>Feature: Bookmarks (F2 / Shift+F2 / Ctrl+F2):</strong> Bookmarks can be toggled on any line with F2 (or <em>Edit &rsaquo; Toggle Bookmark</em>). A blue filled-circle glyph (<code>SC_MARK_CIRCLE</code>) is drawn in margin&nbsp;1 (10&thinsp;px, immediately left of the fold margin). Shift+F2 cycles to the previous bookmark; Ctrl+F2 (or <em>Edit &rsaquo; Go to Bookmark</em>) cycles to the next. All three shortcuts appear in Help &rsaquo; Shortcuts. The <em>Go to Bookmark</em> menu item is greyed automatically when no bookmarks exist in the active document.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.28.10 (Feature: brace-pair &amp; HTML tag-pair &amp; Bash keyword-pair highlighting)</span></h3>
 <p><strong>Feature: brace-pair highlighting, HTML tag-pair box indicator, Bash keyword-pair indicator (28.05.2026, 10:50):</strong></p>

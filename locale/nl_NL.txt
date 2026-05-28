@@ -1,4 +1,4 @@
-# NSBEdit locale file — nl_NL (Nederlands)
+﻿# NSBEdit locale file — nl_NL (Nederlands)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -22,7 +22,9 @@ MENU_REDO         = Op&nieuw uitvoeren\tCtrl+Y
 MENU_CUT          = &Knippen\tCtrl+X
 MENU_COPY         = &Kopiëren\tCtrl+C
 MENU_PASTE        = &Plakken\tCtrl+V
-MENU_SELECTALL    = Alles &selecteren\tCtrl+A
+MENU_SELECTALL    = Alles &selecteren\tCtrl+AMENU_FIND         = &Zoeken / Vervangen...	Ctrl+FMENU_GOTO         = Ga naar &regel...\tCtrl+G
+MENU_BOOKMARK     = &Bladwijzer aan/uit\tF2
+MENU_BOOKMARK_NEXT = Ga naar &bladwijzer\tCtrl+F2
 MENU_PREFS        = &Voorkeuren...
 PREF_TITLE        = Voorkeuren
 PREF_SEC_APPEARANCE = Weergave
@@ -328,6 +330,16 @@ SCD_DELETE        = Teken rechts verwijderen
 SCD_BACKSPACE     = Teken links verwijderen
 SCD_DEL_WORD_R    = Woord rechts van cursor verwijderen
 SCD_DEL_WORD_L    = Woord links van cursor verwijderen
+SCF_GOTO_LINE     = Ga naar regel
+SCF_BOOKMARK_TOGGLE = Bladwijzer in-/uitschakelen
+SCF_BOOKMARK_NEXT = Volgende bladwijzer
+SCF_BOOKMARK_PREV = Vorige bladwijzer
+SCD_GOTO_LINE     = Het dialoogvenster Ga naar regel openen
+SCD_BOOKMARK_TOGGLE = Een bladwijzer op de huidige regel instellen of verwijderen
+SCD_BOOKMARK_NEXT = Naar de volgende bladwijzer gaan
+SCD_BOOKMARK_PREV = Naar de vorige bladwijzer gaan
+DLG_GOTO_TITLE    = Ga naar regel
+DLG_GOTO_PROMPT   = Regelnummer:
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.

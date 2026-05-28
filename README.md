@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.28.10**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.28.12**
 
 ## Download
 
@@ -25,7 +25,9 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - Edit menu: Undo, Redo, Cut, Copy, Paste, Select All — greyed dynamically
 - Right-click context menu on the editor with the same Edit operations
 - Export as PDF via *Microsoft Print to PDF* — no third-party libraries
-- Keyboard Shortcuts dialog (`F1`) — 40 shortcuts, bold/colour-coded
+- **Go to Line** — Ctrl+G (or Edit → Go to Line…) opens a compact input dialog; jumps to any line number, clamped to the last line
+- **Bookmarks** — F2 toggles a bookmark on the current line (blue circle in the margin); Shift+F2 goes to the previous bookmark, Ctrl+F2 to the next. *Go to Bookmark* is greyed when no bookmarks exist
+- Keyboard Shortcuts dialog (`F1`) — 44 shortcuts, bold/colour-coded
 - `Ctrl+W` to close tab / exit (with unsaved-change prompt)
 - Tabbed editor — multiple documents open simultaneously, owner-drawn × close glyphs, [+] new-tab button, right-click tab context menu
 - Custom status bar with real-time word/char count and Saved/Unsaved indicator (shell32 icons)

@@ -1,4 +1,4 @@
-# NSBEdit locale file — uk_UA (Українська)
+﻿# NSBEdit locale file — uk_UA (Українська)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -24,6 +24,10 @@ MENU_CUT          = &Вирізати\tCtrl+X
 MENU_COPY         = &Копіювати\tCtrl+C
 MENU_PASTE        = &Вставити\tCtrl+V
 MENU_SELECTALL    = &Вибрати все\tCtrl+A
+MENU_FIND         = &Пошук / Замінити...\tCtrl+F
+MENU_GOTO         = Перейти до &рядка...\tCtrl+G
+MENU_BOOKMARK     = Перемкнути &закладку\tF2
+MENU_BOOKMARK_NEXT = Перейти до &закладки\tCtrl+F2
 MENU_PREFS        = &Параметри...
 PREF_TITLE        = Параметри
 PREF_SEC_APPEARANCE = Зовнішній вигляд
@@ -327,6 +331,16 @@ SCD_DELETE        = Видалити символ праворуч
 SCD_BACKSPACE     = Видалити символ ліворуч
 SCD_DEL_WORD_R    = Видалити слово праворуч від курсора
 SCD_DEL_WORD_L    = Видалити слово ліворуч від курсора
+SCF_GOTO_LINE     = Перейти до рядка
+SCF_BOOKMARK_TOGGLE = Вкл/викл закладку
+SCF_BOOKMARK_NEXT = Наступна закладка
+SCF_BOOKMARK_PREV = Попередня закладка
+SCD_GOTO_LINE     = Відкрити діалог Перейти до рядка
+SCD_BOOKMARK_TOGGLE = Встановити або зняти закладку на поточному рядку
+SCD_BOOKMARK_NEXT = Перейти до наступної закладки
+SCD_BOOKMARK_PREV = Перейти до попередньої закладки
+DLG_GOTO_TITLE    = Перейти до рядка
+DLG_GOTO_PROMPT   = Номер рядка:
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.

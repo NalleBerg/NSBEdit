@@ -1,4 +1,4 @@
-# NSBEdit locale file — de_DE (Deutsch)
+﻿# NSBEdit locale file — de_DE (Deutsch)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -22,7 +22,9 @@ MENU_REDO         = &Wiederholen\tCtrl+Y
 MENU_CUT          = &Ausschneiden\tCtrl+X
 MENU_COPY         = &Kopieren\tCtrl+C
 MENU_PASTE        = &Einfügen\tCtrl+V
-MENU_SELECTALL    = &Alles auswählen\tCtrl+A
+MENU_SELECTALL    = &Alles auswählen\tCtrl+AMENU_FIND         = &Suchen / Ersetzen...	Ctrl+FMENU_GOTO         = Gehe zu &Zeile...\tCtrl+G
+MENU_BOOKMARK     = &Lesezeichen umschalten\tF2
+MENU_BOOKMARK_NEXT = Zum &Lesezeichen\tCtrl+F2
 MENU_PREFS        = &Einstellungen...
 PREF_TITLE        = Einstellungen
 PREF_SEC_APPEARANCE = Erscheinungsbild
@@ -328,6 +330,16 @@ SCD_DELETE        = Zeichen rechts löschen
 SCD_BACKSPACE     = Zeichen links löschen
 SCD_DEL_WORD_R    = Wort rechts vom Cursor löschen
 SCD_DEL_WORD_L    = Wort links vom Cursor löschen
+SCF_GOTO_LINE     = Zu Zeile gehen
+SCF_BOOKMARK_TOGGLE = Lesezeichen setzen/löschen
+SCF_BOOKMARK_NEXT = Nächstes Lesezeichen
+SCF_BOOKMARK_PREV = Vorheriges Lesezeichen
+SCD_GOTO_LINE     = Zu-Zeile-Dialog öffnen
+SCD_BOOKMARK_TOGGLE = Lesezeichen in der aktuellen Zeile setzen oder löschen
+SCD_BOOKMARK_NEXT = Zum nächsten Lesezeichen springen
+SCD_BOOKMARK_PREV = Zum vorherigen Lesezeichen springen
+DLG_GOTO_TITLE    = Gehe zu Zeile
+DLG_GOTO_PROMPT   = Zeilennummer:
 
 # ── About dialog ──────────────────────────────────────────────────────────────
 # Trailing \n produces CR+LF in the RichEdit control.
