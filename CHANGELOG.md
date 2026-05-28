@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.05.28.16 (Fix: spell squiggle position; persist Mark Misspelled Words) - 28.05.2026 16:10
+
+- **Fix: spell squiggle X position**: Misspelled-word underlines were drawn shifted right of the actual word. Root cause: `GetWindowTextW` returns `\r\n` (two chars) per paragraph break, but `EM_POSFROMCHAR` counts each break as one char. Fixed by switching to `EM_GETTEXTEX` with `GT_RAWTEXT`, which returns the same single-`\r` representation RichEdit uses internally.
+- **Fix: spell squiggle Y zoom-tracking**: The squiggle stayed at a fixed pixel row when zooming in or out. Fixed by deriving actual rendered line height from `EM_POSFROMCHAR` on the next line (already zoom-adjusted) instead of scaling `GetTextMetrics` height manually.
+- **Fix: phantom full-width red line**: A word near a line-wrap boundary caused a squiggle to extend to the right edge of the control. Fixed by skipping errors whose start and end fall on different visual lines.
+- **Fix: "Mark Misspelled Words" state not persisted**: The toggle was reset to off on every restart. State is now saved to the settings DB (`spell_mark` key) on every toggle and restored on startup. All session-restored RTF tabs are immediately scanned so squiggles appear without needing to type anything.
+
 ## v2026.05.28.14 (Feature: native spell-check dialog; status bar line count; language menu) - 28.05.2026 14:24
 
 - **Feature: native spell-check dialog**: The plain `MessageBoxW`-based spell-check prompt has been replaced with a fully custom NSBEdit-style dialog. The dialog shows the misspelled word in bold, lists up to 10 suggestions in a listbox (double-click to apply), and provides six owner-draw buttons — **Ignore**, **Ignore All** (blue), **Add to Dictionary**, **Change**, **Change All** (green), and **Close** (red). Button widths are measured from the active locale strings so every language fits without clipping. All errors are collected upfront; a cumulative offset delta keeps replacement positions correct after earlier words are changed. Dark-mode aware throughout.

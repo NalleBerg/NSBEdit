@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.28.14**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.28.16**
 
 ## Download
 

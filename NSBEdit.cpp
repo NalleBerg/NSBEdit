@@ -5850,12 +5850,18 @@ static void Ne_RefreshSpellMarks(HWND hEdit, NeTabDoc* doc)
     const wchar_t* lang = Ne_GetDocSpellLang(doc);
     if (!Ne_GetSpellChecker(lang)) { InvalidateRect(hEdit, NULL, FALSE); return; }
 
-    // Get plain text from RichEdit
-    int len = GetWindowTextLengthW(hEdit);
+    // Get plain text from RichEdit using GT_RAWTEXT so paragraph breaks are
+    // single \r characters — matching the char positions EM_POSFROMCHAR uses.
+    // GetWindowTextW returns \r\n (2 chars per break) which shifts all positions.
+    int len = (int)SendMessageW(hEdit, WM_GETTEXTLENGTH, 0, 0);
     if (len <= 0) { InvalidateRect(hEdit, NULL, FALSE); return; }
     std::wstring text(len + 1, L'\0');
-    GetWindowTextW(hEdit, &text[0], len + 1);
-    text.resize(len);
+    GETTEXTEX gte = {};
+    gte.cb       = (DWORD)((len + 1) * sizeof(wchar_t));
+    gte.flags    = GT_RAWTEXT;
+    gte.codepage = 1200; // Unicode
+    int got = (int)SendMessageW(hEdit, EM_GETTEXTEX, (WPARAM)&gte, (LPARAM)&text[0]);
+    text.resize(got);
 
     IEnumSpellingError* pEnum = NULL;
     if (FAILED(s_spellChecker->Check(text.c_str(), &pEnum)) || !pEnum) {
@@ -5898,13 +5904,24 @@ static void Ne_DrawSpellSquiggles(HWND hEdit, HDC hdc)
         SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptEnd,   (LPARAM)range.second);
 
         if (ptStart.x == ptEnd.x && ptStart.y == ptEnd.y) continue; // hidden
-        if (ptStart.y != ptEnd.y) {
-            // Multi-line: just mark start to right edge
-            RECT rc; GetClientRect(hEdit, &rc);
-            ptEnd.x = rc.right - 4;
-            ptEnd.y = ptStart.y;
+        if (ptStart.y != ptEnd.y) continue; // word wraps across lines — skip
+
+        // Derive the actual rendered line height from EM_POSFROMCHAR so the
+        // squiggle tracks correctly at any zoom level without manual scaling.
+        int renderedLineH;
+        int lineNum = (int)SendMessageW(hEdit, EM_LINEFROMCHAR, (WPARAM)range.first, 0);
+        LONG nextIdx = (LONG)SendMessageW(hEdit, EM_LINEINDEX, (WPARAM)(lineNum + 1), 0);
+        if (nextIdx >= 0) {
+            POINTL ptNext = {};
+            SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptNext, (LPARAM)nextIdx);
+            renderedLineH = ptNext.y - ptStart.y;
+        } else {
+            renderedLineH = lineH * g_zoomRtf / 100; // last line fallback
         }
-        int y = ptStart.y + lineH - tm.tmDescent + 1; // just below baseline
+        // Place squiggle just below the baseline.
+        // tmDescent/tmHeight gives the descent fraction; apply to rendered height.
+        int scaledDescent = (lineH > 0) ? (renderedLineH * tm.tmDescent / lineH) : 0;
+        int y = ptStart.y + renderedLineH - scaledDescent + 1;
         for (int x = ptStart.x; x < ptEnd.x; x += 4) {
             MoveToEx(hdc, x,     y,     NULL);
             LineTo  (hdc, x + 2, y + 2);
@@ -12750,6 +12767,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // ── Spell check commands ────────────────────────────────────────────────
         if (wmId == IDM_SPELL_MARK) {
             s_spellMarkActive = !s_spellMarkActive;
+            NeProfiles_SetIntSetting("spell_mark", s_spellMarkActive ? 1 : 0);
             NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
             if (doc && doc->hEdit) {
                 if (s_spellMarkActive)
@@ -13712,6 +13730,8 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
         int dkEdVal = 0;
         NeProfiles_GetIntSetting("dark_editor",0, dkEdVal); g_darkEditor = (dkEdVal != 0);
         Checkbox_SetForceDark(g_darkMode);
+        int spellMarkVal = 0;
+        NeProfiles_GetIntSetting("spell_mark", 0, spellMarkVal); s_spellMarkActive = (spellMarkVal != 0);
     }
     Ne_LoadLocale();
 
@@ -13778,6 +13798,16 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     // ── Restore last session (installed version only, no command-line file) ───
     if ((!lpCmdLine || !*lpCmdLine) && NeProfiles_IsInstalled() && NeSession_HasData())
         Ne_SessionRestore(s_hwndMain);
+
+    // If spell marking was on, scan all restored tabs now.
+    if (s_spellMarkActive) {
+        int n = NeTabs_GetCount(s_hwndMain);
+        for (int i = 0; i < n; ++i) {
+            NeTabDoc* d = NeTabs_GetDocByIndex(s_hwndMain, i);
+            if (d && d->hEdit && Ne_DocIsRtf(d))
+                Ne_RefreshSpellMarks(d->hEdit, d);
+        }
+    }
 
     MSG msg;
     while (GetMessageW(&msg, NULL, 0, 0)) {

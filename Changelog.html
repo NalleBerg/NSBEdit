@@ -1,6 +1,15 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 28 May 2026 &mdash; v2026.05.28.14 (14:24)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 28 May 2026 &mdash; v2026.05.28.16 (16:10)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.28.16 (Fix: spell squiggle position; persist Mark Misspelled Words)</span></h3>
+<p><strong>Fix: spell squiggle position; persist Mark Misspelled Words state (28.05.2026, 16:10):</strong></p>
+<ul>
+<li><strong>Fix: spell squiggle X position:</strong> Misspelled-word underlines were drawn shifted right of the actual word. Root cause: <code>GetWindowTextW</code> returns <code>\r\n</code> (two chars) per paragraph break, but <code>EM_POSFROMCHAR</code> counts each break as one char. Fixed by switching to <code>EM_GETTEXTEX</code> with <code>GT_RAWTEXT</code>, which returns the same single-<code>\r</code> representation RichEdit uses internally so all character positions match exactly.</li>
+<li><strong>Fix: spell squiggle Y zoom-tracking:</strong> The squiggle stayed at its original pixel row when zooming in or out. Fixed by deriving the actual rendered line height from <code>EM_POSFROMCHAR</code> on the next line (which is already zoom-adjusted) instead of scaling <code>GetTextMetrics</code> height manually.</li>
+<li><strong>Fix: phantom full-width red line:</strong> A word near a line-wrap boundary caused a squiggle to be drawn from the word start all the way to the right edge of the control. Fixed by skipping any error whose start and end fall on different visual lines.</li>
+<li><strong>Fix: &ldquo;Mark Misspelled Words&rdquo; state not persisted:</strong> The menu toggle was reset to off every time the app was restarted. The state is now saved to the settings DB (<code>spell_mark</code> key) on every toggle and restored on startup. If the setting is on, all session-restored RTF tabs are immediately scanned so squiggles appear without requiring the user to type anything.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.28.14 (Feature: native spell-check dialog; status bar line count; language menu)</span></h3>
 <p><strong>Feature: native spell-check dialog; status bar line count; spell language menu improvements (28.05.2026, 14:24):</strong></p>

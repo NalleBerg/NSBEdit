@@ -210,9 +210,16 @@
                                                 Ne_LocaleToBcp47() fallback.
                                                 Ne_RefreshSpellMarks(hEdit, doc) —
                                                 populates s_spellErrors[hEdit] and
-                                                InvalidateRect. Ne_DrawSpellSquiggles —
+                                                InvalidateRect. Uses EM_GETTEXTEX
+                                                GT_RAWTEXT (single-\r line breaks)
+                                                so ISpellChecker char offsets match
+                                                EM_POSFROMCHAR positions exactly.
+                                                Ne_DrawSpellSquiggles —
                                                 called from WM_PAINT; red wavy underline
-                                                at baseline (font-metrics Y, not +14).
+                                                at baseline. Y derived from EM_POSFROMCHAR
+                                                on next line (zoom-adjusted automatically).
+                                                Words spanning two visual lines are skipped
+                                                (no phantom full-width line).
                                                 Ne_BuildSpellLangMenu() — rebuilds
                                                 s_hSpellLangMenu from the user's
                                                 Windows language list (HKCU\Control
