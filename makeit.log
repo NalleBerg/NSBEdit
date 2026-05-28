@@ -1,10 +1,10 @@
 ============================================================
-  NSBEdit Build  --  28.05.2026  16:25:29,10
+  NSBEdit Build  --  28.05.2026  16:43:10,06
 ============================================================
 
 [STEP 1/6] Prepare  --  version header  +  kill running instance
   ne_version.h  OK
-SUCCESS: The process "NSBEdit.exe" with PID 23892 has been terminated.
+SUCCESS: The process "NSBEdit.exe" with PID 25684 has been terminated.
   NSBEdit.exe killed  --  waiting 1 s for handles to release
 [STEP_DONE 1/6]
 
@@ -20,7 +20,7 @@ Thread model: mcf
 Supported LTO compression algorithms: zlib
 gcc version 15.2.0 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) 
 COLLECT_GCC_OPTIONS='-v' '-O2' '-D' 'SQLITE_THREADSAFE=0' '-D' 'SQLITE_DEFAULT_MEMSTATUS=0' '-c' '-o' 'sqlite3\sqlite3.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'sqlite3\'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -U_REENTRANT -D SQLITE_THREADSAFE=0 -D SQLITE_DEFAULT_MEMSTATUS=0 sqlite3\sqlite3.c -quiet -dumpdir sqlite3\ -dumpbase sqlite3.c -dumpbase-ext .c -mtune=core2 -march=nocona -O2 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccs2fjVM.s
+ C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -U_REENTRANT -D SQLITE_THREADSAFE=0 -D SQLITE_DEFAULT_MEMSTATUS=0 sqlite3\sqlite3.c -quiet -dumpdir sqlite3\ -dumpbase sqlite3.c -dumpbase-ext .c -mtune=core2 -march=nocona -O2 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\cc1JMFOJ.s
 GNU C23 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
 	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
 
@@ -38,82 +38,5 @@ ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev
 End of search list.
 Compiler executable checksum: cefa2ebeb692ed00af38e59eabc88438
 COLLECT_GCC_OPTIONS='-v' '-O2' '-D' 'SQLITE_THREADSAFE=0' '-D' 'SQLITE_DEFAULT_MEMSTATUS=0' '-c' '-o' 'sqlite3\sqlite3.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'sqlite3\'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o sqlite3\sqlite3.o C:\Users\NALLEB~1\AppData\Local\Temp\ccs2fjVM.s
+ C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o sqlite3\sqlite3.o C:\Users\NALLEB~1\AppData\Local\Temp\cc1JMFOJ.s
 GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COMPILER_PATH=C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../libexec/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/
-LIBRARY_PATH=C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../lib/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../
-COLLECT_GCC_OPTIONS='-v' '-O2' '-D' 'SQLITE_THREADSAFE=0' '-D' 'SQLITE_DEFAULT_MEMSTATUS=0' '-c' '-o' 'sqlite3\sqlite3.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'sqlite3\sqlite3.'
-[STEP_DONE 3/6]
-
-[STEP 4/6] QUIC stubs  --  quic_stubs.c  ->  quic_stubs.o
-Using built-in specs.
-COLLECT_GCC=gcc
-Target: x86_64-w64-mingw32
-Configured with: ../../../src/gcc-15.2.0/configure --host=x86_64-w64-mingw32 --build=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --prefix=/mingw64 --with-sysroot=/c/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64 --enable-host-shared --disable-multilib --enable-languages=c,c++,fortran,lto --enable-libstdcxx-time=yes --enable-threads=mcf --enable-libgomp --enable-libatomic --enable-lto --enable-graphite --enable-checking=release --enable-mingw-wildcard --enable-fully-dynamic-string --enable-version-specific-runtime-libs --enable-libstdcxx-filesystem-ts=yes --disable-libssp --disable-libstdcxx-pch --disable-libstdcxx-debug --enable-bootstrap --disable-rpath --disable-win32-registry --disable-nls --disable-werror --disable-symvers --with-gnu-as --with-gnu-ld --with-arch=nocona --with-tune=core2 --with-libiconv --with-system-zlib --with-gmp=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-mpfr=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-mpc=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-isl=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-pkgversion='x86_64-mcf-seh-rev0, Built by MinGW-Builds project' --with-bugurl=https://github.com/niXman/mingw-builds LD_FOR_TARGET=/c/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/bin/ld.exe --with-boot-ldflags='-pipe -fno-ident -L/c/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/opt/lib -L/c/buildroot/prerequisites/x86_64-zlib-static/lib -L/c/buildroot/prerequisites/x86_64-w64-mingw32-static/lib  -Wl,--disable-dynamicbase -static-libstdc++ -static-libgcc'
-Thread model: mcf
-Supported LTO compression algorithms: zlib
-gcc version 15.2.0 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) 
-COLLECT_GCC_OPTIONS='-v' '-O2' '-c' '-o' 'curl\lib\quic_stubs.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'curl\lib\'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -U_REENTRANT curl\lib\quic_stubs.c -quiet -dumpdir curl\lib\ -dumpbase quic_stubs.c -dumpbase-ext .c -mtune=core2 -march=nocona -O2 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccTpIhTw.s
-GNU C23 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: cefa2ebeb692ed00af38e59eabc88438
-COLLECT_GCC_OPTIONS='-v' '-O2' '-c' '-o' 'curl\lib\quic_stubs.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'curl\lib\'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o curl\lib\quic_stubs.o C:\Users\NALLEB~1\AppData\Local\Temp\ccTpIhTw.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COMPILER_PATH=C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../libexec/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/
-LIBRARY_PATH=C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../lib/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../
-COLLECT_GCC_OPTIONS='-v' '-O2' '-c' '-o' 'curl\lib\quic_stubs.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'curl\lib\quic_stubs.'
-[STEP_DONE 4/6]
-
-[STEP 5/6] Compile & link  --  NSBEdit.cpp + all sources  ->  NSBEdit.exe
-Using built-in specs.
-COLLECT_GCC=g++
-COLLECT_LTO_WRAPPER=C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/lto-wrapper.exe
-Target: x86_64-w64-mingw32
-Configured with: ../../../src/gcc-15.2.0/configure --host=x86_64-w64-mingw32 --build=x86_64-w64-mingw32 --target=x86_64-w64-mingw32 --prefix=/mingw64 --with-sysroot=/c/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64 --enable-host-shared --disable-multilib --enable-languages=c,c++,fortran,lto --enable-libstdcxx-time=yes --enable-threads=mcf --enable-libgomp --enable-libatomic --enable-lto --enable-graphite --enable-checking=release --enable-mingw-wildcard --enable-fully-dynamic-string --enable-version-specific-runtime-libs --enable-libstdcxx-filesystem-ts=yes --disable-libssp --disable-libstdcxx-pch --disable-libstdcxx-debug --enable-bootstrap --disable-rpath --disable-win32-registry --disable-nls --disable-werror --disable-symvers --with-gnu-as --with-gnu-ld --with-arch=nocona --with-tune=core2 --with-libiconv --with-system-zlib --with-gmp=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-mpfr=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-mpc=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-isl=/c/buildroot/prerequisites/x86_64-w64-mingw32-static --with-pkgversion='x86_64-mcf-seh-rev0, Built by MinGW-Builds project' --with-bugurl=https://github.com/niXman/mingw-builds LD_FOR_TARGET=/c/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/bin/ld.exe --with-boot-ldflags='-pipe -fno-ident -L/c/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/opt/lib -L/c/buildroot/prerequisites/x86_64-zlib-static/lib -L/c/buildroot/prerequisites/x86_64-w64-mingw32-static/lib  -Wl,--disable-dynamicbase -static-libstdc++ -static-libgcc'
-Thread model: mcf
-Supported LTO compression algorithms: zlib
-gcc version 15.2.0 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) 
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB NSBEdit.cpp -quiet -dumpdir NSBEdit- -dumpbase NSBEdit.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccbBXQIG.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff

@@ -113,7 +113,8 @@ bool NeProfiles_Init()
         "  word_wrap       INTEGER NOT NULL DEFAULT 1,"
         "  is_sci_tab      INTEGER NOT NULL DEFAULT 0,"
         "  caret_pos       INTEGER NOT NULL DEFAULT 0,"
-        "  scroll_line     INTEGER NOT NULL DEFAULT 0"
+        "  scroll_line     INTEGER NOT NULL DEFAULT 0,"
+        "  spell_lang      TEXT    NOT NULL DEFAULT ''"
         ");";
     char* err = nullptr;
     if (sqlite3_exec(s_db, schema, NULL, NULL, &err) != SQLITE_OK) {
@@ -145,7 +146,8 @@ bool NeProfiles_Init()
         "  word_wrap       INTEGER NOT NULL DEFAULT 1,"
         "  is_sci_tab      INTEGER NOT NULL DEFAULT 0,"
         "  caret_pos       INTEGER NOT NULL DEFAULT 0,"
-        "  scroll_line     INTEGER NOT NULL DEFAULT 0"
+        "  scroll_line     INTEGER NOT NULL DEFAULT 0,"
+        "  spell_lang      TEXT    NOT NULL DEFAULT ''"
         ")", NULL, NULL, NULL);
     // Migration: add was_modified to existing session_tabs (ignored if column already exists).
     sqlite3_exec(s_db,
@@ -163,6 +165,10 @@ bool NeProfiles_Init()
         NULL, NULL, NULL);
     sqlite3_exec(s_db,
         "ALTER TABLE session_tabs ADD COLUMN scroll_line INTEGER NOT NULL DEFAULT 0",
+        NULL, NULL, NULL);
+    // Migration: add per-tab spell language (ignored if already exists).
+    sqlite3_exec(s_db,
+        "ALTER TABLE session_tabs ADD COLUMN spell_lang TEXT NOT NULL DEFAULT ''",
         NULL, NULL, NULL);
     return true;
 }

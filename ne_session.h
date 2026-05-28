@@ -36,6 +36,7 @@ struct NeSessionTab {
     bool           isSciTab      = false;  // true = Scintilla (plain-text); false = RichEdit
     int            caretPos      = 0;      // caret character position
     int            scrollLine    = 0;      // first visible line number
+    std::wstring   spellLang;              // BCP-47 spell-check language (empty = use app default)
 };
 
 // ── API ───────────────────────────────────────────────────────────────────────

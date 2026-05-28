@@ -43,8 +43,8 @@ bool NeSession_Save(const std::vector<NeSessionTab>& tabs)
         "  ftp_remote_path, ftp_friendly,"
         "  content, content_is_rtf, is_active,"
         "  disk_time_lo, disk_time_hi, disk_size, was_modified,"
-        "  word_wrap, is_sci_tab, caret_pos, scroll_line)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        "  word_wrap, is_sci_tab, caret_pos, scroll_line, spell_lang)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
 
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) {
@@ -77,6 +77,8 @@ bool NeSession_Save(const std::vector<NeSessionTab>& tabs)
         sqlite3_bind_int   (stmt, 15, t.isSciTab   ? 1 : 0);
         sqlite3_bind_int   (stmt, 16, t.caretPos);
         sqlite3_bind_int   (stmt, 17, t.scrollLine);
+        auto sl = Nse_W2U(t.spellLang);
+        sqlite3_bind_text  (stmt, 18, sl.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_step(stmt);
     }
 
@@ -97,7 +99,7 @@ bool NeSession_Load(std::vector<NeSessionTab>& out)
         "       ftp_remote_path, ftp_friendly,"
         "       content, content_is_rtf, is_active,"
         "       disk_time_lo, disk_time_hi, disk_size, was_modified,"
-        "       word_wrap, is_sci_tab, caret_pos, scroll_line"
+        "       word_wrap, is_sci_tab, caret_pos, scroll_line, spell_lang"
         " FROM session_tabs ORDER BY sort_order";
 
     sqlite3_stmt* stmt = nullptr;
@@ -129,6 +131,8 @@ bool NeSession_Load(std::vector<NeSessionTab>& out)
         t.isSciTab     = sqlite3_column_int   (stmt, 14) != 0;
         t.caretPos     = sqlite3_column_int   (stmt, 15);
         t.scrollLine   = sqlite3_column_int   (stmt, 16);
+        const char* sl = (const char*)sqlite3_column_text(stmt, 17);
+        t.spellLang    = sl ? Nse_U2W(sl) : L"";
         out.push_back(std::move(t));
     }
 

@@ -7495,7 +7495,8 @@ static void Ne_SessionSave(HWND hwnd)
             t.diskSize   = (int64_t)doc->diskFileSize;
         }
 
-        // Per-tab editor state: type, word-wrap, caret position, scroll line.
+        // Per-tab editor state: type, word-wrap, caret position, scroll line, spell language.
+        t.spellLang = doc->spellLang;
         t.isSciTab = (doc->hSci && IsWindowVisible(doc->hSci));
         if (t.isSciTab) {
             t.wordWrap   = (SendMessageW(doc->hSci, SCI_GETWRAPMODE, 0, 0) != SC_WRAP_NONE);
@@ -7667,6 +7668,7 @@ static void Ne_SessionRestore(HWND hwnd)
 
         doc->path     = t.localPath;   // may be empty for untitled
         doc->modified = true;
+        doc->spellLang = t.spellLang;
         if (t.isFtp) {
             doc->isFtpFile       = true;
             doc->ftpProfileId    = t.ftpProfileId;
@@ -7756,6 +7758,7 @@ static void Ne_SessionRestore(HWND hwnd)
                         doc->ftpProfileId    = t.ftpProfileId;
                         doc->ftpRemotePath   = t.ftpRemotePath;
                         doc->ftpFriendlyName = t.ftpFriendly;
+                        doc->spellLang       = t.spellLang;
                     }
                     if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
                     Ne_UpdateToolbarMode(hwnd);
@@ -7847,6 +7850,10 @@ static void Ne_SessionRestore(HWND hwnd)
                     continue;
                 }
                 Ne_MruAdd(t.localPath);
+                if (!t.spellLang.empty()) {
+                    NeTabDoc* docL = NeTabs_GetActiveDoc(hwnd);
+                    if (docL) docL->spellLang = t.spellLang;
+                }
             }
             if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
             Ne_UpdateToolbarMode(hwnd);

@@ -1,12 +1,13 @@
 # Changelog
 
-## v2026.05.28.16 (Fix: spell squiggle position; persist Mark Misspelled Words; status bar truncation) - 28.05.2026 16:23
+## v2026.05.28.16 (Fix: spell squiggle position; persist Mark Misspelled Words; status bar truncation; per-doc spell language) - 28.05.2026 16:39
 
 - **Fix: spell squiggle X position**: Misspelled-word underlines were drawn shifted right of the actual word. Root cause: `GetWindowTextW` returns `\r\n` (two chars) per paragraph break, but `EM_POSFROMCHAR` counts each break as one char. Fixed by switching to `EM_GETTEXTEX` with `GT_RAWTEXT`, which returns the same single-`\r` representation RichEdit uses internally.
 - **Fix: spell squiggle Y zoom-tracking**: The squiggle stayed at a fixed pixel row when zooming in or out. Fixed by deriving actual rendered line height from `EM_POSFROMCHAR` on the next line (already zoom-adjusted) instead of scaling `GetTextMetrics` height manually.
 - **Fix: phantom full-width red line**: A word near a line-wrap boundary caused a squiggle to extend to the right edge of the control. Fixed by skipping errors whose start and end fall on different visual lines.
 - **Fix: "Mark Misspelled Words" state not persisted**: The toggle was reset to off on every restart. State is now saved to the settings DB (`spell_mark` key) on every toggle and restored on startup. All session-restored RTF tabs are immediately scanned so squiggles appear without needing to type anything.
 - **Fix: status bar left section truncated on large files**: The Words/Chars/Lines segment was clipped to one-third of the window width (`rc.right / 3`), which is not enough when any count reaches five or more digits. The section now measures its own text with `GetTextExtentPoint32W` and uses the actual pixel width as the clip boundary, so the full string is always visible.
+- **Feature: per-document spell-check language persisted across sessions**: The language chosen in *Spelling → Language* is stored in `doc->spellLang` (BCP-47) and saved to the `session_tabs.spell_lang` DB column on every periodic snapshot and at clean exit. On restore the language is applied back to the document, so each document keeps its own language across restarts and crashes. Works for saved files, FTP files, and unsaved buffers.
 
 ## v2026.05.28.14 (Feature: native spell-check dialog; status bar line count; language menu) - 28.05.2026 14:24
 
