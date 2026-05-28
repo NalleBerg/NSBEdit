@@ -106,6 +106,20 @@ SB_SAVED                = Tallennettu
 SB_UNSAVED              = Tallentamaton
 SB_LN                   = Rv
 SB_COL                  = Sar
+SB_LINES                = Rivit
+MENU_SPELLING           = &Oikoluku
+MENU_SPELL_MARK         = &Merkitse kirjoitusvirheet
+MENU_SPELL_CHECK        = &Oikoluku...\tF7
+MENU_SPELL_LANGUAGE     = &Kieli
+DLG_SPELL_TITLE         = Oikoluku
+DLG_SPELL_MISSPELLED    = Virheellinen sana:
+DLG_SPELL_SUGGESTIONS   = Ehdotukset:
+DLG_SPELL_NOTFOUND      = Oikoluku valmis - ei virheitä
+BTN_SPELL_IGNORE        = Ohita
+BTN_SPELL_IGNOREALL     = Ohita kaikki
+BTN_SPELL_ADD           = Lisää sanakirjaan
+BTN_SPELL_CHANGE        = Muuta
+BTN_SPELL_CHANGEALL     = Muuta kaikki
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Lihavointi  (Ctrl+B)

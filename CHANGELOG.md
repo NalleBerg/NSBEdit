@@ -1,5 +1,13 @@
 # Changelog
 
+## v2026.05.28.14 (Feature: native spell-check dialog; status bar line count; language menu) - 28.05.2026 14:24
+
+- **Feature: native spell-check dialog**: The plain `MessageBoxW`-based spell-check prompt has been replaced with a fully custom NSBEdit-style dialog. The dialog shows the misspelled word in bold, lists up to 10 suggestions in a listbox (double-click to apply), and provides six owner-draw buttons — **Ignore**, **Ignore All** (blue), **Add to Dictionary**, **Change**, **Change All** (green), and **Close** (red). Button widths are measured from the active locale strings so every language fits without clipping. All errors are collected upfront; a cumulative offset delta keeps replacement positions correct after earlier words are changed. Dark-mode aware throughout.
+- **Feature: word highlighting and viewport scroll**: As the dialog advances to each misspelled word it selects that word in the editor (`EM_EXSETSEL`) and scrolls it into view (`EM_SCROLLCARET`), so the context of each error is always visible behind the dialog.
+- **Feature: status bar line count**: The status bar now shows **Lines: N** alongside Words and Chars, updated on every text change via `EM_GETLINECOUNT`. New locale key `SB_LINES` added to all 15 locale files.
+- **Fix: spell language menu shows only installed checkers**: The Language sub-menu is now built from the user's own Windows language list (`HKCU\Control Panel\International\User Profile\Languages`), filtered by `ISpellCheckerFactory::IsSupported`. Previously it enumerated every language Windows could theoretically support, showing dozens of English regional variants even when only one dictionary was installed.
+- **Fix: spell language menu labels capitalised, no BCP-47 tag**: Language names now show the native display name with a capital first letter (e.g. *Norsk bokmål*, *English*, *Dansk*). The BCP-47 tag is stored in a parallel `s_spellLangTags` vector used internally; it no longer appears in the menu label.
+
 ## v2026.05.28.12 (Feature: Go to Line; Bookmarks) - 28.05.2026 12:15
 
 - **Feature: Go to Line (Ctrl+G)**: New *Edit → Go to Line…* command (also Ctrl+G anywhere). A compact input dialog asks for a line number; the editor scrolls to that line and places the caret there. The number is clamped to the last line so any out-of-range value goes to the end of the document. Works in all Scintilla (code) tabs. Ctrl+G is intercepted globally in the message pump — it fires even when the editor does not have keyboard focus.

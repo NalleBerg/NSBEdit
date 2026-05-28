@@ -108,6 +108,20 @@ SB_SAVED                = Vurkejuvvon
 SB_UNSAVED              = Ii vurkejuvvon
 SB_LN                   = Ln
 SB_COL                  = Kol
+SB_LINES                = Linnjit
+MENU_SPELLING           = &Stávvaleapmi
+MENU_SPELL_MARK         = &Merkke stávvalmeattáhusaid
+MENU_SPELL_CHECK        = &Stávvalprøven...\tF7
+MENU_SPELL_LANGUAGE     = &Giella
+DLG_SPELL_TITLE         = Stávvalprøven
+DLG_SPELL_MISSPELLED    = Čállinmeattáhus:
+DLG_SPELL_SUGGESTIONS   = Evttohusaid:
+DLG_SPELL_NOTFOUND      = Stávvalprøven gárvojuvvui - ii gávdnan meattáhusaid
+BTN_SPELL_IGNORE        = Sii
+BTN_SPELL_IGNOREALL     = Sii buot
+BTN_SPELL_ADD           = Lasit sátnegirjái
+BTN_SPELL_CHANGE        = Rievdadit
+BTN_SPELL_CHANGEALL     = Rievdadit buot
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Buoiddes  (Ctrl+B)

@@ -8,12 +8,14 @@
 struct NeStatusBarState {
     int  words    = 0;
     int  chars    = 0;
+    int  lines    = 0;
     bool modified = false;
     int  line     = 0;  // 1-based; 0 = hidden
     int  col      = 0;  // 1-based
     bool darkMode = false;
     std::wstring wordsLabel   = L"Words";
     std::wstring charsLabel   = L"Chars";
+    std::wstring linesLabel   = L"Lines";
     std::wstring savedLabel   = L"Saved";
     std::wstring unsavedLabel = L"Unsaved";
     std::wstring lineLabel    = L"Ln";
@@ -88,11 +90,12 @@ static LRESULT CALLBACK NeStatusBar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, 
         HFONT oldFont = st->hFont ? (HFONT)SelectObject(hdc, st->hFont) : NULL;
         SetBkMode(hdc, TRANSPARENT);
 
-        // Left side: Words: N    Chars: N
-        wchar_t buf[128];
-        swprintf_s(buf, L"%s: %d    %s: %d",
+        // Left side: Words: N    Chars: N    Lines: N
+        wchar_t buf[192];
+        swprintf_s(buf, L"%s: %d    %s: %d    %s: %d",
             st->wordsLabel.c_str(), st->words,
-            st->charsLabel.c_str(), st->chars);
+            st->charsLabel.c_str(), st->chars,
+            st->linesLabel.c_str(), st->lines);
         RECT leftRc = { rc.left + S(10), rc.top + 1, rc.right / 3, rc.bottom };
         SetTextColor(hdc, st->darkMode ? RGB(180, 180, 180) : RGB(60, 60, 60));
         DrawTextW(hdc, buf, -1, &leftRc,
@@ -177,13 +180,14 @@ HWND NeStatusBar_Create(HWND hwndParent, int id, HINSTANCE hInst)
         hwndParent, (HMENU)(UINT_PTR)id, hInst, NULL);
 }
 
-void NeStatusBar_Update(HWND hBar, int words, int chars, bool modified)
+void NeStatusBar_Update(HWND hBar, int words, int chars, int lines, bool modified)
 {
     if (!hBar) return;
     NeStatusBarState* st = (NeStatusBarState*)GetWindowLongPtrW(hBar, GWLP_USERDATA);
     if (!st) return;
     st->words    = words;
     st->chars    = chars;
+    st->lines    = lines;
     st->modified = modified;
     InvalidateRect(hBar, NULL, FALSE);
 }
@@ -206,6 +210,7 @@ int NeStatusBar_GetHeight(HWND hBar)
 
 void NeStatusBar_SetLabels(HWND hBar,
     const wchar_t* wordsLabel, const wchar_t* charsLabel,
+    const wchar_t* linesLabel,
     const wchar_t* savedLabel, const wchar_t* unsavedLabel)
 {
     if (!hBar) return;
@@ -213,6 +218,7 @@ void NeStatusBar_SetLabels(HWND hBar,
     if (!st) return;
     if (wordsLabel)   st->wordsLabel   = wordsLabel;
     if (charsLabel)   st->charsLabel   = charsLabel;
+    if (linesLabel)   st->linesLabel   = linesLabel;
     if (savedLabel)   st->savedLabel   = savedLabel;
     if (unsavedLabel) st->unsavedLabel = unsavedLabel;
     InvalidateRect(hBar, NULL, FALSE);

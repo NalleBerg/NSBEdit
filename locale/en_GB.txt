@@ -107,6 +107,20 @@ SB_SAVED                = Saved
 SB_UNSAVED              = Unsaved
 SB_LN                   = Ln
 SB_COL                  = Col
+SB_LINES                = Lines
+MENU_SPELLING           = S&pelling
+MENU_SPELL_MARK         = &Mark Misspelled Words
+MENU_SPELL_CHECK        = &Spell Check...\tF7
+MENU_SPELL_LANGUAGE     = &Language
+DLG_SPELL_TITLE         = Spell Check
+DLG_SPELL_MISSPELLED    = Misspelled word:
+DLG_SPELL_SUGGESTIONS   = Suggestions:
+DLG_SPELL_NOTFOUND      = Spell check complete - no errors found
+BTN_SPELL_IGNORE        = Ignore
+BTN_SPELL_IGNOREALL     = Ignore All
+BTN_SPELL_ADD           = Add to Dictionary
+BTN_SPELL_CHANGE        = Change
+BTN_SPELL_CHANGEALL     = Change All
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Bold  (Ctrl+B)

@@ -106,6 +106,20 @@ SB_SAVED                = Opgeslagen
 SB_UNSAVED              = Niet opgeslagen
 SB_LN                   = Rg
 SB_COL                  = Ko
+SB_LINES                = Regels
+MENU_SPELLING           = &Spelling
+MENU_SPELL_MARK         = &Spelfouten markeren
+MENU_SPELL_CHECK        = &Spellingcontrole...\tF7
+MENU_SPELL_LANGUAGE     = &Taal
+DLG_SPELL_TITLE         = Spellingcontrole
+DLG_SPELL_MISSPELLED    = Fout gespeld woord:
+DLG_SPELL_SUGGESTIONS   = Suggesties:
+DLG_SPELL_NOTFOUND      = Spellingcontrole voltooid - geen fouten gevonden
+BTN_SPELL_IGNORE        = Negeren
+BTN_SPELL_IGNOREALL     = Alles negeren
+BTN_SPELL_ADD           = Toevoegen aan woordenboek
+BTN_SPELL_CHANGE        = Wijzigen
+BTN_SPELL_CHANGEALL     = Alles wijzigen
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Vet  (Ctrl+B)

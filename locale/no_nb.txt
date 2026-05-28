@@ -108,6 +108,20 @@ SB_SAVED                = Lagret
 SB_UNSAVED              = Ulagret
 SB_LN                   = Ln
 SB_COL                  = Kol
+SB_LINES                = Linjer
+MENU_SPELLING           = S&tavekontroll
+MENU_SPELL_MARK         = &Merk feilstavede ord
+MENU_SPELL_CHECK        = &Stavekontroll...\tF7
+MENU_SPELL_LANGUAGE     = &Språk
+DLG_SPELL_TITLE         = Stavekontroll
+DLG_SPELL_MISSPELLED    = Feilstavet ord:
+DLG_SPELL_SUGGESTIONS   = Forslag:
+DLG_SPELL_NOTFOUND      = Stavekontroll fullført - ingen feil funnet
+BTN_SPELL_IGNORE        = Ignorer
+BTN_SPELL_IGNOREALL     = Ignorer alle
+BTN_SPELL_ADD           = Legg til i ordbok
+BTN_SPELL_CHANGE        = Endre
+BTN_SPELL_CHANGEALL     = Endre alle
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Fet  (Ctrl+B)

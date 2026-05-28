@@ -106,6 +106,20 @@ SB_SAVED                = Gespeichert
 SB_UNSAVED              = Nicht gespeichert
 SB_LN                   = Zl
 SB_COL                  = Sp
+SB_LINES                = Zeilen
+MENU_SPELLING           = R&echtschreibung
+MENU_SPELL_MARK         = &Falsch geschriebene Wörter markieren
+MENU_SPELL_CHECK        = &Rechtschreibprüfung...\tF7
+MENU_SPELL_LANGUAGE     = &Sprache
+DLG_SPELL_TITLE         = Rechtschreibprüfung
+DLG_SPELL_MISSPELLED    = Falsch geschriebenes Wort:
+DLG_SPELL_SUGGESTIONS   = Vorschläge:
+DLG_SPELL_NOTFOUND      = Rechtschreibprüfung abgeschlossen - keine Fehler gefunden
+BTN_SPELL_IGNORE        = Ignorieren
+BTN_SPELL_IGNOREALL     = Alle ignorieren
+BTN_SPELL_ADD           = Zum Wörterbuch hinzufügen
+BTN_SPELL_CHANGE        = Ändern
+BTN_SPELL_CHANGEALL     = Alle ändern
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Fett  (Ctrl+B)

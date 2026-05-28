@@ -106,6 +106,20 @@ SB_SAVED                = Sparad
 SB_UNSAVED              = Osparad
 SB_LN                   = Rad
 SB_COL                  = Kol
+SB_LINES                = Rader
+MENU_SPELLING           = &Stavning
+MENU_SPELL_MARK         = &Markera felstavade ord
+MENU_SPELL_CHECK        = &Stavningskontroll...\tF7
+MENU_SPELL_LANGUAGE     = &Språk
+DLG_SPELL_TITLE         = Stavningskontroll
+DLG_SPELL_MISSPELLED    = Felstavat ord:
+DLG_SPELL_SUGGESTIONS   = Förslag:
+DLG_SPELL_NOTFOUND      = Stavningskontroll klar - inga fel hittades
+BTN_SPELL_IGNORE        = Ignorera
+BTN_SPELL_IGNOREALL     = Ignorera alla
+BTN_SPELL_ADD           = Lägg till i ordlista
+BTN_SPELL_CHANGE        = Ändra
+BTN_SPELL_CHANGEALL     = Ändra alla
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Fetstil  (Ctrl+B)

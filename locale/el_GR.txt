@@ -104,6 +104,20 @@ SB_SAVED                = Αποθηκευμένο
 SB_UNSAVED              = Μη αποθηκευμένο
 SB_LN                   = Γρ
 SB_COL                  = Στ
+SB_LINES                = Γραμμές
+MENU_SPELLING           = &Ορθογραφία
+MENU_SPELL_MARK         = &Σήμανση ορθογραφικών σφαλμάτων
+MENU_SPELL_CHECK        = &Ορθογραφικός έλεγχος...\tF7
+MENU_SPELL_LANGUAGE     = &Γλώσσα
+DLG_SPELL_TITLE         = Ορθογραφικός έλεγχος
+DLG_SPELL_MISSPELLED    = Λάθος γραμμένη λέξη:
+DLG_SPELL_SUGGESTIONS   = Προτάσεις:
+DLG_SPELL_NOTFOUND      = Ο ορθογραφικός έλεγχος ολοκληρώθηκε - δεν βρέθηκαν σφάλματα
+BTN_SPELL_IGNORE        = Παράβλεψη
+BTN_SPELL_IGNOREALL     = Παράβλεψη όλων
+BTN_SPELL_ADD           = Προσθήκη στο λεξικό
+BTN_SPELL_CHANGE        = Αλλαγή
+BTN_SPELL_CHANGEALL     = Αλλαγή όλων
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Έντονα  (Ctrl+B)

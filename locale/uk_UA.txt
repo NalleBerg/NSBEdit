@@ -107,6 +107,20 @@ SB_SAVED                = Збережено
 SB_UNSAVED              = Не збережено
 SB_LN                   = Рд
 SB_COL                  = Ст
+SB_LINES                = Рядки
+MENU_SPELLING           = &Правопис
+MENU_SPELL_MARK         = &Позначити помилки
+MENU_SPELL_CHECK        = &Перевірка правопису...\tF7
+MENU_SPELL_LANGUAGE     = &Мова
+DLG_SPELL_TITLE         = Перевірка правопису
+DLG_SPELL_MISSPELLED    = Слово з помилкою:
+DLG_SPELL_SUGGESTIONS   = Пропозиції:
+DLG_SPELL_NOTFOUND      = Перевірка завершена — помилок не знайдено
+BTN_SPELL_IGNORE        = Ігнорувати
+BTN_SPELL_IGNOREALL     = Ігнорувати всі
+BTN_SPELL_ADD           = Додати до словника
+BTN_SPELL_CHANGE        = Замінити
+BTN_SPELL_CHANGEALL     = Замінити всі
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Жирний  (Ctrl+B)

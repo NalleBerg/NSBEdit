@@ -106,6 +106,20 @@ SB_SAVED                = Guardado
 SB_UNSAVED              = Sin guardar
 SB_LN                   = Ln
 SB_COL                  = Col
+SB_LINES                = Líneas
+MENU_SPELLING           = &Ortografía
+MENU_SPELL_MARK         = &Marcar palabras mal escritas
+MENU_SPELL_CHECK        = &Revisión ortográfica...\tF7
+MENU_SPELL_LANGUAGE     = &Idioma
+DLG_SPELL_TITLE         = Revisión ortográfica
+DLG_SPELL_MISSPELLED    = Palabra mal escrita:
+DLG_SPELL_SUGGESTIONS   = Sugerencias:
+DLG_SPELL_NOTFOUND      = Revisión ortográfica completa - no se encontraron errores
+BTN_SPELL_IGNORE        = Ignorar
+BTN_SPELL_IGNOREALL     = Ignorar todo
+BTN_SPELL_ADD           = Agregar al diccionario
+BTN_SPELL_CHANGE        = Cambiar
+BTN_SPELL_CHANGEALL     = Cambiar todo
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Negrita  (Ctrl+B)

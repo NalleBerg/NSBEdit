@@ -31,6 +31,8 @@ struct NeTabDoc {
     std::wstring ftpFriendlyName;            // display name of the server (for tooltip)
     // ── Per-tab editor state (saved/restored with session) ───────────────────
     bool         wordWrap           = true;  // word-wrap on/off for this tab
+    // ── Spell check ──────────────────────────────────────────────────────────
+    std::wstring spellLang;  // BCP-47 tag (e.g. L"en-GB"); empty = use GUI locale default
 };
 
 struct NeTabsCreateParams {

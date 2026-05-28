@@ -106,6 +106,20 @@ SB_SAVED                = Gemt
 SB_UNSAVED              = Ikke gemt
 SB_LN                   = Ln
 SB_COL                  = Kol
+SB_LINES                = Linjer
+MENU_SPELLING           = S&tavning
+MENU_SPELL_MARK         = &Markér stavefejl
+MENU_SPELL_CHECK        = &Stavekontrol...\tF7
+MENU_SPELL_LANGUAGE     = &Sprog
+DLG_SPELL_TITLE         = Stavekontrol
+DLG_SPELL_MISSPELLED    = Forkert stavet ord:
+DLG_SPELL_SUGGESTIONS   = Forslag:
+DLG_SPELL_NOTFOUND      = Stavekontrol afsluttet - ingen fejl fundet
+BTN_SPELL_IGNORE        = Ignorer
+BTN_SPELL_IGNOREALL     = Ignorer alle
+BTN_SPELL_ADD           = Tilføj til ordbog
+BTN_SPELL_CHANGE        = Ret
+BTN_SPELL_CHANGEALL     = Ret alle
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Fed  (Ctrl+B)

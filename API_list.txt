@@ -199,6 +199,50 @@
                                                 updated live in SCN_UPDATEUI: "<!--"
                                                 when cursor in HTML region, "//" in PHP
                                                 region or all other languages.
+                                                Spell check (Windows ISpellChecker COM
+                                                API, Windows 8+): s_spellFactory
+                                                (ISpellCheckerFactory*), s_spellChecker
+                                                (ISpellChecker*), s_spellCheckerLang.
+                                                Ne_GetSpellChecker(lang) — lazy-init
+                                                factory + checker for the given BCP-47
+                                                tag. Ne_GetDocSpellLang(doc) — returns
+                                                doc->spellLang if set, else
+                                                Ne_LocaleToBcp47() fallback.
+                                                Ne_RefreshSpellMarks(hEdit, doc) —
+                                                populates s_spellErrors[hEdit] and
+                                                InvalidateRect. Ne_DrawSpellSquiggles —
+                                                called from WM_PAINT; red wavy underline
+                                                at baseline (font-metrics Y, not +14).
+                                                Ne_BuildSpellLangMenu() — rebuilds
+                                                s_hSpellLangMenu from the user's
+                                                Windows language list (HKCU\Control
+                                                Panel\International\User Profile\
+                                                Languages) filtered by IsSupported;
+                                                labels show native name capitalised,
+                                                no BCP-47 tag; parallel s_spellLangTags
+                                                vector maps menu position → BCP-47 tag.
+                                                Ne_ShowSpellDialog(hwnd, doc) — native
+                                                NSBEdit-style spell-check dialog:
+                                                collects all errors upfront, shows
+                                                misspelled word (bold) + suggestions
+                                                listbox; six owner-draw buttons:
+                                                Ignore / Ignore All (blue), Add to
+                                                Dictionary / Change / Change All (green),
+                                                Close (red). Button widths measured from
+                                                locale strings via Ne_MeasureButtonWidth.
+                                                Advances through errors with
+                                                EM_EXSETSEL + EM_SCROLLCARET (highlight
+                                                + viewport scroll). Cumulative
+                                                textOffset delta keeps positions correct
+                                                after replacements. Dark-mode aware
+                                                (Ne_DlgBgBrush, Ne_DlgCtlColor,
+                                                custom WM_CTLCOLORLISTBOX).
+                                                IDM range: 350-352 (spell commands),
+                                                400-449 (spell languages).
+                                                Ne_UpdateSpellMenuVisibility(hwnd) —
+                                                grays the top-level Stavekontroll menu
+                                                when the active doc is not RTF; called
+                                                from Ne_UpdateToolbarMode.
                                                 Language menu on RichEdit tab converts
                                                 tab to Scintilla on demand (plain text
                                                 extracted, Scintilla created, RichEdit
@@ -436,13 +480,19 @@
                                                 save-prompt flow).
 
   ne_statusbar.h / ne_statusbar.cpp             Custom owner-drawn status bar module.
-                                                Left: Words: N  Chars: N in bold 12pt.
-                                                Right: shell32 icon + Saved (index 294,
-                                                green checkmark) or Unsaved (index 131,
-                                                red X). Updates via NeStatusBar_Update().
+                                                Left: Words: N  Chars: N  Lines: N in
+                                                bold 12pt. Right: shell32 icon + Saved
+                                                (index 294, green checkmark) or Unsaved
+                                                (index 131, red X).
+                                                NeStatusBar_Update(hBar, words, chars,
+                                                lines, modified) — 5-param signature;
+                                                lines from EM_GETLINECOUNT on every
+                                                EN_CHANGE. Updates via NeStatusBar_Update().
                                                 Height: S(22). Registered as window class
                                                 "NSBEditStatusBar". Labels fully localized
                                                 via NeStatusBar_SetLabels().
+                                                Locale keys: SB_WORDS, SB_CHARS,
+                                                SB_LINES, SB_LN, SB_COL.
                                                 NeStatusBar_SetDarkMode(hBar, bool dark)
                                                 — switches status bar between light
                                                 (system colors) and dark (RGB(25,26,27)

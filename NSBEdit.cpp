@@ -37,6 +37,7 @@
 #include "ne_ftp.h"
 #include "ne_session.h"
 #include "rtf2html/ne_rtf2html_lib.h"
+#include <spellcheck.h>
 // Scintilla + Lexilla (statically linked)
 #include "ILexer.h"
 #include "Scintilla.h"
@@ -65,6 +66,12 @@
 #define IDM_GOTO            118
 #define IDM_BOOKMARK        119
 #define IDM_BOOKMARK_NEXT   200
+// Spell check menu IDs
+#define IDM_SPELL_MARK       350   // Toggle "Mark Misspelled Words"
+#define IDM_SPELL_CHECK      351   // "Spell Check..."
+#define IDM_SPELL_LANG_BASE  400   // 400..449 — up to 50 spell languages
+// Timer IDs
+#define NE_TIMER_SPELL       11    // 400ms debounce after EN_CHANGE
 #define IDR_LOCALE_EN_GB    10
 #define IDR_LOCALE_NO_NB    11
 #define IDR_LOCALE_IS_IS    14
@@ -178,6 +185,17 @@ enum class NeEncoding {
 #define IDC_NE_SAVE_FTP         264   // toolbar Save to FTP button
 #define IDC_NE_PREVIEW          265   // toolbar Preview online button
 #define IDC_NE_COMMENT          266   // Comment / Uncomment  (Scintilla only)
+// ── Spell-check dialog controls ───────────────────────────────────────────────
+#define IDC_SPELL_WORD_LBL      300   // "Misspelled word:" label
+#define IDC_SPELL_WORD_VAL      301   // the misspelled word value (static)
+#define IDC_SPELL_SUG_LBL       302   // "Suggestions:" label
+#define IDC_SPELL_SUGLIST       303   // listbox of suggestions
+#define IDC_SPELL_IGNORE        304
+#define IDC_SPELL_IGNOREALL     305
+#define IDC_SPELL_ADD           306
+#define IDC_SPELL_CHANGE        307
+#define IDC_SPELL_CHANGEALL     308
+#define IDC_SPELL_CLOSE         309
 
 // ── Timer IDs (main window) ───────────────────────────────────────────────────
 #define NE_TIMER_SESSION        10    // 60-second autosave of session state
@@ -326,6 +344,17 @@ static HMENU s_hLangMenu   = NULL;
 static HMENU s_hFtpMenu    = NULL;
 static HMENU s_hLocaleMenu = NULL;
 static HMENU s_hRecentMenu = NULL;
+
+// ── Spell check globals ───────────────────────────────────────────────────────
+static bool s_spellMarkActive  = false;
+static HMENU s_hSpellMenu      = NULL;
+static HMENU s_hSpellLangMenu  = NULL;
+static ISpellCheckerFactory* s_spellFactory  = NULL;
+static ISpellChecker*        s_spellChecker  = NULL;
+static std::wstring          s_spellCheckerLang;  // BCP-47 of s_spellChecker
+static std::vector<std::wstring> s_spellLangTags;  // parallel to menu positions
+// Per-edit-control error ranges: map hEdit → vector of (start, end) char offsets
+static std::map<HWND, std::vector<std::pair<int,int>>> s_spellErrors;
 
 // ── Most-Recently-Used (MRU) file list ────────────────────────────────────────
 static std::vector<std::wstring> s_recentFiles; // most recent first, max IDM_RECENT_MAX
@@ -2423,7 +2452,13 @@ static void Ne_UpdateStatusText(HWND hwnd)
         }
     }
     bool modified = doc ? doc->modified : false;
-    NeStatusBar_Update(hSb, words, chars, modified);
+    int lines = 0;
+    if (doc && doc->hSci) {
+        lines = (int)SendMessageW(doc->hSci, SCI_GETLINECOUNT, 0, 0);
+    } else if (doc && doc->hEdit) {
+        lines = (int)SendMessageW(doc->hEdit, EM_GETLINECOUNT, 0, 0);
+    }
+    NeStatusBar_Update(hSb, words, chars, lines, modified);
 
     // Line / Col from caret position
     int caretLine = 0, caretCol = 0;
@@ -5747,6 +5782,623 @@ static bool Ne_IsRtf(const std::string& bytes)
 
 // ── Encoding helpers ──────────────────────────────────────────────────────────
 
+// ── Spell check helpers ───────────────────────────────────────────────────────
+
+// Map g_localeId → BCP-47 tag for the spell checker.
+static const wchar_t* Ne_LocaleToBcp47()
+{
+    extern int g_localeId;
+    static const wchar_t* tags[] = {
+        L"en-GB",  // 0
+        L"nb-NO",  // 1
+        L"is-IS",  // 2
+        L"sv-SE",  // 3
+        L"da-DK",  // 4
+        L"fi-FI",  // 5
+        L"de-DE",  // 6
+        L"fr-FR",  // 7
+        L"es-ES",  // 8
+        L"uk-UA",  // 9
+        L"el-GR",  // 10
+        L"pt-PT",  // 11
+        L"nl-NL",  // 12
+        L"nl-BE",  // 13
+        L"se-NO",  // 14
+    };
+    int id = g_localeId;
+    if (id < 0 || id >= (int)(sizeof(tags)/sizeof(tags[0]))) id = 0;
+    return tags[id];
+}
+
+// Get or refresh the ISpellChecker for the given BCP-47 language.
+// Returns true on success.
+static bool Ne_GetSpellChecker(const wchar_t* lang)
+{
+    if (!s_spellFactory) {
+        if (FAILED(CoCreateInstance(
+            __uuidof(SpellCheckerFactory), NULL, CLSCTX_INPROC_SERVER,
+            IID_PPV_ARGS(&s_spellFactory)))) {
+            s_spellFactory = NULL;
+            return false;
+        }
+    }
+    if (s_spellChecker && s_spellCheckerLang == lang) return true;
+    if (s_spellChecker) { s_spellChecker->Release(); s_spellChecker = NULL; }
+    BOOL supported = FALSE;
+    if (FAILED(s_spellFactory->IsSupported(lang, &supported)) || !supported) return false;
+    if (FAILED(s_spellFactory->CreateSpellChecker(lang, &s_spellChecker))) {
+        s_spellChecker = NULL; return false;
+    }
+    s_spellCheckerLang = lang;
+    return true;
+}
+
+// Get the effective spell language for a document tab.
+static const wchar_t* Ne_GetDocSpellLang(NeTabDoc* doc)
+{
+    if (doc && !doc->spellLang.empty()) return doc->spellLang.c_str();
+    return Ne_LocaleToBcp47();
+}
+
+// Check the text of hEdit and populate s_spellErrors[hEdit].
+static void Ne_RefreshSpellMarks(HWND hEdit, NeTabDoc* doc)
+{
+    s_spellErrors[hEdit].clear();
+    if (!s_spellMarkActive) { InvalidateRect(hEdit, NULL, FALSE); return; }
+    if (!doc || !doc->hEdit) { InvalidateRect(hEdit, NULL, FALSE); return; }
+
+    const wchar_t* lang = Ne_GetDocSpellLang(doc);
+    if (!Ne_GetSpellChecker(lang)) { InvalidateRect(hEdit, NULL, FALSE); return; }
+
+    // Get plain text from RichEdit
+    int len = GetWindowTextLengthW(hEdit);
+    if (len <= 0) { InvalidateRect(hEdit, NULL, FALSE); return; }
+    std::wstring text(len + 1, L'\0');
+    GetWindowTextW(hEdit, &text[0], len + 1);
+    text.resize(len);
+
+    IEnumSpellingError* pEnum = NULL;
+    if (FAILED(s_spellChecker->Check(text.c_str(), &pEnum)) || !pEnum) {
+        InvalidateRect(hEdit, NULL, FALSE); return;
+    }
+    ISpellingError* pErr = NULL;
+    while (pEnum->Next(&pErr) == S_OK) {
+        ULONG start = 0, errLen = 0;
+        pErr->get_StartIndex(&start);
+        pErr->get_Length(&errLen);
+        s_spellErrors[hEdit].push_back({ (int)start, (int)(start + errLen) });
+        pErr->Release();
+    }
+    pEnum->Release();
+    InvalidateRect(hEdit, NULL, FALSE);
+}
+
+// Draw red wavy underlines for spelling errors over the RichEdit.
+static void Ne_DrawSpellSquiggles(HWND hEdit, HDC hdc)
+{
+    if (!s_spellMarkActive) return;
+    auto it = s_spellErrors.find(hEdit);
+    if (it == s_spellErrors.end() || it->second.empty()) return;
+
+    // Measure actual line height from the edit's font
+    HFONT hEditFont = (HFONT)SendMessageW(hEdit, WM_GETFONT, 0, 0);
+    HFONT hOldFont  = hEditFont ? (HFONT)SelectObject(hdc, hEditFont) : NULL;
+    TEXTMETRICW tm = {};
+    GetTextMetricsW(hdc, &tm);
+    if (hOldFont) SelectObject(hdc, hOldFont);
+    int lineH = tm.tmHeight;  // full cell height (ascent + descent)
+
+    HPEN hPen = CreatePen(PS_SOLID, 1, RGB(220, 30, 30));
+    HPEN hOld = (HPEN)SelectObject(hdc, hPen);
+
+    for (auto& range : it->second) {
+        // Map char offsets to client pixel positions using EM_POSFROMCHAR
+        POINTL ptStart = {}, ptEnd = {};
+        SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptStart, (LPARAM)range.first);
+        SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptEnd,   (LPARAM)range.second);
+
+        if (ptStart.x == ptEnd.x && ptStart.y == ptEnd.y) continue; // hidden
+        if (ptStart.y != ptEnd.y) {
+            // Multi-line: just mark start to right edge
+            RECT rc; GetClientRect(hEdit, &rc);
+            ptEnd.x = rc.right - 4;
+            ptEnd.y = ptStart.y;
+        }
+        int y = ptStart.y + lineH - tm.tmDescent + 1; // just below baseline
+        for (int x = ptStart.x; x < ptEnd.x; x += 4) {
+            MoveToEx(hdc, x,     y,     NULL);
+            LineTo  (hdc, x + 2, y + 2);
+            LineTo  (hdc, x + 4, y    );
+        }
+    }
+    SelectObject(hdc, hOld);
+    DeleteObject(hPen);
+}
+
+// Build (or rebuild) the Language sub-menu for spelling.
+static void Ne_BuildSpellLangMenu()
+{
+    if (s_hSpellLangMenu) { DestroyMenu(s_hSpellLangMenu); s_hSpellLangMenu = NULL; }
+    // Ensure factory is initialised
+    if (!s_spellFactory) {
+        if (FAILED(CoCreateInstance(
+                __uuidof(SpellCheckerFactory), NULL, CLSCTX_INPROC_SERVER,
+                IID_PPV_ARGS(&s_spellFactory))))
+            s_spellFactory = NULL;
+    }
+    if (!s_spellFactory) return;
+    s_hSpellLangMenu = CreatePopupMenu();
+    if (!s_hSpellLangMenu) return;
+
+    s_spellLangTags.clear();
+
+    // Read the user's preferred language list from the registry —
+    // this is exactly what Settings → Language shows, nothing more.
+    std::vector<std::wstring> userLangs;
+    {
+        HKEY hk = NULL;
+        if (RegOpenKeyExW(HKEY_CURRENT_USER,
+                L"Control Panel\\International\\User Profile",
+                0, KEY_READ, &hk) == ERROR_SUCCESS) {
+            wchar_t buf[1024] = {};
+            DWORD bytes = sizeof(buf);
+            DWORD type  = 0;
+            if (RegQueryValueExW(hk, L"Languages", NULL, &type,
+                    (LPBYTE)buf, &bytes) == ERROR_SUCCESS
+                && (type == REG_MULTI_SZ || type == REG_SZ)) {
+                const wchar_t* p = buf;
+                while (*p) {
+                    userLangs.push_back(p);
+                    p += wcslen(p) + 1;
+                }
+            }
+            RegCloseKey(hk);
+        }
+    }
+
+    int idx = 0;
+    for (const auto& tag : userLangs) {
+        if (idx >= 50) break;
+        // Only add if a spell checker is actually installed for this tag
+        BOOL supported = FALSE;
+        s_spellFactory->IsSupported(tag.c_str(), &supported);
+        if (!supported) continue;
+
+        // Get the native display name, capitalise first letter
+        wchar_t dispName[128] = {};
+        if (GetLocaleInfoEx(tag.c_str(), LOCALE_SNATIVELANGNAME, dispName, 128) <= 0)
+            wcsncpy_s(dispName, tag.c_str(), _TRUNCATE);
+        if (dispName[0]) dispName[0] = (wchar_t)towupper(dispName[0]);
+
+        AppendMenuW(s_hSpellLangMenu, MF_STRING, IDM_SPELL_LANG_BASE + idx, dispName);
+        s_spellLangTags.push_back(tag);  // parallel: index == menu position
+        ++idx;
+    }
+}
+
+// ── End spell check helpers ───────────────────────────────────────────────────
+
+// ── Spell-check native dialog ─────────────────────────────────────────────────
+struct NeSpellError {
+    ULONG start;
+    ULONG length;
+    std::wstring word;
+    std::vector<std::wstring> suggestions; // populated lazily
+};
+
+struct NeSpellDlgState {
+    HWND  hParent;
+    HWND  hEdit;
+    HFONT hDlgFont;
+    HFONT hWordFont;
+    std::vector<NeSpellError> errors;
+    int   currentIdx  = 0;
+    int   textOffset  = 0;   // cumulative char delta from replacements
+    bool  anyFixed    = false;
+    int   btnW        = 0;   // measured button width (set before CreateWindow)
+};
+
+// Populate suggestions for errors[idx] lazily.
+static void Ne_SpellLoadSugs(NeSpellDlgState* st, int idx)
+{
+    NeSpellError& e = st->errors[idx];
+    if (!e.suggestions.empty() || e.word.empty() || !s_spellChecker) return;
+    IEnumString* pSug = NULL;
+    if (SUCCEEDED(s_spellChecker->Suggest(e.word.c_str(), &pSug)) && pSug) {
+        LPOLESTR s = NULL;
+        while (e.suggestions.size() < 10 && pSug->Next(1, &s, NULL) == S_OK) {
+            e.suggestions.push_back(s);
+            CoTaskMemFree(s);
+        }
+        pSug->Release();
+    }
+}
+
+// Select the current error in the editor and scroll it into the viewport.
+static void Ne_SpellHighlightCurrent(NeSpellDlgState* st)
+{
+    if (st->currentIdx < 0 || st->currentIdx >= (int)st->errors.size()) return;
+    const NeSpellError& e = st->errors[st->currentIdx];
+    LONG adjStart = (LONG)e.start + (LONG)st->textOffset;
+    LONG adjEnd   = adjStart + (LONG)e.length;
+    CHARRANGE cr  = { adjStart, adjEnd };
+    SendMessageW(st->hEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
+    SendMessageW(st->hEdit, EM_SCROLLCARET, 0, 0);
+}
+
+// Update all dialog controls to reflect errors[currentIdx], or close if done.
+static void Ne_SpellShowCurrent(HWND hwnd, NeSpellDlgState* st)
+{
+    if (st->currentIdx >= (int)st->errors.size()) {
+        PostMessageW(hwnd, WM_CLOSE, 0, 0);
+        return;
+    }
+    Ne_SpellLoadSugs(st, st->currentIdx);
+    const NeSpellError& e = st->errors[st->currentIdx];
+
+    SetDlgItemTextW(hwnd, IDC_SPELL_WORD_VAL, e.word.c_str());
+
+    HWND hList = GetDlgItem(hwnd, IDC_SPELL_SUGLIST);
+    SendMessageW(hList, LB_RESETCONTENT, 0, 0);
+    for (const auto& sug : e.suggestions)
+        SendMessageW(hList, LB_ADDSTRING, 0, (LPARAM)sug.c_str());
+    if (!e.suggestions.empty())
+        SendMessageW(hList, LB_SETCURSEL, 0, 0);
+
+    BOOL hasSug = e.suggestions.empty() ? FALSE : TRUE;
+    EnableWindow(GetDlgItem(hwnd, IDC_SPELL_CHANGE),    hasSug);
+    EnableWindow(GetDlgItem(hwnd, IDC_SPELL_CHANGEALL), hasSug);
+
+    Ne_SpellHighlightCurrent(st);
+}
+
+static LRESULT CALLBACK Ne_SpellDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    NeSpellDlgState* st = (NeSpellDlgState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    switch (msg) {
+    case WM_CREATE: {
+        CREATESTRUCTW* cs = (CREATESTRUCTW*)lParam;
+        st = (NeSpellDlgState*)cs->lpCreateParams;
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)st);
+
+        HINSTANCE hi = GetModuleHandleW(NULL);
+        HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
+        if (hIco) {
+            SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+            SendMessageW(hwnd, WM_SETICON, ICON_BIG,   (LPARAM)hIco);
+        }
+        st->hDlgFont  = Ne_CreateDialogFont(false);
+        st->hWordFont = Ne_CreateDialogFont(true);   // bold for the misspelled word
+
+        const int padH  = S(20), padT = S(18);
+        const int lblH  = S(20), wordH = S(26), rowGap = S(8);
+        const int lstH  = S(120), colGap = S(12);
+        const int btnH  = S(34), btnGap = S(8);
+        const int leftW = S(260), btnW  = st->btnW;
+
+        int lx    = padH;
+        int bx    = padH + leftW + colGap;
+        int lbl1Y = padT;
+        int wordY = lbl1Y + lblH + rowGap;
+        int lbl2Y = wordY + wordH + rowGap;
+        int lstY  = lbl2Y + lblH + S(4);
+
+        // ── Left column ──────────────────────────────────────────────────────
+        auto mkLabel = [&](int id, const wchar_t* txt, int x, int y, int w, int h, HFONT hf) {
+            HWND hl = CreateWindowExW(0, L"STATIC", txt, WS_CHILD | WS_VISIBLE | SS_LEFT,
+                x, y, w, h, hwnd, (HMENU)(UINT_PTR)id, hi, NULL);
+            if (hl) SendMessageW(hl, WM_SETFONT, (WPARAM)hf, TRUE);
+        };
+        mkLabel(IDC_SPELL_WORD_LBL, Ls(L"DLG_SPELL_MISSPELLED"), lx, lbl1Y, leftW, lblH, st->hDlgFont);
+        mkLabel(IDC_SPELL_WORD_VAL, L"",                          lx, wordY, leftW, wordH, st->hWordFont);
+        mkLabel(IDC_SPELL_SUG_LBL,  Ls(L"DLG_SPELL_SUGGESTIONS"),lx, lbl2Y, leftW, lblH, st->hDlgFont);
+
+        HWND hList = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"",
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT,
+            lx, lstY, leftW, lstH, hwnd, (HMENU)(UINT_PTR)IDC_SPELL_SUGLIST, hi, NULL);
+        if (hList) SendMessageW(hList, WM_SETFONT, (WPARAM)st->hDlgFont, TRUE);
+
+        // ── Right column – stacked owner-draw buttons ────────────────────────
+        struct BtnSpec { int id; const wchar_t* key; NeBtnTone tone; };
+        const BtnSpec btnSpecs[] = {
+            { IDC_SPELL_IGNORE,    L"BTN_SPELL_IGNORE",    NeBtnTone::Blue  },
+            { IDC_SPELL_IGNOREALL, L"BTN_SPELL_IGNOREALL", NeBtnTone::Blue  },
+            { IDC_SPELL_ADD,       L"BTN_SPELL_ADD",       NeBtnTone::Green },
+            { IDC_SPELL_CHANGE,    L"BTN_SPELL_CHANGE",    NeBtnTone::Green },
+            { IDC_SPELL_CHANGEALL, L"BTN_SPELL_CHANGEALL", NeBtnTone::Green },
+        };
+        int by = padT;
+        for (const auto& bs : btnSpecs) {
+            HWND hb = CreateWindowExW(0, L"BUTTON", Ls(bs.key),
+                WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+                bx, by, btnW, btnH, hwnd, (HMENU)(UINT_PTR)bs.id, hi, NULL);
+            if (hb) {
+                SendMessageW(hb, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+                WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hb, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+                SetPropW(hb, L"NePrevProc", (HANDLE)prev);
+                SetPropW(hb, L"NeBtnTone",  (HANDLE)(INT_PTR)(int)bs.tone);
+            }
+            by += btnH + btnGap;
+        }
+        by += S(10);  // extra gap before Close
+        HWND hClose = CreateWindowExW(0, L"BUTTON", Ls(L"BTN_CLOSE"),
+            WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+            bx, by, btnW, btnH, hwnd, (HMENU)(UINT_PTR)IDC_SPELL_CLOSE, hi, NULL);
+        if (hClose) {
+            SendMessageW(hClose, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+            WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hClose, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+            SetPropW(hClose, L"NePrevProc", (HANDLE)prev);
+            SetPropW(hClose, L"NeBtnTone",  (HANDLE)(INT_PTR)(int)NeBtnTone::Red);
+        }
+
+        Ne_SpellShowCurrent(hwnd, st);
+        return 0;
+    }
+    case WM_NCDESTROY:
+        if (st) {
+            if (st->hDlgFont)  { DeleteObject(st->hDlgFont);  st->hDlgFont  = NULL; }
+            if (st->hWordFont) { DeleteObject(st->hWordFont); st->hWordFont = NULL; }
+        }
+        break;
+    case WM_DRAWITEM: {
+        DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+        if (!dis || dis->CtlType != ODT_BUTTON) return FALSE;
+        NeBtnTone tone = NeBtnTone::Blue;
+        HANDLE ht = GetPropW(dis->hwndItem, L"NeBtnTone");
+        if (ht) tone = (NeBtnTone)(int)(INT_PTR)ht;
+        wchar_t btnText[128] = {};
+        GetWindowTextW(dis->hwndItem, btnText, 127);
+        NeDialogData tmpDd = {};
+        tmpDd.hDlgFont         = st ? st->hDlgFont : NULL;
+        tmpDd.buttonCount      = 1;
+        tmpDd.buttons[0].id      = dis->CtlID;
+        tmpDd.buttons[0].text    = btnText;
+        tmpDd.buttons[0].tone    = tone;
+        tmpDd.buttons[0].iconRes = (dis->CtlID == IDC_SPELL_CLOSE)
+                                   ? IDI_ERROR : IDI_INFORMATION;
+        Ne_DrawDialogButton(dis, &tmpDd);
+        return TRUE;
+    }
+    case WM_COMMAND: {
+        if (!st) break;
+        int id = LOWORD(wParam);
+
+        if (id == IDC_SPELL_CLOSE || id == IDCANCEL) {
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        // Double-click in listbox → Change
+        if (HIWORD(wParam) == LBN_DBLCLK && id == IDC_SPELL_SUGLIST) {
+            PostMessageW(hwnd, WM_COMMAND,
+                MAKEWPARAM(IDC_SPELL_CHANGE, BN_CLICKED),
+                (LPARAM)GetDlgItem(hwnd, IDC_SPELL_CHANGE));
+            return 0;
+        }
+        if (HIWORD(wParam) != BN_CLICKED) break;
+
+        if (st->currentIdx >= (int)st->errors.size()) {
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        NeSpellError& e = st->errors[st->currentIdx];
+
+        if (id == IDC_SPELL_IGNORE) {
+            ++st->currentIdx;
+            Ne_SpellShowCurrent(hwnd, st);
+            return 0;
+        }
+        if (id == IDC_SPELL_IGNOREALL) {
+            const std::wstring iw = e.word;
+            if (s_spellChecker) s_spellChecker->Ignore(iw.c_str());
+            auto it = st->errors.begin() + st->currentIdx;
+            while (it != st->errors.end())
+                it = (it->word == iw) ? st->errors.erase(it) : std::next(it);
+            Ne_SpellShowCurrent(hwnd, st);
+            return 0;
+        }
+        if (id == IDC_SPELL_ADD) {
+            const std::wstring aw = e.word;
+            if (s_spellChecker) s_spellChecker->Add(aw.c_str());
+            auto it = st->errors.begin() + st->currentIdx;
+            while (it != st->errors.end())
+                it = (it->word == aw) ? st->errors.erase(it) : std::next(it);
+            st->anyFixed = true;
+            Ne_SpellShowCurrent(hwnd, st);
+            return 0;
+        }
+        if (id == IDC_SPELL_CHANGE || id == IDC_SPELL_CHANGEALL) {
+            HWND hList = GetDlgItem(hwnd, IDC_SPELL_SUGLIST);
+            int sel = (int)SendMessageW(hList, LB_GETCURSEL, 0, 0);
+            if (sel == LB_ERR || sel >= (int)e.suggestions.size()) return 0;
+            const std::wstring replacement = e.suggestions[sel];
+
+            if (id == IDC_SPELL_CHANGE) {
+                LONG adjStart = (LONG)e.start + (LONG)st->textOffset;
+                CHARRANGE cr  = { adjStart, adjStart + (LONG)e.length };
+                SendMessageW(st->hEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
+                SendMessageW(st->hEdit, EM_REPLACESEL, TRUE, (LPARAM)replacement.c_str());
+                st->textOffset += (int)replacement.size() - (int)e.length;
+                st->errors.erase(st->errors.begin() + st->currentIdx);
+                st->anyFixed = true;
+                Ne_SpellShowCurrent(hwnd, st);
+            } else {
+                // Change All — replace every remaining occurrence of this word
+                const std::wstring tw = e.word;
+                int localOff = 0;
+                int i = st->currentIdx;
+                while (i < (int)st->errors.size()) {
+                    if (st->errors[i].word == tw) {
+                        LONG adj = (LONG)st->errors[i].start
+                                 + (LONG)st->textOffset + (LONG)localOff;
+                        CHARRANGE cr = { adj, adj + (LONG)st->errors[i].length };
+                        SendMessageW(st->hEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
+                        SendMessageW(st->hEdit, EM_REPLACESEL, TRUE, (LPARAM)replacement.c_str());
+                        localOff += (int)replacement.size() - (int)st->errors[i].length;
+                        st->errors.erase(st->errors.begin() + i);
+                    } else ++i;
+                }
+                st->textOffset += localOff;
+                st->anyFixed = true;
+                Ne_SpellShowCurrent(hwnd, st);
+            }
+            return 0;
+        }
+        break;
+    }
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_ERASEBKGND:
+        if (g_darkMode) {
+            RECT r; GetClientRect(hwnd, &r);
+            FillRect((HDC)wParam, &r, Ne_DlgBgBrush());
+            return 1;
+        }
+        break;
+    case WM_CTLCOLORSTATIC:
+        return Ne_DlgCtlColor((HDC)wParam);
+    case WM_CTLCOLORLISTBOX:
+        if (g_darkMode) {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, RGB(230, 230, 230));
+            SetBkColor(hdc, RGB(40, 42, 45));
+            static HBRUSH s_lbBr = CreateSolidBrush(RGB(40, 42, 45));
+            return (LRESULT)s_lbBr;
+        }
+        break;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static void Ne_ShowSpellDialog(HWND hwndMain, NeTabDoc* doc)
+{
+    const wchar_t* lang = Ne_GetDocSpellLang(doc);
+    if (!Ne_GetSpellChecker(lang)) {
+        NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 };
+        Ne_ShowChoiceDialog(hwndMain, Ls(L"DLG_SPELL_TITLE"),
+            L"Spell checker not available for this language.", &okBtn, 1, IDOK);
+        return;
+    }
+    int len = GetWindowTextLengthW(doc->hEdit);
+    if (len <= 0) {
+        NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 };
+        Ne_ShowChoiceDialog(hwndMain, Ls(L"DLG_SPELL_TITLE"),
+            Ls(L"DLG_SPELL_NOTFOUND"), &okBtn, 1, IDOK);
+        return;
+    }
+    std::wstring text(len + 1, L'\0');
+    GetWindowTextW(doc->hEdit, &text[0], len + 1);
+    text.resize(len);
+
+    // Collect all errors upfront
+    NeSpellDlgState st = {};
+    st.hParent = hwndMain;
+    st.hEdit   = doc->hEdit;
+
+    if (s_spellChecker) {
+        IEnumSpellingError* pEnum = NULL;
+        if (SUCCEEDED(s_spellChecker->Check(text.c_str(), &pEnum)) && pEnum) {
+            ISpellingError* pErr = NULL;
+            while (pEnum->Next(&pErr) == S_OK) {
+                ULONG start = 0, errLen = 0;
+                pErr->get_StartIndex(&start);
+                pErr->get_Length(&errLen);
+                NeSpellError e;
+                e.start  = start;
+                e.length = errLen;
+                e.word   = text.substr(start, errLen);
+                st.errors.push_back(std::move(e));
+                pErr->Release();
+            }
+            pEnum->Release();
+        }
+    }
+
+    if (st.errors.empty()) {
+        NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 };
+        Ne_ShowChoiceDialog(hwndMain, Ls(L"DLG_SPELL_TITLE"),
+            Ls(L"DLG_SPELL_NOTFOUND"), &okBtn, 1, IDOK);
+        return;
+    }
+
+    // Measure button widths — take the widest so all buttons are the same size
+    const wchar_t* btnKeys[] = {
+        L"BTN_SPELL_IGNORE", L"BTN_SPELL_IGNOREALL", L"BTN_SPELL_ADD",
+        L"BTN_SPELL_CHANGE", L"BTN_SPELL_CHANGEALL", L"BTN_CLOSE"
+    };
+    int btnW = S(120);  // minimum
+    for (const wchar_t* k : btnKeys)
+        btnW = std::max(btnW, Ne_MeasureButtonWidth(Ls(k)));
+    st.btnW = btnW;
+
+    // Compute window size from layout constants
+    const int padH  = S(20), padT = S(18), padB = S(15);
+    const int lblH  = S(20), wordH = S(26), rowGap = S(8);
+    const int lstH  = S(120), colGap = S(12);
+    const int btnH  = S(34), btnGap = S(8);
+    const int leftW = S(260);
+
+    int lstBottom = padT + lblH + rowGap + wordH + rowGap + lblH + S(4) + lstH;
+    int closeY    = padT + 5 * (btnH + btnGap) + S(10);
+    int clientW   = padH + leftW + colGap + btnW + padH;
+    int clientH   = std::max(lstBottom, closeY + btnH) + padB;
+
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME);
+    int winW = wr.right - wr.left;
+    int winH = wr.bottom - wr.top;
+
+    RECT pr = {};
+    if (hwndMain && IsWindow(hwndMain)) GetWindowRect(hwndMain, &pr);
+    int x = pr.left + ((pr.right - pr.left) - winW) / 2;
+    int y = pr.top  + ((pr.bottom - pr.top)  - winH) / 2;
+    RECT wa = {};
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+    if (x < wa.left) x = wa.left;
+    if (y < wa.top)  y = wa.top;
+    if (x + winW > wa.right)  x = wa.right  - winW;
+    if (y + winH > wa.bottom) y = wa.bottom - winH;
+
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc   = Ne_SpellDlgProc;
+    wc.hInstance     = hi;
+    wc.hCursor       = LoadCursorW(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszClassName = L"NSBEditSpellDlgClass";
+    if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"NSBEditSpellDlgClass",
+        Ls(L"DLG_SPELL_TITLE"), WS_POPUP | WS_CAPTION | WS_SYSMENU,
+        x, y, winW, winH, hwndMain, NULL, hi, &st);
+    if (!dlg) return;
+
+    bool wasParentFg = (hwndMain && IsWindow(hwndMain) &&
+                        GetForegroundWindow() == hwndMain);
+    if (hwndMain && IsWindow(hwndMain)) EnableWindow(hwndMain, FALSE);
+    ShowWindow(dlg, SW_SHOW);
+    Ne_ApplyDarkFrame(dlg);
+    SetForegroundWindow(dlg);
+
+    MSG m;
+    while (IsWindow(dlg) && GetMessageW(&m, NULL, 0, 0)) {
+        if (!IsDialogMessageW(dlg, &m)) {
+            TranslateMessage(&m);
+            DispatchMessageW(&m);
+        }
+    }
+
+    if (hwndMain && IsWindow(hwndMain)) {
+        EnableWindow(hwndMain, TRUE);
+        if (wasParentFg) {
+            SetWindowPos(hwndMain, HWND_TOPMOST,   0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            SetWindowPos(hwndMain, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        }
+    }
+    if (st.anyFixed)
+        InvalidateRect(doc->hEdit, NULL, TRUE);
+}
+
 // True when the active doc's path has a .rtf extension.
 static bool Ne_DocIsRtf(NeTabDoc* doc)
 {
@@ -6110,6 +6762,7 @@ static LRESULT CALLBACK Ne_EditCaretProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
         // Then overlay HR lines with a fresh DC (avoids nested-BeginPaint clip issues).
         HDC hdc = GetDC(hwnd);
         Ne_PaintHRules(hwnd, hdc);
+        Ne_DrawSpellSquiggles(hwnd, hdc);
         ReleaseDC(hwnd, hdc);
         return r;
     }
@@ -6321,7 +6974,8 @@ static void Ne_SubclassEditForCaret(HWND hEdit)
     SetPropW(hEdit, L"NeEditCaretPrev", (HANDLE)prev);
 }
 
-static void Ne_UpdateToolbarMode(HWND hwnd); // forward declaration
+static void Ne_UpdateToolbarMode(HWND hwnd);        // forward declaration
+static void Ne_UpdateSpellMenuVisibility(HWND hwnd); // forward declaration
 
 static void Ne_New(HWND hwnd)
 {
@@ -7589,6 +8243,25 @@ static void Ne_UpdateToolbarMode(HWND hwnd)
           SetWindowTextW(hCmt, isHtml ? L"<!--" : L"//");
           RedrawWindow(hCmt, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW);
       } }
+    // Gray the Spelling top-level menu when not editing an RTF document.
+    Ne_UpdateSpellMenuVisibility(hwnd);
+}
+
+// Show/gray the top-level Spelling menu item depending on whether the active doc is RTF.
+static void Ne_UpdateSpellMenuVisibility(HWND hwnd)
+{
+    HMENU hBar = GetMenu(hwnd);
+    if (!hBar || !s_hSpellMenu) return;
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    bool isRtf = Ne_DocIsRtf(doc);
+    int cnt = GetMenuItemCount(hBar);
+    for (int i = 0; i < cnt; ++i) {
+        if (GetSubMenu(hBar, i) == s_hSpellMenu) {
+            EnableMenuItem(hBar, i, MF_BYPOSITION | (isRtf ? MF_ENABLED : MF_GRAYED));
+            break;
+        }
+    }
+    DrawMenuBar(hwnd);
 }
 
 // Return the line-comment prefix for a language, or nullptr if none applies.
@@ -7922,6 +8595,14 @@ static void Ne_BuildMainMenu(HWND hwnd)
         Ne_AppendMenuOD(s_hLangMenu, MF_STRING, IDM_LANG_BASE + li,
                         li == 0 ? Ls(L"LANG_PLAIN_TEXT") : s_langs[li].name);
     Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hLangMenu, Ls(L"MENU_LANGUAGE"), true);
+    // ── Spelling menu ──────────────────────────────────────────────────────
+    s_hSpellMenu = CreatePopupMenu();
+    Ne_AppendMenuOD(s_hSpellMenu, MF_STRING, IDM_SPELL_MARK,  Ls(L"MENU_SPELL_MARK"));
+    Ne_AppendMenuOD(s_hSpellMenu, MF_STRING, IDM_SPELL_CHECK, Ls(L"MENU_SPELL_CHECK"));
+    Ne_AppendMenuOD(s_hSpellMenu, MF_SEPARATOR, 0, NULL);
+    s_hSpellLangMenu = CreatePopupMenu();  // populated in WM_INITMENUPOPUP
+    Ne_AppendMenuOD(s_hSpellMenu, MF_POPUP, (UINT_PTR)s_hSpellLangMenu, Ls(L"MENU_SPELL_LANGUAGE"));
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hSpellMenu, Ls(L"MENU_SPELLING"), true);
     // ── FTP menu ──────────────────────────────────────────────────────────
     s_hFtpMenu = CreatePopupMenu();
     Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hFtpMenu, Ls(L"MENU_FTP"), true);
@@ -11078,6 +11759,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         CREATESTRUCTW* cs    = (CREATESTRUCTW*)lParam;
         HINSTANCE      hInst = cs->hInstance;
 
+        // ── COM (spell checker, ISpellCheckerFactory) ─────────────────────────
+        CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
+
         NeState* st  = new NeState{};
         st->pad      = S(8);
         SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)st);
@@ -11332,7 +12016,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // ── Status bar ────────────────────────────────────────────────────────
         HWND hSb = NeStatusBar_Create(hwnd, IDC_NE_STATUSBAR, hInst);
         NeStatusBar_SetLabels(hSb,
-            Ls(L"SB_WORDS"), Ls(L"SB_CHARS"),
+            Ls(L"SB_WORDS"), Ls(L"SB_CHARS"), Ls(L"SB_LINES"),
             Ls(L"SB_SAVED"), Ls(L"SB_UNSAVED"));
         NeStatusBar_SetLineColLabels(hSb, Ls(L"SB_LN"), Ls(L"SB_COL"));
         {
@@ -12063,6 +12747,46 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (bd && bd->hSci) { Ne_CycleBookmark(bd->hSci, true); SetFocus(bd->hSci); }
             return 0;
         }
+        // ── Spell check commands ────────────────────────────────────────────────
+        if (wmId == IDM_SPELL_MARK) {
+            s_spellMarkActive = !s_spellMarkActive;
+            NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+            if (doc && doc->hEdit) {
+                if (s_spellMarkActive)
+                    Ne_RefreshSpellMarks(doc->hEdit, doc);
+                else {
+                    s_spellErrors[doc->hEdit].clear();
+                    InvalidateRect(doc->hEdit, NULL, FALSE);
+                }
+            }
+            return 0;
+        }
+        if (wmId == IDM_SPELL_CHECK) {
+            // F7 spell check dialog — native NSBEdit-style dialog
+            NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+            if (!doc || !doc->hEdit || !Ne_DocIsRtf(doc)) return 0;
+            Ne_ShowSpellDialog(hwnd, doc);
+            return 0;
+        }
+        if (wmId >= IDM_SPELL_LANG_BASE && wmId < IDM_SPELL_LANG_BASE + 50) {
+            int idx = wmId - IDM_SPELL_LANG_BASE;
+            // Look up the BCP-47 tag from the parallel vector
+            std::wstring tag;
+            if (idx >= 0 && idx < (int)s_spellLangTags.size())
+                tag = s_spellLangTags[idx];
+            if (!tag.empty()) {
+                NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+                if (doc) doc->spellLang = tag;
+                // Force re-check with new language
+                if (s_spellChecker && s_spellCheckerLang != tag) {
+                    s_spellChecker->Release(); s_spellChecker = NULL;
+                }
+                if (s_spellMarkActive && doc && doc->hEdit)
+                    Ne_RefreshSpellMarks(doc->hEdit, doc);
+            }
+            return 0;
+        }
+        // ── End spell check commands ──────────────────────────────────────────────
         if (wmId == IDC_NE_LINK)       { Ne_ShowLinkDialog(hwnd, hEdit);      return 0; }
         if (wmId == IDC_NE_TABLE) {
             Ne_ShowTablePropsDialog(hwnd, hEdit);
@@ -12158,6 +12882,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 if (g_hrPendingCleanup.count(hSrcEdit) == 0) {
                     Ne_RebuildHRList(hSrcEdit);
                     InvalidateRect(hSrcEdit, NULL, FALSE);
+                }
+                // Restart spell debounce timer
+                if (s_spellMarkActive && doc && Ne_DocIsRtf(doc)) {
+                    KillTimer(hwnd, NE_TIMER_SPELL);
+                    SetTimer(hwnd, NE_TIMER_SPELL, 400, NULL);
                 }
             }
             if (wmEv == EN_VSCROLL) {
@@ -12649,6 +13378,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (!d) break;
         bool selected = (dis->itemState & ODS_SELECTED) != 0;
         bool grayed   = (dis->itemState & ODS_GRAYED)   != 0;
+        bool checked  = (dis->itemState & ODS_CHECKED)  != 0;
         RECT rc = dis->rcItem;
         // Background
         COLORREF bg = selected ? GetSysColor(COLOR_HIGHLIGHT)
@@ -12671,8 +13401,17 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                       g_darkMode ? RGB(210, 210, 215) : RGB(30, 30, 30);
         SetTextColor(dis->hDC, fg);
         SetBkMode(dis->hDC, TRANSPARENT);
-        // Draw gutter icon if present
-        if (!d->isBar && d->hSmallIcon) {
+        // Draw gutter: checkmark or icon
+        if (!d->isBar && checked) {
+            COLORREF chkFg = selected ? GetSysColor(COLOR_HIGHLIGHTTEXT)
+                           : g_darkMode ? RGB(110, 195, 110) : RGB(0, 140, 0);
+            SetTextColor(dis->hDC, chkFg);
+            SetBkMode(dis->hDC, TRANSPARENT);
+            HFONT hCkFont = (HFONT)SelectObject(dis->hDC, g_hMenuFont);
+            RECT rcGutter = { rc.left, rc.top, rc.left + S(24), rc.bottom };
+            DrawTextW(dis->hDC, L"\u2713", -1, &rcGutter, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+            SelectObject(dis->hDC, hCkFont);
+        } else if (!d->isBar && d->hSmallIcon) {
             int iconSize = S(16);
             int ix = rc.left + (S(28) - iconSize) / 2;
             int iy = (rc.top + rc.bottom - iconSize) / 2;
@@ -12709,6 +13448,37 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // ── Recent files popup ────────────────────────────────────────────────
         if (hPop == s_hRecentMenu) {
             Ne_RebuildRecentMenu();
+            return 0;
+        }
+        // ── Spelling popup ────────────────────────────────────────────────────
+        if (hPop == s_hSpellMenu) {
+            CheckMenuItem(hPop, IDM_SPELL_MARK,
+                MF_BYCOMMAND | (s_spellMarkActive ? MF_CHECKED : MF_UNCHECKED));
+            NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+            bool isRtf    = Ne_DocIsRtf(doc);
+            EnableMenuItem(hPop, IDM_SPELL_MARK,
+                MF_BYCOMMAND | (isRtf ? MF_ENABLED : MF_GRAYED));
+            EnableMenuItem(hPop, IDM_SPELL_CHECK,
+                MF_BYCOMMAND | (isRtf ? MF_ENABLED : MF_GRAYED));
+            return 0;
+        }
+        // ── Spell language sub-popup ──────────────────────────────────────────
+        if (hPop == s_hSpellLangMenu) {
+            Ne_BuildSpellLangMenu();
+            // Replace the sub-menu in s_hSpellMenu (item at position 3)
+            MENUITEMINFOW mii = { sizeof(mii) };
+            mii.fMask    = MIIM_SUBMENU;
+            mii.hSubMenu = s_hSpellLangMenu;
+            SetMenuItemInfoW(s_hSpellMenu, 3, TRUE, &mii);
+            // Checkmark active language using the parallel tag vector
+            NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+            const wchar_t* activeLang = Ne_GetDocSpellLang(doc);
+            int cnt = (int)s_spellLangTags.size();
+            for (int i = 0; i < cnt; ++i) {
+                bool match = (_wcsicmp(s_spellLangTags[i].c_str(), activeLang) == 0);
+                CheckMenuItem(s_hSpellLangMenu, i,
+                    MF_BYPOSITION | (match ? MF_CHECKED : MF_UNCHECKED));
+            }
             return 0;
         }
 
@@ -12862,6 +13632,12 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_TIMER:
         if (wParam == NE_TIMER_SESSION)
             Ne_SessionSave(hwnd);
+        if (wParam == NE_TIMER_SPELL) {
+            KillTimer(hwnd, NE_TIMER_SPELL);
+            NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+            if (doc && doc->hEdit && Ne_DocIsRtf(doc))
+                Ne_RefreshSpellMarks(doc->hEdit, doc);
+        }
         return 0;
 
     // ── WM_CLOSE — prompt if modified ────────────────────────────────────────
@@ -12903,9 +13679,14 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             SetWindowLongPtrW(hwnd, GWLP_USERDATA, 0);
         }
         PostQuitMessage(0);
+        // Spell check COM cleanup
+        if (s_spellChecker) { s_spellChecker->Release(); s_spellChecker = NULL; }
+        if (s_spellFactory) { s_spellFactory->Release(); s_spellFactory = NULL; }
+        CoUninitialize();
         return 0;
     }
-    }
+
+    }  // end switch
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
 

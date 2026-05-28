@@ -108,6 +108,20 @@ SB_SAVED                = Vistað
 SB_UNSAVED              = Óvistað
 SB_LN                   = Ln
 SB_COL                  = Dk
+SB_LINES                = Línur
+MENU_SPELLING           = &Stafsetning
+MENU_SPELL_MARK         = &Merkja villur
+MENU_SPELL_CHECK        = &Stafsetningarprófun...\tF7
+MENU_SPELL_LANGUAGE     = &Tungumál
+DLG_SPELL_TITLE         = Stafsetningarprófun
+DLG_SPELL_MISSPELLED    = Rangt stafað orð:
+DLG_SPELL_SUGGESTIONS   = Tillögur:
+DLG_SPELL_NOTFOUND      = Stafsetningarprófun lokið - engar villur fundust
+BTN_SPELL_IGNORE        = Hunsa
+BTN_SPELL_IGNOREALL     = Hunsa allt
+BTN_SPELL_ADD           = Bæta við orðabók
+BTN_SPELL_CHANGE        = Breyta
+BTN_SPELL_CHANGEALL     = Breyta öllu
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Feitletrað  (Ctrl+B)
