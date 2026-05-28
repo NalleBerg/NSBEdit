@@ -96,7 +96,10 @@ static LRESULT CALLBACK NeStatusBar_WndProc(HWND hwnd, UINT msg, WPARAM wParam, 
             st->wordsLabel.c_str(), st->words,
             st->charsLabel.c_str(), st->chars,
             st->linesLabel.c_str(), st->lines);
-        RECT leftRc = { rc.left + S(10), rc.top + 1, rc.right / 3, rc.bottom };
+        SIZE leftSz = {};
+        GetTextExtentPoint32W(hdc, buf, (int)wcslen(buf), &leftSz);
+        RECT leftRc = { rc.left + S(10), rc.top + 1,
+                        rc.left + S(10) + leftSz.cx + S(6), rc.bottom };
         SetTextColor(hdc, st->darkMode ? RGB(180, 180, 180) : RGB(60, 60, 60));
         DrawTextW(hdc, buf, -1, &leftRc,
                   DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);

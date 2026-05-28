@@ -1,10 +1,10 @@
 ============================================================
-  NSBEdit Build  --  28.05.2026  16:12:14,95
+  NSBEdit Build  --  28.05.2026  16:25:29,10
 ============================================================
 
 [STEP 1/6] Prepare  --  version header  +  kill running instance
   ne_version.h  OK
-SUCCESS: The process "NSBEdit.exe" with PID 25652 has been terminated.
+SUCCESS: The process "NSBEdit.exe" with PID 23892 has been terminated.
   NSBEdit.exe killed  --  waiting 1 s for handles to release
 [STEP_DONE 1/6]
 
@@ -20,7 +20,7 @@ Thread model: mcf
 Supported LTO compression algorithms: zlib
 gcc version 15.2.0 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) 
 COLLECT_GCC_OPTIONS='-v' '-O2' '-D' 'SQLITE_THREADSAFE=0' '-D' 'SQLITE_DEFAULT_MEMSTATUS=0' '-c' '-o' 'sqlite3\sqlite3.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'sqlite3\'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -U_REENTRANT -D SQLITE_THREADSAFE=0 -D SQLITE_DEFAULT_MEMSTATUS=0 sqlite3\sqlite3.c -quiet -dumpdir sqlite3\ -dumpbase sqlite3.c -dumpbase-ext .c -mtune=core2 -march=nocona -O2 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\cc0SVVTG.s
+ C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -U_REENTRANT -D SQLITE_THREADSAFE=0 -D SQLITE_DEFAULT_MEMSTATUS=0 sqlite3\sqlite3.c -quiet -dumpdir sqlite3\ -dumpbase sqlite3.c -dumpbase-ext .c -mtune=core2 -march=nocona -O2 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccs2fjVM.s
 GNU C23 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
 	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
 
@@ -38,7 +38,7 @@ ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev
 End of search list.
 Compiler executable checksum: cefa2ebeb692ed00af38e59eabc88438
 COLLECT_GCC_OPTIONS='-v' '-O2' '-D' 'SQLITE_THREADSAFE=0' '-D' 'SQLITE_DEFAULT_MEMSTATUS=0' '-c' '-o' 'sqlite3\sqlite3.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'sqlite3\'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o sqlite3\sqlite3.o C:\Users\NALLEB~1\AppData\Local\Temp\cc0SVVTG.s
+ C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o sqlite3\sqlite3.o C:\Users\NALLEB~1\AppData\Local\Temp\ccs2fjVM.s
 GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
 COMPILER_PATH=C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../libexec/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/
 LIBRARY_PATH=C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../lib/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../
@@ -54,7 +54,7 @@ Thread model: mcf
 Supported LTO compression algorithms: zlib
 gcc version 15.2.0 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) 
 COLLECT_GCC_OPTIONS='-v' '-O2' '-c' '-o' 'curl\lib\quic_stubs.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'curl\lib\'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -U_REENTRANT curl\lib\quic_stubs.c -quiet -dumpdir curl\lib\ -dumpbase quic_stubs.c -dumpbase-ext .c -mtune=core2 -march=nocona -O2 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\cce3z7Wj.s
+ C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1.exe -quiet -v -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -U_REENTRANT curl\lib\quic_stubs.c -quiet -dumpdir curl\lib\ -dumpbase quic_stubs.c -dumpbase-ext .c -mtune=core2 -march=nocona -O2 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccTpIhTw.s
 GNU C23 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
 	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
 
@@ -72,7 +72,7 @@ ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev
 End of search list.
 Compiler executable checksum: cefa2ebeb692ed00af38e59eabc88438
 COLLECT_GCC_OPTIONS='-v' '-O2' '-c' '-o' 'curl\lib\quic_stubs.o' '-mtune=core2' '-march=nocona' '-dumpdir' 'curl\lib\'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o curl\lib\quic_stubs.o C:\Users\NALLEB~1\AppData\Local\Temp\cce3z7Wj.s
+ C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -o curl\lib\quic_stubs.o C:\Users\NALLEB~1\AppData\Local\Temp\ccTpIhTw.s
 GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
 COMPILER_PATH=C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../libexec/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/
 LIBRARY_PATH=C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../lib/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../
@@ -89,7 +89,7 @@ Thread model: mcf
 Supported LTO compression algorithms: zlib
 gcc version 15.2.0 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) 
 COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB NSBEdit.cpp -quiet -dumpdir NSBEdit- -dumpbase NSBEdit.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
+ C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB NSBEdit.cpp -quiet -dumpdir NSBEdit- -dumpbase NSBEdit.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccbBXQIG.s
 GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
 	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
 
@@ -117,451 +117,3 @@ ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev
  C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
 End of search list.
 Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccGc90vH.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB ne_tabs.cpp -quiet -dumpdir NSBEdit- -dumpbase ne_tabs.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccRgKGio.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB ne_statusbar.cpp -quiet -dumpdir NSBEdit- -dumpbase ne_statusbar.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccxsbD3d.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB dpi.cpp -quiet -dumpdir NSBEdit- -dumpbase dpi.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccOiEQPY.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB tooltip\tooltip.cpp -quiet -dumpdir NSBEdit- -dumpbase tooltip.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\cchiXdS5.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB scroll\my_scrollbar_vscroll.cpp -quiet -dumpdir NSBEdit- -dumpbase my_scrollbar_vscroll.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccG0YDcw.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB highlight\highlight.cpp -quiet -dumpdir NSBEdit- -dumpbase highlight.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccWPWmj5.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB checkbox.cpp -quiet -dumpdir NSBEdit- -dumpbase checkbox.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccbONb0N.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB ne_crypto.cpp -quiet -dumpdir NSBEdit- -dumpbase ne_crypto.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccF5IXfN.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB ne_profiles.cpp -quiet -dumpdir NSBEdit- -dumpbase ne_profiles.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\cch86s1b.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB ne_session.cpp -quiet -dumpdir NSBEdit- -dumpbase ne_session.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\cc0xrdyJ.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB ne_ftp.cpp -quiet -dumpdir NSBEdit- -dumpbase ne_ftp.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\cceI2VHh.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB ne_autocomplete\ne_autocomplete.cpp -quiet -dumpdir NSBEdit- -dumpbase ne_autocomplete.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccNAXJB4.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/cc1plus.exe -quiet -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -iprefix C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/ -DUNICODE -U_REENTRANT -D CURL_STATICLIB rtf2html\ne_rtf2html_lib.cpp -quiet -dumpdir NSBEdit- -dumpbase ne_rtf2html_lib.cpp -dumpbase-ext .cpp -mwindows -municode -mtune=core2 -march=nocona -O2 -Wall -std=c++17 -version -o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU C++17 (x86_64-mcf-seh-rev0, Built by MinGW-Builds project) version 15.2.0 (x86_64-w64-mingw32)
-	compiled by GNU C version 15.2.0, GMP version 6.2.1, MPFR version 4.1.0, MPC version 1.2.1, isl version isl-0.27-GMP
-
-GGC heuristics: --param ggc-min-expand=100 --param ggc-min-heapsize=131072
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64D:/a/_temp/msys64/mingw64/lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../include"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed"
-ignoring duplicate directory "C:/mingw64/lib/gcc/../../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include"
-ignoring nonexistent directory "C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64/mingw/include"
-#include "..." search starts here:
-#include <...> search starts here:
- .
- sqlite3
- curl\include
- scintilla_src\scintilla\include
- lexilla_src\lexilla\include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/x86_64-w64-mingw32
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include/c++/backward
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/include-fixed
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/include
-End of search list.
-Compiler executable checksum: 61de8c4d747942bd598ac96411382eff
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit-'
- C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/as.exe -v -I . -I sqlite3 -I curl\include -I scintilla_src\scintilla\include -I lexilla_src\lexilla\include -o C:\Users\NALLEB~1\AppData\Local\Temp\ccN36O5k.o C:\Users\NALLEB~1\AppData\Local\Temp\ccvlNT2k.s
-GNU assembler version 2.45 (x86_64-w64-mingw32) using BFD version (GNU Binutils) 2.45
-COMPILER_PATH=C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../libexec/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/bin/
-LIBRARY_PATH=C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/;C:/mingw64/bin/../lib/gcc/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/;C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit.'
- C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/collect2.exe -plugin C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/liblto_plugin.dll -plugin-opt=C:/mingw64/bin/../libexec/gcc/x86_64-w64-mingw32/15.2.0/lto-wrapper.exe -plugin-opt=-fresolution=C:\Users\NALLEB~1\AppData\Local\Temp\cczLtt7H.res -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_eh -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lmcfgthread -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lntdll -plugin-opt=-pass-through=-lgdi32 -plugin-opt=-pass-through=-lcomdlg32 -plugin-opt=-pass-through=-ladvapi32 -plugin-opt=-pass-through=-lshell32 -plugin-opt=-pass-through=-luser32 -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-liconv -plugin-opt=-pass-through=-lmingw32 -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lgcc_eh -plugin-opt=-pass-through=-lmingwex -plugin-opt=-pass-through=-lmsvcrt -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lmcfgthread -plugin-opt=-pass-through=-lkernel32 -plugin-opt=-pass-through=-lntdll --sysroot=C:/buildroot/x86_64-1520-mcf-seh-ucrt-rt_v13-rev0/mingw64 -m i386pep --subsystem windows -Bstatic -o NSBEdit.exe C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/../lib/crt2u.o C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/crtbegin.o -Lscintilla_src\scintilla\bin -Llexilla_src\lexilla\bin -Lcurl\lib -LC:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0 -LC:/mingw64/bin/../lib/gcc -LC:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib/../lib -LC:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../lib -LC:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../../../x86_64-w64-mingw32/lib -LC:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/../../.. C:\Users\NALLEB~1\AppData\Local\Temp\ccGc90vH.o C:\Users\NALLEB~1\AppData\Local\Temp\ccRgKGio.o C:\Users\NALLEB~1\AppData\Local\Temp\ccxsbD3d.o C:\Users\NALLEB~1\AppData\Local\Temp\ccOiEQPY.o C:\Users\NALLEB~1\AppData\Local\Temp\cchiXdS5.o C:\Users\NALLEB~1\AppData\Local\Temp\ccG0YDcw.o C:\Users\NALLEB~1\AppData\Local\Temp\ccWPWmj5.o C:\Users\NALLEB~1\AppData\Local\Temp\ccbONb0N.o C:\Users\NALLEB~1\AppData\Local\Temp\ccF5IXfN.o C:\Users\NALLEB~1\AppData\Local\Temp\cch86s1b.o C:\Users\NALLEB~1\AppData\Local\Temp\cc0xrdyJ.o C:\Users\NALLEB~1\AppData\Local\Temp\cceI2VHh.o C:\Users\NALLEB~1\AppData\Local\Temp\ccNAXJB4.o C:\Users\NALLEB~1\AppData\Local\Temp\ccN36O5k.o sqlite3\sqlite3.o curl\lib\quic_stubs.o NSBEdit.res -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid -luser32 -lgdi32 -lgdiplus -lwinspool -lmsimg32 -ldwmapi -luxtheme -lscintilla -llexilla -limm32 -loleaut32 -ladvapi32 -lole32 -luuid -lcurl -lssh2 -lssl -lcrypto -lz -lnghttp2 -lbrotlidec -lbrotlicommon -lpsl -lzstd -lws2_32 -lcrypt32 -lbcrypt -lwinhttp -lwldap32 -lsecur32 -liphlpapi -lntdll -lstdc++ -lmingw32 -lgcc -lgcc_eh -lmingwex -lmsvcrt -lkernel32 -lmcfgthread -lkernel32 -lntdll -lgdi32 -lcomdlg32 -ladvapi32 -lshell32 -luser32 -lkernel32 -liconv -lmingw32 -lgcc -lgcc_eh -lmingwex -lmsvcrt -lkernel32 -lmcfgthread -lkernel32 -lntdll C:/mingw64/bin/../lib/gcc/x86_64-w64-mingw32/15.2.0/crtend.o
-COLLECT_GCC_OPTIONS='-v' '-std=c++17' '-O2' '-Wall' '-mwindows' '-municode' '-I' '.' '-I' 'sqlite3' '-I' 'curl\include' '-D' 'CURL_STATICLIB' '-I' 'scintilla_src\scintilla\include' '-I' 'lexilla_src\lexilla\include' '-Lscintilla_src\scintilla\bin' '-Llexilla_src\lexilla\bin' '-Lcurl\lib' '-static' '-static-libgcc' '-o' 'NSBEdit.exe' '-mtune=core2' '-march=nocona' '-dumpdir' 'NSBEdit.'
-[STEP_DONE 5/6]
-
-[STEP 6/6] Package  --  zip release  +  prune to 3 zips
-Packaging NSBEdit v2026.05.28.16...
-  + NSBEdit.exe
-  + nsbedit.db
-  + Changelog.html
-  + GPLv2.md
-  + Install.bat
-  + _doinstall.ps1
-  + Uninstall.ps1
-  + version.txt  (2026.05.28.16)
-
-  Done: NSBEdit_v2026.05.28.16.zip  (5.62 MB)
-
-  kept: NSBEdit_v2026.05.28.16.zip
-  kept: NSBEdit_v2026.05.28.14.zip
-  kept: NSBEdit_v2026.05.28.12.zip
-[STEP_DONE 6/6]
-
-[BUILD_TIME: 1 m, 27 s]
-============================================================
-  BUILD SUCCEEDED  --  NSBEdit.exe + zip updated
-============================================================
