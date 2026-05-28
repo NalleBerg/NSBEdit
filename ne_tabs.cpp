@@ -65,7 +65,12 @@ static std::wstring NeTabs_TitleFor(const NeTabDoc& d, const std::wstring& untit
 {
     std::wstring t;
     if (d.modified) t += L"* ";
-    t += NeTabs_BaseName(d.path, untitled);
+    if (d.isFtpFile && !d.ftpRemotePath.empty()) {
+        size_t sl = d.ftpRemotePath.rfind(L'/');
+        t += (sl != std::wstring::npos) ? d.ftpRemotePath.substr(sl + 1) : d.ftpRemotePath;
+    } else {
+        t += NeTabs_BaseName(d.path, untitled);
+    }
     // Pad right so the owner-drawn × glyph has space (4 thin spaces)
     t += L"\u00a0\u00a0\u00a0\u00a0";
     return t;

@@ -425,8 +425,7 @@
                                                 Switching tabs shows/hides editor HWNDs
                                                 (no content swapping). Tab captions show
                                                 filename with owner-drawn × close glyph
-                                                (hover = red circle). [+] button opens
-                                                new tab; WM_PAINT calls RedrawWindow on
+                                                (hover = red circle). [+] button opens new tab; WM_PAINT calls RedrawWindow on
                                                 hBtnNew after tab strip is drawn to prevent
                                                 theming overdraw from permanently erasing
                                                 it. Right-click tab strip shows

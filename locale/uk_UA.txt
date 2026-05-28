@@ -86,8 +86,8 @@ DLG_SAVE_CHANGES  = Зберегти зміни
 BTN_SAVE          = Зберегти
 BTN_DONT_SAVE     = Не зберігати
 BTN_CANCEL        = Скасувати
-BTN_OK            = ОК
-
+BTN_OK            = ОКBTN_CONTINUE      = Продовжити
+DLG_CONV_TO_PLAIN = Видалити форматування
 DLG_FILE_CHANGED        = Файл змінено на диску
 MSG_FILE_CHANGED_PROMPT = «%s» було змінено іншою програмою, поки NSBEdit не був активний.\n\nПерезавантажити файл із диска?
 BTN_RELOAD              = Перезавантажити
@@ -101,6 +101,8 @@ SB_WORDS                = Слова
 SB_CHARS                = Символи
 SB_SAVED                = Збережено
 SB_UNSAVED              = Не збережено
+SB_LN                   = Рд
+SB_COL                  = Ст
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Жирний  (Ctrl+B)

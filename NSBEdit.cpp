@@ -2104,7 +2104,7 @@ static void Ne_UpdateStatusText(HWND hwnd)
     if (enc == NeEncoding::Unknown && Ne_DocIsRtf(doc))
         enc = NeEncoding::RichText;
     if (doc && doc->hSci && doc->langId >= 0 && doc->langId < NE_LANG_COUNT)
-        NeStatusBar_SetInfo(hSb, s_langs[doc->langId].name);
+        NeStatusBar_SetInfo(hSb, doc->langId == 0 ? Ls(L"LANG_PLAIN_TEXT") : s_langs[doc->langId].name);
     else
         NeStatusBar_SetInfo(hSb, Ne_EncLabel(enc));
 }
@@ -7849,7 +7849,7 @@ static void Ne_UpdateFtpStatus(HWND hwnd)
         if (hEdit && doc) {
             NeEncoding enc = (NeEncoding)doc->encoding;
             if (doc->langId >= 0 && doc->langId < NE_LANG_COUNT)
-                NeStatusBar_SetInfo(hSb, s_langs[doc->langId].name);
+                NeStatusBar_SetInfo(hSb, doc->langId == 0 ? Ls(L"LANG_PLAIN_TEXT") : s_langs[doc->langId].name);
             else
                 NeStatusBar_SetInfo(hSb, Ne_EncLabel(enc));
         } else {
@@ -10918,6 +10918,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         NeStatusBar_SetLabels(hSb,
             Ls(L"SB_WORDS"), Ls(L"SB_CHARS"),
             Ls(L"SB_SAVED"), Ls(L"SB_UNSAVED"));
+        NeStatusBar_SetLineColLabels(hSb, Ls(L"SB_LN"), Ls(L"SB_COL"));
         {
             RECT rcSb; GetClientRect(hSb, &rcSb);
             st->statusH = rcSb.bottom > 0 ? rcSb.bottom : S(22);
@@ -11250,6 +11251,14 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 NeFtp_SetActiveConn(chosenId);
                 doc->ftpFriendlyName = NeFtp_GetActiveProfile().friendlyName;
                 doc->modified        = false;
+                // Re-detect language from the new remote filename/extension
+                if (doc->hSci) {
+                    int newLang = Ne_LangFromExt(remoteDest);
+                    if (newLang != doc->langId) {
+                        doc->langId = newLang;
+                        Ne_ApplyLang(doc->hSci, doc->langId);
+                    }
+                }
                 NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
                 Ne_UpdateTitle(hwnd);
                 Ne_UpdateToolbarMode(hwnd);
@@ -11322,8 +11331,15 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             HWND hEd = NeTabs_GetActiveEdit(hwnd);
             NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
             if (!hEd || !doc) return 0;
-            if (MessageBoxW(hwnd, Ls(L"MSG_CONV_LOSSY"), Ls(L"APP_NAME"),
-                            MB_YESNO | MB_ICONWARNING) != IDYES) return 0;
+            {
+                NeDialogButtonSpec btns[2] = {
+                    { IDYES,    Ls(L"BTN_CONTINUE"), NeBtnTone::Green, IDI_INFORMATION, 0 },
+                    { IDCANCEL, Ls(L"BTN_CANCEL"),   NeBtnTone::Blue,  IDI_ERROR,       0 },
+                };
+                if (Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_CONV_TO_PLAIN"),
+                                        Ls(L"MSG_CONV_LOSSY"), btns, 2, IDCANCEL) != IDYES)
+                    return 0;
+            }
             // Pull plain text, stream back in as plain, update path/encoding.
             std::string plain = Ne_StreamOut(hEd, false);
             doc->suppressChange = true;

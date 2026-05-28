@@ -88,6 +88,8 @@ BTN_SAVE          = Vurket
 BTN_DONT_SAVE     = Ii vurke
 BTN_CANCEL        = Jávkadit
 BTN_OK            = Dohkket
+BTN_CONTINUE      = Jatkat
+DLG_CONV_TO_PLAIN = Čállosapmašupmi sihkut
 
 DLG_FILE_CHANGED        = Fiila rievdaduvvon disskus
 MSG_FILE_CHANGED_PROMPT = "%s" lea rievdaduvvon eará prográmmas go NSBEdit ii leamašan doaibmame.\n\nViežžat ođđasit disskus?
@@ -102,6 +104,8 @@ SB_WORDS                = Sánit
 SB_CHARS                = Mearkkat
 SB_SAVED                = Vurkejuvvon
 SB_UNSAVED              = Ii vurkejuvvon
+SB_LN                   = Ln
+SB_COL                  = Kol
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Buoiddes  (Ctrl+B)

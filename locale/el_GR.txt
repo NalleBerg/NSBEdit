@@ -85,8 +85,8 @@ DLG_SAVE_CHANGES  = Αποθήκευση αλλαγών
 BTN_SAVE          = Αποθήκευση
 BTN_DONT_SAVE     = Χωρίς αποθήκευση
 BTN_CANCEL        = Ακύρωση
-BTN_OK            = ΟΚ
-
+BTN_OK            = ΟΚBTN_CONTINUE      = Συνέχεια
+DLG_CONV_TO_PLAIN = Αφαίρεση μορφοποίησης
 DLG_FILE_CHANGED        = Το αρχείο άλλαξε στο δίσκο
 MSG_FILE_CHANGED_PROMPT = Το "%s" τροποποιήθηκε από άλλο πρόγραμμα ενώ το NSBEdit δεν είχε εστίαση.\n\nΕπαναφόρτωση από δίσκο;
 BTN_RELOAD              = Επαναφόρτωση
@@ -100,6 +100,8 @@ SB_WORDS                = Λέξεις
 SB_CHARS                = Χαρακτήρες
 SB_SAVED                = Αποθηκευμένο
 SB_UNSAVED              = Μη αποθηκευμένο
+SB_LN                   = Γρ
+SB_COL                  = Στ
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Έντονα  (Ctrl+B)

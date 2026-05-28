@@ -86,6 +86,8 @@ BTN_SAVE          = Guardar
 BTN_DONT_SAVE     = Não guardar
 BTN_CANCEL        = Cancelar
 BTN_OK            = OK
+BTN_CONTINUE      = Continuar
+DLG_CONV_TO_PLAIN = Remover formatação
 
 DLG_FILE_CHANGED        = Ficheiro alterado no disco
 MSG_FILE_CHANGED_PROMPT = "%s" foi modificado por outro programa enquanto o NSBEdit não estava em foco.\n\nRecarregar a partir do disco?
@@ -100,6 +102,8 @@ SB_WORDS                = Palavras
 SB_CHARS                = Caracteres
 SB_SAVED                = Guardado
 SB_UNSAVED              = Não guardado
+SB_LN                   = Ln
+SB_COL                  = Col
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Negrito  (Ctrl+B)

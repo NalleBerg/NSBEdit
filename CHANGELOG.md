@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.05.28.09 (Fix: FTP save-as tab; strip-RTF dialog style; status bar i18n) - 28.05.2026 09:45
+
+- **Fix: FTP save-as tab name and language not updating**: After saving a new or renamed file to FTP with a different extension (e.g. saving an untitled plain-text buffer as `index.php`), the tab now immediately shows the remote filename and re-applies the correct syntax highlighting for the new extension. Previously the tab kept the old name and language until the file was closed and reopened from FTP.
+- **Fix: Strip Formatting dialog upgraded to custom style**: The system `MessageBoxW` prompt for “Strip RTF formatting?” has been replaced with `Ne_ShowChoiceDialog` — a fully custom styled dialog with a green **Continue** button and a blue **Cancel** button, matching every other confirmation dialog in NSBEdit. New locale keys `DLG_CONV_TO_PLAIN` and `BTN_CONTINUE` added to all 15 locale files.
+- **Fix: Status bar i18n — “Plain Text”, “Ln” and “Col” were hardcoded English**: “Plain Text” in the centre info segment now uses the `LANG_PLAIN_TEXT` locale key (Norwegian: “Ren tekst”). New locale keys `SB_LN` and `SB_COL` added to all 15 locale files and applied via `NeStatusBar_SetLineColLabels` at startup (Norwegian: “Ln” / “Kol”, Swedish: “Rad” / “Kol”, German: “Zl” / “Sp”, etc.).
+
 ## v2026.05.27.14 (Feature: indent guides) - 27.05.2026 14:25
 
 - **Feature: indent guides (dotted vertical lines)**: Scintilla's built-in indentation guide support (`SC_IV_LOOKBOTH`) is now enabled in all file types. Dotted vertical lines mark each indentation level so it is easy to follow nested code blocks visually. The guide colour is theme-aware: `RGB(115,115,115)` against the dark editor background and `RGB(130,130,130)` against the white background — clearly visible in both modes without being distracting.

@@ -88,6 +88,8 @@ BTN_SAVE          = Bewaar
 BTN_DONT_SAVE     = Niet bewaren
 BTN_CANCEL        = Annuleren
 BTN_OK            = OK
+BTN_CONTINUE      = Doorgaan
+DLG_CONV_TO_PLAIN = Opmaak verwijderen
 
 DLG_FILE_CHANGED        = Bestand gewijzigd op schijf
 MSG_FILE_CHANGED_PROMPT = "%s" werd gewijzigd door een ander programma terwijl NSBEdit niet actief was.\n\nOpnieuw laden van schijf?
@@ -102,6 +104,8 @@ SB_WORDS                = Woorden
 SB_CHARS                = Tekens
 SB_SAVED                = Bewaard
 SB_UNSAVED              = Niet bewaard
+SB_LN                   = Rg
+SB_COL                  = Ko
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Vet  (Ctrl+B)

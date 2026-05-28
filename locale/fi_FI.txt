@@ -86,6 +86,8 @@ BTN_SAVE          = Tallenna
 BTN_DONT_SAVE     = Älä tallenna
 BTN_CANCEL        = Peruuta
 BTN_OK            = OK
+BTN_CONTINUE      = Jatka
+DLG_CONV_TO_PLAIN = Poista muotoilu
 
 DLG_FILE_CHANGED        = Tiedosto on muuttunut levyllä
 MSG_FILE_CHANGED_PROMPT = "%s" muutettiin toisessa ohjelmassa, kun NSBEdit ei ollut aktiivinen.\n\nLadataanko tiedosto levyltä uudelleen?
@@ -100,6 +102,8 @@ SB_WORDS                = Sanoja
 SB_CHARS                = Merkkejä
 SB_SAVED                = Tallennettu
 SB_UNSAVED              = Tallentamaton
+SB_LN                   = Rv
+SB_COL                  = Sar
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Lihavointi  (Ctrl+B)

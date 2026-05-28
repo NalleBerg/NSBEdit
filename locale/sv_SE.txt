@@ -86,6 +86,8 @@ BTN_SAVE          = Spara
 BTN_DONT_SAVE     = Spara inte
 BTN_CANCEL        = Avbryt
 BTN_OK            = OK
+BTN_CONTINUE      = Fortsätt
+DLG_CONV_TO_PLAIN = Ta bort formatering
 
 DLG_FILE_CHANGED        = Filen har ändrats på disk
 MSG_FILE_CHANGED_PROMPT = "%s" ändrades av ett annat program medan NSBEdit inte var aktivt.\n\nLäs in från disk igen?
@@ -100,6 +102,8 @@ SB_WORDS                = Ord
 SB_CHARS                = Tecken
 SB_SAVED                = Sparad
 SB_UNSAVED              = Osparad
+SB_LN                   = Rad
+SB_COL                  = Kol
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Fetstil  (Ctrl+B)

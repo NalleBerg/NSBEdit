@@ -85,8 +85,8 @@ DLG_SAVE_CHANGES  = Gem ændringer
 BTN_SAVE          = Gem
 BTN_DONT_SAVE     = Gem ikke
 BTN_CANCEL        = Annullér
-BTN_OK            = OK
-
+BTN_OK            = OKBTN_CONTINUE      = Fortsæt
+DLG_CONV_TO_PLAIN = Fjern formatering
 DLG_FILE_CHANGED        = Filen er ændret på disken
 MSG_FILE_CHANGED_PROMPT = "%s" blev ændret af et andet program, mens NSBEdit ikke var i fokus.\n\nGenindlæs fra disken?
 BTN_RELOAD              = Genindlæs
@@ -100,6 +100,8 @@ SB_WORDS                = Ord
 SB_CHARS                = Tegn
 SB_SAVED                = Gemt
 SB_UNSAVED              = Ikke gemt
+SB_LN                   = Ln
+SB_COL                  = Kol
 
 # ── Toolbar tooltips ──────────────────────────────────────────────────────────
 TIP_BOLD        = Fed  (Ctrl+B)
