@@ -581,12 +581,19 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     sci(SCI_STYLESETFORE, STYLE_LINENUMBER, lnfg);
     sci(SCI_STYLESETSIZE, STYLE_LINENUMBER, 8);
     sci(SCI_STYLESETFONT, STYLE_LINENUMBER, (LPARAM)"Consolas");
-    // Fold margin (margin 2) — symbols only, no line numbers affected
-    sci(SCI_SETMARGINTYPEN,  2, SC_MARGIN_SYMBOL);
-    sci(SCI_SETMARGINMASKN,  2, SC_MASK_FOLDERS);
-    sci(SCI_SETMARGINWIDTHN, 2, S(14));
-    sci(SCI_SETMARGINSENSITIVEN, 2, TRUE);
-    sci(SCI_SETMARGINBACKN,       2, lnbg);
+    // Change-history margin (margin 2) — thin strip for Scintilla's built-in history markers
+    // (markers 21-24, mask 0x01E00000). Kept narrow so arrows in margin 3 are unobstructed.
+    sci(SCI_SETMARGINTYPEN,      2, SC_MARGIN_SYMBOL);
+    sci(SCI_SETMARGINMASKN,      2, 0x01E00000);   // history markers 21-24 only
+    sci(SCI_SETMARGINWIDTHN,     2, S(4));
+    sci(SCI_SETMARGINSENSITIVEN, 2, FALSE);
+    sci(SCI_SETMARGINBACKN,      2, lnbg);
+    // Fold margin (margin 3) — moved here so history strip (margin 2) doesn't overlap
+    sci(SCI_SETMARGINTYPEN,      3, SC_MARGIN_SYMBOL);
+    sci(SCI_SETMARGINMASKN,      3, SC_MASK_FOLDERS);
+    sci(SCI_SETMARGINWIDTHN,     3, S(14));
+    sci(SCI_SETMARGINSENSITIVEN, 3, TRUE);
+    sci(SCI_SETMARGINBACKN,      3, lnbg);
     // Scintilla fills fold margins with a stipple brush (selbar/selbarlight).
     // Override both fill and stripe to match the line-number margin background.
     sci(SCI_SETFOLDMARGINCOLOUR,   TRUE, lnbg);
@@ -613,21 +620,6 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     sci(SCI_MARKERDEFINE,   0, SC_MARK_CIRCLE);
     sci(SCI_MARKERSETFORE,  0, darkEd ? RGB( 50,150,255) : RGB(  0, 90,200));
     sci(SCI_MARKERSETBACK,  0, darkEd ? RGB( 50,150,255) : RGB(  0, 90,200));
-    // Diff margin (margin 3) — narrow 4-px coloured strip, hidden until a diff is run.
-    // Uses SC_MARK_LEFTRECT to paint only within this margin column.
-    sci(SCI_SETMARGINTYPEN,      3, SC_MARGIN_SYMBOL);
-    sci(SCI_SETMARGINMASKN,      3, (1 << NE_MARK_DIFF_DEL) | (1 << NE_MARK_DIFF_ADD) | (1 << NE_MARK_DIFF_CHG));
-    sci(SCI_SETMARGINWIDTHN,     3, 0);   // shown only when a diff is active
-    sci(SCI_SETMARGINSENSITIVEN, 3, FALSE);
-    sci(SCI_SETMARGINBACKN,      3, lnbg);
-    sci(SCI_MARKERDEFINE,  NE_MARK_DIFF_DEL, SC_MARK_LEFTRECT);
-    sci(SCI_MARKERSETBACK, NE_MARK_DIFF_DEL, RGB(200,  70,  70));  // red   = deleted
-    sci(SCI_MARKERDEFINE,  NE_MARK_DIFF_ADD, SC_MARK_LEFTRECT);
-    sci(SCI_MARKERSETBACK, NE_MARK_DIFF_ADD, RGB( 70, 190,  80));  // green = added
-    sci(SCI_MARKERDEFINE,  NE_MARK_DIFF_CHG, SC_MARK_LEFTRECT);
-    sci(SCI_MARKERSETBACK, NE_MARK_DIFF_CHG, RGB(210, 160,  40));  // amber = changed
-    // Disable change-history markers (red/green/yellow stripes in the left margin)
-    sci(SCI_SETCHANGEHISTORY, 0, 0);
     // Autocomplete settings
     sci(SCI_AUTOCSETIGNORECASE, TRUE, 0);
     sci(SCI_AUTOCSETAUTOHIDE,   TRUE, 0);
@@ -6430,7 +6422,6 @@ static void Ne_ClearDiffMarkers(HWND hwndMain)
             SendMessageW(doc->hSci, SCI_MARKERDELETEALL, NE_MARK_DIFF_DEL, 0);
             SendMessageW(doc->hSci, SCI_MARKERDELETEALL, NE_MARK_DIFF_ADD, 0);
             SendMessageW(doc->hSci, SCI_MARKERDELETEALL, NE_MARK_DIFF_CHG, 0);
-            SendMessageW(doc->hSci, SCI_SETMARGINWIDTHN, 3, 0);
         }
     }
     s_diffTabA = -1;
@@ -6844,40 +6835,8 @@ static void Ne_RunCompare(HWND hwndMain)
         return;
     }
 
-    // Clear markers from any previous compare
+    // Clear any margin markers left over from a previous compare run
     Ne_ClearDiffMarkers(hwndMain);
-
-    // Apply margin markers to Tab A (deleted / changed lines)
-    if (docA->hSci) {
-        for (int k = 0; k < (int)hunks.size(); ++k) {
-            const auto& hk = hunks[k];
-            if (hk.op == NeDiffOp::Del && hk.lineA >= 0) {
-                // Adjacent Add after a Del = changed line (show amber instead of red)
-                int marker = NE_MARK_DIFF_DEL;
-                if (k + 1 < (int)hunks.size() && hunks[k+1].op == NeDiffOp::Add)
-                    marker = NE_MARK_DIFF_CHG;
-                SendMessageW(docA->hSci, SCI_MARKERADD, (WPARAM)hk.lineA, (LPARAM)marker);
-            }
-        }
-        SendMessageW(docA->hSci, SCI_SETMARGINWIDTHN, 3, S(4));
-    }
-
-    // Apply margin markers to Tab B (added / changed lines)
-    if (docB->hSci) {
-        for (int k = 0; k < (int)hunks.size(); ++k) {
-            const auto& hk = hunks[k];
-            if (hk.op == NeDiffOp::Add && hk.lineB >= 0) {
-                int marker = NE_MARK_DIFF_ADD;
-                if (k > 0 && hunks[k-1].op == NeDiffOp::Del)
-                    marker = NE_MARK_DIFF_CHG;
-                SendMessageW(docB->hSci, SCI_MARKERADD, (WPARAM)hk.lineB, (LPARAM)marker);
-            }
-        }
-        SendMessageW(docB->hSci, SCI_SETMARGINWIDTHN, 3, S(4));
-    }
-
-    s_diffTabA = pk.tabA;
-    s_diffTabB = pk.tabB;
 
     // Determine display names
     auto tabName = [&](NeTabDoc* d) -> std::wstring {
@@ -13991,7 +13950,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     NeProfiles_SetIntSetting("zoom_sci", g_zoomSci);
                 }
             } else if (scn->nmhdr.code == SCN_MARGINCLICK) {
-                if (scn->margin == 2) {
+                if (scn->margin == 3) {
                     int line = (int)SendMessageW((HWND)scn->nmhdr.hwndFrom,
                                     SCI_LINEFROMPOSITION, (WPARAM)scn->position, 0);
                     SendMessageW((HWND)scn->nmhdr.hwndFrom,

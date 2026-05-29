@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.29.11 (Fix: Scintilla change-history stripes; fold arrows restored) - 29.05.2026 11:07
+
+- **Fix: Scintilla change-history stripes in code tab gutter**: Red, green, and yellow vertical stripes were permanently visible in the left gutter of all code tabs — including on reopen — and were displacing the fold arrows so they appeared broken or invisible. These are Scintilla's built-in change-history markers (red = reverted, green = saved, yellow = unsaved), which this version of Scintilla enables by default. The margin layout has been reorganised: margin 2 is now a dedicated 4 px history-marker strip (mask `0x01E00000`, markers 21–24), and the fold arrows have been moved to margin 3 (14 px, click-sensitive). The history colours are still visible as a thin strip to the left of the fold arrows, while the fold arrows are fully unobstructed and clickable again. Compare Tabs produces only the read-only unified diff result tab — no colored stripes are painted on the original source files.
+
 ## v2026.05.29.10 (Fix: RTF formatting lost on session restore; remove Scintilla change-history markers) - 29.05.2026 10:09
 
 - **Fix: RTF formatting (bold, italic, underline, etc.) lost on session restore**: After a restart, unsaved RTF tabs had all character formatting stripped — bold text became plain, italic became plain, and so on. Root cause: the session-restore colour fixup used `CFM_EFFECTS` as the `dwMask` in `EM_SETCHARFORMAT`. Since `CFM_EFFECTS` covers all effect bits (bold, italic, underline, strikethrough, …), and `dwEffects` only had `CFE_AUTOCOLOR` set, RichEdit zeroed out every other effect on every character. Fixed by changing the mask to `CFE_AUTOCOLOR` only, so just the autocolor flag is written and all per-character bold/italic/underline/colour runs from the streamed-in RTF are preserved intact.

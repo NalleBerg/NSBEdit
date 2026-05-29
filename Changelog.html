@@ -1,6 +1,12 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 29 May 2026 &mdash; v2026.05.29.10 (10:09)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 29 May 2026 &mdash; v2026.05.29.11 (11:07)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.29.11 (Fix: Scintilla change-history stripes; fold arrows restored)</span></h3>
+<p><strong>Fix: Scintilla change-history stripes in code tab gutter; fold arrows restored (29.05.2026, 11:07):</strong></p>
+<ul>
+<li><strong>Fix: Scintilla change-history stripes in code tab gutter:</strong> Red, green, and yellow vertical stripes were permanently visible in the left gutter of all code tabs &mdash; including on reopen &mdash; and were displacing the fold arrows so they appeared broken or invisible. These are Scintilla&rsquo;s built-in change-history markers (red&thinsp;=&thinsp;reverted, green&thinsp;=&thinsp;saved, yellow&thinsp;=&thinsp;unsaved), which this version of Scintilla enables by default. The margin layout has been reorganised: margin&nbsp;2 is now a dedicated 4&thinsp;px history-marker strip (mask <code>0x01E00000</code>, markers 21&ndash;24), and the fold arrows have been moved to margin&nbsp;3 (14&thinsp;px, click-sensitive). The history colours are still visible as a thin strip to the left of the fold arrows, while the fold arrows are fully unobstructed and clickable again. Compare Tabs produces only the read-only unified diff result tab &mdash; no coloured stripes are painted on the original source files.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.29.10 (Fix: RTF formatting lost on session restore; remove change-history markers)</span></h3>
 <p><strong>Fix: RTF formatting lost on session restore; remove Scintilla change-history markers (29.05.2026, 10:09):</strong></p>
