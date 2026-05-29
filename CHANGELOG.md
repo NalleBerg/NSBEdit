@@ -1,5 +1,15 @@
 # Changelog
 
+## v2026.05.29.08 (Feature: Find/Replace — All open tabs; Search backwards; dynamic sizing; fixes) - 29.05.2026 08:37
+
+- **Feature: Find in all open tabs**: New "All open tabs" checkbox in the Find/Replace dialog. When checked, Find Next searches across every open tab (both RTF and code files), wrapping through all tabs in order and jumping directly to the matching tab. The match counter shows the current position across all tabs combined (e.g. "16 / 3500"). Replace and Replace All are greyed out while this mode is active.
+- **Feature: Search backwards**: New "Search backwards" checkbox in the Find/Replace dialog. When checked, Find Next navigates towards the beginning of the document (or backwards through all tabs when "All open tabs" is also checked). Wrap-around is preserved in both directions.
+- **Feature: Dynamic Find/Replace dialog sizing**: All checkbox labels and the dialog width are now measured at runtime via `Ne_MeasureCheckWidth()` (same pattern as `Ne_MeasureButtonWidth`). The dialog automatically widens to fit any locale's translated checkbox text — no hardcoded pixel offsets.
+- **Fix: "All open tabs" only searched current tab**: The multi-tab scan used `IsWindowVisible(doc->hSci)` to detect code files, which returned false for inactive (hidden) tabs and fell through to the empty RichEdit. Changed to `doc->hSci != NULL` so all code tabs are read regardless of which one is currently visible.
+- **Fix: Find/Replace search broken for code (Scintilla) tabs in single-tab mode**: The single-tab path always called `Ne_GetEditText(hEdit)` — which returns empty text for code files because their content lives in the Scintilla control, not the hidden RichEdit. Now detects `doc->hSci` and uses `Ne_SciGetText` + `SCI_GETCURRENTPOS` / `SCI_SETSEL` for code tabs.
+- **Fix: Find/Replace button colours**: Find Next is now green; Replace and Replace All are blue. Disabled buttons (Replace/Replace All when "All open tabs" is checked) paint with a gray background and gray text via `ODS_DISABLED` in the owner-draw handler — previously they retained full colour.
+- **Fix: locale key fusion in 11 locale files**: `MENU_SELECTALL` and `MENU_FIND` were concatenated on a single line (missing newline after `\tCtrl+A`). The Edit menu showed the raw key name `MENU_FIND` instead of the localised text. Fixed in all 11 affected files (de_DE, el_GR, en_GB, es_ES, fi_FI, fr_FR, nl_BE, nl_NL, pt_PT, se_NO, sv_SE).
+
 ## v2026.05.28.16 (Fix: spell squiggle position; persist Mark Misspelled Words; status bar truncation; per-doc spell language) - 28.05.2026 16:39
 
 - **Fix: spell squiggle X position**: Misspelled-word underlines were drawn shifted right of the actual word. Root cause: `GetWindowTextW` returns `\r\n` (two chars) per paragraph break, but `EM_POSFROMCHAR` counts each break as one char. Fixed by switching to `EM_GETTEXTEX` with `GT_RAWTEXT`, which returns the same single-`\r` representation RichEdit uses internally.

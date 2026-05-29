@@ -1,4 +1,4 @@
-﻿# NSBEdit locale file — en_GB
+# NSBEdit locale file — en_GB
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -22,7 +22,8 @@ MENU_REDO         = &Redo\tCtrl+Y
 MENU_CUT          = Cu&t\tCtrl+X
 MENU_COPY         = &Copy\tCtrl+C
 MENU_PASTE        = &Paste\tCtrl+V
-MENU_SELECTALL    = Select &All\tCtrl+AMENU_FIND         = &Find / Replace...	Ctrl+F
+MENU_SELECTALL    = Select &All\tCtrl+A
+MENU_FIND         = &Find / Replace...	Ctrl+F
 MENU_GOTO         = &Go to Line...	Ctrl+G
 MENU_BOOKMARK     = Toggle &Bookmark	F2
 MENU_BOOKMARK_NEXT = &Go to Bookmark\tCtrl+F2
@@ -195,6 +196,8 @@ BTN_REPLACE_ALL     = Replace All
 CHK_MATCHCASE       = Match case
 CHK_WHOLEWORD       = Whole word
 CHK_REGEX           = Regex
+CHK_ALL_TABS        = All open tabs
+CHK_BACKWARDS        = Search backwards
 MSG_FIND_NOT_FOUND  = Text not found.
 MSG_REGEX_ERR       = Invalid regular expression.
 

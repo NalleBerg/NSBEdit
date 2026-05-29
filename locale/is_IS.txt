@@ -1,4 +1,4 @@
-﻿# NSBEdit locale file — is_IS (Íslenska)
+# NSBEdit locale file — is_IS (Íslenska)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -196,6 +196,8 @@ BTN_REPLACE_ALL     = Skipta öllu
 CHK_MATCHCASE       = Greinarmunur á hástöfum
 CHK_WHOLEWORD       = Heilt orð
 CHK_REGEX           = Regex
+CHK_ALL_TABS        = Allar opnar flipar
+CHK_BACKWARDS        = Leita afturábak
 MSG_FIND_NOT_FOUND  = Texti ekki fundinn.
 MSG_REGEX_ERR       = Ógilt reglulegt segð.
 

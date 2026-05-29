@@ -173,6 +173,8 @@ enum class NeEncoding {
 #define IDC_NE_DLG_WHOLEWORD    251
 #define IDC_NE_DLG_FIND_COUNT   260
 #define IDC_NE_DLG_REGEX        261
+#define IDC_NE_DLG_ALL_TABS     270  // "All open tabs" checkbox in Find dialog
+#define IDC_NE_DLG_BACKWARDS    271  // "Search backwards" checkbox in Find dialog
 #define IDC_NE_DLG_PAR_BEF      252
 #define IDC_NE_DLG_PAR_AFT      253
 #define IDC_BTN_LINENUM         262   // line-number toggle button (▸/◂)
@@ -2586,6 +2588,22 @@ static int Ne_MeasureButtonWidth(const std::wstring& text)
     return std::max(w, S(120));
 }
 
+// Measure the pixel width needed for a custom checkbox label at dialog font size.
+// box(S(13)) + gap(S(6)) + text + right-pad(S(6))
+static int Ne_MeasureCheckWidth(const wchar_t* text)
+{
+    HDC hdc = GetDC(NULL);
+    if (!hdc) return S(130);
+    HFONT hf = Ne_CreateDialogFont(false);
+    HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
+    SIZE sz = {};
+    GetTextExtentPoint32W(hdc, text, (int)wcslen(text), &sz);
+    if (old) SelectObject(hdc, old);
+    if (hf) DeleteObject(hf);
+    ReleaseDC(NULL, hdc);
+    return S(13) + S(6) + sz.cx + S(6);
+}
+
 static COLORREF Ne_ToneColor(NeBtnTone tone, bool pressed, bool hover)
 {
     switch (tone) {
@@ -2593,8 +2611,8 @@ static COLORREF Ne_ToneColor(NeBtnTone tone, bool pressed, bool hover)
             return pressed ? RGB(100, 160, 100) : hover ? RGB(155, 205, 155) : RGB(175, 215, 175);
         case NeBtnTone::Red:
             return pressed ? RGB(190, 100, 100) : hover ? RGB(225, 145, 145) : RGB(235, 175, 175);
-        default:
-            return pressed ? RGB(204, 228, 247) : hover ? RGB(229, 241, 251) : RGB(225, 225, 225);
+        default: // Blue
+            return pressed ? RGB( 90, 155, 215) : hover ? RGB(130, 185, 230) : RGB(160, 205, 240);
     }
 }
 
@@ -2615,10 +2633,12 @@ static void Ne_DrawDialogButton(const DRAWITEMSTRUCT* dis, const NeDialogData* d
 
     RECT rc = dis->rcItem;
     HDC hdc = dis->hDC;
-    bool pressed = (dis->itemState & ODS_SELECTED) != 0;
-    bool hover   = (GetPropW(dis->hwndItem, L"NeHover") != NULL);
+    bool pressed  = (dis->itemState & ODS_SELECTED) != 0;
+    bool hover    = (GetPropW(dis->hwndItem, L"NeHover") != NULL);
+    bool disabled = (dis->itemState & ODS_DISABLED) != 0;
 
-    HBRUSH hb = CreateSolidBrush(Ne_ToneColor(b.tone, pressed, hover));
+    COLORREF bgCol = disabled ? RGB(210, 210, 210) : Ne_ToneColor(b.tone, pressed, hover);
+    HBRUSH hb = CreateSolidBrush(bgCol);
     FillRect(hdc, &rc, hb);
     DeleteObject(hb);
     FrameRect(hdc, &rc, GetSysColorBrush(COLOR_3DSHADOW));
@@ -2635,12 +2655,12 @@ static void Ne_DrawDialogButton(const DRAWITEMSTRUCT* dis, const NeDialogData* d
     HICON hIcon = b.hIconOverride
         ? b.hIconOverride
         : LoadIconW(NULL, b.iconRes ? b.iconRes : IDI_INFORMATION);
-    if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
+    if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, disabled ? DI_NORMAL | 0 : DI_NORMAL);
 
     RECT tr = rc;
     tr.left = startX + S(16) + S(8);
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(25, 25, 25));
+    SetTextColor(hdc, disabled ? RGB(150, 150, 150) : RGB(25, 25, 25));
     DrawTextW(hdc, b.text.c_str(), -1, &tr, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX);
 
     if (dis->itemState & ODS_FOCUS) {
@@ -3221,20 +3241,38 @@ static std::wstring s_findCachedNeedle;
 static bool         s_findCachedMatchCase = false;
 static bool         s_findCachedWholeWord = false;
 static bool         s_findCachedRegex     = false;
+static bool         s_findCachedAllTabs   = false;
+static bool         s_findCachedBackwards = false;
 static std::vector<NeHighlightRange> s_findMatches;  // all match ranges
+
+// All-tabs search state (used when IDC_NE_DLG_ALL_TABS is checked).
+struct NeAllTabMatch { int tabIndex; int start; int end; };
+static std::vector<NeAllTabMatch> s_findAllTabMatches;
+static int                        s_findAllTabActiveIdx = -1;
 
 static void Ne_UpdateFindCount()
 {
     if (!s_hwndFind || !IsWindow(s_hwndFind)) return;
     HWND hCount = GetDlgItem(s_hwndFind, IDC_NE_DLG_FIND_COUNT);
     if (!hCount) return;
-    if (s_findMatches.empty()) {
-        SetWindowTextW(hCount, L"");
+    bool allTabs = (SendMessageW(GetDlgItem(s_hwndFind, IDC_NE_DLG_ALL_TABS), BM_GETCHECK, 0, 0) == BST_CHECKED);
+    if (allTabs) {
+        if (s_findAllTabMatches.empty()) {
+            SetWindowTextW(hCount, L"");
+        } else {
+            wchar_t buf[32];
+            swprintf_s(buf, L"%d / %d", s_findAllTabActiveIdx + 1, (int)s_findAllTabMatches.size());
+            SetWindowTextW(hCount, buf);
+        }
     } else {
-        wchar_t buf[32];
-        swprintf_s(buf, L"%d / %d",
-                   s_findHL.activeIdx + 1, (int)s_findMatches.size());
-        SetWindowTextW(hCount, buf);
+        if (s_findMatches.empty()) {
+            SetWindowTextW(hCount, L"");
+        } else {
+            wchar_t buf[32];
+            swprintf_s(buf, L"%d / %d",
+                       s_findHL.activeIdx + 1, (int)s_findMatches.size());
+            SetWindowTextW(hCount, buf);
+        }
     }
 }
 
@@ -3293,7 +3331,7 @@ static int Ne_FindInText(const std::wstring& text, const std::wstring& needle,
     return -1;
 }
 
-static void Ne_DoFindNext(HWND dlg, bool forward = true)
+static void Ne_DoFindNext(HWND dlg)
 {
     HWND hWhat = GetDlgItem(dlg, IDC_NE_DLG_FIND_WHAT);
     HWND hEdit = s_hwndFindEdit;
@@ -3305,6 +3343,8 @@ static void Ne_DoFindNext(HWND dlg, bool forward = true)
         NeHighlight_Clear(hEdit, s_findHL);
         s_findMatches.clear();
         s_findCachedNeedle.clear();
+        s_findAllTabMatches.clear();
+        s_findAllTabActiveIdx = -1;
         Ne_UpdateFindCount();
         return;
     }
@@ -3313,17 +3353,166 @@ static void Ne_DoFindNext(HWND dlg, bool forward = true)
     bool matchCase = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_MATCHCASE), BM_GETCHECK, 0, 0) == BST_CHECKED);
     bool wholeWord = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_WHOLEWORD), BM_GETCHECK, 0, 0) == BST_CHECKED);
     bool useRegex  = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_REGEX),     BM_GETCHECK, 0, 0) == BST_CHECKED);
+    bool allTabs   = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_ALL_TABS),  BM_GETCHECK, 0, 0) == BST_CHECKED);
+    bool backwards = (SendMessageW(GetDlgItem(dlg, IDC_NE_DLG_BACKWARDS), BM_GETCHECK, 0, 0) == BST_CHECKED);
+    bool forward   = !backwards;
 
     bool dirty = (needle    != s_findCachedNeedle    ||
                   matchCase != s_findCachedMatchCase ||
                   wholeWord != s_findCachedWholeWord ||
-                  useRegex  != s_findCachedRegex);
+                  useRegex  != s_findCachedRegex     ||
+                  allTabs   != s_findCachedAllTabs   ||
+                  backwards != s_findCachedBackwards);
+
+    // ── All-open-tabs search path ─────────────────────────────────────────
+    if (allTabs) {
+        if (dirty) {
+            NeHighlight_Clear(hEdit, s_findHL);
+            s_findMatches.clear();
+            s_findAllTabMatches.clear();
+            s_findAllTabActiveIdx = -1;
+
+            int tabCount = NeTabs_GetCount(s_hwndMain);
+            int activeTabIdx = NeTabs_GetActiveIndex(s_hwndMain);
+
+            // Build wregex once if needed.
+            std::wregex re;
+            if (useRegex) {
+                try {
+                    auto flags = std::regex_constants::ECMAScript;
+                    if (!matchCase) flags |= std::regex_constants::icase;
+                    re = std::wregex(needle, flags);
+                } catch (...) {
+                    MessageBoxW(dlg, Ls(L"MSG_REGEX_ERR"), Ls(L"DLG_FIND"), MB_OK | MB_ICONERROR);
+                    Ne_UpdateFindCount();
+                    return;
+                }
+            }
+
+            for (int ti = 0; ti < tabCount; ti++) {
+                NeTabDoc* doc = NeTabs_GetDocByIndex(s_hwndMain, ti);
+                if (!doc) continue;
+
+                std::wstring text;
+                if (doc->hSci) {
+                    // Scintilla tab (code file) — text is UTF-8, works even if tab is not active
+                    std::string u8 = Ne_SciGetText(doc->hSci);
+                    if (!u8.empty()) {
+                        int n = MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), -1, NULL, 0);
+                        if (n > 1) { text.resize(n - 1); MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), -1, text.data(), n); }
+                    }
+                } else {
+                    text = Ne_GetEditText(doc->hEdit);
+                }
+
+                if (useRegex) {
+                    for (auto it = std::wsregex_iterator(text.begin(), text.end(), re);
+                         it != std::wsregex_iterator(); ++it) {
+                        int s = (int)it->position();
+                        s_findAllTabMatches.push_back({ ti, s, s + (int)it->length() });
+                    }
+                } else {
+                    int from = 0;
+                    while (true) {
+                        int pos = Ne_FindInText(text, needle, from, true, matchCase, wholeWord);
+                        if (pos < 0) break;
+                        s_findAllTabMatches.push_back({ ti, pos, pos + (int)needle.size() });
+                        from = pos + (int)needle.size();
+                    }
+                }
+            }
+
+            s_findCachedNeedle    = needle;
+            s_findCachedMatchCase = matchCase;
+            s_findCachedWholeWord = wholeWord;
+            s_findCachedRegex     = useRegex;
+            s_findCachedAllTabs   = true;
+            s_findCachedBackwards = backwards;
+
+            if (s_findAllTabMatches.empty()) {
+                Ne_UpdateFindCount();
+                MessageBoxW(dlg, Ls(L"MSG_FIND_NOT_FOUND"), Ls(L"DLG_FIND"), MB_OK | MB_ICONINFORMATION);
+                return;
+            }
+
+            // Pick the first match at or after the caret in the active tab;
+            // fall back to the very first match overall.
+            CHARRANGE cr = {};
+            SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+            int caretPos = forward ? (int)cr.cpMax : (int)cr.cpMin;
+            s_findAllTabActiveIdx = forward ? 0 : (int)s_findAllTabMatches.size() - 1;
+            if (forward) {
+                for (int i = 0; i < (int)s_findAllTabMatches.size(); i++) {
+                    const auto& m = s_findAllTabMatches[i];
+                    if (m.tabIndex > activeTabIdx ||
+                        (m.tabIndex == activeTabIdx && m.start >= caretPos)) {
+                        s_findAllTabActiveIdx = i;
+                        break;
+                    }
+                }
+            } else {
+                for (int i = (int)s_findAllTabMatches.size() - 1; i >= 0; i--) {
+                    const auto& m = s_findAllTabMatches[i];
+                    if (m.tabIndex < activeTabIdx ||
+                        (m.tabIndex == activeTabIdx && m.start < caretPos)) {
+                        s_findAllTabActiveIdx = i;
+                        break;
+                    }
+                }
+            }
+        } else {
+            // Same search params — just advance the index.
+            if (s_findAllTabMatches.empty()) return;
+            int n = (int)s_findAllTabMatches.size();
+            s_findAllTabActiveIdx = forward
+                ? (s_findAllTabActiveIdx + 1) % n
+                : (s_findAllTabActiveIdx - 1 + n) % n;
+        }
+
+        // Navigate to the active all-tabs match.
+        const NeAllTabMatch& am = s_findAllTabMatches[s_findAllTabActiveIdx];
+        NeTabDoc* doc = NeTabs_GetDocByIndex(s_hwndMain, am.tabIndex);
+        if (doc) {
+            NeTabs_SetActive(s_hwndMain, am.tabIndex);
+            // Update s_hwndFindEdit to the newly-active editor.
+            HWND hActiveEdit = NeTabs_GetActiveEdit(s_hwndMain);
+            if (hActiveEdit) s_hwndFindEdit = hActiveEdit;
+            // Select the match in the editor.
+            if (doc->hSci) {
+                SendMessageW(doc->hSci, SCI_SETSEL, am.start, am.end);
+                SendMessageW(doc->hSci, SCI_SCROLLCARET, 0, 0);
+                SetFocus(doc->hSci);
+            } else {
+                CHARRANGE sel = { (LONG)am.start, (LONG)am.end };
+                SendMessageW(doc->hEdit, EM_EXSETSEL, 0, (LPARAM)&sel);
+                SendMessageW(doc->hEdit, EM_SCROLLCARET, 0, 0);
+                SetFocus(doc->hEdit);
+            }
+        }
+        Ne_UpdateFindCount();
+        return;
+    }
+
+    // ── Single-tab search path (original) ────────────────────────────────
+
+    // Detect Scintilla (code) vs RichEdit (RTF) for the active tab.
+    NeTabDoc* singleDoc = NeTabs_GetActiveDoc(s_hwndMain);
+    bool isSci = (singleDoc && singleDoc->hSci != NULL);
 
     if (dirty) {
         NeHighlight_Clear(hEdit, s_findHL);
         s_findMatches.clear();
 
-        std::wstring text = Ne_GetEditText(hEdit);
+        std::wstring text;
+        if (isSci) {
+            std::string u8 = Ne_SciGetText(singleDoc->hSci);
+            if (!u8.empty()) {
+                int n = MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), -1, NULL, 0);
+                if (n > 1) { text.resize(n - 1); MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), -1, text.data(), n); }
+            }
+        } else {
+            text = Ne_GetEditText(hEdit);
+        }
 
         if (useRegex) {
             std::wregex re;
@@ -3332,7 +3521,7 @@ static void Ne_DoFindNext(HWND dlg, bool forward = true)
                 if (!matchCase) flags |= std::regex_constants::icase;
                 re = std::wregex(needle, flags);
             } catch (...) {
-                MessageBoxW(dlg, L"Invalid regular expression.", Ls(L"DLG_FIND"), MB_OK | MB_ICONERROR);
+                MessageBoxW(dlg, Ls(L"MSG_REGEX_ERR"), Ls(L"DLG_FIND"), MB_OK | MB_ICONERROR);
                 Ne_UpdateFindCount();
                 return;
             }
@@ -3355,6 +3544,8 @@ static void Ne_DoFindNext(HWND dlg, bool forward = true)
         s_findCachedMatchCase = matchCase;
         s_findCachedWholeWord = wholeWord;
         s_findCachedRegex     = useRegex;
+        s_findCachedAllTabs   = false;
+        s_findCachedBackwards = backwards;
 
         if (s_findMatches.empty()) {
             Ne_UpdateFindCount();
@@ -3363,10 +3554,15 @@ static void Ne_DoFindNext(HWND dlg, bool forward = true)
         }
 
         // Pick nearest match to the current caret.
-        CHARRANGE cr = {};
-        SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
-        int caretPos = forward ? (int)cr.cpMax : (int)cr.cpMin;
-        int bestIdx  = forward ? 0 : (int)s_findMatches.size() - 1;
+        int caretPos = 0;
+        if (isSci) {
+            caretPos = (int)SendMessageW(singleDoc->hSci, SCI_GETCURRENTPOS, 0, 0);
+        } else {
+            CHARRANGE cr = {};
+            SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+            caretPos = forward ? (int)cr.cpMax : (int)cr.cpMin;
+        }
+        int bestIdx = forward ? 0 : (int)s_findMatches.size() - 1;
         if (forward) {
             for (int i = 0; i < (int)s_findMatches.size(); i++) {
                 if (s_findMatches[i].start >= caretPos) { bestIdx = i; break; }
@@ -3377,16 +3573,32 @@ static void Ne_DoFindNext(HWND dlg, bool forward = true)
             }
         }
 
-        NeHighlight_SetAll(hEdit, s_findMatches, bestIdx,
-                           NE_HL_FG, NE_HL_BG, NE_HL_BG_INACTIVE, s_findHL);
+        if (isSci) {
+            s_findHL.activeIdx = bestIdx;  // keep count display in sync
+        } else {
+            NeHighlight_SetAll(hEdit, s_findMatches, bestIdx,
+                               NE_HL_FG, NE_HL_BG, NE_HL_BG_INACTIVE, s_findHL);
+        }
     } else {
         if (s_findMatches.empty()) return;
         int n = (int)s_findMatches.size();
         int newIdx = forward
             ? (s_findHL.activeIdx + 1) % n
             : (s_findHL.activeIdx - 1 + n) % n;
-        NeHighlight_SetActive(hEdit, newIdx,
-                              NE_HL_FG, NE_HL_BG, NE_HL_BG_INACTIVE, s_findHL);
+        if (isSci) {
+            s_findHL.activeIdx = newIdx;
+        } else {
+            NeHighlight_SetActive(hEdit, newIdx,
+                                  NE_HL_FG, NE_HL_BG, NE_HL_BG_INACTIVE, s_findHL);
+        }
+    }
+
+    // Navigate to the active match.
+    if (isSci && !s_findMatches.empty()) {
+        const auto& m = s_findMatches[s_findHL.activeIdx];
+        SendMessageW(singleDoc->hSci, SCI_SETSEL, m.start, m.end);
+        SendMessageW(singleDoc->hSci, SCI_SCROLLCARET, 0, 0);
+        SetFocus(singleDoc->hSci);
     }
 
     Ne_UpdateFindCount();
@@ -3495,7 +3707,7 @@ static void Ne_DoReplace(HWND dlg, bool all)
         NeHighlight_Clear(hEdit, s_findHL);
         s_findCachedNeedle.clear();
         Ne_UpdateFindCount();
-        Ne_DoFindNext(dlg, true);
+        Ne_DoFindNext(dlg);
     }
 }
 
@@ -3507,8 +3719,8 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
     case WM_COMMAND: {
         int id = LOWORD(w);
         if (id == IDCANCEL)                  { DestroyWindow(h); return 0; }
-        if (id == IDOK)                      { Ne_DoFindNext(h, true); return 0; }  // Enter key
-        if (id == IDC_NE_DLG_FIND_NEXT)      { Ne_DoFindNext(h, true);  return 0; }
+        if (id == IDOK)                      { Ne_DoFindNext(h); return 0; }  // Enter key
+        if (id == IDC_NE_DLG_FIND_NEXT)      { Ne_DoFindNext(h);  return 0; }
         if (id == IDC_NE_DLG_REPLACE)        { Ne_DoReplace(h, false);  return 0; }
         if (id == IDC_NE_DLG_REPLACE_ALL)    { Ne_DoReplace(h, true);   return 0; }
         // Regex checkbox toggled — grey out MatchCase and WholeWord.
@@ -3519,6 +3731,14 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
             InvalidateRect(GetDlgItem(h, IDC_NE_DLG_MATCHCASE), NULL, TRUE);
             InvalidateRect(GetDlgItem(h, IDC_NE_DLG_WHOLEWORD), NULL, TRUE);
             s_findCachedNeedle.clear();  // force rescan with new mode
+            return 0;
+        }
+        // All-tabs checkbox toggled — disable Replace when on (can't replace across tabs).
+        if (id == IDC_NE_DLG_ALL_TABS && HIWORD(w) == BN_CLICKED) {
+            bool on = (SendMessageW(GetDlgItem(h, IDC_NE_DLG_ALL_TABS), BM_GETCHECK, 0, 0) == BST_CHECKED);
+            EnableWindow(GetDlgItem(h, IDC_NE_DLG_REPLACE),     !on);
+            EnableWindow(GetDlgItem(h, IDC_NE_DLG_REPLACE_ALL), !on);
+            s_findCachedNeedle.clear();  // force rescan on next Find Next
             return 0;
         }
         break;
@@ -3548,6 +3768,10 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
         NeHighlight_Clear(s_hwndFindEdit, s_findHL);
         s_findMatches.clear();
         s_findCachedNeedle.clear();
+        s_findAllTabMatches.clear();
+        s_findAllTabActiveIdx = -1;
+        s_findCachedAllTabs   = false;
+        s_findCachedBackwards = false;
         HFONT hf = (HFONT)GetWindowLongPtrW(h, GWLP_USERDATA);
         if (hf) DeleteObject(hf);
         for (int i = 0; i < s_findBtnDD.buttonCount; i++) {
@@ -3652,9 +3876,9 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
     HICON hIconCheck = NULL, hIconClose = NULL;
     ExtractIconExW(L"shell32.dll", 294, NULL, &hIconCheck, 1);
     ExtractIconExW(L"shell32.dll", 131, NULL, &hIconClose,  1);
-    s_findBtnDD.buttons[0] = { IDC_NE_DLG_FIND_NEXT,  Ls(L"BTN_FIND_NEXT"),   NeBtnTone::Blue,  IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_FIND_NEXT")),   NULL       };
-    s_findBtnDD.buttons[1] = { IDC_NE_DLG_REPLACE,    Ls(L"BTN_REPLACE"),     NeBtnTone::Green, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_REPLACE")),     hIconCheck };
-    s_findBtnDD.buttons[2] = { IDC_NE_DLG_REPLACE_ALL,Ls(L"BTN_REPLACE_ALL"), NeBtnTone::Green, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_REPLACE_ALL")), hIconCheck };
+    s_findBtnDD.buttons[0] = { IDC_NE_DLG_FIND_NEXT,  Ls(L"BTN_FIND_NEXT"),   NeBtnTone::Green, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_FIND_NEXT")),   NULL       };
+    s_findBtnDD.buttons[1] = { IDC_NE_DLG_REPLACE,    Ls(L"BTN_REPLACE"),     NeBtnTone::Blue,  IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_REPLACE")),     hIconCheck };
+    s_findBtnDD.buttons[2] = { IDC_NE_DLG_REPLACE_ALL,Ls(L"BTN_REPLACE_ALL"), NeBtnTone::Blue,  IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_REPLACE_ALL")), hIconCheck };
     s_findBtnDD.buttons[3] = { IDCANCEL,               Ls(L"BTN_CLOSE"),       NeBtnTone::Red,   IDI_ERROR,       Ne_MeasureButtonWidth(Ls(L"BTN_CLOSE")),       hIconClose };
 
     const int P = S(10), LH = S(24), EB = S(22), CB = S(34);
@@ -3662,8 +3886,17 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
     for (int i = 0; i < 4; i++) totalBtnW += s_findBtnDD.buttons[i].width;
     totalBtnW += 3 * S(6);
 
-    int clientW = std::max(S(450), totalBtnW + 2 * P);
-    int clientH = P + (EB + P) + (EB + P) + LH + P + CB + P;
+    // Measure checkbox label widths so the dialog fits any locale.
+    int wMC  = Ne_MeasureCheckWidth(Ls(L"CHK_MATCHCASE"));
+    int wWW  = Ne_MeasureCheckWidth(Ls(L"CHK_WHOLEWORD"));
+    int wRX  = Ne_MeasureCheckWidth(Ls(L"CHK_REGEX"));
+    int wAT  = Ne_MeasureCheckWidth(Ls(L"CHK_ALL_TABS"));
+    int wBW  = Ne_MeasureCheckWidth(Ls(L"CHK_BACKWARDS"));
+    int row1W = P + wMC + P + wWW + P + wRX + P;
+    int row2W = P + wAT + P + wBW + P;
+
+    int clientW = std::max({ S(380), totalBtnW + 2 * P, row1W, row2W });
+    int clientH = P + (EB + P) + (EB + P) + LH + P + LH + P + CB + P;
     RECT wr = { 0, 0, clientW, clientH };
     AdjustWindowRectEx(&wr, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE,
                        WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE);
@@ -3697,9 +3930,9 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
         if (hf) SendMessageW(ctrl, WM_SETFONT, (WPARAM)hf, TRUE);
         return ctrl;
     };
-    auto mkCustomCheck = [&](int id, const wchar_t* t, int xx, int yy) -> HWND {
+    auto mkCustomCheck = [&](int id, const wchar_t* t, int xx, int yy, int w) -> HWND {
         HWND ctrl = CreateCustomCheckbox(s_hwndFind, id, t, false,
-            xx, yy, S(130), LH, hi);
+            xx, yy, w, LH, hi);
         if (ctrl && hf) SendMessageW(ctrl, WM_SETFONT, (WPARAM)hf, TRUE);
         return ctrl;
     };
@@ -3727,9 +3960,14 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
     mkEdit(IDC_NE_DLG_REPL_WITH, y0); y0 += EB + P;
 
     // Single row: MatchCase | WholeWord | Regex  (custom theme-aware checkboxes)
-    mkCustomCheck(IDC_NE_DLG_MATCHCASE, Ls(L"CHK_MATCHCASE"), P,          y0);
-    mkCustomCheck(IDC_NE_DLG_WHOLEWORD, Ls(L"CHK_WHOLEWORD"), P + S(140), y0);
-    mkCustomCheck(IDC_NE_DLG_REGEX,     Ls(L"CHK_REGEX"),     P + S(280), y0);
+    mkCustomCheck(IDC_NE_DLG_MATCHCASE, Ls(L"CHK_MATCHCASE"), P,                y0, wMC);
+    mkCustomCheck(IDC_NE_DLG_WHOLEWORD, Ls(L"CHK_WHOLEWORD"), P + wMC + P,      y0, wWW);
+    mkCustomCheck(IDC_NE_DLG_REGEX,     Ls(L"CHK_REGEX"),     P + wMC + P + wWW + P, y0, wRX);
+    y0 += LH + P;
+
+    // Second checkbox row: All open tabs | Search backwards
+    mkCustomCheck(IDC_NE_DLG_ALL_TABS,  Ls(L"CHK_ALL_TABS"),  P,           y0, wAT);
+    mkCustomCheck(IDC_NE_DLG_BACKWARDS, Ls(L"CHK_BACKWARDS"), P + wAT + P, y0, wBW);
     y0 += LH + P;
 
     // Owner-draw buttons, centred horizontally.

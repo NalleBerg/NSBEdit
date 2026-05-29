@@ -1,4 +1,4 @@
-﻿# NSBEdit locale file — nl_BE (Vlaams)
+# NSBEdit locale file — nl_BE (Vlaams)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
@@ -24,7 +24,9 @@ MENU_REDO         = Op&nieuw uitvoeren\tCtrl+Y
 MENU_CUT          = &Knippen\tCtrl+X
 MENU_COPY         = &Kopiëren\tCtrl+C
 MENU_PASTE        = &Plakken\tCtrl+V
-MENU_SELECTALL    = Alles &selecteren\tCtrl+AMENU_FIND         = &Zoeken / Vervangen...	Ctrl+FMENU_GOTO         = Ga naar &regel...\tCtrl+G
+MENU_SELECTALL    = Alles &selecteren\tCtrl+A
+MENU_FIND         = &Zoeken / Vervangen...	Ctrl+F
+MENU_GOTO         = Ga naar &regel...\tCtrl+G
 MENU_BOOKMARK     = &Bladwijzer aan/uit\tF2
 MENU_BOOKMARK_NEXT = Ga naar &bladwijzer\tCtrl+F2
 MENU_PREFS        = &Voorkeuren...
@@ -196,6 +198,8 @@ BTN_REPLACE_ALL     = Alles vervangen
 CHK_MATCHCASE       = Hoofdlettergevoelig
 CHK_WHOLEWORD       = Heel woord
 CHK_REGEX           = Regex
+CHK_ALL_TABS        = Alle open tabbladen
+CHK_BACKWARDS        = Achterwaarts zoeken
 MSG_FIND_NOT_FOUND  = Tekst niet gevonden.
 MSG_REGEX_ERR       = Ongeldige reguliere expressie.
 

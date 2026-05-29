@@ -250,6 +250,53 @@
                                                 grays the top-level Stavekontroll menu
                                                 when the active doc is not RTF; called
                                                 from Ne_UpdateToolbarMode.
+                                                Find/Replace: Ne_ShowFindDialog(HWND) —
+                                                modeless dialog (Ctrl+F). Five owner-draw
+                                                buttons: Find Next (green,
+                                                IDC_NE_DLG_FIND_NEXT), Replace (blue,
+                                                IDC_NE_DLG_REPLACE), Replace All (blue,
+                                                IDC_NE_DLG_REPLACE_ALL), Count (gray,
+                                                IDC_NE_DLG_FIND_COUNT), Close (red,
+                                                IDCANCEL). Replace / Replace All are
+                                                EnableWindow(FALSE) while IDC_NE_DLG_ALL_TABS
+                                                is checked. Disabled buttons render gray bg +
+                                                gray text via ODS_DISABLED in
+                                                Ne_DrawDialogButton. Three option checkboxes
+                                                in row 1: IDC_NE_DLG_MATCHCASE,
+                                                IDC_NE_DLG_WHOLEWORD, IDC_NE_DLG_REGEX.
+                                                Two option checkboxes in row 2:
+                                                IDC_NE_DLG_ALL_TABS (All open tabs),
+                                                IDC_NE_DLG_BACKWARDS (Search backwards).
+                                                All five checkbox widths measured via
+                                                Ne_MeasureCheckWidth (box S(13) + gap S(6)
+                                                + text extent + right-pad S(6)); dialog
+                                                width is max(S(380), totalBtnW+2P,
+                                                row1W, row2W).
+                                                Ne_DoFindNext(HWND dlg) — reads options
+                                                from dialog controls; derives forward/
+                                                backwards from IDC_NE_DLG_BACKWARDS.
+                                                Single-tab path: detects doc->hSci != NULL
+                                                and uses Ne_SciGetText + SCI_GETCURRENTPOS
+                                                / SCI_SETSEL for code tabs; RichEdit path
+                                                for RTF tabs. All-tabs path: iterates all
+                                                tab indices with NeTabs_GetDocByIndex,
+                                                checks doc->hSci != NULL (not IsWindowVisible
+                                                — works for hidden/inactive tabs), reads
+                                                text via Ne_SciGetText or Ne_GetEditText.
+                                                Globals: s_findCachedAllTabs (bool),
+                                                s_findCachedBackwards (bool),
+                                                s_findAllTabMatches (vector<NeAllTabMatch>),
+                                                s_findAllTabActiveIdx (int). Matches
+                                                re-collected when find-text, options, or
+                                                direction change (dirty flag). Navigation
+                                                wraps around in both directions.
+                                                Ne_MeasureCheckWidth(const wchar_t* text)
+                                                — like Ne_MeasureButtonWidth but for a
+                                                checkbox: box(S(13)) + gap(S(6)) + text
+                                                extent + right-pad(S(6)).
+                                                IDC control IDs: 252 IDC_NE_DLG_PAR_BEF,
+                                                260 IDC_NE_DLG_FIND_COUNT, 261 IDC_NE_DLG_REGEX,
+                                                270 IDC_NE_DLG_ALL_TABS, 271 IDC_NE_DLG_BACKWARDS.
                                                 Language menu on RichEdit tab converts
                                                 tab to Scintilla on demand (plain text
                                                 extracted, Scintilla created, RichEdit

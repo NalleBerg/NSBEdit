@@ -1,4 +1,4 @@
-﻿# NSBEdit locale file — se_NO (Davvisámegiella / North Sami)
+# NSBEdit locale file — se_NO (Davvisámegiella / North Sami)
 # Format:  KEY = value
 # Escape sequences:  \n = CR+LF,  \t = tab,  \\ = backslash
 # North Sami (Davvisámegiella) is spoken in Norway, Sweden and Finland.
@@ -24,7 +24,9 @@ MENU_REDO         = &Fas dahkat\tCtrl+Y
 MENU_CUT          = &Bávččat\tCtrl+X
 MENU_COPY         = &Kopiiret\tCtrl+C
 MENU_PASTE        = &Liimet\tCtrl+V
-MENU_SELECTALL    = Válljehit &buot\tCtrl+AMENU_FIND         = &Ohcat / Nuppástuhttit...	Ctrl+FMENU_GOTO         = Mana &linjii...\tCtrl+G
+MENU_SELECTALL    = Válljehit &buot\tCtrl+A
+MENU_FIND         = &Ohcat / Nuppástuhttit...	Ctrl+F
+MENU_GOTO         = Mana &linjii...\tCtrl+G
 MENU_BOOKMARK     = Nuppástuhte &mearkka\tF2
 MENU_BOOKMARK_NEXT = Vuolgit &mearkii\tCtrl+F2
 MENU_PREFS        = &Ásahusat...
@@ -196,6 +198,8 @@ BTN_REPLACE_ALL     = Buot nuppástuhttit
 CHK_MATCHCASE       = Stuora/unna bustávat vuhtiiváldit
 CHK_WHOLEWORD       = Olles sátni
 CHK_REGEX           = Regex
+CHK_ALL_TABS        = Buot rabas fliper
+CHK_BACKWARDS        = Ohcat maŋŋelii
 MSG_FIND_NOT_FOUND  = Čállos ii gávdnon.
 MSG_REGEX_ERR       = Ii gelvvolaš reguláralaš čiehtadan.
 

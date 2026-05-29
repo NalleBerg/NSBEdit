@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.28.16**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.29.08**
 
 ## Download
 
@@ -28,6 +28,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Go to Line** — Ctrl+G (or Edit → Go to Line…) opens a compact input dialog; jumps to any line number, clamped to the last line
 - **Bookmarks** — F2 toggles a bookmark on the current line (blue circle in the margin); Shift+F2 goes to the previous bookmark, Ctrl+F2 to the next. *Go to Bookmark* is greyed when no bookmarks exist
 - **Spell Check** — Windows built-in `ISpellChecker` COM API (Windows 8+); red squiggles under misspelled words in RTF documents; native spell-check dialog (F7) with suggestions listbox, Change / Change All / Ignore / Ignore All / Add to Dictionary; language submenu shows only installed spell checkers from the user's Windows language list
+- **Find / Replace** — Ctrl+F opens the Find/Replace dialog; search across all open tabs simultaneously with the "All open tabs" checkbox; "Search backwards" checkbox; match counter (e.g. *16 / 3500*); Match case, Whole word, and Regex options; Replace and Replace All (disabled in multi-tab mode); dialog width adapts dynamically to any locale's text lengths
 - **Status bar** — real-time word, character and line count; Saved/Unsaved indicator; encoding display; fully i18n (all labels localised)
 - Keyboard Shortcuts dialog (`F1`) — 44 shortcuts, bold/colour-coded
 - `Ctrl+W` to close tab / exit (with unsaved-change prompt)
