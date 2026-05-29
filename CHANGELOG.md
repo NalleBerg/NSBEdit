@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.05.29.09 (Feature: Insert Date/Time; column selection docs; RTF session restore fix; 10 s autosave + WAL) - 29.05.2026 09:57
+
+- **Feature: Insert Date/Time (F5 / Edit menu)**: New *Edit → Insert Date/Time* command (also F5). Inserts the current local date and time at the caret using Windows `GetLocalTime` / `GetDateFormatW` / `GetTimeFormatW` with the user's locale format. Works in both RTF (RichEdit) and code (Scintilla) tabs. F5 is intercepted globally in the message pump so it fires even when toolbar buttons have focus. All 15 locale files updated with `MENU_INSERT_DATETIME`, `SCF_INSERT_DATETIME`, and `SCD_INSERT_DATETIME`.
+- **Feature: Column (rectangular) selection documented**: Alt+Drag and Alt+Shift+Arrows for column/block selection are now listed in Help → Shortcuts. Scintilla handles column selection natively — no code changes required.
+- **Fix: RTF tab black background on session restore**: When using a light UI with "dark editor background" enabled (*g_darkEditor*), session-restored RTF tabs opened with a solid black background. Root cause: the `loadContent` lambda and the *Convert to Plain Text* path both used `bool darkEd = g_darkMode || g_darkEditor` to set the RichEdit background colour — but `g_darkEditor` applies only to the Scintilla code viewport and must never affect RichEdit. Fixed by using `bool darkEd = g_darkMode` for all RichEdit background colour decisions.
+- **Fix: Session autosave interval reduced to 10 seconds (from 60)**: `NE_TIMER_SESSION` interval changed from 60 000 ms to 10 000 ms. SQLite WAL journal mode (`PRAGMA journal_mode=WAL`) is now enabled at database open in `NeProfiles_Init()`. In WAL mode each `COMMIT` appends to the WAL file rather than fsyncing the main database file, making every 10-second save imperceptible to the user.
+
 ## v2026.05.29.08 (Feature: Find/Replace — All open tabs; Search backwards; dynamic sizing; fixes) - 29.05.2026 08:37
 
 - **Feature: Find in all open tabs**: New "All open tabs" checkbox in the Find/Replace dialog. When checked, Find Next searches across every open tab (both RTF and code files), wrapping through all tabs in order and jumping directly to the matching tab. The match counter shows the current position across all tabs combined (e.g. "16 / 3500"). Replace and Replace All are greyed out while this mode is active.

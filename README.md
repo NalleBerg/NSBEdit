@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.29.08**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.05.29.09**
 
 ## Download
 
@@ -20,7 +20,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Hover tooltip on hyperlinks** — shows the URL and a Ctrl+Click hint as a two-line tooltip when hovering over a link
 - **URL validation** — regex check on save: requires a recognised scheme, valid host, and 2–4 character TLD
 - File menu: New, Open, Save, Save As, Print, Export as PDF (`Ctrl+Shift+P`)
-- **Session Restore** (installed version only) — on startup, all tabs from the previous session are automatically reopened: local files, FTP/SFTP files, and unsaved (untitled) buffers, including empty placeholder tabs used as separators. Session state (including per-tab caret position, first visible line, and word-wrap state) is saved to the SQLite database every 60 seconds and at clean exit using a single atomic transaction, so the session survives crashes and reboots. Restore is completely silent: unsaved content, FTP files, and locally-edited files load from the cached BLOB with no prompts. Disabled in portable mode and when a file is passed on the command line.
+- **Session Restore** (installed version only) — on startup, all tabs from the previous session are automatically reopened: local files, FTP/SFTP files, and unsaved (untitled) buffers, including empty placeholder tabs used as separators. Session state (including per-tab caret position, first visible line, and word-wrap state) is saved to the SQLite database every 10 seconds and at clean exit using a single atomic transaction, so the session survives crashes and reboots. Restore is completely silent: unsaved content, FTP files, and locally-edited files load from the cached BLOB with no prompts. Disabled in portable mode and when a file is passed on the command line.
 - **Recent Files** — File menu *Recent Files* submenu lists the last 10 opened or saved files; persisted between sessions in the settings database
 - Edit menu: Undo, Redo, Cut, Copy, Paste, Select All — greyed dynamically
 - Right-click context menu on the editor with the same Edit operations
@@ -28,6 +28,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Go to Line** — Ctrl+G (or Edit → Go to Line…) opens a compact input dialog; jumps to any line number, clamped to the last line
 - **Bookmarks** — F2 toggles a bookmark on the current line (blue circle in the margin); Shift+F2 goes to the previous bookmark, Ctrl+F2 to the next. *Go to Bookmark* is greyed when no bookmarks exist
 - **Spell Check** — Windows built-in `ISpellChecker` COM API (Windows 8+); red squiggles under misspelled words in RTF documents; native spell-check dialog (F7) with suggestions listbox, Change / Change All / Ignore / Ignore All / Add to Dictionary; language submenu shows only installed spell checkers from the user's Windows language list
+- **Insert Date/Time** — F5 (or *Edit → Insert Date/Time*) inserts the current local date and time at the caret using the system locale format; works in both RTF and code tabs
 - **Find / Replace** — Ctrl+F opens the Find/Replace dialog; search across all open tabs simultaneously with the "All open tabs" checkbox; "Search backwards" checkbox; match counter (e.g. *16 / 3500*); Match case, Whole word, and Regex options; Replace and Replace All (disabled in multi-tab mode); dialog width adapts dynamically to any locale's text lengths
 - **Status bar** — real-time word, character and line count; Saved/Unsaved indicator; encoding display; fully i18n (all labels localised)
 - Keyboard Shortcuts dialog (`F1`) — 44 shortcuts, bold/colour-coded

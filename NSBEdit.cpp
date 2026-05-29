@@ -198,9 +198,19 @@ enum class NeEncoding {
 #define IDC_SPELL_CHANGE        307
 #define IDC_SPELL_CHANGEALL     308
 #define IDC_SPELL_CLOSE         309
+// ── Compare Tabs feature ──────────────────────────────────────────────────────
+#define IDM_COMPARE_TABS        137   // Edit menu: "Compare Tabs…"
+#define IDM_SAVE_ALL            138   // File menu: "Save All"
+#define IDM_INSERT_DATETIME     139   // Edit menu: "Insert Date/Time"
+#define IDC_NE_DLG_CMPA         285   // listbox: Tab A in compare picker
+#define IDC_NE_DLG_CMPB         286   // listbox: Tab B in compare picker
+// Diff margin markers (margin 3, markers 26-28; 21-25 are fold internals)
+#define NE_MARK_DIFF_DEL        26    // line removed from A (red strip in Tab A)
+#define NE_MARK_DIFF_ADD        27    // line added in B (green strip in Tab B)
+#define NE_MARK_DIFF_CHG        28    // line changed (amber strip in both tabs)
 
 // ── Timer IDs (main window) ───────────────────────────────────────────────────
-#define NE_TIMER_SESSION        10    // 60-second autosave of session state
+#define NE_TIMER_SESSION        10    // 10-second autosave of session state
 
 // ── Internal state ─────────────────────────────────────────────────────────────
 // ── Per-tab custom scrollbar handles (keyed by hEdit / hSci HWND) ────────────
@@ -603,6 +613,19 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     sci(SCI_MARKERDEFINE,   0, SC_MARK_CIRCLE);
     sci(SCI_MARKERSETFORE,  0, darkEd ? RGB( 50,150,255) : RGB(  0, 90,200));
     sci(SCI_MARKERSETBACK,  0, darkEd ? RGB( 50,150,255) : RGB(  0, 90,200));
+    // Diff margin (margin 3) — narrow 4-px coloured strip, hidden until a diff is run.
+    // Uses SC_MARK_LEFTRECT to paint only within this margin column.
+    sci(SCI_SETMARGINTYPEN,      3, SC_MARGIN_SYMBOL);
+    sci(SCI_SETMARGINMASKN,      3, (1 << NE_MARK_DIFF_DEL) | (1 << NE_MARK_DIFF_ADD) | (1 << NE_MARK_DIFF_CHG));
+    sci(SCI_SETMARGINWIDTHN,     3, 0);   // shown only when a diff is active
+    sci(SCI_SETMARGINSENSITIVEN, 3, FALSE);
+    sci(SCI_SETMARGINBACKN,      3, lnbg);
+    sci(SCI_MARKERDEFINE,  NE_MARK_DIFF_DEL, SC_MARK_LEFTRECT);
+    sci(SCI_MARKERSETBACK, NE_MARK_DIFF_DEL, RGB(200,  70,  70));  // red   = deleted
+    sci(SCI_MARKERDEFINE,  NE_MARK_DIFF_ADD, SC_MARK_LEFTRECT);
+    sci(SCI_MARKERSETBACK, NE_MARK_DIFF_ADD, RGB( 70, 190,  80));  // green = added
+    sci(SCI_MARKERDEFINE,  NE_MARK_DIFF_CHG, SC_MARK_LEFTRECT);
+    sci(SCI_MARKERSETBACK, NE_MARK_DIFF_CHG, RGB(210, 160,  40));  // amber = changed
     // Autocomplete settings
     sci(SCI_AUTOCSETIGNORECASE, TRUE, 0);
     sci(SCI_AUTOCSETAUTOHIDE,   TRUE, 0);
@@ -3159,8 +3182,10 @@ static const ShortcutRow s_shortcuts[] = {
     { L"[Ctrl]+V",             L"SCF_PASTE",         L"SCD_PASTE" },
     { L"[Ctrl]+A",             L"SCF_SELECT_ALL",    L"SCD_SELECT_ALL" },
     // ── File ──────────────────────────────────────────────────────────────────
+    { L"[F5]",                 L"SCF_INSERT_DATETIME", L"SCD_INSERT_DATETIME" },
     { L"[Ctrl]+S",             L"SCF_SAVE",          L"SCD_SAVE" },
     { L"[Ctrl]+[Shift]+S",     L"SCF_SAVE_AS",       L"SCD_SAVE_AS" },
+    { L"[Ctrl]+[Shift]+A",     L"SCF_SAVE_ALL",      L"SCD_SAVE_ALL" },
     { L"[Ctrl]+N",             L"SCF_NEW",           L"SCD_NEW" },
     { L"[Ctrl]+O",             L"SCF_OPEN",          L"SCD_OPEN" },
     { L"[Ctrl]+P",             L"SCF_PRINT",         L"SCD_PRINT" },
@@ -3177,6 +3202,8 @@ static const ShortcutRow s_shortcuts[] = {
     { L"[Ctrl]+[Right]",       L"SCF_WORD_RIGHT",    L"SCD_WORD_RIGHT" },
     { L"[Shift]+[Left/Right]", L"SCF_EXTEND_SEL",    L"SCD_EXTEND_SEL" },
     { L"[Ctrl]+[Shift]+[Left/Right]", L"SCF_SEL_WORD", L"SCD_SEL_WORD" },
+    { L"[Alt]+[Drag]",         L"SCF_COL_SEL",       L"SCD_COL_SEL" },
+    { L"[Alt]+[Shift]+[Arrows]", L"SCF_COL_SEL",     L"SCD_COL_SEL_KB" },
     // ── Zoom ──────────────────────────────────────────────────────────────────
     { L"[Ctrl]+[+]",           L"SCF_ZOOM_IN",       L"SCD_ZOOM_IN" },
     { L"[Ctrl]+[-]",           L"SCF_ZOOM_OUT",      L"SCD_ZOOM_OUT" },
@@ -3383,7 +3410,7 @@ static void Ne_DoFindNext(HWND dlg)
                     if (!matchCase) flags |= std::regex_constants::icase;
                     re = std::wregex(needle, flags);
                 } catch (...) {
-                    MessageBoxW(dlg, Ls(L"MSG_REGEX_ERR"), Ls(L"DLG_FIND"), MB_OK | MB_ICONERROR);
+                    { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_REGEX_ERR"), &btn, 1, IDOK); }
                     Ne_UpdateFindCount();
                     return;
                 }
@@ -3431,7 +3458,7 @@ static void Ne_DoFindNext(HWND dlg)
 
             if (s_findAllTabMatches.empty()) {
                 Ne_UpdateFindCount();
-                MessageBoxW(dlg, Ls(L"MSG_FIND_NOT_FOUND"), Ls(L"DLG_FIND"), MB_OK | MB_ICONINFORMATION);
+                { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_FIND_NOT_FOUND"), &btn, 1, IDOK); }
                 return;
             }
 
@@ -3521,7 +3548,7 @@ static void Ne_DoFindNext(HWND dlg)
                 if (!matchCase) flags |= std::regex_constants::icase;
                 re = std::wregex(needle, flags);
             } catch (...) {
-                MessageBoxW(dlg, Ls(L"MSG_REGEX_ERR"), Ls(L"DLG_FIND"), MB_OK | MB_ICONERROR);
+                { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_REGEX_ERR"), &btn, 1, IDOK); }
                 Ne_UpdateFindCount();
                 return;
             }
@@ -3549,7 +3576,7 @@ static void Ne_DoFindNext(HWND dlg)
 
         if (s_findMatches.empty()) {
             Ne_UpdateFindCount();
-            MessageBoxW(dlg, Ls(L"MSG_FIND_NOT_FOUND"), Ls(L"DLG_FIND"), MB_OK | MB_ICONINFORMATION);
+            { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_FIND_NOT_FOUND"), &btn, 1, IDOK); }
             return;
         }
 
@@ -3629,7 +3656,7 @@ static void Ne_DoReplace(HWND dlg, bool all)
             re = std::wregex(needle, flags);
             return true;
         } catch (...) {
-            MessageBoxW(dlg, Ls(L"MSG_REGEX_ERR"), Ls(L"DLG_FIND"), MB_OK | MB_ICONERROR);
+            { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_REGEX_ERR"), &btn, 1, IDOK); }
             return false;
         }
     };
@@ -3672,8 +3699,10 @@ static void Ne_DoReplace(HWND dlg, bool all)
         NeHighlight_Clear(hEdit, s_findHL);
         s_findCachedNeedle.clear();
         Ne_UpdateFindCount();
-        if (count == 0)
-            MessageBoxW(dlg, Ls(L"MSG_FIND_NOT_FOUND"), Ls(L"DLG_FIND"), MB_OK | MB_ICONINFORMATION);
+        if (count == 0) {
+            NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 };
+            Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_FIND_NOT_FOUND"), &btn, 1, IDOK);
+        }
     } else {
         // Replace the current active highlighted match, then find next.
         if (useRegex && !s_findMatches.empty() && s_findHL.activeIdx >= 0) {
@@ -6307,6 +6336,614 @@ static void Ne_SpellShowCurrent(HWND hwnd, NeSpellDlgState* st)
     Ne_SpellHighlightCurrent(st);
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// ── Compare Tabs (diff) ──────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+
+static int s_diffTabA = -1;  // last compared Tab A index (for clearing markers)
+static int s_diffTabB = -1;  // last compared Tab B index
+
+// Split a Scintilla or RichEdit tab's text into a vector of lines (wstring).
+static std::vector<std::wstring> Ne_GetTabLines(NeTabDoc* doc)
+{
+    std::wstring text;
+    if (doc->hSci) {
+        std::string u8 = Ne_SciGetText(doc->hSci);
+        if (!u8.empty()) {
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), (int)u8.size(), nullptr, 0);
+            if (wlen > 0) {
+                text.resize(wlen);
+                MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), (int)u8.size(), text.data(), wlen);
+            }
+        }
+    } else if (doc->hEdit) {
+        text = Ne_GetEditText(doc->hEdit);
+    }
+    std::vector<std::wstring> lines;
+    std::wstring line;
+    for (size_t k = 0; k < text.size(); ++k) {
+        wchar_t c = text[k];
+        if (c == L'\r') {
+            lines.push_back(line);
+            line.clear();
+            if (k + 1 < text.size() && text[k + 1] == L'\n') ++k;
+        } else if (c == L'\n') {
+            lines.push_back(line);
+            line.clear();
+        } else {
+            line += c;
+        }
+    }
+    lines.push_back(line);  // always push last (possibly empty) line
+    return lines;
+}
+
+// Simple LCS-based diff. Returns a flat list of hunks tagged Same/Del/Add.
+// Capped at 3 000 lines per file; caller must verify beforehand.
+enum class NeDiffOp { Same, Del, Add };
+struct NeDiffHunk { NeDiffOp op; int lineA; int lineB; };
+
+static std::vector<NeDiffHunk> Ne_ComputeDiff(
+    const std::vector<std::wstring>& A,
+    const std::vector<std::wstring>& B)
+{
+    int n = (int)A.size();
+    int m = (int)B.size();
+    // LCS DP table (heap-allocated, up to 3000×3000 ints ≈ 36 MB, one-shot)
+    std::vector<int> dp((n + 1) * (m + 1), 0);
+    auto cell = [&](int i, int j) -> int& { return dp[i * (m + 1) + j]; };
+
+    for (int i = 1; i <= n; ++i)
+        for (int j = 1; j <= m; ++j)
+            cell(i, j) = (A[i-1] == B[j-1])
+                ? cell(i-1, j-1) + 1
+                : std::max(cell(i-1, j), cell(i, j-1));
+
+    // Traceback
+    std::vector<NeDiffHunk> result;
+    int i = n, j = m;
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && A[i-1] == B[j-1]) {
+            result.push_back({ NeDiffOp::Same, i-1, j-1 });
+            --i; --j;
+        } else if (j > 0 && (i == 0 || cell(i, j-1) >= cell(i-1, j))) {
+            result.push_back({ NeDiffOp::Add, -1, j-1 });
+            --j;
+        } else {
+            result.push_back({ NeDiffOp::Del, i-1, -1 });
+            --i;
+        }
+    }
+    std::reverse(result.begin(), result.end());
+    return result;
+}
+
+// Clear diff margin markers and hide margin 3 on the two previously compared tabs.
+static void Ne_ClearDiffMarkers(HWND hwndMain)
+{
+    for (int ti : { s_diffTabA, s_diffTabB }) {
+        if (ti < 0) continue;
+        NeTabDoc* doc = NeTabs_GetDocByIndex(hwndMain, ti);
+        if (doc && doc->hSci) {
+            SendMessageW(doc->hSci, SCI_MARKERDELETEALL, NE_MARK_DIFF_DEL, 0);
+            SendMessageW(doc->hSci, SCI_MARKERDELETEALL, NE_MARK_DIFF_ADD, 0);
+            SendMessageW(doc->hSci, SCI_MARKERDELETEALL, NE_MARK_DIFF_CHG, 0);
+            SendMessageW(doc->hSci, SCI_SETMARGINWIDTHN, 3, 0);
+        }
+    }
+    s_diffTabA = -1;
+    s_diffTabB = -1;
+}
+
+// Apply Lexilla "diff" lexer colour styles to a Scintilla window.
+static void Ne_ApplyDiffLexerStyles(HWND hSci, bool dark)
+{
+    SendMessageW(hSci, SCI_STYLESETFORE, STYLE_DEFAULT,
+        dark ? RGB(220,220,220) : RGB(  0,  0,  0));
+    SendMessageW(hSci, SCI_STYLESETBACK, STYLE_DEFAULT,
+        dark ? RGB( 30, 32, 34) : RGB(255,255,255));
+    SendMessageW(hSci, SCI_STYLECLEARALL, 0, 0);
+    COLORREF bg = dark ? RGB(30,32,34) : RGB(255,255,255);
+    auto setStyle = [&](int st2, COLORREF fg, COLORREF bg2, bool bold = false) {
+        SendMessageW(hSci, SCI_STYLESETFORE, st2, fg);
+        SendMessageW(hSci, SCI_STYLESETBACK, st2, bg2);
+        if (bold) SendMessageW(hSci, SCI_STYLESETBOLD, st2, TRUE);
+    };
+    setStyle(1 /*COMMENT*/,  dark?RGB(130,150,140):RGB(100,120,110), bg);
+    setStyle(2 /*COMMAND*/,  dark?RGB(180,180,110):RGB(120,100,  0), bg, true);
+    setStyle(3 /*HEADER*/,   dark?RGB(180,180,110):RGB(120,100,  0), bg, true);
+    setStyle(4 /*POSITION*/, dark?RGB(120,180,220):RGB( 30,100,180), bg, true);
+    setStyle(5 /*DELETED*/,  dark?RGB(240,120,120):RGB(160, 20, 20),
+             dark?RGB( 55, 22, 22):RGB(255,220,220));
+    setStyle(6 /*ADDED*/,    dark?RGB(100,220,120):RGB( 20,120, 20),
+             dark?RGB( 20, 50, 22):RGB(220,255,220));
+    setStyle(7 /*CHANGED*/,  dark?RGB(220,190,100):RGB(140, 90,  0),
+             dark?RGB( 50, 40, 10):RGB(255,250,210));
+}
+
+// ── Compare picker dialog ─────────────────────────────────────────────────────
+struct NeComparePicker {
+    HWND  hwndMain;
+    int   tabA;       // selected Tab A index (-1 = none)
+    int   tabB;       // selected Tab B index (-1 = none)
+    bool  confirmed;
+    HFONT hDlgFont;
+    int   btnW;
+};
+
+static LRESULT CALLBACK Ne_ComparePickerDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    NeComparePicker* pk = (NeComparePicker*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    switch (msg) {
+    case WM_CREATE: {
+        CREATESTRUCTW* cs = (CREATESTRUCTW*)lParam;
+        pk = (NeComparePicker*)cs->lpCreateParams;
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)pk);
+
+        HINSTANCE hi = GetModuleHandleW(NULL);
+        HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
+        if (hIco) {
+            SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+            SendMessageW(hwnd, WM_SETICON, ICON_BIG,   (LPARAM)hIco);
+        }
+        pk->hDlgFont = Ne_CreateDialogFont(false);
+
+        const int padH  = S(20), padT = S(18);
+        const int lblH  = S(20), lstW = S(180), lstH = S(130), colGap = S(14);
+        const int btnH  = S(34), btnGap = S(8);
+        const int lxA   = padH;
+        const int lxB   = padH + lstW + colGap;
+        const int lstY  = padT + lblH + S(4);
+        const int btnY  = lstY + lstH + S(14);
+        const int clientW = padH + lstW + colGap + lstW + padH;
+
+        auto mkLabel = [&](int id, const wchar_t* txt, int x, int y, int w, int h) {
+            HWND hl = CreateWindowExW(0, L"STATIC", txt, WS_CHILD | WS_VISIBLE | SS_LEFT,
+                x, y, w, h, hwnd, (HMENU)(UINT_PTR)id, hi, NULL);
+            if (hl) SendMessageW(hl, WM_SETFONT, (WPARAM)pk->hDlgFont, TRUE);
+        };
+        mkLabel(100, Ls(L"DLG_COMPARE_LABEL_A"), lxA, padT, lstW, lblH);
+        mkLabel(101, Ls(L"DLG_COMPARE_LABEL_B"), lxB, padT, lstW, lblH);
+
+        HWND hLstA = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"",
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT,
+            lxA, lstY, lstW, lstH, hwnd, (HMENU)(UINT_PTR)IDC_NE_DLG_CMPA, hi, NULL);
+        if (hLstA) SendMessageW(hLstA, WM_SETFONT, (WPARAM)pk->hDlgFont, TRUE);
+
+        HWND hLstB = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"",
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_NOINTEGRALHEIGHT,
+            lxB, lstY, lstW, lstH, hwnd, (HMENU)(UINT_PTR)IDC_NE_DLG_CMPB, hi, NULL);
+        if (hLstB) SendMessageW(hLstB, WM_SETFONT, (WPARAM)pk->hDlgFont, TRUE);
+
+        // Populate both listboxes with tab basenames
+        int tabCount = NeTabs_GetCount(pk->hwndMain);
+        for (int idx = 0; idx < tabCount; ++idx) {
+            NeTabDoc* d = NeTabs_GetDocByIndex(pk->hwndMain, idx);
+            std::wstring name;
+            if (d && !d->path.empty()) {
+                size_t sl = d->path.rfind(L'\\');
+                size_t fs = d->path.rfind(L'/');
+                size_t sep = (sl == std::wstring::npos) ? fs :
+                             (fs == std::wstring::npos) ? sl : std::max(sl, fs);
+                name = (sep != std::wstring::npos) ? d->path.substr(sep + 1) : d->path;
+            } else {
+                name = Ls(L"UNTITLED");
+            }
+            if (hLstA) SendMessageW(hLstA, LB_ADDSTRING, 0, (LPARAM)name.c_str());
+            if (hLstB) SendMessageW(hLstB, LB_ADDSTRING, 0, (LPARAM)name.c_str());
+        }
+
+        // Default: A = active tab, B = next tab (wraps)
+        int active = NeTabs_GetActiveIndex(pk->hwndMain);
+        int altB   = (active + 1) % tabCount;
+        if (hLstA) SendMessageW(hLstA, LB_SETCURSEL, (WPARAM)active, 0);
+        if (hLstB) SendMessageW(hLstB, LB_SETCURSEL, (WPARAM)altB,   0);
+        pk->tabA = active;
+        pk->tabB = altB;
+
+        // Compare (green) + Cancel (red), centred below the listboxes
+        int totalBtnW = pk->btnW + btnGap + pk->btnW;
+        int bx = (clientW - totalBtnW) / 2;
+        auto mkBtn = [&](int id, const wchar_t* key, NeBtnTone tone, int bx2) {
+            HWND hb = CreateWindowExW(0, L"BUTTON", Ls(key),
+                WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+                bx2, btnY, pk->btnW, btnH, hwnd, (HMENU)(UINT_PTR)id, hi, NULL);
+            if (hb) {
+                SendMessageW(hb, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+                WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hb, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+                SetPropW(hb, L"NePrevProc", (HANDLE)prev);
+                SetPropW(hb, L"NeBtnTone",  (HANDLE)(INT_PTR)(int)tone);
+            }
+        };
+        mkBtn(IDOK,     L"BTN_COMPARE", NeBtnTone::Green, bx);
+        mkBtn(IDCANCEL, L"BTN_CANCEL",  NeBtnTone::Red,   bx + pk->btnW + btnGap);
+
+        // Enable Compare only when both selections differ
+        EnableWindow(GetDlgItem(hwnd, IDOK), (pk->tabA != pk->tabB) ? TRUE : FALSE);
+        return 0;
+    }
+    case WM_NCDESTROY:
+        if (pk) {
+            if (pk->hDlgFont) { DeleteObject(pk->hDlgFont); pk->hDlgFont = NULL; }
+        }
+        break;
+    case WM_DRAWITEM: {
+        DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+        if (!dis || dis->CtlType != ODT_BUTTON) return FALSE;
+        NeBtnTone tone = NeBtnTone::Blue;
+        HANDLE ht = GetPropW(dis->hwndItem, L"NeBtnTone");
+        if (ht) tone = (NeBtnTone)(int)(INT_PTR)ht;
+        wchar_t btnText[128] = {};
+        GetWindowTextW(dis->hwndItem, btnText, 127);
+        NeDialogData tmpDd = {};
+        tmpDd.hDlgFont    = pk ? pk->hDlgFont : NULL;
+        tmpDd.buttonCount = 1;
+        tmpDd.buttons[0].id      = dis->CtlID;
+        tmpDd.buttons[0].text    = btnText;
+        tmpDd.buttons[0].tone    = tone;
+        tmpDd.buttons[0].iconRes = (dis->CtlID == IDCANCEL) ? IDI_ERROR : IDI_INFORMATION;
+        Ne_DrawDialogButton(dis, &tmpDd);
+        return TRUE;
+    }
+    case WM_COMMAND: {
+        if (!pk) break;
+        int id    = LOWORD(wParam);
+        int notif = HIWORD(wParam);
+
+        if (notif == LBN_SELCHANGE) {
+            if (id == IDC_NE_DLG_CMPA) {
+                HWND hL = GetDlgItem(hwnd, IDC_NE_DLG_CMPA);
+                int sel = (int)SendMessageW(hL, LB_GETCURSEL, 0, 0);
+                if (sel != LB_ERR) pk->tabA = sel;
+            } else if (id == IDC_NE_DLG_CMPB) {
+                HWND hL = GetDlgItem(hwnd, IDC_NE_DLG_CMPB);
+                int sel = (int)SendMessageW(hL, LB_GETCURSEL, 0, 0);
+                if (sel != LB_ERR) pk->tabB = sel;
+            }
+            bool ok = (pk->tabA >= 0 && pk->tabB >= 0 && pk->tabA != pk->tabB);
+            EnableWindow(GetDlgItem(hwnd, IDOK), ok ? TRUE : FALSE);
+            return 0;
+        }
+        if (id == IDOK) {
+            pk->confirmed = true;
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        if (id == IDCANCEL) {
+            pk->confirmed = false;
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        break;
+    }
+    case WM_CLOSE:
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_ERASEBKGND:
+        if (g_darkMode) {
+            RECT r; GetClientRect(hwnd, &r);
+            FillRect((HDC)wParam, &r, Ne_DlgBgBrush());
+            return 1;
+        }
+        break;
+    case WM_CTLCOLORSTATIC:
+        return Ne_DlgCtlColor((HDC)wParam);
+    case WM_CTLCOLORLISTBOX:
+        if (g_darkMode) {
+            HDC hdc = (HDC)wParam;
+            SetTextColor(hdc, RGB(230, 230, 230));
+            SetBkColor(hdc,   RGB( 40,  42,  45));
+            static HBRUSH s_cmpLbBr = CreateSolidBrush(RGB(40, 42, 45));
+            return (LRESULT)s_cmpLbBr;
+        }
+        break;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+// Build a unified diff string from two line sets and a flat hunk list.
+// CTX = 3 context lines around each changed block.
+static std::wstring Ne_BuildUnifiedDiff(
+    const std::vector<std::wstring>& A,
+    const std::vector<std::wstring>& B,
+    const std::vector<NeDiffHunk>&   hunks,
+    const std::wstring& nameA,
+    const std::wstring& nameB)
+{
+    const int CTX = 3;
+    std::wstring out;
+    out += L"--- " + nameA + L"\n";
+    out += L"+++ " + nameB + L"\n";
+
+    int H = (int)hunks.size();
+    int h = 0;
+    while (h < H) {
+        // Skip Same lines to find next change
+        while (h < H && hunks[h].op == NeDiffOp::Same) ++h;
+        if (h >= H) break;
+
+        int blockStart = h;
+        int blockEnd   = h;
+        while (blockEnd < H) {
+            if (hunks[blockEnd].op != NeDiffOp::Same) {
+                ++blockEnd;
+            } else {
+                // Check if gap to next change is small enough to merge
+                int gap = 0, tmp = blockEnd;
+                while (tmp < H && hunks[tmp].op == NeDiffOp::Same) { ++gap; ++tmp; }
+                if (gap <= 2 * CTX) blockEnd = tmp;
+                else                break;
+            }
+        }
+
+        // Context before
+        int ctxBeforeStart = blockStart;
+        int ctxCount = 0;
+        while (ctxBeforeStart > 0 && ctxCount < CTX
+               && hunks[ctxBeforeStart-1].op == NeDiffOp::Same) {
+            --ctxBeforeStart; ++ctxCount;
+        }
+        // Context after
+        int ctxAfterEnd = blockEnd, ctxAfterCount = 0;
+        while (ctxAfterEnd < H && ctxAfterCount < CTX
+               && hunks[ctxAfterEnd].op == NeDiffOp::Same) {
+            ++ctxAfterEnd; ++ctxAfterCount;
+        }
+
+        // Compute @@ range
+        int startA = -1, startB = -1, countA = 0, countB = 0;
+        for (int k = ctxBeforeStart; k < ctxAfterEnd; ++k) {
+            const auto& hk = hunks[k];
+            if (hk.lineA >= 0) { if (startA < 0) startA = hk.lineA; ++countA; }
+            if (hk.lineB >= 0) { if (startB < 0) startB = hk.lineB; ++countB; }
+        }
+        if (startA < 0) startA = 0;
+        if (startB < 0) startB = 0;
+
+        wchar_t hdr[128];
+        swprintf(hdr, 128, L"@@ -%d,%d +%d,%d @@\n",
+            startA + 1, countA, startB + 1, countB);
+        out += hdr;
+
+        for (int k = ctxBeforeStart; k < ctxAfterEnd; ++k) {
+            const auto& hk = hunks[k];
+            if (hk.op == NeDiffOp::Same) {
+                out += L' ';
+                out += (hk.lineA >= 0 && hk.lineA < (int)A.size()) ? A[hk.lineA] : L"";
+            } else if (hk.op == NeDiffOp::Del) {
+                out += L'-';
+                out += (hk.lineA >= 0 && hk.lineA < (int)A.size()) ? A[hk.lineA] : L"";
+            } else {
+                out += L'+';
+                out += (hk.lineB >= 0 && hk.lineB < (int)B.size()) ? B[hk.lineB] : L"";
+            }
+            out += L'\n';
+        }
+
+        h = blockEnd;
+    }
+    return out;
+}
+
+// Main compare entry point: picker → diff → margin markers → result tab.
+static void Ne_RunCompare(HWND hwndMain)
+{
+    int tabCount = NeTabs_GetCount(hwndMain);
+    if (tabCount < 2) {
+        NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 };
+        Ne_ShowChoiceDialog(hwndMain, Ls(L"DLG_COMPARE_TITLE"),
+            Ls(L"MSG_COMPARE_SELECT_TWO"), &okBtn, 1, IDOK);
+        return;
+    }
+
+    // Measure buttons (take the widest)
+    int btnW = std::max(Ne_MeasureButtonWidth(Ls(L"BTN_COMPARE")),
+                        Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL")));
+    btnW = std::max(btnW, S(110));
+
+    NeComparePicker pk = {};
+    pk.hwndMain  = hwndMain;
+    pk.tabA      = -1;
+    pk.tabB      = -1;
+    pk.btnW      = btnW;
+
+    // Compute picker window size (must match WM_CREATE layout)
+    const int padH = S(20), padT = S(18), padB = S(16);
+    const int lblH = S(20), lstW = S(180), lstH = S(130), colGap = S(14);
+    const int btnH = S(34);
+    int lstY    = padT + lblH + S(4);
+    int btnY    = lstY + lstH + S(14);
+    int clientW = padH + lstW + colGap + lstW + padH;
+    int clientH = btnY + btnH + padB;
+
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME);
+    int winW = wr.right - wr.left;
+    int winH = wr.bottom - wr.top;
+
+    RECT pr = {};
+    if (hwndMain && IsWindow(hwndMain)) GetWindowRect(hwndMain, &pr);
+    int x = pr.left + ((pr.right - pr.left) - winW) / 2;
+    int y = pr.top  + ((pr.bottom - pr.top) - winH) / 2;
+    RECT wa = {};
+    SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
+    if (x < wa.left)           x = wa.left;
+    if (y < wa.top)            y = wa.top;
+    if (x + winW > wa.right)   x = wa.right  - winW;
+    if (y + winH > wa.bottom)  y = wa.bottom - winH;
+
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc   = Ne_ComparePickerDlgProc;
+    wc.hInstance     = hi;
+    wc.hCursor       = LoadCursorW(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszClassName = L"NSBEditCmpPickDlgClass";
+    if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME, L"NSBEditCmpPickDlgClass",
+        Ls(L"DLG_COMPARE_TITLE"), WS_POPUP | WS_CAPTION | WS_SYSMENU,
+        x, y, winW, winH, hwndMain, NULL, hi, &pk);
+    if (!dlg) return;
+
+    bool wasParentFg = (hwndMain && IsWindow(hwndMain) &&
+                        GetForegroundWindow() == hwndMain);
+    if (hwndMain && IsWindow(hwndMain)) EnableWindow(hwndMain, FALSE);
+    ShowWindow(dlg, SW_SHOW);
+    Ne_ApplyDarkFrame(dlg);
+    SetForegroundWindow(dlg);
+
+    MSG m;
+    while (IsWindow(dlg) && GetMessageW(&m, NULL, 0, 0)) {
+        if (!IsDialogMessageW(dlg, &m)) {
+            TranslateMessage(&m);
+            DispatchMessageW(&m);
+        }
+    }
+
+    if (hwndMain && IsWindow(hwndMain)) {
+        EnableWindow(hwndMain, TRUE);
+        if (wasParentFg) {
+            SetWindowPos(hwndMain, HWND_TOPMOST,   0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+            SetWindowPos(hwndMain, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        }
+    }
+
+    if (!pk.confirmed || pk.tabA < 0 || pk.tabB < 0 || pk.tabA == pk.tabB) return;
+
+    // Fetch tab docs (picker indices may be stale if tabs changed — re-validate)
+    NeTabDoc* docA = NeTabs_GetDocByIndex(hwndMain, pk.tabA);
+    NeTabDoc* docB = NeTabs_GetDocByIndex(hwndMain, pk.tabB);
+    if (!docA || !docB) return;
+
+    // Collect lines
+    std::vector<std::wstring> linesA = Ne_GetTabLines(docA);
+    std::vector<std::wstring> linesB = Ne_GetTabLines(docB);
+
+    const int MAX_LINES = 3000;
+    if ((int)linesA.size() > MAX_LINES || (int)linesB.size() > MAX_LINES) {
+        NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 };
+        Ne_ShowChoiceDialog(hwndMain, Ls(L"DLG_COMPARE_TITLE"),
+            Ls(L"MSG_COMPARE_TOO_LARGE"), &okBtn, 1, IDOK);
+        return;
+    }
+
+    // Compute diff
+    auto hunks = Ne_ComputeDiff(linesA, linesB);
+
+    bool identical = true;
+    for (const auto& hk : hunks)
+        if (hk.op != NeDiffOp::Same) { identical = false; break; }
+
+    if (identical) {
+        NeDialogButtonSpec okBtn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 };
+        Ne_ShowChoiceDialog(hwndMain, Ls(L"DLG_COMPARE_TITLE"),
+            Ls(L"MSG_COMPARE_SAME"), &okBtn, 1, IDOK);
+        return;
+    }
+
+    // Clear markers from any previous compare
+    Ne_ClearDiffMarkers(hwndMain);
+
+    // Apply margin markers to Tab A (deleted / changed lines)
+    if (docA->hSci) {
+        for (int k = 0; k < (int)hunks.size(); ++k) {
+            const auto& hk = hunks[k];
+            if (hk.op == NeDiffOp::Del && hk.lineA >= 0) {
+                // Adjacent Add after a Del = changed line (show amber instead of red)
+                int marker = NE_MARK_DIFF_DEL;
+                if (k + 1 < (int)hunks.size() && hunks[k+1].op == NeDiffOp::Add)
+                    marker = NE_MARK_DIFF_CHG;
+                SendMessageW(docA->hSci, SCI_MARKERADD, (WPARAM)hk.lineA, (LPARAM)marker);
+            }
+        }
+        SendMessageW(docA->hSci, SCI_SETMARGINWIDTHN, 3, S(4));
+    }
+
+    // Apply margin markers to Tab B (added / changed lines)
+    if (docB->hSci) {
+        for (int k = 0; k < (int)hunks.size(); ++k) {
+            const auto& hk = hunks[k];
+            if (hk.op == NeDiffOp::Add && hk.lineB >= 0) {
+                int marker = NE_MARK_DIFF_ADD;
+                if (k > 0 && hunks[k-1].op == NeDiffOp::Del)
+                    marker = NE_MARK_DIFF_CHG;
+                SendMessageW(docB->hSci, SCI_MARKERADD, (WPARAM)hk.lineB, (LPARAM)marker);
+            }
+        }
+        SendMessageW(docB->hSci, SCI_SETMARGINWIDTHN, 3, S(4));
+    }
+
+    s_diffTabA = pk.tabA;
+    s_diffTabB = pk.tabB;
+
+    // Determine display names
+    auto tabName = [&](NeTabDoc* d) -> std::wstring {
+        if (!d->path.empty()) {
+            size_t sl = d->path.rfind(L'\\');
+            size_t fs = d->path.rfind(L'/');
+            size_t sep = (sl == std::wstring::npos) ? fs :
+                         (fs == std::wstring::npos) ? sl : std::max(sl, fs);
+            return (sep != std::wstring::npos) ? d->path.substr(sep + 1) : d->path;
+        }
+        return Ls(L"UNTITLED");
+    };
+    std::wstring nameA = tabName(docA);
+    std::wstring nameB = tabName(docB);
+
+    // Build unified diff text and convert to UTF-8
+    std::wstring diffTextW = Ne_BuildUnifiedDiff(linesA, linesB, hunks, nameA, nameB);
+    int u8len = WideCharToMultiByte(CP_UTF8, 0, diffTextW.c_str(), (int)diffTextW.size(),
+                                    nullptr, 0, nullptr, nullptr);
+    std::string diffUtf8(u8len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, diffTextW.c_str(), (int)diffTextW.size(),
+                        diffUtf8.data(), u8len, nullptr, nullptr);
+
+    // Create the diff result tab (add untitled, then replace its RichEdit with Scintilla)
+    NeTabs_AddUntitled(hwndMain);
+    NeTabDoc* docD = NeTabs_GetActiveDoc(hwndMain);
+    if (!docD) return;
+
+    HWND hEditD = NeTabs_GetActiveEdit(hwndMain);
+    if (!hEditD) return;
+
+    RECT rcEdit; GetWindowRect(hEditD, &rcEdit);
+    POINT ptEdit = { rcEdit.left, rcEdit.top };
+    ScreenToClient(hwndMain, &ptEdit);
+    int ew = rcEdit.right - rcEdit.left;
+    int eh = rcEdit.bottom - rcEdit.top;
+    docD->hSci = Ne_CreateScintilla(hwndMain, ptEdit.x, ptEdit.y, ew, eh);
+    if (!docD->hSci) return;
+    SetWindowSubclass(docD->hSci, Ne_SciWrapSubclassProc, 2, 0);
+    Ne_AttachSciScrollbars(docD->hSci);
+
+    // Apply diff lexer and styles
+    Ne_SetScintillaLexer(docD->hSci, "diff");
+    Ne_ApplyDiffLexerStyles(docD->hSci, g_darkMode);
+
+    // Load content and make read-only
+    SendMessageW(docD->hSci, SCI_SETTEXT,          0, (LPARAM)diffUtf8.c_str());
+    SendMessageW(docD->hSci, SCI_EMPTYUNDOBUFFER,  0, 0);
+    SendMessageW(docD->hSci, SCI_SETREADONLY,       1, 0);
+
+    // Hide RichEdit, show Scintilla
+    ShowWindow(hEditD,    SW_HIDE);
+    ShowWindow(docD->hSci, SW_SHOW);
+    SetFocus(docD->hSci);
+    SendMessageW(docD->hSci, SCI_SETZOOM, (WPARAM)g_zoomSci, 0);
+    Ne_SyncRichGutters(hwndMain);
+
+    // Mark as diff result tab (suppresses save prompts and save operations)
+    docD->isDiffResult = true;
+    docD->path         = L"\u21d4 " + nameA + L" \u2194 " + nameB;
+
+    int newIdx = NeTabs_GetActiveIndex(hwndMain);
+    NeTabs_UpdateTabTitle(hwndMain, newIdx);
+    Ne_UpdateTitle(hwndMain);
+    Ne_UpdateStatusText(hwndMain);
+    Ne_SyncScrollbarVisibility(hwndMain);
+}
+
 static LRESULT CALLBACK Ne_SpellDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     NeSpellDlgState* st = (NeSpellDlgState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
@@ -7645,6 +8282,9 @@ static bool Ne_Save(HWND hwnd)
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
     if (!doc) return false;
 
+    // Diff result tabs are read-only — silently skip save
+    if (doc->isDiffResult) return true;
+
     // ── FTP/SFTP remote file: save locally then upload ─────────────────────
     if (doc->isFtpFile && !doc->ftpRemotePath.empty()) {
         if (doc->path.empty()) return Ne_SaveAs(hwnd);
@@ -7682,6 +8322,46 @@ static bool Ne_Save(HWND hwnd)
     NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
     Ne_UpdateTitle(hwnd);
     return true;
+}
+
+static void Ne_InsertDateTime(HWND hwnd)
+{
+    // Format current date + time using the user's Windows locale.
+    wchar_t dateBuf[64] = {}, timeBuf[64] = {};
+    SYSTEMTIME st = {};
+    GetLocalTime(&st);
+    GetDateFormatW(LOCALE_USER_DEFAULT, DATE_SHORTDATE, &st, NULL, dateBuf, 64);
+    GetTimeFormatW(LOCALE_USER_DEFAULT, 0,              &st, NULL, timeBuf, 64);
+    std::wstring dt = std::wstring(dateBuf) + L" " + timeBuf;
+
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!doc) return;
+    if (doc->hSci) {
+        int n = WideCharToMultiByte(CP_UTF8, 0, dt.c_str(), -1, NULL, 0, NULL, NULL);
+        std::string u8(n - 1, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, dt.c_str(), -1, u8.data(), n, NULL, NULL);
+        SendMessageW(doc->hSci, SCI_REPLACESEL, 0, (LPARAM)u8.c_str());
+        SetFocus(doc->hSci);
+    } else if (doc->hEdit) {
+        SendMessageW(doc->hEdit, EM_REPLACESEL, TRUE, (LPARAM)dt.c_str());
+        SetFocus(doc->hEdit);
+    }
+}
+
+static void Ne_SaveAll(HWND hwnd)
+{
+    int count    = NeTabs_GetCount(hwnd);
+    int origIdx  = NeTabs_GetActiveIndex(hwnd);
+    for (int i = 0; i < count; i++) {
+        NeTabDoc* doc = NeTabs_GetDocByIndex(hwnd, i);
+        if (!doc || doc->isDiffResult) continue;
+        // Skip titled files that haven't changed; always offer Save As for untitled files
+        if (!doc->path.empty() && !doc->modified) continue;
+        NeTabs_SetActive(hwnd, i);
+        Ne_Save(hwnd); // if path is empty, Ne_Save delegates to Ne_SaveAs
+    }
+    if (origIdx >= 0 && origIdx < NeTabs_GetCount(hwnd))
+        NeTabs_SetActive(hwnd, origIdx);
 }
 
 static bool Ne_PromptSaveIfModified(HWND hwnd)
@@ -7826,7 +8506,7 @@ static void Ne_SessionRestore(HWND hwnd)
                     }
                 }
                 if (!isRealRtf) {
-                    bool darkEd = g_darkMode || g_darkEditor;
+                    bool darkEd = g_darkMode;  // g_darkEditor only applies to Scintilla, not RichEdit
                     SendMessageW(doc->hEdit, EM_SETBKGNDCOLOR, 0,
                                  darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
                     CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
@@ -8810,6 +9490,7 @@ static void Ne_BuildMainMenu(HWND hwnd)
     Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0, NULL);
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE,       Ls(L"MENU_SAVE"));
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVEAS,     Ls(L"MENU_SAVEAS"));
+    Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE_ALL,   Ls(L"MENU_SAVE_ALL"));
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_SAVE_TO_FTP, Ls(L"MENU_SAVE_TO_FTP"));
     Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0,              NULL);
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_PRINT,      Ls(L"MENU_PRINT"));
@@ -8832,6 +9513,8 @@ static void Ne_BuildMainMenu(HWND hwnd)
     Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_FIND,          Ls(L"MENU_FIND"));
     Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_BOOKMARK,      Ls(L"MENU_BOOKMARK"));
     Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_BOOKMARK_NEXT, Ls(L"MENU_BOOKMARK_NEXT"));
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_COMPARE_TABS,  Ls(L"MENU_COMPARE_TABS"));
+    Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_INSERT_DATETIME, Ls(L"MENU_INSERT_DATETIME"));
     Ne_AppendMenuOD(hEdit2, MF_SEPARATOR, 0,                 NULL);
     Ne_AppendMenuOD(hEdit2, MF_STRING,    IDM_PREFS,     Ls(L"MENU_PREFS"));
     Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hEdit2, Ls(L"MENU_EDIT"), true);
@@ -12380,7 +13063,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
         // ── Session autosave timer (installed version only) ───────────────────
         if (NeProfiles_IsInstalled())
-            SetTimer(hwnd, NE_TIMER_SESSION, 60000, NULL);
+            SetTimer(hwnd, NE_TIMER_SESSION, 10000, NULL);
 
         return 0;
     }
@@ -12538,6 +13221,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (wmId == IDM_OPEN)       { Ne_Open(hwnd);              return 0; }
         if (wmId == IDM_SAVE)       { Ne_Save(hwnd);              return 0; }
         if (wmId == IDM_SAVEAS)     { Ne_SaveAs(hwnd);            return 0; }
+        if (wmId == IDM_SAVE_ALL)   { Ne_SaveAll(hwnd);           return 0; }
         if (wmId == IDM_SAVE_TO_FTP) {
             // ── Save current document to an FTP server ────────────────────────
             // 1. Collect connected profiles so user can pick a server
@@ -12707,7 +13391,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             doc->suppressChange = true;
             Ne_StreamIn(hEd, plain, false);
             doc->suppressChange = false;
-            { bool darkEd = g_darkMode || g_darkEditor;
+            { bool darkEd = g_darkMode;  // g_darkEditor only applies to Scintilla, not RichEdit
               SendMessageW(hEd, EM_SETBKGNDCOLOR, 0, darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
               CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
               cfD.dwMask      = CFM_COLOR | CFM_EFFECTS;
@@ -13009,6 +13693,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (bd && bd->hSci) { Ne_CycleBookmark(bd->hSci, true); SetFocus(bd->hSci); }
             return 0;
         }
+        if (wmId == IDM_COMPARE_TABS) {
+            Ne_RunCompare(hwnd);
+            return 0;
+        }
+        if (wmId == IDM_INSERT_DATETIME) { Ne_InsertDateTime(hwnd); return 0; }
         // ── Spell check commands ────────────────────────────────────────────────
         if (wmId == IDM_SPELL_MARK) {
             s_spellMarkActive = !s_spellMarkActive;
@@ -13765,6 +14454,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                                        (LPARAM)(1 << NE_BOOKMARK_MARKER)) >= 0);
             EnableMenuItem(hPop, IDM_BOOKMARK_NEXT,
                            MF_BYCOMMAND | (hasBk ? MF_ENABLED : MF_GRAYED));
+            // Gray "Compare Tabs" when fewer than 2 tabs are open
+            EnableMenuItem(hPop, IDM_COMPARE_TABS,
+                           MF_BYCOMMAND | (NeTabs_GetCount(hwnd) >= 2 ? MF_ENABLED : MF_GRAYED));
             return 0;
         }
 
@@ -14072,6 +14764,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
                 SendMessageW(s_hwndMain, WM_COMMAND, shift ? IDM_SAVEAS : IDM_SAVE, 0);
                 continue;
             }
+            if (msg.wParam == 'A' && shift) {
+                SendMessageW(s_hwndMain, WM_COMMAND, IDM_SAVE_ALL, 0);
+                continue;
+            }
             if (msg.wParam == 'P') {
                 SendMessageW(s_hwndMain, WM_COMMAND, shift ? IDM_EXPORT_PDF : IDM_PRINT, 0);
                 continue;
@@ -14126,6 +14822,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
                 Ne_StepZoom(s_hwndMain, delta > 0 ? +1 : -1);
                 continue; // consume — don't pass to native RichEdit/Scintilla zoom handler
             }
+        }
+        // F5 → Insert date/time
+        if (msg.message == WM_KEYDOWN && msg.wParam == VK_F5) {
+            SendMessageW(s_hwndMain, WM_COMMAND, IDM_INSERT_DATETIME, 0);
+            continue;
         }
         // F1 → Keyboard Shortcuts dialog
         if (msg.message == WM_KEYDOWN && msg.wParam == VK_F1) {

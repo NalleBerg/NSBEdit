@@ -33,6 +33,8 @@ struct NeTabDoc {
     bool         wordWrap           = true;  // word-wrap on/off for this tab
     // ── Spell check ──────────────────────────────────────────────────────────
     std::wstring spellLang;  // BCP-47 tag (e.g. L"en-GB"); empty = use GUI locale default
+    // ── Diff result ──────────────────────────────────────────────────────────
+    bool isDiffResult = false; // true = read-only diff output tab; skip save prompts
 };
 
 struct NeTabsCreateParams {

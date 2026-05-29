@@ -75,6 +75,9 @@ bool NeProfiles_Init()
         s_db = nullptr;
         return false;
     }
+    // WAL journal mode: COMMITs append to the WAL file instead of fsyncing the
+    // main database, making the frequent 10-second session saves imperceptible.
+    sqlite3_exec(s_db, "PRAGMA journal_mode=WAL", NULL, NULL, NULL);
     const char* schema =
         "CREATE TABLE IF NOT EXISTS profiles ("
         "  id            INTEGER PRIMARY KEY AUTOINCREMENT,"
