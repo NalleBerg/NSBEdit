@@ -626,6 +626,8 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     sci(SCI_MARKERSETBACK, NE_MARK_DIFF_ADD, RGB( 70, 190,  80));  // green = added
     sci(SCI_MARKERDEFINE,  NE_MARK_DIFF_CHG, SC_MARK_LEFTRECT);
     sci(SCI_MARKERSETBACK, NE_MARK_DIFF_CHG, RGB(210, 160,  40));  // amber = changed
+    // Disable change-history markers (red/green/yellow stripes in the left margin)
+    sci(SCI_SETCHANGEHISTORY, 0, 0);
     // Autocomplete settings
     sci(SCI_AUTOCSETIGNORECASE, TRUE, 0);
     sci(SCI_AUTOCSETAUTOHIDE,   TRUE, 0);

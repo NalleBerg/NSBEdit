@@ -1,8 +1,9 @@
 # Changelog
 
-## v2026.05.29.10 (Fix: RTF formatting lost on session restore) - 29.05.2026 10:09
+## v2026.05.29.10 (Fix: RTF formatting lost on session restore; remove Scintilla change-history markers) - 29.05.2026 10:09
 
 - **Fix: RTF formatting (bold, italic, underline, etc.) lost on session restore**: After a restart, unsaved RTF tabs had all character formatting stripped — bold text became plain, italic became plain, and so on. Root cause: the session-restore colour fixup used `CFM_EFFECTS` as the `dwMask` in `EM_SETCHARFORMAT`. Since `CFM_EFFECTS` covers all effect bits (bold, italic, underline, strikethrough, …), and `dwEffects` only had `CFE_AUTOCOLOR` set, RichEdit zeroed out every other effect on every character. Fixed by changing the mask to `CFE_AUTOCOLOR` only, so just the autocolor flag is written and all per-character bold/italic/underline/colour runs from the streamed-in RTF are preserved intact.
+- **Fix: Remove Scintilla change-history markers**: Red, green, and yellow stripes were appearing in the left gutter of code tabs and displacing the fold arrows. These are Scintilla's built-in change-history indicators (red = reverted, green = saved, yellow = unsaved). Disabled with `SCI_SETCHANGEHISTORY, 0` (`ChangeHistoryOption::Disabled`) in `Ne_SetupScintillaStyle`. The fold margin and bookmark margin are unaffected and display correctly again.
 
 ## v2026.05.29.09 (Feature: Insert Date/Time; column selection docs; RTF session restore fix; 10 s autosave + WAL) - 29.05.2026 09:57
 

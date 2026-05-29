@@ -2,10 +2,11 @@
 <h3 style="text-align: center;">&nbsp;</h3>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 29 May 2026 &mdash; v2026.05.29.10 (10:09)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
-<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.29.10 (Fix: RTF formatting lost on session restore)</span></h3>
-<p><strong>Fix: RTF formatting (bold, italic, underline, etc.) lost on session restore (29.05.2026, 10:09):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.29.10 (Fix: RTF formatting lost on session restore; remove change-history markers)</span></h3>
+<p><strong>Fix: RTF formatting lost on session restore; remove Scintilla change-history markers (29.05.2026, 10:09):</strong></p>
 <ul>
 <li><strong>Fix: RTF formatting lost on session restore:</strong> After a restart, unsaved RTF tabs had all character formatting stripped &mdash; bold text became plain, italic became plain, and so on. Root cause: the session-restore colour fixup used <code>CFM_EFFECTS</code> as the <code>dwMask</code> in <code>EM_SETCHARFORMAT</code>. Since <code>CFM_EFFECTS</code> covers all effect bits (bold, italic, underline, strikethrough&hellip;), and <code>dwEffects</code> only had <code>CFE_AUTOCOLOR</code> set, RichEdit zeroed out every other effect on every character. Fixed by changing the mask to <code>CFE_AUTOCOLOR</code> only, so just the autocolor flag is written and all per-character bold&thinsp;/&thinsp;italic&thinsp;/&thinsp;underline&thinsp;/&thinsp;colour runs from the streamed-in RTF are preserved intact.</li>
+<li><strong>Fix: Remove Scintilla change-history markers:</strong> Red, green, and yellow stripes were appearing in the left gutter of code tabs and displacing the fold arrows. These are Scintilla&rsquo;s built-in change-history indicators (red&thinsp;=&thinsp;reverted, green&thinsp;=&thinsp;saved, yellow&thinsp;=&thinsp;unsaved). Disabled with <code>SCI_SETCHANGEHISTORY, 0</code> (<code>ChangeHistoryOption::Disabled</code>) in <code>Ne_SetupScintillaStyle</code>. The fold margin and bookmark margin are unaffected and display correctly again.</li>
 </ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.29.09 (Feature: Insert Date/Time; column selection docs; RTF session restore fix; 10&thinsp;s autosave + WAL)</span></h3>
