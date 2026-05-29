@@ -8509,8 +8509,11 @@ static void Ne_SessionRestore(HWND hwnd)
                     bool darkEd = g_darkMode;  // g_darkEditor only applies to Scintilla, not RichEdit
                     SendMessageW(doc->hEdit, EM_SETBKGNDCOLOR, 0,
                                  darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
+                    // Only reset text colour and the autocolor flag — do NOT use CFM_EFFECTS
+                    // as the full effects mask, because that would also zero-out bold, italic,
+                    // underline, strikethrough etc. (all bits in dwEffects that aren't set).
                     CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
-                    cfD.dwMask      = CFM_COLOR | CFM_EFFECTS;
+                    cfD.dwMask      = CFM_COLOR | CFE_AUTOCOLOR;  // autocolor bit only, not all effects
                     cfD.dwEffects   = darkEd ? 0 : CFE_AUTOCOLOR;
                     cfD.crTextColor = darkEd ? RGB(220, 220, 220) : 0;
                     SendMessageW(doc->hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);

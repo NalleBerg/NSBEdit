@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.05.29.10 (Fix: RTF formatting lost on session restore) - 29.05.2026 10:09
+
+- **Fix: RTF formatting (bold, italic, underline, etc.) lost on session restore**: After a restart, unsaved RTF tabs had all character formatting stripped — bold text became plain, italic became plain, and so on. Root cause: the session-restore colour fixup used `CFM_EFFECTS` as the `dwMask` in `EM_SETCHARFORMAT`. Since `CFM_EFFECTS` covers all effect bits (bold, italic, underline, strikethrough, …), and `dwEffects` only had `CFE_AUTOCOLOR` set, RichEdit zeroed out every other effect on every character. Fixed by changing the mask to `CFE_AUTOCOLOR` only, so just the autocolor flag is written and all per-character bold/italic/underline/colour runs from the streamed-in RTF are preserved intact.
+
 ## v2026.05.29.09 (Feature: Insert Date/Time; column selection docs; RTF session restore fix; 10 s autosave + WAL) - 29.05.2026 09:57
 
 - **Feature: Insert Date/Time (F5 / Edit menu)**: New *Edit → Insert Date/Time* command (also F5). Inserts the current local date and time at the caret using Windows `GetLocalTime` / `GetDateFormatW` / `GetTimeFormatW` with the user's locale format. Works in both RTF (RichEdit) and code (Scintilla) tabs. F5 is intercepted globally in the message pump so it fires even when toolbar buttons have focus. All 15 locale files updated with `MENU_INSERT_DATETIME`, `SCF_INSERT_DATETIME`, and `SCD_INSERT_DATETIME`.
