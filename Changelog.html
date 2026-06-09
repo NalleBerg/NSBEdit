@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 29 May 2026 &mdash; v2026.05.29.11 (11:07)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 09 June 2026 &mdash; v2026.06.09.12 (12:10)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.09.12 (Fix: Find dialog follows highlighted text; live hit count)</span></h3>
+<p><strong>Fix: Find dialog follows highlighted text; live hit count (09.06.2026, 12:10):</strong></p>
+<ul>
+<li><strong>Fix: Find dialog now uses highlighted text immediately:</strong> If text is already highlighted in a Scintilla tab, Ctrl+F now pre-fills the Find box from that highlighted text, refreshes the hit count right away, and treats the highlighted occurrence as the active match. The dialog still opens idle when nothing is highlighted, so typing can begin from an empty Find box as before.</li>
+<li><strong>Fix: live Find count / first hit:</strong> The Find dialog now refreshes its result count while you type and selects the first match at or after the highlighted occurrence or caret, instead of waiting for Find Next. Backwards search now anchors to the highlighted occurrence and moves to the previous match.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.05.29.11 (Fix: Scintilla change-history stripes; fold arrows restored)</span></h3>
 <p><strong>Fix: Scintilla change-history stripes in code tab gutter; fold arrows restored (29.05.2026, 11:07):</strong></p>

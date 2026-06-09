@@ -1,9 +1,21 @@
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$log       = Join-Path $scriptDir 'makeit.log'
-$countFile = Join-Path $scriptDir 'makeit_count.txt'
-$pos       = 0
+$scriptDir      = Split-Path -Parent $MyInvocation.MyCommand.Path
+$log            = Join-Path $scriptDir 'makeit.log'
+$countFile      = Join-Path $scriptDir 'makeit_count.txt'
+$countTodayFile = Join-Path $scriptDir 'makeit_today.txt'
+$pos            = 0
 
-$run = if (Test-Path $countFile) { [int](Get-Content $countFile -Raw).Trim() } else { 0 }
+# ── Load persistent counters ───────────────────────────────────────────────
+# makeit_count.txt  — all-time build number, never reset
+# makeit_today.txt  — append log; one line per build: "yyyy-MM-dd HH:mm:ss  #N"
+#                     today's count = lines starting with today's date
+$run         = if (Test-Path $countFile) { [int](Get-Content $countFile -Raw).Trim() } else { 0 }
+$today       = (Get-Date).ToString('yyyy-MM-dd')
+$runToday    = 0
+$sessionRuns = 0
+
+if (Test-Path $countTodayFile) {
+    $runToday = @(Get-Content $countTodayFile | Where-Object { $_ -match "^$today" }).Count
+}
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 function Write-Sep($char, $color) {
@@ -84,14 +96,25 @@ while ($true) {
         $info = Get-Item $log
         $size = $info.Length
 
-        if ($size -lt $pos) {
+        if ($size -lt $pos -or ($sessionRuns -eq 0 -and $size -gt 0)) {
+            $now   = Get-Date
+            $today = $now.ToString('yyyy-MM-dd')
+            $runToday = 0
+            if (Test-Path $countTodayFile) {
+                $runToday = @(Get-Content $countTodayFile | Where-Object { $_ -match "^$today" }).Count
+            }
             $run++
+            $runToday++
+            $sessionRuns++
             Set-Content $countFile $run
+            $entry = "{0}  #{1}" -f $now.ToString('yyyy-MM-dd HH:mm:ss'), $run
+            Add-Content $countTodayFile $entry
             $pos = 0
             Clear-Host
             Write-Sep ([char]0x2550) Cyan
-            Write-Host "  RUN #$run   " -NoNewline -ForegroundColor Cyan
-            Write-Host $info.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss') -ForegroundColor White
+            Write-Host ("  BUILD RUN {0}   ({1} today)   {2}" -f $run, $runToday,
+                $now.ToString('yyyy-MM-dd  HH:mm:ss')) -ForegroundColor Cyan
+            Write-Host '  NSBEdit  —  MinGW / CMake' -ForegroundColor Cyan
             Write-Sep ([char]0x2550) Cyan
             Write-Host ''
         }

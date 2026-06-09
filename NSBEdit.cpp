@@ -156,6 +156,7 @@ enum class NeEncoding {
 #define IDC_NE_DLG_TEXT     230
 #define IDC_NE_TABCTRL      231
 #define NE_IND_TAGMATCH       9   // Scintilla indicator for HTML tag-pair highlighting
+#define NE_IND_WORDMATCH     10   // Scintilla indicator for current-word match highlighting
 #define IDC_NE_WORDWRAP     232
 #define IDC_NE_CASE         233
 #define IDC_NE_PARSPACE     234
@@ -524,7 +525,7 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     COLORREF str  = darkEd ? RGB(206,145,120) : RGB(163, 21, 21);
     COLORREF pre  = darkEd ? RGB(197,134,192) : RGB(128, 64,  0);
     COLORREF kw2  = darkEd ? RGB( 86,156,214) : RGB(  0,  0,160);
-    COLORREF sel  = darkEd ? RGB( 38, 79,120) : RGB(179,215,255);
+    COLORREF sel  = darkEd ? RGB( 16, 58,110) : RGB(160,205,255);
     COLORREF lnbg = darkEd ? RGB( 37, 37, 38) : RGB(240,240,240);
     COLORREF lnfg = darkEd ? RGB(133,133,133) : RGB(100,100,100);
 
@@ -574,6 +575,12 @@ static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
     sci(SCI_INDICSETFORE,  NE_IND_TAGMATCH, darkEd ? RGB( 80,160,220) : RGB(  0,110,200));
     sci(SCI_INDICSETALPHA, NE_IND_TAGMATCH, 60);
     sci(SCI_INDICSETOUTLINEALPHA, NE_IND_TAGMATCH, 200);
+    // Current-word highlight: full-box marker behind every matching occurrence.
+    sci(SCI_INDICSETSTYLE, NE_IND_WORDMATCH, INDIC_FULLBOX);
+    sci(SCI_INDICSETUNDER, NE_IND_WORDMATCH, TRUE);
+    sci(SCI_INDICSETFORE,  NE_IND_WORDMATCH, darkEd ? RGB( 92,175,120) : RGB( 52,130, 78));
+    sci(SCI_INDICSETALPHA, NE_IND_WORDMATCH, 70);
+    sci(SCI_INDICSETOUTLINEALPHA, NE_IND_WORDMATCH, 255);
     // Line number margin (margin 0)
     sci(SCI_SETMARGINTYPEN,  0, SC_MARGIN_NUMBER);
     sci(SCI_SETMARGINWIDTHN, 0, s_lineNumsOn ? S(44) : 0);
@@ -1792,6 +1799,90 @@ static void Ne_DrawSciWrapIndicators(HWND hSci)
     if (hOld) SelectObject(hdc, hOld);
     if (hf)   DeleteObject(hf);
     ReleaseDC(hSci, hdc);
+}
+
+struct NeWordMatchState {
+    HWND hSci = NULL;
+    std::string word;
+};
+
+static NeWordMatchState s_wordMatchState;
+
+static void Ne_ClearCurrentWordHighlight()
+{
+    if (s_wordMatchState.hSci && IsWindow(s_wordMatchState.hSci)) {
+        auto sci = [hSci = s_wordMatchState.hSci](UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+            return SendMessageW(hSci, msg, wp, lp);
+        };
+        int docLen = (int)sci(SCI_GETLENGTH, 0, 0);
+        sci(SCI_SETINDICATORCURRENT, NE_IND_WORDMATCH, 0);
+        sci(SCI_INDICATORCLEARRANGE, 0, docLen);
+    }
+    s_wordMatchState.hSci = NULL;
+    s_wordMatchState.word.clear();
+}
+
+static void Ne_DoCurrentWordHighlight(HWND hSci)
+{
+    auto sci = [hSci](UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+        return SendMessageW(hSci, msg, wp, lp);
+    };
+
+    int selStart = (int)sci(SCI_GETSELECTIONSTART, 0, 0);
+    int selEnd   = (int)sci(SCI_GETSELECTIONEND,   0, 0);
+    int docLen    = (int)sci(SCI_GETLENGTH, 0, 0);
+
+    if (selStart == selEnd) {
+        Ne_ClearCurrentWordHighlight();
+        return;
+    }
+
+    int wordStart = std::min(selStart, selEnd);
+    int wordEnd   = std::max(selStart, selEnd);
+    int wordLen   = wordEnd - wordStart;
+
+    if (wordLen <= 0 || wordLen > 128) {
+        Ne_ClearCurrentWordHighlight();
+        return;
+    }
+
+    std::string word(wordLen + 1, '\0');
+    Sci_TextRange tr{};
+    tr.chrg.cpMin = wordStart;
+    tr.chrg.cpMax = wordEnd;
+    tr.lpstrText = word.data();
+    sci(SCI_GETTEXTRANGE, 0, (LPARAM)&tr);
+    word.resize(wordLen);
+
+    auto isWordChar = [](unsigned char ch) -> bool {
+        return (isalnum(ch) || ch == '_');
+    };
+    for (unsigned char ch : word) {
+        if (!isWordChar(ch)) {
+            Ne_ClearCurrentWordHighlight();
+            return;
+        }
+    }
+
+    if (s_wordMatchState.hSci == hSci && s_wordMatchState.word == word)
+        return;
+
+    Ne_ClearCurrentWordHighlight();
+
+    sci(SCI_SETINDICATORCURRENT, NE_IND_WORDMATCH, 0);
+    sci(SCI_SETSEARCHFLAGS, SCFIND_MATCHCASE, 0);
+
+    for (int pos = 0; pos < docLen; ) {
+        sci(SCI_SETTARGETSTART, pos, 0);
+        sci(SCI_SETTARGETEND, docLen, 0);
+        int found = (int)sci(SCI_SEARCHINTARGET, wordLen, (LPARAM)word.c_str());
+        if (found < 0) break;
+        sci(SCI_INDICATORFILLRANGE, found, wordLen);
+        pos = found + wordLen;
+    }
+
+    s_wordMatchState.hSci = hSci;
+    s_wordMatchState.word = word;
 }
 
 // ── Brace & HTML tag-pair highlighting ───────────────────────────────────────
@@ -3270,6 +3361,52 @@ static std::vector<NeHighlightRange> s_findMatches;  // all match ranges
 struct NeAllTabMatch { int tabIndex; int start; int end; };
 static std::vector<NeAllTabMatch> s_findAllTabMatches;
 static int                        s_findAllTabActiveIdx = -1;
+static std::wstring Ne_GetSelectedText(HWND hEdit)
+{
+    if (!hEdit || !IsWindow(hEdit)) return {};
+
+    wchar_t cls[32] = {};
+    GetClassNameW(hEdit, cls, 32);
+
+    if (wcscmp(cls, L"Scintilla") == 0) {
+        Sci_Position ss = (Sci_Position)SendMessageW(hEdit, SCI_GETSELECTIONSTART, 0, 0);
+        Sci_Position se = (Sci_Position)SendMessageW(hEdit, SCI_GETSELECTIONEND,   0, 0);
+        if (se <= ss) {
+            if (s_wordMatchState.hSci == hEdit && !s_wordMatchState.word.empty()) {
+                int wlen = MultiByteToWideChar(CP_UTF8, 0, s_wordMatchState.word.c_str(), -1, NULL, 0);
+                if (wlen > 1) {
+                    std::wstring wide((size_t)(wlen - 1), L'\0');
+                    MultiByteToWideChar(CP_UTF8, 0, s_wordMatchState.word.c_str(), -1, wide.data(), wlen);
+                    return wide;
+                }
+            }
+            return {};
+        }
+        std::string utf8((size_t)(se - ss) + 1, '\0');
+        Sci_TextRange tr{};
+        tr.chrg.cpMin = ss;
+        tr.chrg.cpMax = se;
+        tr.lpstrText   = utf8.data();
+        SendMessageW(hEdit, SCI_GETTEXTRANGE, 0, (LPARAM)&tr);
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
+        if (wlen <= 1) return {};
+        std::wstring wide((size_t)(wlen - 1), L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, wide.data(), wlen);
+        return wide;
+    }
+
+    CHARRANGE cr = {};
+    SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+    if (cr.cpMax <= cr.cpMin) return {};
+    std::wstring buf((size_t)(cr.cpMax - cr.cpMin) + 1, L'\0');
+    TEXTRANGEW tr{};
+    tr.chrg.cpMin = cr.cpMin;
+    tr.chrg.cpMax = cr.cpMax;
+    tr.lpstrText   = buf.data();
+    SendMessageW(hEdit, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
+    buf.resize((size_t)(cr.cpMax - cr.cpMin));
+    return buf;
+}
 
 static void Ne_UpdateFindCount()
 {
@@ -3352,7 +3489,9 @@ static int Ne_FindInText(const std::wstring& text, const std::wstring& needle,
     return -1;
 }
 
-static void Ne_DoFindNext(HWND dlg)
+static bool s_findDlgBuilding = false;
+
+static void Ne_DoFindNext(HWND dlg, bool keepDialogFocus = false)
 {
     HWND hWhat = GetDlgItem(dlg, IDC_NE_DLG_FIND_WHAT);
     HWND hEdit = s_hwndFindEdit;
@@ -3456,13 +3595,25 @@ static void Ne_DoFindNext(HWND dlg)
                 return;
             }
 
-            // Pick the first match at or after the caret in the active tab;
-            // fall back to the very first match overall.
+            // Prefer the currently selected/highlighted match in the active tab.
+            // If there is no selection, fall back to the caret position.
             CHARRANGE cr = {};
             SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
             int caretPos = forward ? (int)cr.cpMax : (int)cr.cpMin;
+            int selStart = (int)cr.cpMin;
+            int selEnd   = (int)cr.cpMax;
             s_findAllTabActiveIdx = forward ? 0 : (int)s_findAllTabMatches.size() - 1;
-            if (forward) {
+            bool haveSelectedHit = false;
+            for (int i = 0; i < (int)s_findAllTabMatches.size(); i++) {
+                const auto& m = s_findAllTabMatches[i];
+                if (m.tabIndex == activeTabIdx && selStart < selEnd &&
+                    m.start <= selStart && m.end >= selEnd) {
+                    s_findAllTabActiveIdx = i;
+                    haveSelectedHit = true;
+                    break;
+                }
+            }
+            if (!haveSelectedHit && forward) {
                 for (int i = 0; i < (int)s_findAllTabMatches.size(); i++) {
                     const auto& m = s_findAllTabMatches[i];
                     if (m.tabIndex > activeTabIdx ||
@@ -3471,7 +3622,7 @@ static void Ne_DoFindNext(HWND dlg)
                         break;
                     }
                 }
-            } else {
+            } else if (!haveSelectedHit) {
                 for (int i = (int)s_findAllTabMatches.size() - 1; i >= 0; i--) {
                     const auto& m = s_findAllTabMatches[i];
                     if (m.tabIndex < activeTabIdx ||
@@ -3502,12 +3653,14 @@ static void Ne_DoFindNext(HWND dlg)
             if (doc->hSci) {
                 SendMessageW(doc->hSci, SCI_SETSEL, am.start, am.end);
                 SendMessageW(doc->hSci, SCI_SCROLLCARET, 0, 0);
-                SetFocus(doc->hSci);
+                if (!keepDialogFocus)
+                    SetFocus(doc->hSci);
             } else {
                 CHARRANGE sel = { (LONG)am.start, (LONG)am.end };
                 SendMessageW(doc->hEdit, EM_EXSETSEL, 0, (LPARAM)&sel);
                 SendMessageW(doc->hEdit, EM_SCROLLCARET, 0, 0);
-                SetFocus(doc->hEdit);
+                if (!keepDialogFocus)
+                    SetFocus(doc->hEdit);
             }
         }
         Ne_UpdateFindCount();
@@ -3574,21 +3727,38 @@ static void Ne_DoFindNext(HWND dlg)
             return;
         }
 
-        // Pick nearest match to the current caret.
+        // Prefer the currently selected/highlighted match in the active tab.
+        // If there is no selection, fall back to the caret position.
         int caretPos = 0;
+        int selStart = -1, selEnd = -1;
         if (isSci) {
+            selStart = (int)SendMessageW(singleDoc->hSci, SCI_GETSELECTIONSTART, 0, 0);
+            selEnd   = (int)SendMessageW(singleDoc->hSci, SCI_GETSELECTIONEND,   0, 0);
             caretPos = (int)SendMessageW(singleDoc->hSci, SCI_GETCURRENTPOS, 0, 0);
         } else {
             CHARRANGE cr = {};
             SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+            selStart = (int)cr.cpMin;
+            selEnd   = (int)cr.cpMax;
             caretPos = forward ? (int)cr.cpMax : (int)cr.cpMin;
         }
         int bestIdx = forward ? 0 : (int)s_findMatches.size() - 1;
-        if (forward) {
+        bool haveSelectedHit = false;
+        if (selStart < selEnd) {
+            for (int i = 0; i < (int)s_findMatches.size(); i++) {
+                const auto& m = s_findMatches[i];
+                if (m.start <= selStart && m.end >= selEnd) {
+                    bestIdx = i;
+                    haveSelectedHit = true;
+                    break;
+                }
+            }
+        }
+        if (!haveSelectedHit && forward) {
             for (int i = 0; i < (int)s_findMatches.size(); i++) {
                 if (s_findMatches[i].start >= caretPos) { bestIdx = i; break; }
             }
-        } else {
+        } else if (!haveSelectedHit) {
             for (int i = (int)s_findMatches.size() - 1; i >= 0; i--) {
                 if (s_findMatches[i].start < caretPos) { bestIdx = i; break; }
             }
@@ -3619,7 +3789,14 @@ static void Ne_DoFindNext(HWND dlg)
         const auto& m = s_findMatches[s_findHL.activeIdx];
         SendMessageW(singleDoc->hSci, SCI_SETSEL, m.start, m.end);
         SendMessageW(singleDoc->hSci, SCI_SCROLLCARET, 0, 0);
-        SetFocus(singleDoc->hSci);
+        if (!keepDialogFocus)
+            SetFocus(singleDoc->hSci);
+    } else if (!keepDialogFocus && !isSci && !s_findMatches.empty()) {
+        const auto& m = s_findMatches[s_findHL.activeIdx];
+        CHARRANGE sel = { (LONG)m.start, (LONG)m.end };
+        SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&sel);
+        SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
+        SetFocus(hEdit);
     }
 
     Ne_UpdateFindCount();
@@ -3730,7 +3907,7 @@ static void Ne_DoReplace(HWND dlg, bool all)
         NeHighlight_Clear(hEdit, s_findHL);
         s_findCachedNeedle.clear();
         Ne_UpdateFindCount();
-        Ne_DoFindNext(dlg);
+        Ne_DoFindNext(dlg, false);
     }
 }
 
@@ -3742,10 +3919,14 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
     case WM_COMMAND: {
         int id = LOWORD(w);
         if (id == IDCANCEL)                  { DestroyWindow(h); return 0; }
-        if (id == IDOK)                      { Ne_DoFindNext(h); return 0; }  // Enter key
-        if (id == IDC_NE_DLG_FIND_NEXT)      { Ne_DoFindNext(h);  return 0; }
+        if (id == IDOK)                      { Ne_DoFindNext(h, false); return 0; }  // Enter key
+        if (id == IDC_NE_DLG_FIND_NEXT)      { Ne_DoFindNext(h, false);  return 0; }
         if (id == IDC_NE_DLG_REPLACE)        { Ne_DoReplace(h, false);  return 0; }
         if (id == IDC_NE_DLG_REPLACE_ALL)    { Ne_DoReplace(h, true);   return 0; }
+        if (id == IDC_NE_DLG_FIND_WHAT && HIWORD(w) == EN_CHANGE && !s_findDlgBuilding) {
+            Ne_DoFindNext(h, true);
+            return 0;
+        }
         // Regex checkbox toggled — grey out MatchCase and WholeWord.
         if (id == IDC_NE_DLG_REGEX && HIWORD(w) == BN_CLICKED) {
             bool on = (SendMessageW(GetDlgItem(h, IDC_NE_DLG_REGEX), BM_GETCHECK, 0, 0) == BST_CHECKED);
@@ -3875,9 +4056,37 @@ static void Ne_CycleBookmark(HWND hSci, bool forward)
 static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
 {
     HINSTANCE hi = GetModuleHandleW(NULL);
-    s_hwndFindEdit = hEdit;
+    s_findDlgBuilding = true;
+    HWND hFindSource = hEdit;
+    if (NeTabDoc* doc = NeTabs_GetActiveDoc(parent)) {
+        if (doc->hSci)
+            hFindSource = doc->hSci;
+    }
+    s_hwndFindEdit = hFindSource;
+    std::wstring prefill = Ne_GetSelectedText(hFindSource);
+
+    if (prefill.empty() && hFindSource && IsWindow(hFindSource)) {
+        wchar_t cls[32] = {};
+        GetClassNameW(hFindSource, cls, 32);
+        if (wcscmp(cls, L"Scintilla") == 0 && s_wordMatchState.hSci == hFindSource && !s_wordMatchState.word.empty()) {
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, s_wordMatchState.word.c_str(), -1, NULL, 0);
+            if (wlen > 1) {
+                std::wstring cached((size_t)(wlen - 1), L'\0');
+                MultiByteToWideChar(CP_UTF8, 0, s_wordMatchState.word.c_str(), -1, cached.data(), wlen);
+                prefill = std::move(cached);
+            }
+        }
+    }
 
     if (s_hwndFind && IsWindow(s_hwndFind)) {
+        if (!prefill.empty()) {
+            HWND hWhat = GetDlgItem(s_hwndFind, IDC_NE_DLG_FIND_WHAT);
+            if (hWhat) {
+                SetWindowTextW(hWhat, prefill.c_str());
+                SendMessageW(hWhat, EM_SETSEL, 0, (LPARAM)-1);
+                SetFocus(hWhat);
+            }
+        }
         SetForegroundWindow(s_hwndFind);
         return;
     }
@@ -3970,6 +4179,10 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
             P + S(115), y0, editW, EB,
             s_hwndFind, (HMENU)(UINT_PTR)IDC_NE_DLG_FIND_WHAT, hi, NULL);
         if (hf) SendMessageW(hFW, WM_SETFONT, (WPARAM)hf, TRUE);
+        if (!prefill.empty()) {
+            SetWindowTextW(hFW, prefill.c_str());
+            SendMessageW(hFW, EM_SETSEL, 0, (LPARAM)-1);
+        }
         HWND hCount = CreateWindowExW(0, L"STATIC", L"",
             WS_CHILD | WS_VISIBLE | SS_CENTER,
             rc.right - P - COUNT_W, y0 + S(4), COUNT_W, EB - S(4),
@@ -4007,6 +4220,11 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
         }
         bx += b.width + S(6);
     }
+
+    s_findDlgBuilding = false;
+
+    if (!prefill.empty())
+        Ne_DoFindNext(s_hwndFind, true);
 }
 
 // ── Insert Link dialog ────────────────────────────────────────────────────────
@@ -13896,6 +14114,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                             }
                         }
                     }
+                    if (scn->updated & SC_UPDATE_SELECTION) {
+                        Ne_DoCurrentWordHighlight(hSciActive);
+                    }
                     Ne_DoBracePairHighlight(hSciActive, docUI ? docUI->langId : -1);
                 }
                 // Sync custom scrollbar thumb with current scroll position/content
@@ -14760,13 +14981,13 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
             }
             // Ctrl+G — Go to Line (works regardless of focus target)
             if (msg.wParam == 'G') { SendMessageW(s_hwndMain, WM_COMMAND, IDM_GOTO, 0); continue; }
-            // Ctrl+B/I/U/F for text formatting / find (only when editor has focus).
+            // Ctrl+B/I/U and Ctrl+F for text formatting / find.
             if (GetFocus() == NeTabs_GetActiveEdit(s_hwndMain)) {
                 if (msg.wParam == 'B') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_BOLD,      0); continue; }
                 if (msg.wParam == 'I') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_ITALIC,    0); continue; }
                 if (msg.wParam == 'U') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_UNDERLINE, 0); continue; }
-                if (msg.wParam == 'F') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_FIND,      0); continue; }
             }
+            if (msg.wParam == 'F') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_FIND,      0); continue; }
             // Ctrl++ / Ctrl+- / Ctrl+0 — zoom in/out/reset (numpad and regular keys).
             if (msg.wParam == VK_ADD || msg.wParam == VK_OEM_PLUS) {
                 Ne_StepZoom(s_hwndMain, +1); continue;

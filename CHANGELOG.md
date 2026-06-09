@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.06.09.12 (Fix: Find dialog follows highlighted text; live hit count) - 09.06.2026 12:10
+
+- **Fix: Find dialog now uses highlighted text immediately**: If text is already highlighted in a Scintilla tab, Ctrl+F now pre-fills the Find box from that highlighted text, refreshes the hit count right away, and treats the highlighted occurrence as the active match. The dialog still opens idle when nothing is highlighted, so typing can begin from an empty Find box as before.
+- **Fix: live Find count / first hit**: The Find dialog now refreshes its result count while you type and selects the first match at or after the highlighted occurrence or caret, instead of waiting for Find Next. Backwards search now anchors to the highlighted occurrence and moves to the previous match.
+
 ## v2026.05.29.11 (Fix: Scintilla change-history stripes; fold arrows restored) - 29.05.2026 11:07
 
 - **Fix: Scintilla change-history stripes in code tab gutter**: Red, green, and yellow vertical stripes were permanently visible in the left gutter of all code tabs — including on reopen — and were displacing the fold arrows so they appeared broken or invisible. These are Scintilla's built-in change-history markers (red = reverted, green = saved, yellow = unsaved), which this version of Scintilla enables by default. The margin layout has been reorganised: margin 2 is now a dedicated 4 px history-marker strip (mask `0x01E00000`, markers 21–24), and the fold arrows have been moved to margin 3 (14 px, click-sensitive). The history colours are still visible as a thin strip to the left of the fold arrows, while the fold arrows are fully unobstructed and clickable again. Compare Tabs produces only the read-only unified diff result tab — no colored stripes are painted on the original source files.
