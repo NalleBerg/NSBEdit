@@ -1,0 +1,41 @@
+AI Additions Plan
+
+- Local AI backend, attached through a small localhost bridge service.
+- Floating always-on-top window that can be moved, resized, collapsed, and hidden.
+- Suggestions mode for code only, with copy / insert / replace handlers.
+- Agent mode for code only, where the AI can write code and trigger build/compile.
+- Non-intrusive behavior: no modal flow, no blocking typing, no auto-editing without approval.
+- No AI services for .rtf, .txt, or clean text documents.
+- Code tabs only, with explicit tab-level gating.
+- Local context only: active file, selection, nearby lines, and relevant open tabs.
+- Build loop integration using the existing makeit.bat / pack.ps1 workflow.
+- User approval and diff preview for applied changes.
+- Provider abstraction so different local model engines can be swapped later.
+
+[BLOCKED]
+// Blocked files and folders
+..\
+
+[ALLOWED]
+// Allowed files and folders - Exception folders and files may be in blocked areas.
+.\*.ps1
+.\makeit.bat
+..\MyStyle\  //allowing a folder outside current dir. All above is blocked, but this is an exception
+
+AI:
+If you want the most practical first build, I would do:
+
+Backend: Ollama
+Model: qwen2.5-coder:7b-instruct
+Fallback: qwen2.5-coder:3b-instruct
+Editor integration: localhost API bridge
+UI: floating always-on-top tool window
+Modes: Suggestions and Agent
+That gives you the cleanest path to:
+
+code-only access,
+no AI on RTF or plain text,
+copy/insert handlers for suggestions,
+compile-and-retry agent behavior.
+
+For this machine class, use the 7B model as the default and only drop to the 3B model if memory pressure or latency becomes a problem.

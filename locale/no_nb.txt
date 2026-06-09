@@ -395,6 +395,7 @@ CREDITS_MINGW      = MinGW-W64-prosjektet leverer et komplett kjøretidsmiljø f
 CREDITS_SQLITE     = SQLite er en liten, rask, selvstendig SQL-databasemotor i det offentlige domene. NSBEdit bruker SQLite-amalgamasjonen til å lagre FTP/SFTP-tilkoblingsprofiler.\n\n
 CREDITS_CURL       = libcurl er et gratis, åpen kildekode-bibliotek for URL-overføring av Daniel Stenberg. libssh2 er et åpen kildekode-bibliotek for SSH2-protokollen. NSBEdit bruker begge til å implementere FTP- og SFTP-filoverføring for ekstern redigering.\n\n
 CREDITS_RTF2HTML   = rtf2html er et åpen kildekode-bibliotek for konvertering av RTF til HTML av Valentyn Lavrinenko. NSBEdit bruker det til å eksportere riktekstdokumenter som HTML5. Lisensiert under GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+CREDITS_OLLAMA     = Ollama er en åpen kildekode lokal AI-kjøremotor. NSBEdit bruker den til valgfrie lokale AI-forslag og agentmodus.\n\n
 
 # ── FTP / SFTP ────────────────────────────────────────────────────────────────
 MENU_FTP             = FTP

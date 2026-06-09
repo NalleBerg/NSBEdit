@@ -395,6 +395,7 @@ CREDITS_MINGW      = The MinGW-W64 project provides a complete runtime environme
 CREDITS_SQLITE     = SQLite is a small, fast, self-contained SQL database engine in the public domain. NSBEdit uses the SQLite amalgamation to store FTP/SFTP connection profiles.\n\n
 CREDITS_CURL       = libcurl is a free, open-source URL transfer library by Daniel Stenberg. libssh2 is an open-source SSH2 protocol library. NSBEdit uses both to implement FTP and SFTP file transfer for remote editing.\n\n
 CREDITS_RTF2HTML   = rtf2html is an open-source RTF to HTML converter library by Valentyn Lavrinenko. NSBEdit uses it to export Rich Text documents as HTML5. Licensed under the GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+CREDITS_OLLAMA     = Ollama is an open-source local AI runtime. NSBEdit uses it for optional local AI suggestions and agent mode.\n\n
 
 # ── FTP / SFTP ────────────────────────────────────────────────────────────────
 MENU_FTP             = FTP

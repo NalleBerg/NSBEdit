@@ -396,6 +396,7 @@ CREDITS_MINGW      = MinGW-W64 prošeakta addá olles runtime-birra GCC- ja LLVM
 CREDITS_SQLITE     = SQLite lea unnán, jođán, iešseisaleaddji ja njibilaš SQL-diehtosistema. NSBEdit geavaha biddjojuvvon SQLite FTP/SFTP-oktavuohtalohkáriid vurkemii.\n\n
 CREDITS_CURL       = libcurl lea njibilaš URL-sirdinbibliotehka Daniel Stenbergis. libssh2 lea rievttes SSH2-protokollabibliotehka. NSBEdit geavaha guktuid FTP- ja SFTP-fiilasirdimii gáiddusdoaimmaheamis.\n\n
 CREDITS_RTF2HTML   = rtf2html lea rievttes RTF-HTML-nuppástuhttin-bibliotehka Valentyn Lavrinenkos. NSBEdit geavaha dan hápmostuvvon dokumeanttat HTML5-hámis exporterejeapmái. Mearriduvvon GNU Lesser General Public License v2.1 (LGPLv2.1) vuolde.\n\n
+CREDITS_OLLAMA     = Ollama lea rievttes bohtte AI-ráigid. NSBEdit geavaha dan eaktodáhtolaš bohtte AI-evttohusain ja agentamodus.\n\n
 
 # ── FTP / SFTP ────────────────────────────────────────────────────────────────
 MENU_FTP             = FTP

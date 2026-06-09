@@ -1,8 +1,9 @@
 # Changelog
 
-## v2026.06.09.15 (Fix: plain-text tabs keep black background after restart) - 09.06.2026 15:16
+## v2026.06.09.16 (Release: Ollama credits + local AI model pin) - 09.06.2026 16:33
 
-- **Fix: unsaved/plain-text tabs restore with the black editor background**: Ctrl+N now starts as plain text, and session-restored `.txt` tabs reuse the same black RichEdit styling instead of coming back with a white background after restart.
+- **Feature: Ollama added to About → Credits**: The credits dialog now includes an Ollama section with a link to the project site, and all locale files carry a matching `CREDITS_OLLAMA` entry.
+- **Feature: local AI default model pinned for the editor plan**: `AIAdd.txt` now records `qwen2.5-coder:7b-instruct` as the default Ollama coding model, with `qwen2.5-coder:3b-instruct` as fallback for lower-memory machines.
 
 ## v2026.06.09.14 (Fix: spell squiggle redraw; zoom/font-size-aware underline) - 09.06.2026 14:23
 

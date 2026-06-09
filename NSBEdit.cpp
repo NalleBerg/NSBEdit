@@ -12370,6 +12370,17 @@ static void ShowNsbCreditsDialog(HWND parent)
     AppendNsbRich(hEdit, Ls(L"CREDITS_RTF2HTML"), false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, L"https://github.com/lvu/rtf2html\r\n", false, RGB(0,80,160), 0, false);
 
+    // ── Ollama ───────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit,
+        L"\r\n=================================================\r\n",
+        false, RGB(100,100,100), 9, true);
+    AppendNsbRich(hEdit, L"OLLAMA\r\n", true, RGB(120,70,0), 18, true);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(120,70,0), 0, true);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_OLLAMA"), false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, L"https://ollama.com/\r\n", false, RGB(0,80,160), 0, false);
+
     SendMessageW(hEdit, EM_SETSEL, 0, 0);
     SendMessageW(hEdit, EM_SCROLLCARET, 0, 0);
 
