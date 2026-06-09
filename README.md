@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.06.09.14**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.06.09.15**
 
 ## Download
 
@@ -20,7 +20,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Hover tooltip on hyperlinks** — shows the URL and a Ctrl+Click hint as a two-line tooltip when hovering over a link
 - **URL validation** — regex check on save: requires a recognised scheme, valid host, and 2–4 character TLD
 - File menu: New, Open, Save, Save As, Print, Export as PDF (`Ctrl+Shift+P`)
-- **Session Restore** (installed version only) — on startup, all tabs from the previous session are automatically reopened: local files, FTP/SFTP files, and unsaved (untitled) buffers, including empty placeholder tabs used as separators. Session state (including per-tab caret position, first visible line, and word-wrap state) is saved to the SQLite database every 10 seconds and at clean exit using a single atomic transaction, so the session survives crashes and reboots. Restore is completely silent: unsaved content, FTP files, and locally-edited files load from the cached BLOB with no prompts. Disabled in portable mode and when a file is passed on the command line.
+- **Session Restore** (installed version only) — on startup, all tabs from the previous session are automatically reopened: local files, FTP/SFTP files, and unsaved (untitled) buffers, including empty placeholder tabs used as separators. Session state (including per-tab caret position, first visible line, and word-wrap state) is saved to the SQLite database every 10 seconds and at clean exit using a single atomic transaction, so the session survives crashes and reboots. Restore is completely silent: unsaved content, FTP files, and locally-edited files load from the cached BLOB with no prompts. Plain-text `.txt` tabs keep the black editor background after restart. Disabled in portable mode and when a file is passed on the command line.
 - **Recent Files** — File menu *Recent Files* submenu lists the last 10 opened or saved files; persisted between sessions in the settings database
 - Edit menu: Undo, Redo, Cut, Copy, Paste, Select All — greyed dynamically
 - Right-click context menu on the editor with the same Edit operations

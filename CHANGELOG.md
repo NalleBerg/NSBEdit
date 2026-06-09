@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.06.09.15 (Fix: plain-text tabs keep black background after restart) - 09.06.2026 15:16
+
+- **Fix: unsaved/plain-text tabs restore with the black editor background**: Ctrl+N now starts as plain text, and session-restored `.txt` tabs reuse the same black RichEdit styling instead of coming back with a white background after restart.
+
 ## v2026.06.09.14 (Fix: spell squiggle redraw; zoom/font-size-aware underline) - 09.06.2026 14:23
 
 - **Fix: spell squiggle redraw no longer blinks the RTF page**: The misspelling underline path now stays read-only during paint, so it no longer changes the RichEdit selection/caret state while drawing. That removes the fast blinking and blue square that could appear on the page.

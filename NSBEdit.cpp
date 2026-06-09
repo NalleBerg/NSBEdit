@@ -7481,8 +7481,9 @@ static void Ne_ShowSpellDialog(HWND hwndMain, NeTabDoc* doc)
 static bool Ne_DocIsRtf(NeTabDoc* doc)
 {
     if (!doc) return false;
-    // Untitled RichEdit tab (no path yet) — it's an RTF document
-    if (doc->path.empty()) return doc->hEdit && !doc->hSci;
+    // Untitled RichEdit tabs are plain text by default unless they were
+    // explicitly converted or loaded as real RTF.
+    if (doc->path.empty()) return (NeEncoding)doc->encoding == NeEncoding::RichText;
     size_t dot = doc->path.rfind(L'.');
     if (dot == std::wstring::npos) return false;
     std::wstring ext = doc->path.substr(dot + 1);
@@ -8052,6 +8053,20 @@ static void Ne_SubclassEditForCaret(HWND hEdit)
     SetPropW(hEdit, L"NeEditCaretPrev", (HANDLE)prev);
 }
 
+static void Ne_ApplyPlainTextLook(HWND hEdit)
+{
+    if (!hEdit) return;
+    CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
+    cfD.dwMask      = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
+    cfD.dwEffects   = 0;
+    cfD.crTextColor = RGB(220, 220, 220);
+    cfD.yHeight     = s_neFontSizes[s_neFontDefault] * 20;
+    cfD.bCharSet    = DEFAULT_CHARSET;
+    wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
+    SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
+    SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(25, 26, 27));
+}
+
 static void Ne_UpdateToolbarMode(HWND hwnd);        // forward declaration
 static void Ne_UpdateSpellMenuVisibility(HWND hwnd); // forward declaration
 
@@ -8062,15 +8077,7 @@ static void Ne_New(HWND hwnd)
     Ne_UpdateStatusText(hwnd);
     HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (hEdit) {
-        CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
-        cfD.dwMask    = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
-        cfD.dwEffects = g_darkMode ? 0 : CFE_AUTOCOLOR;
-        cfD.crTextColor = g_darkMode ? RGB(220, 220, 220) : 0;
-        cfD.yHeight   = s_neFontSizes[s_neFontDefault] * 20;
-        cfD.bCharSet  = DEFAULT_CHARSET;
-        wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
-        SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
-        SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, g_darkMode ? RGB(25, 26, 27) : RGB(255, 255, 255));
+        Ne_ApplyPlainTextLook(hEdit);
         SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
         Ne_SubclassEditForCaret(hEdit);
         SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_SELCHANGE);  // suppress EN_CHANGE during attach
@@ -8081,17 +8088,21 @@ static void Ne_New(HWND hwnd)
     NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
     Ne_SyncScrollbarVisibility(hwnd);
     Ne_SyncRichGutters(hwnd);
-    // New RTF tabs always start with word wrap on.
-    s_wordWrapOn = true;
+    // New plain-text tabs start with word wrap off.
+    s_wordWrapOn = false;
     if (hEdit) {
         SendMessageW(hEdit, EM_SETZOOM, (WPARAM)g_zoomRtf, 100);
-        SendMessageW(hEdit, EM_SETTARGETDEVICE, 0, 0); // wrap on
+        SendMessageW(hEdit, EM_SETTARGETDEVICE, 0, 30000); // wrap off
     }
     // Sync wrap button (toolbar may already be visible).
     { HWND hWBtn = GetDlgItem(hwnd, IDC_NE_WORDWRAP);
-      if (hWBtn) { SendMessageW(hWBtn, BM_SETCHECK, BST_CHECKED, 0);
+      if (hWBtn) { SendMessageW(hWBtn, BM_SETCHECK, BST_UNCHECKED, 0);
                    RedrawWindow(hWBtn, NULL, NULL, RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW); } }
-    Ne_UpdateToolbarMode(hwnd); // ensure Rich button row is shown for the new RTF tab
+    if (NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd)) {
+        doc->encoding = (int)NeEncoding::UTF8;
+        doc->wordWrap = false;
+    }
+    Ne_UpdateToolbarMode(hwnd); // ensure Txt button row is shown for the new plain-text tab
 }
 
 static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
@@ -8692,17 +8703,7 @@ static void Ne_SessionRestore(HWND hwnd)
                     }
                 }
                 if (!isRealRtf) {
-                    bool darkEd = g_darkMode;  // g_darkEditor only applies to Scintilla, not RichEdit
-                    SendMessageW(doc->hEdit, EM_SETBKGNDCOLOR, 0,
-                                 darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
-                    // Only reset text colour and the autocolor flag — do NOT use CFM_EFFECTS
-                    // as the full effects mask, because that would also zero-out bold, italic,
-                    // underline, strikethrough etc. (all bits in dwEffects that aren't set).
-                    CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
-                    cfD.dwMask      = CFM_COLOR | CFE_AUTOCOLOR;  // autocolor bit only, not all effects
-                    cfD.dwEffects   = darkEd ? 0 : CFE_AUTOCOLOR;
-                    cfD.crTextColor = darkEd ? RGB(220, 220, 220) : 0;
-                    SendMessageW(doc->hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
+                    Ne_ApplyPlainTextLook(doc->hEdit);
                 }
             }
             Ne_RebuildHRList(doc->hEdit);
@@ -13580,16 +13581,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             doc->suppressChange = true;
             Ne_StreamIn(hEd, plain, false);
             doc->suppressChange = false;
-            { bool darkEd = g_darkMode;  // g_darkEditor only applies to Scintilla, not RichEdit
-              SendMessageW(hEd, EM_SETBKGNDCOLOR, 0, darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
-              CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
-              cfD.dwMask      = CFM_COLOR | CFM_EFFECTS;
-              cfD.dwEffects   = darkEd ? 0 : CFE_AUTOCOLOR;
-              cfD.crTextColor = darkEd ? RGB(220, 220, 220) : 0;
-              SendMessageW(hEd, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD); }
+                        Ne_ApplyPlainTextLook(hEd);
             doc->encoding = (int)NeEncoding::UTF8;
             // If the file had a .rtf extension, change it to .txt.
-            if (Ne_DocIsRtf(doc)) {
+                        if (!doc->path.empty()) {
                 size_t dot = doc->path.rfind(L'.');
                 doc->path = (dot != std::wstring::npos ? doc->path.substr(0, dot) : doc->path) + L".txt";
             }
@@ -14445,30 +14440,35 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 DrawTextW(dis->hDC, L"\u25BC", -1, &rcA, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 if (hOld2) SelectObject(dis->hDC, hOld2);
                 if (hSmall) DeleteObject(hSmall);
-            } else
-            // ── Special: Highlight button gets a yellow colour swatch ─────────
-            if (id == IDC_NE_HIGHLIGHT) {
-                // Draw "H" in normal text colour above a yellow bar.
-                COLORREF hlFg = disabled ? GetSysColor(COLOR_GRAYTEXT)
-                              : g_darkMode ? RGB(230, 230, 230) : RGB(30, 30, 30);
-                SetTextColor(dis->hDC, hlFg);
+            } else if (id == IDC_NE_HIGHLIGHT) {
+                // Draw a text swatch and a yellow highlight strip.
+                SetTextColor(dis->hDC, disabled ? GetSysColor(COLOR_GRAYTEXT) : RGB(80, 80, 80));
                 SetBkMode(dis->hDC, TRANSPARENT);
+
                 HFONT hf = (HFONT)SendMessageW(dis->hwndItem, WM_GETFONT, 0, 0);
-                if (!hf) hf = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                bool createdFont = false;
+                if (!hf) {
+                    int ht = -(MulDiv(11, GetDeviceCaps(dis->hDC, LOGPIXELSY), 72));
+                    hf = CreateFontW(ht, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                                     DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                     CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+                    createdFont = (hf != NULL);
+                    if (!hf) hf = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                }
                 HFONT hOld = (HFONT)SelectObject(dis->hDC, hf);
                 RECT rcTxt = { rc.left + (pressed?1:0), rc.top + (pressed?1:0),
-                               rc.right,                rc.bottom - S(6) };
+                               rc.right, rc.bottom };
                 DrawTextW(dis->hDC, L"H\u25BC", -1, &rcTxt, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(dis->hDC, hOld);
+                if (createdFont) DeleteObject(hf);
                 // Yellow swatch at bottom of button.
                 RECT swRc = { rc.left + S(3), rc.bottom - S(6),
                               rc.right - S(3), rc.bottom - S(2) };
                 HBRUSH hSw = CreateSolidBrush(RGB(255, 220, 0));
                 FillRect(dis->hDC, &swRc, hSw);
                 DeleteObject(hSw);
-            } else
-            // ── Special: Word wrap — render ↵ larger and bold ─────────────────
-            if (id == IDC_NE_WORDWRAP) {
+            } else if (id == IDC_NE_WORDWRAP) {
+                // ── Special: Word wrap — render ↵ larger and bold ─────────────────
                 COLORREF fg = disabled ? GetSysColor(COLOR_GRAYTEXT)
                             : g_darkMode && checked  ? RGB(55,  215, 175)
                             : g_darkMode             ? RGB(160, 160, 165)
