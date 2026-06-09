@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 09 June 2026 &mdash; v2026.06.09.12 (12:10)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 09 June 2026 &mdash; v2026.06.09.14 (14:23)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.09.14 (Fix: spell squiggle redraw; zoom/font-size-aware underline)</span></h3>
+<p><strong>Fix: spell squiggle redraw; zoom/font-size-aware underline (09.06.2026, 14:23):</strong></p>
+<ul>
+<li><strong>Fix: spell squiggle redraw no longer blinks the RTF page:</strong> The misspelling underline path now stays read-only during paint, so it no longer changes the RichEdit selection/caret state while drawing. That removes the fast blinking and blue square that could appear on the page.</li>
+<li><strong>Fix: spell squiggle geometry now follows zoom and font size:</strong> The underline position is recalculated from the currently rendered line geometry on every paint, so Ctrl+mouse-wheel zoom and character font-size changes keep the squiggle below the word instead of drifting through the letters or disappearing.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.09.12 (Fix: Find dialog follows highlighted text; live hit count)</span></h3>
 <p><strong>Fix: Find dialog follows highlighted text; live hit count (09.06.2026, 12:10):</strong></p>

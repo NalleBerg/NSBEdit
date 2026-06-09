@@ -6365,7 +6365,7 @@ static void Ne_DrawSpellSquiggles(HWND hEdit, HDC hdc)
     auto it = s_spellErrors.find(hEdit);
     if (it == s_spellErrors.end() || it->second.empty()) return;
 
-    // Measure actual line height from the edit's font
+    // Measure actual line height from the edit's font.
     HFONT hEditFont = (HFONT)SendMessageW(hEdit, WM_GETFONT, 0, 0);
     HFONT hOldFont  = hEditFont ? (HFONT)SelectObject(hdc, hEditFont) : NULL;
     TEXTMETRICW tm = {};
@@ -6377,7 +6377,7 @@ static void Ne_DrawSpellSquiggles(HWND hEdit, HDC hdc)
     HPEN hOld = (HPEN)SelectObject(hdc, hPen);
 
     for (auto& range : it->second) {
-        // Map char offsets to client pixel positions using EM_POSFROMCHAR
+        // Map char offsets to client pixel positions using EM_POSFROMCHAR.
         POINTL ptStart = {}, ptEnd = {};
         SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptStart, (LPARAM)range.first);
         SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptEnd,   (LPARAM)range.second);
@@ -6395,13 +6395,20 @@ static void Ne_DrawSpellSquiggles(HWND hEdit, HDC hdc)
             SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptNext, (LPARAM)nextIdx);
             renderedLineH = ptNext.y - ptStart.y;
         } else {
-            renderedLineH = lineH * g_zoomRtf / 100; // last line fallback
+            LONG prevIdx = (lineNum > 0) ? (LONG)SendMessageW(hEdit, EM_LINEINDEX, (WPARAM)(lineNum - 1), 0) : -1;
+            if (prevIdx >= 0) {
+                POINTL ptPrev = {};
+                SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptPrev, (LPARAM)prevIdx);
+                renderedLineH = std::max(1, (int)(ptStart.y - ptPrev.y));
+            } else {
+                renderedLineH = lineH;
+            }
         }
-        // Place squiggle just below the baseline.
-        // tmDescent/tmHeight gives the descent fraction; apply to rendered height.
-        int scaledDescent = (lineH > 0) ? (renderedLineH * tm.tmDescent / lineH) : 0;
-        int y = ptStart.y + renderedLineH - scaledDescent + 1;
-        for (int x = ptStart.x; x < ptEnd.x; x += 4) {
+        // Place squiggle just below the bottom of the word box.
+        // The only fixed offset is 2 pixels below the rendered line bottom.
+        int y = ptStart.y + renderedLineH + 2;
+        int xEnd = std::max(ptStart.x + 1, ptEnd.x);
+        for (int x = ptStart.x; x < xEnd; x += 4) {
             MoveToEx(hdc, x,     y,     NULL);
             LineTo  (hdc, x + 2, y + 2);
             LineTo  (hdc, x + 4, y    );
@@ -13952,6 +13959,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 g_zoomRtf = s_zoomSteps[sel];
                 SendMessageW(hEdit, EM_SETZOOM, (WPARAM)g_zoomRtf, 100);
                 NeProfiles_SetIntSetting("zoom_rtf", g_zoomRtf);
+                InvalidateRect(hEdit, NULL, FALSE);
             }
             SetFocus(hEdit); return 0;
         }
@@ -13986,6 +13994,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cfSz);
             }
             SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
+            InvalidateRect(hEdit, NULL, FALSE);
             SetFocus(hEdit); return 0;
         }
 

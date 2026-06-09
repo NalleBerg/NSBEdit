@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.06.09.14 (Fix: spell squiggle redraw; zoom/font-size-aware underline) - 09.06.2026 14:23
+
+- **Fix: spell squiggle redraw no longer blinks the RTF page**: The misspelling underline path now stays read-only during paint, so it no longer changes the RichEdit selection/caret state while drawing. That removes the fast blinking and blue square that could appear on the page.
+- **Fix: spell squiggle geometry now follows zoom and font size**: The underline position is recalculated from the currently rendered line geometry on every paint, so Ctrl+mouse-wheel zoom and character font-size changes keep the squiggle below the word instead of drifting through the letters or disappearing.
+
 ## v2026.06.09.12 (Fix: Find dialog follows highlighted text; live hit count) - 09.06.2026 12:10
 
 - **Fix: Find dialog now uses highlighted text immediately**: If text is already highlighted in a Scintilla tab, Ctrl+F now pre-fills the Find box from that highlighted text, refreshes the hit count right away, and treats the highlighted occurrence as the active match. The dialog still opens idle when nothing is highlighted, so typing can begin from an empty Find box as before.

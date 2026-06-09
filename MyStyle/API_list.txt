@@ -59,7 +59,13 @@
                                                 pre-fills the Find box from that
                                                 highlighted text and immediately
                                                 refreshes the hit count / first match
-                                                as if the text had been typed.
+                                                as if the text had been typed.  Spell
+                                                squiggles are painted read-only in WM_PAINT:
+                                                Ne_DrawSpellSquiggles only uses the cached
+                                                EM_POSFROMCHAR geometry and never changes
+                                                the RichEdit selection/caret, so zoom and
+                                                font-size changes do not trigger blinking
+                                                or blue selection blocks during redraw.
                                                 Owner-draw menus at 12pt Segoe UI via
                                                 Ne_AppendMenuOD / WM_MEASUREITEM /
                                                 WM_DRAWITEM — popup bg white, bar items
