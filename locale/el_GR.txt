@@ -39,6 +39,8 @@ PREF_EDITOR_DARK_BG    = Σκοτεινό φόντο για απλό κείμε�
 MENU_HELP       = &Βοήθεια
 MENU_SHORTCUTS  = &Συντομεύσεις πληκτρολογίου...\tF1
 MENU_ABOUT      = &Σχετικά με το NSBEdit
+BTN_AI          = ΤΝ
+TIP_AI          = Ρώτα το Ollama για ΤΝ.
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = Μετα&τροπή

@@ -25,6 +25,95 @@ if (-not $version) { $version = 'unknown' }
 
 $installDir = Join-Path $env:ProgramFiles 'NSBEdit'
 $appDataDir = Join-Path $env:APPDATA       'NSBEdit'
+$aiConfigPath = Join-Path $appDataDir 'ai-settings.json'
+$ollamaDownloadUrl = 'https://ollama.com/download/windows'
+$defaultAiModel = 'qwen2.5-coder:7b-instruct'
+$fallbackAiModel = 'qwen2.5-coder:3b-instruct'
+
+function Write-Section($text) {
+    Write-Host ""
+    Write-Host "  $text"
+}
+
+function Test-OllamaAvailable {
+    $cmd = Get-Command ollama -ErrorAction SilentlyContinue
+    if (-not $cmd) { return $false }
+    try {
+        & $cmd.Source --version *> $null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    }
+}
+
+function Write-AiConfig([bool]$enabled, [string]$provider, [string]$model, [string]$fallback, [string]$note) {
+    $payload = [ordered]@{
+        enabled      = $enabled
+        provider     = $provider
+        model        = $model
+        fallback     = $fallback
+        note         = $note
+        installedAt  = (Get-Date).ToString('s')
+        version      = $version
+    }
+    $payload | ConvertTo-Json -Depth 4 | Set-Content -Path $aiConfigPath -Encoding UTF8
+    Write-Host "  + ai-settings.json"
+}
+
+function Ensure-OllamaReady {
+    if (Test-OllamaAvailable) {
+        Write-Host "  + Ollama detected"
+        return $true
+    }
+
+    Write-Host "  ~ Ollama not found on this machine"
+    $wantInstall = Read-Host "  Install or enable Ollama now? [Y/n]"
+    if ($wantInstall -match '^[nN]') {
+        return $false
+    }
+
+    $winget = Get-Command winget -ErrorAction SilentlyContinue
+    if ($winget) {
+        Write-Host ""
+        Write-Host "  Attempting Ollama installation via winget..."
+        try {
+            & $winget.Source install --id Ollama.Ollama -e --accept-package-agreements --accept-source-agreements
+        } catch {
+            Write-Host "  winget reported an error: $_" -ForegroundColor Yellow
+        }
+
+        if (Test-OllamaAvailable) {
+            Write-Host "  + Ollama is now available"
+            return $true
+        }
+
+        Write-Host "  winget install did not finish with a working Ollama install."
+    } else {
+        Write-Host "  winget is not available on this machine."
+    }
+
+    Write-Host ""
+    Write-Host "  Manual fallback: open the official Ollama download page below"
+    Write-Host "  and install it by hand if you prefer or if winget fails."
+    Write-Host "  $ollamaDownloadUrl"
+    $openPage = Read-Host "  Open the download page now? [Y/n]"
+    if ($openPage -notmatch '^[nN]') {
+        try {
+            Start-Process $ollamaDownloadUrl
+        } catch {
+            Write-Host "  Could not open the browser automatically. Copy the URL above."
+        }
+    }
+
+    Read-Host "  Install Ollama, then press Enter here to retry detection"
+    if (Test-OllamaAvailable) {
+        Write-Host "  + Ollama is now available"
+        return $true
+    }
+
+    Write-Host "  ~ Ollama still not detected; continuing without local AI"
+    return $false
+}
 
 Write-Host ""
 Write-Host "  NSBEdit v$version -- Installer"
@@ -36,6 +125,14 @@ Write-Host ""
 # -- Create directories --------------------------------------------------------
 New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 New-Item -ItemType Directory -Path $appDataDir -Force | Out-Null
+
+Write-Section "AI setup"
+$ollamaReady = Ensure-OllamaReady
+if ($ollamaReady) {
+    Write-AiConfig $true 'ollama' $defaultAiModel $fallbackAiModel 'Local AI configured during install'
+} else {
+    Write-AiConfig $false 'none' $defaultAiModel $fallbackAiModel 'Local AI not available during install'
+}
 
 # -- Copy program files --------------------------------------------------------
 foreach ($f in @('NSBEdit.exe','Changelog.html','GPLv2.md')) {

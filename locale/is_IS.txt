@@ -39,6 +39,8 @@ PREF_EDITOR_DARK_BG    = Dökkur bakgrunnur fyrir venjulegan texta og kóða
 MENU_HELP       = &Hjálp
 MENU_SHORTCUTS  = &Flýtilyklar...\tF1
 MENU_ABOUT      = &Um NSBEdit
+BTN_AI          = GI
+TIP_AI          = Spyrðu Ollama um gervigreind.
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = &Umbreyta

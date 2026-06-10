@@ -39,6 +39,8 @@ PREF_EDITOR_DARK_BG    = Donkere achtergrond voor platte tekst en code
 MENU_HELP       = &Help
 MENU_SHORTCUTS  = &Sneltoetsen...\tF1
 MENU_ABOUT      = &Over NSBEdit
+BTN_AI          = AI
+TIP_AI          = Vraag Ollama om AI.
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = Con&verteren

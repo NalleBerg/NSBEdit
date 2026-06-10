@@ -40,6 +40,8 @@ PREF_EDITOR_DARK_BG    = Темний фон для простого текст�
 MENU_HELP       = &Довідка
 MENU_SHORTCUTS  = &Комбінації клавіш...\tF1
 MENU_ABOUT      = &Про NSBEdit
+BTN_AI          = ШІ
+TIP_AI          = Запитай у Ollama про ШІ.
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = &Конвертувати

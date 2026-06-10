@@ -39,6 +39,8 @@ PREF_EDITOR_DARK_BG    = Arrière-plan sombre pour le texte brut et le code
 MENU_HELP       = A&ide
 MENU_SHORTCUTS  = &Raccourcis clavier...\tF1
 MENU_ABOUT      = &À propos de NSBEdit
+BTN_AI          = IA
+TIP_AI          = Demandez à Ollama de l'IA.
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = &Convertir

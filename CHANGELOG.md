@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.06.10.11 (Release: Ollama icon + localized AI tooltip + GDI+ startup fix) - 10.06.2026 11:48
+
+- **Feature: AI button now uses the Ollama icon**: The toolbar AI button now loads `ollama.png` and renders the image in the owner-draw handler, with localized text as a fallback if the icon cannot be loaded.
+- **Fix: GDI+ now starts for the full app lifetime**: GDI+ is initialized in `wWinMain` so the toolbar icon path is safe in the main window, instead of relying on the About dialog to start it.
+- **Fix: AI tooltip is fully localized**: `TIP_AI` is translated in all bundled locale files, so the button tooltip now says the native “Ask Ollama …” wording in each language.
+
 ## v2026.06.09.16 (Release: Ollama credits + local AI model pin) - 09.06.2026 16:33
 
 - **Feature: Ollama added to About → Credits**: The credits dialog now includes an Ollama section with a link to the project site, and all locale files carry a matching `CREDITS_OLLAMA` entry.

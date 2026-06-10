@@ -39,6 +39,8 @@ PREF_EDITOR_DARK_BG    = Tumma tausta pelkälle tekstille ja koodille
 MENU_HELP       = &Ohje
 MENU_SHORTCUTS  = &Pikanäppäimet...\tF1
 MENU_ABOUT      = &Tietoja NSBEdit
+BTN_AI          = Tekoäly
+TIP_AI          = Kysy Ollamalta tekoälyä.
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = M&uunna

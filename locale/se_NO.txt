@@ -41,6 +41,8 @@ PREF_EDITOR_DARK_BG    = Seavdnjat duogáš čálosasiidda ja koda fiilaide
 MENU_HELP       = &Veahkki
 MENU_SHORTCUTS  = &Njuikenvuogit...\tF1
 MENU_ABOUT      = &NSBEdit birra
+BTN_AI          = AI
+TIP_AI          = Jeara Ollamas AI.
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = &Nuppástuhttit

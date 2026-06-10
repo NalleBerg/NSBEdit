@@ -39,6 +39,8 @@ PREF_EDITOR_DARK_BG    = Mørk bakgrunn for ren tekst og kode
 MENU_HELP       = &Hjelp
 MENU_SHORTCUTS  = &Tastatursnarveier...\tF1
 MENU_ABOUT      = &Om NSBEdit
+BTN_AI          = KI
+TIP_AI          = Spør Ollama om KI.
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = Kon&verter

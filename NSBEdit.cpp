@@ -34,6 +34,8 @@
 #include "checkbox.h"
 #include "ne_crypto.h"
 #include "ne_profiles.h"
+#include "ne_ai_bootstrap.h"
+#include "ne_ai_client.h"
 #include "ne_ftp.h"
 #include "ne_session.h"
 #include "rtf2html/ne_rtf2html_lib.h"
@@ -71,6 +73,7 @@
 #define IDM_SPELL_CHECK      351   // "Spell Check..."
 #define IDM_SPELL_LANG_BASE  400   // 400..449 — up to 50 spell languages
 // Timer IDs
+#define NE_TIMER_AI          12    // Ollama HTTP availability refresh
 #define NE_TIMER_SPELL       11    // 400ms debounce after EN_CHANGE
 #define IDR_LOCALE_EN_GB    10
 #define IDR_LOCALE_NO_NB    11
@@ -188,6 +191,7 @@ enum class NeEncoding {
 #define IDC_NE_SAVE_FTP         264   // toolbar Save to FTP button
 #define IDC_NE_PREVIEW          265   // toolbar Preview online button
 #define IDC_NE_COMMENT          266   // Comment / Uncomment  (Scintilla only)
+#define IDC_NE_AI               268   // Scintilla-side AI button (shown only when Ollama answers)
 // ── Spell-check dialog controls ───────────────────────────────────────────────
 #define IDC_SPELL_WORD_LBL      300   // "Misspelled word:" label
 #define IDC_SPELL_WORD_VAL      301   // the misspelled word value (static)
@@ -261,6 +265,10 @@ static void Ne_DetachAllScrollbars()
     s_sbV.clear(); s_sbH.clear(); s_sciSbV.clear(); s_sciSbH.clear();
 }
 
+static bool s_aiOllamaReady = false;
+static ULONG_PTR s_gdiplusToken = 0;
+static bool s_gdiplusStarted = false;
+
 // Show or hide each custom scrollbar bar window to match its edit's visibility,
 // and reposition bars for visible edits. Call after any tab switch or resize.
 static void Ne_SyncScrollbarVisibility(HWND hwnd)
@@ -292,6 +300,25 @@ static void Ne_SyncScrollbarVisibility(HWND hwnd)
             syncBar(s_sciSbH, doc->hSci);
         }
     }
+}
+
+static void Ne_SyncRichGutters(HWND hwnd);
+static void Ne_UpdateToolbarMode(HWND hwnd);
+
+static void Ne_GdiplusInit()
+{
+    if (s_gdiplusStarted) return;
+    Gdiplus::GdiplusStartupInput gsi;
+    if (Gdiplus::GdiplusStartup(&s_gdiplusToken, &gsi, NULL) == Gdiplus::Ok)
+        s_gdiplusStarted = true;
+}
+
+static void Ne_GdiplusShutdown()
+{
+    if (!s_gdiplusStarted) return;
+    Gdiplus::GdiplusShutdown(s_gdiplusToken);
+    s_gdiplusToken = 0;
+    s_gdiplusStarted = false;
 }
 
 // ── Toolbar mode — controls which button set is visible ──────────────────────
@@ -505,6 +532,7 @@ static int Ne_LangFromShebang(const std::string& utf8)
 static bool g_darkMode   = false;  // persisted as "dark_mode" in DB
 static bool g_darkEditor = false;  // persisted as "dark_editor": dark Scintilla in light UI
 static int  g_localeId   = 0;      // persisted as "locale_id" in DB (0 = en_GB)
+static NeAiBootstrapConfig g_aiBootstrap;
 
 static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
 {
@@ -669,14 +697,9 @@ static LRESULT CALLBACK NsbLineGutterProc(HWND hWnd, UINT msg,
     case WM_SETCURSOR: {
         POINT pt; GetCursorPos(&pt); ScreenToClient(hWnd, &pt);
         RECT rc; GetClientRect(hWnd, &rc);
-        bool thinStrip = (rc.right <= S(24));  // thin strip = fully clickable
-        bool inBtn = true;
-        if (!thinStrip) {  // full gutter: only top-left ◂ area is clickable
-            int btnSz = S(18);
-            RECT btnRc = { S(1), 0, S(1) + btnSz, btnSz };
-            POINT mpt = { pt.x, pt.y };
-            inBtn = (PtInRect(&btnRc, mpt) != FALSE);
-        }
+        int btnSz = S(18);
+        RECT lineRc = { S(1), 0, S(1) + btnSz, btnSz };
+        bool inBtn = (PtInRect(&lineRc, pt) != FALSE);
         SetCursor(LoadCursorW(NULL, inBtn ? IDC_HAND : IDC_ARROW));
         return TRUE;
     }
@@ -709,16 +732,11 @@ static LRESULT CALLBACK NsbLineGutterProc(HWND hWnd, UINT msg,
 
     case WM_LBUTTONDOWN: {
         int mx = GET_X_LPARAM(lParam), my = GET_Y_LPARAM(lParam);
-        RECT rc; GetClientRect(hWnd, &rc);
-        bool thinStrip = (rc.right <= S(24));
-        bool inBtn = true;
-        if (!thinStrip) {  // full gutter: only top-left ◂ area is clickable
-            int btnSz = S(18);
-            RECT btnRc = { S(1), 0, S(1) + btnSz, btnSz };
-            POINT pt = { mx, my };
-            inBtn = (PtInRect(&btnRc, pt) != FALSE);
-        }
-        if (inBtn)
+        int btnSz = S(18);
+        RECT lineRc = { S(1), 0, S(1) + btnSz, btnSz };
+        POINT pt = { mx, my };
+        bool inLine = (PtInRect(&lineRc, pt) != FALSE);
+        if (inLine)
             PostMessageW(GetParent(hWnd), WM_COMMAND,
                          MAKEWPARAM(IDC_BTN_LINENUM, BN_CLICKED), 0);
         return 0;
@@ -799,6 +817,7 @@ static LRESULT CALLBACK NsbLineGutterProc(HWND hWnd, UINT msg,
             SetTextColor(hdc, g_darkMode ? RGB(115, 150, 180) : RGB(60, 100, 140));
             DrawTextW(hdc, L"\u25C2", -1, &btnRc,
                       DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOCLIP);
+
         }
         if (hOldFont) SelectObject(hdc, hOldFont);
         EndPaint(hWnd, &ps);
@@ -1133,7 +1152,6 @@ static void Ne_SciAutoPair(HWND hSci, int ch)
     else if (ch == ']')    { jumpCloser = "]";         }
     else if (ch == ')')    { jumpCloser = ")";         }
     else if (ch == '"')    { jumpCloser = "\"";        }
-    else if (ch == 0xBB)   { jumpCloser = "\xC2\xBB"; jumpLen = 2; typedLen = 2; } // »
 
     if (jumpCloser) {
         bool matches = true;
@@ -2779,6 +2797,21 @@ static void Ne_DrawDialogButton(const DRAWITEMSTRUCT* dis, const NeDialogData* d
 
     if (old) SelectObject(hdc, old);
     if (hf) DeleteObject(hf);
+}
+
+static Gdiplus::Image* Ne_GetOllamaButtonImage()
+{
+    static Gdiplus::Image* s_ollamaImage = NULL;
+    static bool s_ollamaImageTried = false;
+    if (!s_ollamaImageTried) {
+        s_ollamaImageTried = true;
+        s_ollamaImage = Gdiplus::Image::FromFile(L".\\ollama.png", FALSE);
+        if (s_ollamaImage && s_ollamaImage->GetLastStatus() != Gdiplus::Ok) {
+            delete s_ollamaImage;
+            s_ollamaImage = NULL;
+        }
+    }
+    return s_ollamaImage;
 }
 
 static LRESULT CALLBACK Ne_BtnHoverProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -4491,6 +4524,7 @@ static bool Ne_CaretInTable(HWND hEdit)
 }
 
 // Parse the first \trowd block from an RTF string into NeTableProps.
+#if 0
 static NeTableProps Ne_ParseTableProps(const std::string& rtf)
 {
     NeTableProps p;
@@ -4569,6 +4603,8 @@ static NeTableProps Ne_ParseTableProps(const std::string& rtf)
     return p;
 }
 
+#endif
+
 // Build RTF for a full table from NeTableProps.
 static std::string Ne_BuildTableRtf(const NeTableProps& p)
 {
@@ -4634,6 +4670,7 @@ static NeDialogData s_tblPropsDD;
 static NeTableProps s_tblPropsResult;
 static bool         s_tblPropsModeAlter; // true = alter existing table, false = insert nested
 
+#if 0
 static LRESULT CALLBACK Ne_TblPropsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
@@ -4694,6 +4731,7 @@ static LRESULT CALLBACK Ne_TblPropsDlgProc(HWND hwnd, UINT msg, WPARAM wParam, L
     }
     return DefWindowProcW(hwnd, msg, wParam, lParam);
 }
+#endif
 
 static void Ne_ShowTablePropsDialog(HWND parent, HWND hEdit)
 {
@@ -4702,21 +4740,6 @@ static void Ne_ShowTablePropsDialog(HWND parent, HWND hEdit)
     // Detect context: are we inside a table already?
     bool inTable = Ne_CaretInTable(hEdit);
     NeTableProps props;
-    if (inTable) {
-        std::string full = Ne_StreamOut(hEdit, true);
-        props = Ne_ParseTableProps(full);
-    }
-
-    static bool registered = false;
-    if (!registered) {
-        WNDCLASSW wc = {};
-        wc.lpfnWndProc   = Ne_TblPropsDlgProc;
-        wc.hInstance     = hi;
-        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-        wc.lpszClassName = L"NsbTablePropsClass";
-        RegisterClassW(&wc);
-        registered = true;
-    }
 
     // Pre-compute required client size so window fits all controls exactly.
     int neededClientH, neededClientW;
@@ -9210,6 +9233,7 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
         { IDC_NE_SAVE,        wCol,  bG },
         { IDC_NE_SAVE_FTP,    wCol,  sG },
         { IDC_NE_PREVIEW,     wCol,  sG },
+        // AI button is positioned separately so it stays at the end of the bar.
     };
     const int N = (int)(sizeof(ctrls) / sizeof(ctrls[0]));
 
@@ -9256,6 +9280,15 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
         x += ctrls[i].w + ctrls[i].gap;
     }
 
+    HWND hAi = GetDlgItem(hwnd, IDC_NE_AI);
+    if (hAi && IsWindowVisible(hAi)) {
+        int aiW = wXs;
+        int aiX = cW - pad - aiW;
+        if (aiX < pad) aiX = pad;
+        int aiY = topY + (numRows > 0 ? (numRows - 1) * rowH : 0);
+        SetWindowPos(hAi, NULL, aiX, aiY, aiW, bSz, SWP_NOZORDER | SWP_NOACTIVATE);
+    }
+
     // ── Compute minimum client width ──────────────────────────────────────────
     // Allow narrowing until at most 3 controls fit per row.
     // Minimum = padding + (3 widest visible controls + their inter-gaps).
@@ -9294,19 +9327,21 @@ static void Ne_ShowToolbarButtons(HWND hwnd, NeToolbarMode mode)
         IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT, IDC_NE_LINESPACE, IDC_NE_PARSPACE,
         IDC_NE_FIND, IDC_NE_LINK, IDC_NE_TABLE, IDC_NE_TABLE_DROP, IDC_NE_HLINE,
         IDC_NE_CLEARFMT, IDC_NE_PRINT_BTN, IDC_NE_ZOOM, IDC_NE_WORDWRAP, IDC_NE_CASE,
-        IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, IDC_NE_COMMENT,
+        IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, IDC_NE_COMMENT, IDC_NE_AI,
     };
     // Rich: all except COMMENT.
     static const int richHide[]  = { IDC_NE_COMMENT, 0 };
     // Txt: find, print, zoom, wordwrap, case, save, save_ftp, preview.
     static const int txtShow[]   = { IDC_NE_FIND, IDC_NE_PRINT_BTN, IDC_NE_ZOOM,
                                      IDC_NE_WORDWRAP, IDC_NE_CASE,
-                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, 0 };
+                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW,
+                                     IDC_NE_AI, 0 };
     // Prog: find, indent in/out, comment, zoom, wordwrap, case, print, save, ftp, preview.
     static const int progShow[]  = { IDC_NE_FIND, IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT,
                                      IDC_NE_COMMENT, IDC_NE_ZOOM, IDC_NE_WORDWRAP,
                                      IDC_NE_CASE, IDC_NE_PRINT_BTN,
-                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW, 0 };
+                                     IDC_NE_SAVE, IDC_NE_SAVE_FTP, IDC_NE_PREVIEW,
+                                     IDC_NE_AI, 0 };
 
     auto inList = [](const int* list, int id) {
         for (; *list; ++list) if (*list == id) return true;
@@ -9321,6 +9356,8 @@ static void Ne_ShowToolbarButtons(HWND hwnd, NeToolbarMode mode)
         if      (mode == NeToolbarMode::Rich) vis = !inList(richHide, allIds[i]);
         else if (mode == NeToolbarMode::Txt)  vis = inList(txtShow,   allIds[i]);
         else                                  vis = inList(progShow,  allIds[i]);
+        if (allIds[i] == IDC_NE_AI)
+            vis = s_aiOllamaReady;
         ShowWindow(h, vis ? SW_SHOWNA : SW_HIDE);
     }
 }
@@ -9793,6 +9830,7 @@ static void Ne_RefreshTooltips(HWND hwnd)
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SAVE_FTP),   Ls(L"TIP_SAVE_FTP"));
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_PREVIEW),    Ls(L"TIP_PREVIEW"));
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_COMMENT),    Ls(L"TIP_COMMENT"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_AI),         Ls(L"TIP_AI"));
 }
 
 // Switch UI locale instantly: reload strings, rebuild menu, refresh all tips.
@@ -12422,9 +12460,7 @@ static void ShowNsbCreditsDialog(HWND parent)
 
 static void ShowNsbAboutDialog(HWND parent)
 {
-    Gdiplus::GdiplusStartupInput gsi;
-    ULONG_PTR gdipToken;
-    Gdiplus::GdiplusStartup(&gdipToken, &gsi, NULL);
+    Ne_GdiplusInit();
 
     // Load logo from embedded RCDATA resource 12
     {
@@ -12466,7 +12502,7 @@ static void ShowNsbAboutDialog(HWND parent)
         L"NsbAboutClass", Ls(L"ABOUT_TITLE"),
         WS_POPUP|WS_CAPTION|WS_SYSMENU|WS_VISIBLE,
         x, y, W, H, parent, NULL, hi, NULL);
-    if (!dlg) { Gdiplus::GdiplusShutdown(gdipToken); return; }
+    if (!dlg) return;
 
     HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(IDI_APPICON));
     if (hIco) { SendMessageW(dlg, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
@@ -12480,7 +12516,7 @@ static void ShowNsbAboutDialog(HWND parent)
     HWND hEdit = CreateWindowExW(0, L"RICHEDIT50W", NULL,
         WS_CHILD|WS_VISIBLE|ES_MULTILINE|ES_READONLY|ES_AUTOVSCROLL|WS_VSCROLL,
         PAD, PAD, rcC.right-2*PAD, editH, dlg, (HMENU)100, hi, NULL);
-    if (!hEdit) { DestroyWindow(dlg); Gdiplus::GdiplusShutdown(gdipToken); return; }
+    if (!hEdit) { DestroyWindow(dlg); return; }
 
     s_nas.origEdit = (WNDPROC)SetWindowLongPtrW(hEdit, GWLP_WNDPROC, (LONG_PTR)NsbAboutEditProc);
     SendMessageW(hEdit, EM_SETTARGETDEVICE, 0, 0);
@@ -12560,7 +12596,6 @@ static void ShowNsbAboutDialog(HWND parent)
 
     if (s_nas.logo) { delete s_nas.logo; s_nas.logo = nullptr; }
     if (parent && IsWindow(parent)) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
-    Gdiplus::GdiplusShutdown(gdipToken);
 }
 
 // ── Dark combo-button subclass ──────────────────────────────────────────────
@@ -13159,6 +13194,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_COMMENT, hInst, NULL);
 
+        CreateWindowExW(0, L"BUTTON", Ls(L"BTN_AI"),
+            WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
+            0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_AI, hInst, NULL);
+
         // ── Status bar ────────────────────────────────────────────────────────
         HWND hSb = NeStatusBar_Create(hwnd, IDC_NE_STATUSBAR, hInst);
         NeStatusBar_SetLabels(hSb,
@@ -13265,6 +13304,9 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // ── Session autosave timer (installed version only) ───────────────────
         if (NeProfiles_IsInstalled())
             SetTimer(hwnd, NE_TIMER_SESSION, 10000, NULL);
+
+        s_aiOllamaReady = NeAiClient_IsOllamaResponsive();
+        Ne_UpdateToolbarMode(hwnd);
 
         return 0;
     }
@@ -13955,6 +13997,15 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (hAct) SetFocus(hAct);
             return 0;
         }
+        if (wmId == IDC_NE_AI) {
+            const wchar_t* model = g_aiBootstrap.model.empty()
+                ? L"qwen2.5-coder:7b-instruct"
+                : g_aiBootstrap.model.c_str();
+            std::wstring msg = std::wstring(L"Ollama is answering on localhost.\n\nModel in use: ") + model +
+                L"\n\nThe full AI dialog comes next.";
+            MessageBoxW(hwnd, msg.c_str(), L"NSBEdit AI", MB_OK | MB_ICONINFORMATION);
+            return 0;
+        }
         if (wmId == IDC_NE_CASE)       { Ne_ToggleCase(hEdit); SetFocus(hEdit); return 0; }
 
         // ── Zoom combobox ─────────────────────────────────────────────────────
@@ -14498,6 +14549,40 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 DrawTextW(dis->hDC, L"\u21B5", -1, &rcTxt, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
                 SelectObject(dis->hDC, hOld);
                 DeleteObject(hf);
+            } else if (id == IDC_NE_AI) {
+                SetBkMode(dis->hDC, TRANSPARENT);
+                Gdiplus::Image* aiImg = Ne_GetOllamaButtonImage();
+                if (aiImg) {
+                    Gdiplus::Graphics g(dis->hDC);
+                    g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+                    int iconSz = std::min(rc.right - rc.left, rc.bottom - rc.top) - S(8);
+                    if (iconSz > S(18)) iconSz = S(18);
+                    if (iconSz < S(12)) iconSz = S(12);
+                    int x = rc.left + ((rc.right - rc.left) - iconSz) / 2 + (pressed ? 1 : 0);
+                    int y = rc.top + ((rc.bottom - rc.top) - iconSz) / 2 + (pressed ? 1 : 0);
+                    g.DrawImage(aiImg, x, y, iconSz, iconSz);
+                } else {
+                    wchar_t txt[64] = {};
+                    GetWindowTextW(dis->hwndItem, txt, 64);
+                    COLORREF fg = disabled ? GetSysColor(COLOR_GRAYTEXT) : Ne_BtnTextColor(id);
+                    SetTextColor(dis->hDC, fg);
+                    HFONT hf = (HFONT)SendMessageW(dis->hwndItem, WM_GETFONT, 0, 0);
+                    bool createdFont = false;
+                    if (!hf) {
+                        int ht = -(MulDiv(11, GetDeviceCaps(dis->hDC, LOGPIXELSY), 72));
+                        hf = CreateFontW(ht, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                                         DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+                                         CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Segoe UI");
+                        createdFont = (hf != NULL);
+                        if (!hf) hf = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
+                    }
+                    HFONT hOld = (HFONT)SelectObject(dis->hDC, hf);
+                    RECT rcTxt = { rc.left + (pressed?1:0), rc.top + (pressed?1:0),
+                                   rc.right, rc.bottom };
+                    DrawTextW(dis->hDC, txt, -1, &rcTxt, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+                    SelectObject(dis->hDC, hOld);
+                    if (createdFont) DeleteObject(hf);
+                }
             } else {
                 // Coloured text for all other buttons.
                 wchar_t txt[64] = {};
@@ -14854,6 +14939,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
 {
     SetProcessDPIAware();
+    Ne_GdiplusInit();
     {
         HDC hdc = GetDC(NULL);
         g_dpiScale = GetDeviceCaps(hdc, LOGPIXELSX) / 96.0f;
@@ -14875,6 +14961,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
         int spellMarkVal = 0;
         NeProfiles_GetIntSetting("spell_mark", 0, spellMarkVal); s_spellMarkActive = (spellMarkVal != 0);
     }
+    NeAiBootstrap_Load(g_aiBootstrap);
     Ne_LoadLocale();
 
     INITCOMMONCONTROLSEX icc = { sizeof(icc), ICC_WIN95_CLASSES | ICC_BAR_CLASSES };
@@ -14901,7 +14988,10 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
         WS_OVERLAPPEDWINDOW,
         wx, wy, ww, wh, NULL, NULL, hInst, NULL);
 
-    if (!s_hwndMain) return 1;
+    if (!s_hwndMain) {
+        Ne_GdiplusShutdown();
+        return 1;
+    }
 
     // If a file path was passed on the command line, open it.
     if (lpCmdLine && *lpCmdLine) {
@@ -15078,5 +15168,6 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     NeProfiles_Close();
     NeCrypto_Close();
     NeFtp_Cleanup();
+    Ne_GdiplusShutdown();
     return (int)msg.wParam;
 }
