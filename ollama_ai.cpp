@@ -4,6 +4,7 @@
 #include "ne_ai_client.h"
 #include "ne_ai_bootstrap.h"
 #include "ne_profiles.h"
+#include "scroll/my_scrollbar_vscroll.h"
 
 #include <algorithm>
 #include <gdiplus.h>
@@ -11,6 +12,8 @@
 #include <richedit.h>
 #include <shellapi.h>
 #include <string>
+#include <vector>
+#include <vector>
 
 #define IDC_AI_HEADER             1951
 #define IDC_AI_LOG                1952
@@ -40,6 +43,7 @@ constexpr WORD kSystemIconError = 32513;
 constexpr WORD kSystemArrowCursor = 32512;
 
 enum class AiBtnTone { Blue, Green, Red };
+enum class AiMenuRole { Suggest, Agent };
 
 struct AiButtonSpec {
     int id = 0;
@@ -66,14 +70,34 @@ struct AiWindowState {
     HWND hCloseBtn = NULL;
     HFONT hFont = NULL;
     HFONT hPaneFont = NULL;
+    HMSB hLogSb = NULL;
+    HMSB hInputSb = NULL;
     AiDialogData* dd = NULL;
     std::wstring model;
     std::wstring fallback;
+    AiMenuRole role = AiMenuRole::Suggest;
     bool cloudMode = false;
     bool signedIn = false;
 };
 
+struct AiMenuItemData {
+    std::wstring text;
+    bool isSeparator = false;
+    bool isBar = false;
+};
+
+struct AiModelMenuItem {
+    UINT id = 0;
+    std::wstring model;
+    AiMenuRole role = AiMenuRole::Suggest;
+    bool isCloud = false;
+};
+
 static HWND s_hwndAiWindow = NULL;
+static HFONT s_hAiMenuFont = NULL;
+static std::vector<AiMenuItemData*> s_aiMenuItems;
+static std::vector<AiModelMenuItem> s_aiModelMenuItems;
+static UINT s_aiNextModelMenuId = IDM_AI_MODEL_DEFAULT;
 
 static std::wstring Ai_GetExeDir()
 {
@@ -136,6 +160,9 @@ static void Ai_NormalizeModelName(std::wstring& model)
 }
 
 static void Ai_DoSend(HWND hwnd);
+static void Ai_AppendMenuOD(HMENU hMenu, UINT flags, UINT_PTR id, const wchar_t* text, bool isBar = false);
+static HMENU Ai_BuildMenu(const AiWindowState* st);
+static std::wstring Ai_CurrentModeLabel(const AiWindowState* st);
 
 static HFONT Ai_MakeDlgFont(HWND hwnd, bool bold = false)
 {
@@ -284,6 +311,7 @@ static void Ai_SavePrefs(const AiWindowState* st)
     if (!st) return;
     NeProfiles_SetStrSetting("ai.model", Ai_WideToUtf8(st->model));
     NeProfiles_SetStrSetting("ai.fallback", Ai_WideToUtf8(st->fallback));
+    NeProfiles_SetIntSetting("ai.role", (int)st->role);
     NeProfiles_SetIntSetting("ai.cloud_mode", st->cloudMode ? 1 : 0);
     NeProfiles_SetIntSetting("ai.signed_in", st->signedIn ? 1 : 0);
 }
@@ -322,21 +350,23 @@ static void Ai_LoadPrefs(AiWindowState* st)
     int mode = 0, signedIn = 0;
     NeProfiles_GetIntSetting("ai.cloud_mode", 0, mode);
     NeProfiles_GetIntSetting("ai.signed_in", 0, signedIn);
+    int role = 0;
+    NeProfiles_GetIntSetting("ai.role", 0, role);
     st->cloudMode = (mode != 0);
     st->signedIn = (signedIn != 0);
+    st->role = (role == (int)AiMenuRole::Agent) ? AiMenuRole::Agent : AiMenuRole::Suggest;
 }
 
 static std::wstring Ai_BuildSummary(const AiWindowState* st)
 {
     std::wstring summary;
-    summary += L"Ollama is answering on localhost.\r\n";
-    summary += L"Model in use: ";
+    summary += L"Ollama on localhost | Current: ";
     summary += ((st && !st->model.empty()) ? st->model : Ai_DefaultModelName());
-    summary += L"\r\nFallback model: ";
-    summary += ((st && !st->fallback.empty()) ? st->fallback : Ai_FallbackModelName());
-    summary += L"\r\nCloud: ";
+    summary += L" ";
+    summary += (st && st->role == AiMenuRole::Agent) ? L"Agent" : L"Suggest";
+    summary += L" | Cloud: ";
     summary += ((st && st->cloudMode) ? L"Cloud subscription" : L"Local only");
-    summary += L"\r\nCloud account: ";
+    summary += L" | Account: ";
     summary += ((st && st->signedIn) ? L"signed in" : L"not signed in");
     return summary;
 }
@@ -347,7 +377,7 @@ static void Ai_RefreshUi(HWND hwnd)
     if (!st) return;
 
     std::wstring title = L"NSBEdit AI - ";
-    title += (st->model.empty() ? Ai_DefaultModelName() : st->model);
+    title += Ai_CurrentModeLabel(st);
     SetWindowTextW(hwnd, title.c_str());
 
     HWND hHdr = GetDlgItem(hwnd, IDC_AI_HEADER);
@@ -359,30 +389,17 @@ static void Ai_RefreshUi(HWND hwnd)
         status += (st->cloudMode ? L"Cloud subscription" : L"Local only");
         status += L" | Sign-in: ";
         status += (st->signedIn ? L"yes" : L"no");
-        status += L" | Current model: ";
-        status += (st->model.empty() ? Ai_DefaultModelName() : st->model);
+        status += L" | Current: ";
+        status += Ai_CurrentModeLabel(st);
         SetWindowTextW(hStatus, status.c_str());
     }
 
-    HMENU hMenu = GetMenu(hwnd);
-    if (hMenu) {
-        HMENU hModel = GetSubMenu(hMenu, 0);
-        HMENU hCloud = GetSubMenu(hMenu, 1);
-        if (hModel) {
-            CheckMenuItem(hModel, IDM_AI_MODEL_DEFAULT,
-                MF_BYCOMMAND | ((st->model == Ai_DefaultModelName()) ? MF_CHECKED : MF_UNCHECKED));
-            CheckMenuItem(hModel, IDM_AI_MODEL_FALLBACK,
-                MF_BYCOMMAND | ((st->model == Ai_FallbackModelName()) ? MF_CHECKED : MF_UNCHECKED));
-        }
-        if (hCloud) {
-            CheckMenuItem(hCloud, IDM_AI_MODE_LOCAL,
-                MF_BYCOMMAND | (st->cloudMode ? MF_UNCHECKED : MF_CHECKED));
-            CheckMenuItem(hCloud, IDM_AI_MODE_CLOUD,
-                MF_BYCOMMAND | (st->cloudMode ? MF_CHECKED : MF_UNCHECKED));
-            CheckMenuItem(hCloud, IDM_AI_SIGN_IN,
-                MF_BYCOMMAND | (st->signedIn ? MF_CHECKED : MF_UNCHECKED));
-            CheckMenuItem(hCloud, IDM_AI_SIGN_OUT,
-                MF_BYCOMMAND | (st->signedIn ? MF_UNCHECKED : MF_CHECKED));
+    HMENU oldMenu = GetMenu(hwnd);
+    HMENU newMenu = Ai_BuildMenu(st);
+    if (newMenu) {
+        SetMenu(hwnd, newMenu);
+        if (oldMenu) {
+            DestroyMenu(oldMenu);
         }
         DrawMenuBar(hwnd);
     }
@@ -390,6 +407,7 @@ static void Ai_RefreshUi(HWND hwnd)
 
 static void Ai_AppendLog(HWND hwnd, const std::wstring& line)
 {
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     HWND hLog = GetDlgItem(hwnd, IDC_AI_LOG);
     if (!hLog) return;
     int len = GetWindowTextLengthW(hLog);
@@ -397,6 +415,7 @@ static void Ai_AppendLog(HWND hwnd, const std::wstring& line)
     if (len > 0) SendMessageW(hLog, EM_REPLACESEL, FALSE, (LPARAM)L"\r\n");
     SendMessageW(hLog, EM_REPLACESEL, FALSE, (LPARAM)line.c_str());
     SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
+    if (st && st->hLogSb) msb_notify_content_changed(st->hLogSb);
 }
 
 static void Ai_SetWrapToWindow(HWND hwndEdit)
@@ -404,6 +423,190 @@ static void Ai_SetWrapToWindow(HWND hwndEdit)
     if (hwndEdit) {
         SendMessageW(hwndEdit, EM_SETTARGETDEVICE, (WPARAM)NULL, 0);
     }
+}
+
+static void Ai_ClearMenuStorage()
+{
+    for (AiMenuItemData* item : s_aiMenuItems) {
+        delete item;
+    }
+    s_aiMenuItems.clear();
+    s_aiModelMenuItems.clear();
+    s_aiNextModelMenuId = IDM_AI_MODEL_DEFAULT;
+}
+
+static void Ai_NormalizeModelNameLocal(std::wstring& model)
+{
+    if (model == L"qwen2.5-coder:7b-instruct" || model == L"qwen2.5-coder") {
+        model = L"qwen2.5-coder:7b";
+    } else if (model == L"qwen2.5-coder:3b-instruct") {
+        model = L"qwen2.5-coder:3b";
+    }
+}
+
+static void Ai_AddUniqueModel(std::vector<std::wstring>& models, const std::wstring& model)
+{
+    if (model.empty()) return;
+    for (const std::wstring& existing : models) {
+        if (existing == model) return;
+    }
+    models.push_back(model);
+}
+
+static std::vector<std::wstring> Ai_GetModelCandidates()
+{
+    std::vector<std::wstring> installed;
+    std::vector<std::wstring> models;
+    if (NeAiClient_ListOllamaModels(installed)) {
+        for (std::wstring& model : installed) {
+            Ai_NormalizeModelNameLocal(model);
+        }
+    }
+
+    std::wstring primary = Ai_DefaultModelName();
+    std::wstring secondary = Ai_FallbackModelName();
+    Ai_NormalizeModelNameLocal(primary);
+    Ai_NormalizeModelNameLocal(secondary);
+    Ai_AddUniqueModel(models, primary);
+    Ai_AddUniqueModel(models, secondary);
+
+    for (const std::wstring& model : installed) {
+        Ai_AddUniqueModel(models, model);
+    }
+
+    return models;
+}
+
+static std::wstring Ai_ModelMenuLabel(const std::wstring& model, AiMenuRole role)
+{
+    std::wstring label = model;
+    label += (role == AiMenuRole::Suggest) ? L" Suggest" : L" Agent";
+    return label;
+}
+
+static std::wstring Ai_CurrentModeLabel(const AiWindowState* st)
+{
+    if (!st) return Ai_DefaultModelName() + L" Suggest";
+    if (st->cloudMode) {
+        return std::wstring(L"Cloud ") + ((st->role == AiMenuRole::Suggest) ? L"Suggest" : L"Agent");
+    }
+    std::wstring label = st->model.empty() ? Ai_DefaultModelName() : st->model;
+    label += (st->role == AiMenuRole::Suggest) ? L" Suggest" : L" Agent";
+    return label;
+}
+
+static void Ai_AddModelMenuItem(HMENU hMenu, const std::wstring& model, AiMenuRole role, bool isCloud = false, bool enabled = true)
+{
+    AiModelMenuItem entry;
+    entry.id = s_aiNextModelMenuId++;
+    entry.model = model;
+    entry.role = role;
+    entry.isCloud = isCloud;
+    s_aiModelMenuItems.push_back(entry);
+    UINT flags = MF_STRING;
+    if (!enabled) {
+        flags |= MF_GRAYED;
+    }
+    Ai_AppendMenuOD(hMenu, flags, entry.id, Ai_ModelMenuLabel(model, role).c_str());
+}
+
+static const AiModelMenuItem* Ai_FindModelMenuItem(UINT id)
+{
+    for (const AiModelMenuItem& item : s_aiModelMenuItems) {
+        if (item.id == id) return &item;
+    }
+    return NULL;
+}
+
+static HFONT Ai_MakeMenuFont(HWND hwnd)
+{
+    int dpi = hwnd ? GetDpiForWindow(hwnd) : GetDpiForSystem();
+    return CreateFontW(-MulDiv(12, dpi, 72), 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+        DEFAULT_PITCH, L"Segoe UI");
+}
+
+static void Ai_AppendMenuOD(HMENU hMenu, UINT flags, UINT_PTR id, const wchar_t* text, bool isBar)
+{
+    AiMenuItemData* d = new AiMenuItemData();
+    d->text = text ? text : L"";
+    d->isSeparator = (flags & MF_SEPARATOR) != 0;
+    d->isBar = isBar;
+    s_aiMenuItems.push_back(d);
+    AppendMenuW(hMenu, flags | MF_OWNERDRAW, id, (LPCWSTR)d);
+}
+
+static bool Ai_DrawMenuItem(HWND hwnd, const DRAWITEMSTRUCT* dis)
+{
+    if (!dis || dis->CtlType != ODT_MENU) return false;
+    AiMenuItemData* d = (AiMenuItemData*)(ULONG_PTR)dis->itemData;
+    if (!d) return false;
+
+    if (!s_hAiMenuFont) s_hAiMenuFont = Ai_MakeMenuFont(hwnd);
+
+    RECT rc = dis->rcItem;
+    bool selected = (dis->itemState & ODS_SELECTED) != 0;
+    bool disabled = (dis->itemState & (ODS_GRAYED | ODS_DISABLED)) != 0;
+    bool checked = (dis->itemState & ODS_CHECKED) != 0;
+
+    if (d->isSeparator) {
+        FillRect(dis->hDC, &rc, GetSysColorBrush(d->isBar ? COLOR_MENUBAR : COLOR_MENU));
+        int mid = (rc.top + rc.bottom) / 2;
+        RECT sep = { rc.left + S(4), mid, rc.right - S(4), mid + 1 };
+        FillRect(dis->hDC, &sep, GetSysColorBrush(COLOR_3DSHADOW));
+        return true;
+    }
+
+    HBRUSH hBg = CreateSolidBrush(selected ? GetSysColor(COLOR_HIGHLIGHT)
+        : d->isBar ? GetSysColor(COLOR_MENUBAR)
+        : RGB(255, 255, 255));
+    FillRect(dis->hDC, &rc, hBg);
+    DeleteObject(hBg);
+
+    HFONT oldFont = s_hAiMenuFont ? (HFONT)SelectObject(dis->hDC, s_hAiMenuFont) : NULL;
+    SetBkMode(dis->hDC, TRANSPARENT);
+    SetTextColor(dis->hDC, selected ? GetSysColor(COLOR_HIGHLIGHTTEXT)
+        : disabled ? GetSysColor(COLOR_GRAYTEXT)
+        : checked ? RGB(0, 140, 0)
+        : GetSysColor(COLOR_MENUTEXT));
+
+    const wchar_t* tab = wcschr(d->text.c_str(), L'\t');
+    std::wstring main = tab ? std::wstring(d->text.c_str(), tab - d->text.c_str()) : d->text;
+    std::wstring accel = tab ? std::wstring(tab + 1) : std::wstring();
+
+    RECT textRc = rc;
+    if (d->isBar) {
+        textRc.left += S(10);
+        textRc.right -= S(10);
+        DrawTextW(dis->hDC, main.c_str(), -1, &textRc, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOPREFIX);
+    } else {
+        if (checked) {
+            COLORREF chkFg = selected ? GetSysColor(COLOR_HIGHLIGHTTEXT) : RGB(0, 140, 0);
+            SetTextColor(dis->hDC, chkFg);
+            HFONT oldChkFont = (HFONT)SelectObject(dis->hDC, s_hAiMenuFont);
+            RECT mark = { rc.left, rc.top, rc.left + S(24), rc.bottom };
+            DrawTextW(dis->hDC, L"\u2713", -1, &mark, DT_SINGLELINE | DT_VCENTER | DT_CENTER | DT_NOPREFIX);
+            if (oldChkFont) SelectObject(dis->hDC, oldChkFont);
+        }
+        textRc.left += S(20);
+        textRc.right -= S(14);
+        DrawTextW(dis->hDC, main.c_str(), -1, &textRc, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX);
+        if (!accel.empty()) {
+            RECT accelRc = rc;
+            accelRc.left += S(18);
+            accelRc.right -= S(14);
+            DrawTextW(dis->hDC, accel.c_str(), -1, &accelRc, DT_SINGLELINE | DT_VCENTER | DT_RIGHT | DT_NOPREFIX);
+        }
+    }
+
+    if (dis->itemState & ODS_FOCUS) {
+        RECT focus = rc;
+        InflateRect(&focus, -S(2), -S(2));
+        DrawFocusRect(dis->hDC, &focus);
+    }
+
+    if (oldFont) SelectObject(dis->hDC, oldFont);
+    return true;
 }
 
 static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
@@ -433,40 +636,55 @@ static void Ai_ApplyButtons(AiWindowState* st)
     st->dd->buttons[3] = AiButtonSpec{ IDC_AI_CLOSE_BTN, L"Close", AiBtnTone::Red,   Ai_MeasureButtonWidth(L"Close"), true };
 }
 
-static HMENU Ai_BuildMenu()
+static HMENU Ai_BuildMenu(const AiWindowState* st)
 {
+    Ai_ClearMenuStorage();
     HMENU hMenu = CreateMenu();
     HMENU hModel = CreatePopupMenu();
     HMENU hCloud = CreatePopupMenu();
     HMENU hLog = CreatePopupMenu();
     HMENU hHelp = CreatePopupMenu();
 
-    std::wstring modelLabel = L"Suggestion: ";
-    modelLabel += Ai_DefaultModelName();
-    AppendMenuW(hModel, MF_STRING, IDM_AI_MODEL_DEFAULT, modelLabel.c_str());
+    std::vector<std::wstring> models = Ai_GetModelCandidates();
+    for (const std::wstring& model : models) {
+        Ai_AddModelMenuItem(hModel, model, AiMenuRole::Suggest);
+        Ai_AddModelMenuItem(hModel, model, AiMenuRole::Agent);
+    }
 
-    std::wstring fbLabel = L"Agent: ";
-    fbLabel += Ai_FallbackModelName();
-    AppendMenuW(hModel, MF_STRING, IDM_AI_MODEL_FALLBACK, fbLabel.c_str());
+    Ai_AppendMenuOD(hModel, MF_SEPARATOR, 0, NULL);
+    Ai_AddModelMenuItem(hModel, L"Cloud", AiMenuRole::Suggest, true, st && st->signedIn);
+    Ai_AddModelMenuItem(hModel, L"Cloud", AiMenuRole::Agent, true, st && st->signedIn);
 
-    AppendMenuW(hCloud, MF_STRING, IDM_AI_MODE_LOCAL, L"Local only");
-    AppendMenuW(hCloud, MF_STRING, IDM_AI_MODE_CLOUD, L"Cloud subscription");
-    AppendMenuW(hCloud, MF_SEPARATOR, 0, NULL);
-    AppendMenuW(hCloud, MF_STRING, IDM_AI_SIGN_IN, L"Sign in to Ollama");
-    AppendMenuW(hCloud, MF_STRING, IDM_AI_SIGN_OUT, L"Sign out");
-    AppendMenuW(hCloud, MF_SEPARATOR, 0, NULL);
-    AppendMenuW(hCloud, MF_STRING, IDM_AI_OPEN_PROVIDER, L"Open Ollama web site");
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_LOCAL, L"Local only");
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_CLOUD, L"Cloud subscription");
+    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_IN, L"Sign in to Ollama");
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_OUT, L"Sign out");
+    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_OPEN_PROVIDER, L"Open Ollama web site");
 
-    AppendMenuW(hLog, MF_STRING, IDM_AI_SEND, L"Send prompt");
-    AppendMenuW(hLog, MF_STRING, IDM_AI_LOG_CLEAR, L"Clear log");
-    AppendMenuW(hLog, MF_STRING, IDM_AI_LOG_COPY, L"Copy log");
+    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_SEND, L"Send prompt");
+    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_LOG_CLEAR, L"Clear log");
+    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_LOG_COPY, L"Copy log");
 
-    AppendMenuW(hHelp, MF_STRING, IDM_AI_ABOUT, L"About this window");
+    Ai_AppendMenuOD(hHelp, MF_STRING, IDM_AI_ABOUT, L"About this window");
 
-    AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hModel, L"Model");
-    AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hCloud, L"Cloud");
-    AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hLog, L"Log");
-    AppendMenuW(hMenu, MF_POPUP, (UINT_PTR)hHelp, L"Help");
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hModel, L"Model", true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hCloud, L"Cloud", true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hLog, L"Log", true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, L"Help", true);
+
+    if (st) {
+        for (const AiModelMenuItem& item : s_aiModelMenuItems) {
+            bool checked = item.isCloud
+                ? (st->cloudMode && st->role == item.role)
+                : (!st->cloudMode && st->model == item.model && st->role == item.role);
+            if (checked) {
+                CheckMenuItem(hModel, item.id, MF_BYCOMMAND | MF_CHECKED);
+            }
+        }
+    }
+
     return hMenu;
 }
 
@@ -491,6 +709,15 @@ static void Ai_DoSend(HWND hwnd)
 
     std::wstring reply;
     std::wstring error;
+    if (st->cloudMode) {
+        if (!st->signedIn) {
+            Ai_AppendLog(hwnd, L"Cloud mode is selected, but you are not signed in yet.");
+        } else {
+            Ai_AppendLog(hwnd, L"Cloud mode is selected; local Ollama is not used in this path yet.");
+        }
+        return;
+    }
+
     std::wstring selectedModel = st->model.empty() ? Ai_DefaultModelName() : st->model;
     if (NeAiClient_AskOllama(selectedModel, formattedPrompt, reply, error)) {
         Ai_AppendLog(hwnd, L"Ollama: " + reply);
@@ -539,11 +766,11 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             }
         }
 
-        SetMenu(hwnd, Ai_BuildMenu());
+        SetMenu(hwnd, Ai_BuildMenu(st));
 
         HWND hHdr = CreateWindowExW(0, L"STATIC", L"",
-            WS_CHILD | WS_VISIBLE | SS_LEFT,
-            S(10), S(10), S(800), S(72), hwnd, (HMENU)(UINT_PTR)IDC_AI_HEADER, GetModuleHandleW(NULL), NULL);
+            WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP,
+            S(10), S(10), S(800), S(24), hwnd, (HMENU)(UINT_PTR)IDC_AI_HEADER, GetModuleHandleW(NULL), NULL);
         if (hHdr && st->hFont) SendMessageW(hHdr, WM_SETFONT, (WPARAM)st->hFont, TRUE);
 
         HWND hLog = CreateWindowExW(WS_EX_CLIENTEDGE, reClass, L"",
@@ -553,6 +780,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (hLog) {
             SendMessageW(hLog, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
             Ai_SetWrapToWindow(hLog);
+            st->hLogSb = msb_attach(hLog, MSB_VERTICAL);
         }
 
         HWND hInput = CreateWindowExW(WS_EX_CLIENTEDGE, reClass, L"",
@@ -560,6 +788,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             S(10), S(438), S(640), S(24), hwnd, (HMENU)(UINT_PTR)IDC_AI_INPUT, GetModuleHandleW(NULL), NULL);
         if (hInput && st->hPaneFont) SendMessageW(hInput, WM_SETFONT, (WPARAM)st->hPaneFont, TRUE);
         if (hInput) Ai_SetWrapToWindow(hInput);
+        if (hInput) st->hInputSb = msb_attach(hInput, MSB_VERTICAL);
         if (hInput) SetWindowSubclass(hInput, Ai_InputSubclassProc, 1, (DWORD_PTR)hwnd);
 
         int totalBtnW = st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10) + st->dd->buttons[3].width;
@@ -608,7 +837,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (!st) break;
         RECT rc; GetClientRect(hwnd, &rc);
         int pad = S(10);
-        int hdrH = S(72);
+        int hdrH = S(24);
         int statusH = S(18);
         int buttonH = S(34);
         int gap = S(6);
@@ -634,33 +863,47 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (hHdr) SetWindowPos(hHdr, NULL, pad, pad, rc.right - 2 * pad, hdrH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hInput) SetWindowPos(hInput, NULL, pad, contentTop, inputW, inputH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hInput) Ai_SetWrapToWindow(hInput);
+        if (st->hInputSb) msb_reposition(st->hInputSb);
         if (hSend) SetWindowPos(hSend, NULL, btnX, btnY, st->dd->buttons[0].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hCopy) SetWindowPos(hCopy, NULL, btnX + st->dd->buttons[0].width + S(10), btnY, st->dd->buttons[1].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hClear) SetWindowPos(hClear, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10), btnY, st->dd->buttons[2].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hClose) SetWindowPos(hClose, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10), btnY, st->dd->buttons[3].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hLog) SetWindowPos(hLog, NULL, pad, logY, rc.right - 2 * pad, logH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hLog) Ai_SetWrapToWindow(hLog);
+        if (st->hLogSb) msb_reposition(st->hLogSb);
         if (hStatus) SetWindowPos(hStatus, NULL, pad, rc.bottom - pad - statusH, rc.right - 2 * pad, statusH, SWP_NOZORDER | SWP_NOACTIVATE);
         return 0;
     }
     case WM_COMMAND:
+        if (st && HIWORD(wParam) == EN_CHANGE) {
+            if (LOWORD(wParam) == IDC_AI_INPUT && st->hInputSb) {
+                msb_notify_content_changed(st->hInputSb);
+                return 0;
+            }
+        }
         switch (LOWORD(wParam)) {
-        case IDM_AI_MODEL_DEFAULT:
-            if (st) {
-                st->model = Ai_DefaultModelName();
+        default: {
+            const AiModelMenuItem* modelItem = Ai_FindModelMenuItem((UINT)LOWORD(wParam));
+            if (modelItem && st) {
+                st->role = modelItem->role;
+                st->cloudMode = modelItem->isCloud;
+                if (!modelItem->isCloud) {
+                    st->model = modelItem->model;
+                    Ai_NormalizeModelNameLocal(st->model);
+                }
+                Ai_AppendLog(hwnd, modelItem->isCloud
+                    ? ((modelItem->role == AiMenuRole::Suggest)
+                        ? L"Cloud suggestion mode selected."
+                        : L"Cloud agent mode selected.")
+                    : ((modelItem->role == AiMenuRole::Suggest)
+                        ? L"Model switched to suggestion mode."
+                        : L"Model switched to agent mode."));
                 Ai_SavePrefs(st);
                 Ai_RefreshUi(hwnd);
-                Ai_AppendLog(hwnd, L"Model switched to suggestion.");
+                return 0;
             }
-            return 0;
-        case IDM_AI_MODEL_FALLBACK:
-            if (st) {
-                st->model = Ai_FallbackModelName();
-                Ai_SavePrefs(st);
-                Ai_RefreshUi(hwnd);
-                Ai_AppendLog(hwnd, L"Model switched to agent.");
-            }
-            return 0;
+            break;
+        }
         case IDM_AI_MODE_LOCAL:
             if (st) {
                 st->cloudMode = false;
@@ -741,7 +984,44 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_CLOSE:
         DestroyWindow(hwnd);
         return 0;
+    case WM_SETFOCUS:
+        Ai_RefreshUi(hwnd);
+        return 0;
+    case WM_MEASUREITEM: {
+        MEASUREITEMSTRUCT* mis = (MEASUREITEMSTRUCT*)lParam;
+        if (mis && mis->CtlType == ODT_MENU) {
+            AiMenuItemData* d = (AiMenuItemData*)(ULONG_PTR)mis->itemData;
+            if (!d) break;
+            if (!s_hAiMenuFont) s_hAiMenuFont = Ai_MakeMenuFont(hwnd);
+            if (d->isSeparator) {
+                mis->itemHeight = S(8);
+                mis->itemWidth = S(12);
+                return TRUE;
+            }
+            HDC hdc = GetDC(hwnd);
+            HFONT oldFont = s_hAiMenuFont ? (HFONT)SelectObject(hdc, s_hAiMenuFont) : NULL;
+            const wchar_t* tab = wcschr(d->text.c_str(), L'\t');
+            std::wstring main = tab ? std::wstring(d->text.c_str(), tab - d->text.c_str()) : d->text;
+            RECT rc = {};
+            DrawTextW(hdc, main.c_str(), -1, &rc, DT_CALCRECT | DT_SINGLELINE);
+            int accelW = 0;
+            if (tab && !d->isBar) {
+                RECT accel = {};
+                DrawTextW(hdc, tab + 1, -1, &accel, DT_CALCRECT | DT_SINGLELINE);
+                accelW = accel.right + S(24);
+            }
+            if (oldFont) SelectObject(hdc, oldFont);
+            ReleaseDC(hwnd, hdc);
+            mis->itemHeight = (rc.bottom - rc.top) + (d->isBar ? S(6) : S(8));
+            mis->itemWidth = (rc.right - rc.left) + (d->isBar ? S(20) : S(40)) + accelW;
+            return TRUE;
+        }
+        break;
+    }
     case WM_DRAWITEM:
+        if (Ai_DrawMenuItem(hwnd, (const DRAWITEMSTRUCT*)lParam)) {
+            return TRUE;
+        }
         if (st && st->dd && st->dd->buttonCount > 0) {
             DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
             if (dis && Ai_ButtonIndexById(st->dd, dis->CtlID) >= 0) {
@@ -764,8 +1044,12 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     }
     case WM_DESTROY:
         if (st) {
+            if (st->hLogSb) msb_detach(st->hLogSb);
+            if (st->hInputSb) msb_detach(st->hInputSb);
             if (st->hFont) DeleteObject(st->hFont);
             if (st->hPaneFont) DeleteObject(st->hPaneFont);
+            if (s_hAiMenuFont) DeleteObject(s_hAiMenuFont);
+            Ai_ClearMenuStorage();
             delete st->dd;
             delete st;
         }
@@ -780,6 +1064,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 void Ne_ShowAiWindow(HWND parent)
 {
     if (s_hwndAiWindow && IsWindow(s_hwndAiWindow)) {
+        Ai_RefreshUi(s_hwndAiWindow);
         ShowWindow(s_hwndAiWindow, SW_SHOW);
         SetForegroundWindow(s_hwndAiWindow);
         return;

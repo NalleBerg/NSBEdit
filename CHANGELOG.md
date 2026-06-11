@@ -2,6 +2,14 @@
 
 # Changelog
 
+## v2026.06.11.16 (Fix: AI cloud mode and local model selection split) - 11.06.2026 16:05
+
+- **Fix: the AI menu now keeps local and cloud choices separate**: the Model menu still lets you pick local Ollama models for offline use, but it also adds grayed-out cloud entries that become active after sign-in. Cloud selections are shown with the same green tick style as the spell-check menu.
+- **Fix: cloud mode no longer falls back into the local send path**: if Cloud is selected, the AI window does not call the local Ollama send path. The current mode is shown in the title and status line so you can see whether you are on a local model or a cloud choice.
+- **Fix: signed-in cloud selections are remembered**: after sign-in, the selected cloud role stays active and is restored through the existing AI preference store along with the local model and fallback settings.
+
+# Changelog
+
 ## v2026.06.11.15 (Fix: AI window wraps text instead of using sideways scroll) - 11.06.2026 15:10
 
 - **Fix: the AI log and prompt boxes now wrap to the control width**: the standalone AI window now uses RichEdit wrap-to-window mode instead of horizontal scrolling, so long replies and prompts stay readable without a sideways scrollbar.

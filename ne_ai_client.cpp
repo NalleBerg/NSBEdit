@@ -2,7 +2,9 @@
 
 #include <winhttp.h>
 
+#include <regex>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -100,6 +102,22 @@ static bool Ai_FindJsonStringField(const std::string& json, const char* field, s
     return false;
 }
 
+static std::wstring Ai_Utf8ToWide(const std::string& s);
+
+static bool Ai_FindJsonArrayStringFields(const std::string& json, const char* field, std::vector<std::wstring>& outValues)
+{
+    outValues.clear();
+    std::regex re(std::string("\\\"") + field + "\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"");
+    auto begin = std::sregex_iterator(json.begin(), json.end(), re);
+    auto end = std::sregex_iterator();
+    for (auto it = begin; it != end; ++it) {
+        if (it->size() >= 2) {
+            outValues.push_back(Ai_Utf8ToWide((*it)[1].str()));
+        }
+    }
+    return !outValues.empty();
+}
+
 static std::wstring Ai_Utf8ToWide(const std::string& s)
 {
     if (s.empty()) return {};
@@ -135,6 +153,51 @@ bool NeAiClient_IsOllamaResponsive()
                     WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX) &&
                     status == 200) {
                     ok = true;
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+
+    WinHttpCloseHandle(hSession);
+    return ok;
+}
+
+bool NeAiClient_ListOllamaModels(std::vector<std::wstring>& outModels)
+{
+    outModels.clear();
+
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) {
+        return false;
+    }
+
+    bool ok = false;
+    HINTERNET hConnect = WinHttpConnect(hSession, L"127.0.0.1", 11434, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", L"/api/tags",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (hRequest) {
+            if (WinHttpSendRequest(hRequest,
+                WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0;
+                DWORD statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX) &&
+                    status == 200) {
+                    std::string response;
+                    if (Ai_ReadBody(hRequest, response)) {
+                        std::vector<std::wstring> models;
+                        if (Ai_FindJsonArrayStringFields(response, "name", models)) {
+                            outModels = std::move(models);
+                        }
+                        ok = true;
+                    }
                 }
             }
             WinHttpCloseHandle(hRequest);

@@ -377,6 +377,7 @@ ABOUT_SUBTITLE    = Bloco de notas RTF e editor de programação para Windows\n\
 ABOUT_PUBLISHED   = Publicado: 
 ABOUT_VERSION     = Versão: 
 ABOUT_EDITION     = Edição: 
+ABOUT_EDITION_VALUE = 3 ß
 ABOUT_SEC_RTF     = ✏  Edição de texto formatado\n
 ABOUT_DESC_RTF    = •  Negrito, itálico, sublinhado, rasurado, sobrescrito/subscrito.\n•  Tipo de letra, tamanho, cor e realce; formatação completa de parágrafo.\n•  Tabelas, listas com marcas e numeradas, imagens, hiperligações, linhas horizontais.\n•  Exportar como PDF ou HTML 5.\n\n
 ABOUT_SEC_CODE    = ⌨  Edição de código e realce de sintaxe\n

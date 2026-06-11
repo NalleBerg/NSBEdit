@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.06.11.15**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.06.11.16**
 
 ## Download
 
@@ -57,7 +57,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Line Spacing dialog** — choose Single, 1.5 lines, or Double line spacing (Format → Line Spacing); same owner-draw style, white background, radio buttons, fully i18n
 - **Word wrap ↵ indicator in code tabs** — a teal-green ↵ glyph marks every wrapped visual sub-line in Scintilla (code) tabs when word wrap is on, drawn to the left of the vertical scrollbar
 - **Edition 2** — About dialog now shows Edition: 2 below the version number (translated in all 15 UI languages via `ABOUT_EDITION`)
-- **Portable and installed modes** — the shared database lives in `%APPDATA%\NSBEdit\nsbedit.db` and is preferred by both installed and portable launches whenever it exists. If `install.bat` is run from a folder that already has `nsbedit.db`, it is imported into AppData once; if the portable copy exists but AppData does not yet, the app now migrates it upward so both launch paths converge on the same settings and FTP profiles. When Ollama is available during install, the installer also pulls the two default AI models (`qwen2.5-coder:7b` and `qwen2.5-coder:3b`) so the AI window can answer right away. Installed AI prefs now self-heal on startup if they still contain old `*-instruct` tags, the AI button no longer crashes on open, and the AI log/input panes wrap text instead of using a sideways scrollbar. If neither writable location is available the app falls back to an in-memory database and warns the user. No personal database is shipped in the ZIP
+- **Portable and installed modes** — the shared database lives in `%APPDATA%\NSBEdit\nsbedit.db` and is preferred by both installed and portable launches whenever it exists. If `install.bat` is run from a folder that already has `nsbedit.db`, it is imported into AppData once; if the portable copy exists but AppData does not yet, the app now migrates it upward so both launch paths converge on the same settings and FTP profiles. When Ollama is available during install, the installer also pulls the two default AI models (`qwen2.5-coder:7b` and `qwen2.5-coder:3b`) so the AI window can answer right away. Installed AI prefs now self-heal on startup if they still contain old `*-instruct` tags, the AI button no longer crashes on open, and the AI log/input panes wrap text instead of using a sideways scrollbar. The AI model menu still supports local offline model choices, and the cloud choices stay grayed out until sign-in. If neither writable location is available the app falls back to an in-memory database and warns the user. No personal database is shipped in the ZIP
 - **FTP browser — Rename**: right-click any file or folder to rename it in place; input dialog pre-filled with the current name
 - **FTP browser — remember last folder**: reopens in the folder you were last in (per profile); tree always roots at `/` so you can navigate anywhere
 - **Auto-indent on Enter** in code (Scintilla) tabs — new lines inherit the indentation of the line above, preserving tabs and spaces exactly

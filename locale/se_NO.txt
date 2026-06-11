@@ -378,6 +378,7 @@ ABOUT_SUBTITLE    = RTF-memo ja prográmmadoaimmahanbohccohus Windowsii\n\n
 ABOUT_PUBLISHED   = Almmustuhtton: 
 ABOUT_VERSION     = Versiuma: 
 ABOUT_EDITION     = Beaivi: 
+ABOUT_EDITION_VALUE = 3 ß
 ABOUT_SEC_RTF     = ✏  Hápmostuvvon čállosat rievdadit\n
 ABOUT_DESC_RTF    = •  Buoiddes, oadjebas, vuolleviila, rasttalin, bajilogat/vuollelogat.\n•  Čoalbmi, stuorrodat, ivdni ja merken; olles kapihttala hápmoshupmi.\n•  Tabeallat, mearkkalisttut, govvat, hyperlinkat, vodolaš linját.\n•  Exporteret PDF- dahje HTML 5-hámis.\n\n
 ABOUT_SEC_CODE    = ⌨  Koda rievdadit ja syntáksa čilgejupmi\n

@@ -377,6 +377,7 @@ ABOUT_SUBTITLE    = RTF-anteckningsblock och programmeringsredigerare för Windo
 ABOUT_PUBLISHED   = Publicerad: 
 ABOUT_VERSION     = Version: 
 ABOUT_EDITION     = Utgåva: 
+ABOUT_EDITION_VALUE = 3 ß
 ABOUT_SEC_RTF     = ✏  RTF-redigering\n
 ABOUT_DESC_RTF    = •  Fetstil, kursiv, understrykning, genomstrykning, upphöjd/nedsänkt.\n•  Teckensnitt, storlek, färg och markeringsfärg; fullständig styckeformatering.\n•  Tabeller, listor, bilder, hyperlänkar, horisontella linjer.\n•  Exportera som PDF eller HTML 5.\n\n
 ABOUT_SEC_CODE    = ⌨  Kodredigering och syntaxmarkering\n
