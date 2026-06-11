@@ -22,13 +22,16 @@ RELATED:
   NeProfiles_Close() shuts it down.
 
   Current lookup/creation flow:
-    - Installed build: use %APPDATA%\NSBEdit\nsbedit.db
-    - Portable build: use .\nsbedit.db next to the executable
+    - Shared db: prefer %APPDATA%\NSBEdit\nsbedit.db for both installed and
+      portable launches
+    - Portable fallback: use .\nsbedit.db next to the executable only when
+      AppData cannot be used yet
     - Fallback: :memory:
 
-  The code now creates a fresh empty database on first run if the target file
-  does not already exist. Existing databases are not copied over or replaced by
-  the installer or packaging flow.
+  If a portable db exists but AppData does not yet, the portable file is
+  migrated upward so both launch paths converge on the same user data.
+  Existing databases are not copied over or replaced by the installer or
+  packaging flow.
 
 ================================================================================
 2. SCHEMA OWNERSHIP
@@ -77,6 +80,10 @@ RELATED:
 
   The installer must never ship a personal database file, and normal upgrades
   must never overwrite an existing db on disk.
+
+  AppData is the shared source of truth whenever it exists; portable launches
+  should converge there rather than splitting settings and FTP profiles across
+  two files.
 
   When in doubt, test three scenarios:
     - fresh install with no database file

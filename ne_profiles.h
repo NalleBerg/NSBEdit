@@ -19,8 +19,8 @@ struct NeProfile {
 };
 
 // Call NeProfiles_Init() after NeCrypto_Init().
-// DB lookup order: Program Files install -> %APPDATA%\NSBEdit\nsbedit.db
-//                  portable folder     -> .\nsbedit.db next to the exe
+// DB lookup order: AppData shared db first when present
+//                  portable folder db next if AppData is unavailable
 //                  :memory:            -> fallback when no writable DB path
 bool NeProfiles_Init();
 bool NeProfiles_IsMemory(); // true when running on an in-memory DB

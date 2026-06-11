@@ -37,18 +37,20 @@ RELATED:
   NeProfiles_Init() chooses the database location from the executable layout.
 
   Runtime modes:
-    - Installed build under Program Files:
-      use %APPDATA%\NSBEdit\nsbedit.db
+    - Shared user database:
+      use %APPDATA%\NSBEdit\nsbedit.db whenever it exists, for both installed
+      and portable launches
 
-    - Portable build beside the exe:
-      use .\nsbedit.db in the current app folder
+    - Portable fallback:
+      use .\nsbedit.db in the current app folder only when AppData is not yet
+      available or has not been created
 
     - Last-resort fallback:
       use :memory: when no writable file-backed database can be opened
 
   The database file is created on first open if it does not already exist.
-  That means a fresh machine does not need a prebuilt database shipped inside
-  the release zip.
+  If a portable db exists but AppData does not yet, the portable file is
+  migrated upward so future launches share the same user data.
 
 ================================================================================
 3. INSTALLER IMPORT RULE
@@ -101,7 +103,7 @@ RELATED:
 
   Scenario B: USB or portable folder already has nsbedit.db
     - install.bat imports it into AppData if AppData does not already have one
-    - running from the USB folder still uses the local file beside the exe
+    - running from the USB folder also prefers the AppData db when it exists
 
   Scenario C: AppData already has nsbedit.db
     - install.bat leaves it alone

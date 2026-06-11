@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.06.11.11 (Fix: shared AppData DB for portable and installed launches) - 11.06.2026 11:00
+
+- **Fix: portable launches now prefer the shared AppData database**: `NeProfiles_Init()` now resolves `%APPDATA%\NSBEdit\nsbedit.db` first for both installed and portable runs, and if the portable `nsbedit.db` exists but AppData does not yet, the file is migrated upward so FTP profiles and saved settings stay together across upgrades.
+- **Fix: portable fallback is only used when AppData is unavailable**: the app no longer silently diverges onto a separate local db when a shared AppData db already exists; the portable file is only kept as a last-resort fallback when the shared path cannot be used.
+
 ## v2026.06.11.10 (Fix: installed AI self-heal and packaged Ollama icon) - 11.06.2026 10:07
 
 - **Fix: installed AI prefs now normalise old model tags on load**: the standalone AI window now converts any saved `qwen2.5-coder:7b-instruct` / `qwen2.5-coder:3b-instruct` values back to the valid current `qwen2.5-coder:7b` / `qwen2.5-coder:3b` tags when it starts, so older AppData settings stop forcing the stale `instruct` names.

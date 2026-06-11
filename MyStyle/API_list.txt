@@ -716,11 +716,12 @@
 
   ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
                                                 SQLite3 (statically linked). DB lookup order
-                                                at init: (1) installed Program Files build →
-                                                %APPDATA%\NSBEdit\nsbedit.db (created on
-                                                first run if missing); (2) portable build →
-                                                .\nsbedit.db next to the exe (created on
-                                                first run if missing); (3) :memory: — fallback
+                                                at init: prefer %APPDATA%\NSBEdit\nsbedit.db
+                                                for both installed and portable launches;
+                                                if portable .\nsbedit.db exists but AppData
+                                                does not yet, migrate it upward; otherwise
+                                                fall back to .\nsbedit.db only when AppData
+                                                cannot be used; final fallback is :memory: —
                                                 with MessageBoxW warning, all data lost on exit.
                                                 NeProfiles_Init() / NeProfiles_Close().
                                                 NeProfiles_IsMemory() — true when running on
@@ -731,9 +732,10 @@
 
   API_INTERNALS\INTERNALS\system_INTERNALS.txt  Overall install/runtime/database system note —
                                                 executable-location DB selection, USB-to-AppData
-                                                import on install, upgrade safety rules, and
-                                                the reason FTP profiles stay safe when the DB
-                                                is treated as user data.
+                                                import on install, upward migration of portable
+                                                db to AppData, upgrade safety rules, and the
+                                                reason FTP profiles stay safe when the DB is
+                                                treated as user data.
                                                 NeProfiles_GetDb() — returns the raw sqlite3*
                                                 handle; used by ne_session.cpp to share the
                                                 same connection.
@@ -752,9 +754,10 @@
                                                 (ne_crypto.h); remember_pwd flag controls
                                                 whether password is persisted.
                                                 nsbedit.db: not shipped in the ZIP. The app
-                                                creates a fresh empty database on first run in
-                                                installed or portable mode, depending on where
-                                                it is launched from. Schema changes must stay
+                                                prefers AppData for both installed and portable
+                                                launches, migrating a portable db upward when
+                                                AppData is missing so the shared user data
+                                                survives upgrades. Schema changes must stay
                                                 additive so existing AppData and portable DBs
                                                 are preserved during upgrades.
                                                 Schema includes session_tabs table (17

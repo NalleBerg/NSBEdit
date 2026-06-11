@@ -2,6 +2,13 @@
 <h3 style="text-align: center;">&nbsp;</h3>
 <p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 June 2026 &mdash; v2026.06.11.10 (10:07)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.11 (Fix: shared AppData DB for portable and installed launches)</span></h3>
+<p><strong>Fix: shared AppData DB for portable and installed launches (11.06.2026, 11:00):</strong></p>
+<ul>
+<li><strong>Fix: portable launches now prefer the shared AppData database:</strong> <code>NeProfiles_Init()</code> now resolves <code>%APPDATA%\NSBEdit\nsbedit.db</code> first for both installed and portable runs, and if the portable <code>nsbedit.db</code> exists but AppData does not yet, the file is migrated upward so FTP profiles and saved settings stay together across upgrades.</li>
+<li><strong>Fix: portable fallback is only used when AppData is unavailable:</strong> the app no longer silently diverges onto a separate local db when a shared AppData db already exists; the portable file is only kept as a last-resort fallback when the shared path cannot be used.</li>
+</ul>
+
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.10 (Fix: installed AI self-heal and packaged Ollama icon)</span></h3>
 <p><strong>Fix: installed AI self-heal and packaged Ollama icon (11.06.2026, 10:07):</strong></p>
 <ul>

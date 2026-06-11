@@ -36,15 +36,18 @@ RELATED:
 ================================================================================
 
   Installed mode:
-    - state lives in %APPDATA%\NSBEdit\nsbedit.db
+    - state lives in %APPDATA%\NSBEdit\nsbedit.db and is preferred by both
+      installed and portable launches whenever it exists
     - an installer may import a db from the install folder once
     - existing AppData state is preserved
     - if Ollama is present, install-time setup also pulls the two default AI
       models so the AI window can reply right away
 
   Portable mode:
-    - state lives beside the exe in nsbedit.db
-    - the first run creates the file if needed
+    - state lives beside the exe in nsbedit.db only as a fallback when AppData
+      is not yet available
+    - if a portable db exists and AppData does not yet, the app migrates it up
+      so both launch paths converge on one user database
 
   First-run fallback:
     - if no db exists anywhere, the app creates a fresh one

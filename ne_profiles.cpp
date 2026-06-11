@@ -76,24 +76,52 @@ static std::wstring Np_EnsureDbFolder(const std::wstring& dbPath)
     return dbPath;
 }
 
+static bool Np_FileExists(const std::wstring& path)
+{
+    DWORD attr = GetFileAttributesW(path.c_str());
+    return attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY) == 0;
+}
+
+static bool Np_CopyDbToAppData(const std::wstring& src, const std::wstring& dst)
+{
+    if (src.empty() || dst.empty() || src == dst) return false;
+    if (Np_FileExists(dst)) return true;
+    Np_EnsureDbFolder(dst);
+    return CopyFileW(src.c_str(), dst.c_str(), FALSE) != FALSE;
+}
+
 // ── DB path ───────────────────────────────────────────────────────────────────
 // Returns the path to use, or L":memory:" if no writable location is found.
 static std::wstring Np_GetDbPath()
 {
     std::wstring exeDir = Np_GetExeDir();
+    std::wstring exeDb = exeDir.empty() ? L"" : (exeDir + L"\\nsbedit.db");
+    std::wstring appDataDb;
 
-    // Installed builds keep their data in AppData; portable builds keep a local
-    // db next to the executable.
-    if (Np_RunningFromProgramFiles()) {
-        wchar_t appdata[MAX_PATH] = {};
-        if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
-            std::wstring adPath = Np_EnsureDbFolder(std::wstring(appdata) + L"\\NSBEdit\\nsbedit.db");
-            return adPath;
+    wchar_t appdata[MAX_PATH] = {};
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
+        appDataDb = Np_EnsureDbFolder(std::wstring(appdata) + L"\\NSBEdit\\nsbedit.db");
+    }
+
+    // AppData is the shared database for both installed and portable launches.
+    // If a portable db exists but AppData does not yet, migrate the file up so
+    // both launch paths converge on the same user data.
+    if (!appDataDb.empty()) {
+        if (Np_FileExists(appDataDb)) {
+            return appDataDb;
+        }
+        if (!exeDb.empty() && Np_FileExists(exeDb) && Np_CopyDbToAppData(exeDb, appDataDb)) {
+            return appDataDb;
+        }
+        if (Np_RunningFromProgramFiles()) {
+            return appDataDb;
         }
     }
 
-    if (!exeDir.empty())
-        return exeDir + L"\\nsbedit.db";
+    // Last resort for very limited environments: keep the db beside the exe.
+    if (!exeDb.empty()) {
+        return exeDb;
+    }
 
     // Nothing better found — caller will open :memory: and warn the user.
     return L":memory:";
