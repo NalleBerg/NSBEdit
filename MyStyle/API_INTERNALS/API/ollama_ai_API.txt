@@ -1,0 +1,140 @@
+================================================================================
+  NSBEdit - AI Shell Public API (ollama_ai.h / ne_ai_bootstrap.h / ne_ai_client.h)
+================================================================================
+
+  This document describes the public-facing interfaces for the AI feature set
+  that now lives outside NSBEdit.cpp.
+
+  The AI surface is intentionally split into three small headers:
+    - ollama_ai.h        -> open the AI shell window
+    - ne_ai_bootstrap.h  -> load persisted bootstrap settings
+    - ne_ai_client.h     -> probe local Ollama availability
+
+  The goal is to keep the window module reusable, keep configuration loading
+  isolated, and keep the local health check independent from the UI.
+
+================================================================================
+1. PUBLIC HEADERS
+================================================================================
+
+  ollama_ai.h
+    void Ne_ShowAiWindow(HWND parent);
+
+  ne_ai_bootstrap.h
+    struct NeAiBootstrapConfig
+    bool NeAiBootstrap_Load(NeAiBootstrapConfig& out);
+    const NeAiBootstrapConfig& NeAiBootstrap_Get();
+
+  ne_ai_client.h
+    bool NeAiClient_IsOllamaResponsive();
+
+================================================================================
+2. ollama_ai.h
+================================================================================
+
+  Ne_ShowAiWindow(HWND parent)
+
+  Opens the standalone AI window owned by the main NSBEdit window.
+  If the window already exists, it is shown and brought to the foreground
+  instead of creating a duplicate.
+
+  Responsibilities of the window:
+    - show the current model and fallback model
+    - expose local/cloud mode controls
+    - expose sign-in/sign-out controls
+    - provide a prompt box and output log
+    - send a single prompt to Ollama and show the reply in the log
+    - allow copying or clearing the current log
+
+  Ownership and lifetime:
+    - The caller passes the parent HWND for centering and ownership.
+    - The AI window manages its own child controls, font, menu, and state.
+    - The caller does not retain any additional handle beyond the parent HWND.
+
+  Behaviour notes:
+    - The window is top-level, not a dialog resource.
+    - Repeated calls are safe; the same window is reused while open.
+    - The send path is synchronous and returns one response line from the
+      local Ollama service before the dialog is tweaked further.
+
+================================================================================
+3. ne_ai_bootstrap.h
+================================================================================
+
+  struct NeAiBootstrapConfig
+
+    Configuration loaded during startup to seed the AI shell with sensible
+    defaults. The structure is intentionally wide enough to carry the values
+    that matter for the local/cloud split without forcing the UI code to know
+    where they came from.
+
+    Fields:
+      enabled     -> whether AI support is enabled for this install/session
+      provider    -> provider name or identifier
+      model       -> preferred primary model
+      fallback    -> secondary/fallback model
+      note        -> human-readable note or status string
+      installedAt -> installation timestamp string
+      version     -> bootstrap version string
+
+  bool NeAiBootstrap_Load(NeAiBootstrapConfig& out)
+
+    Loads the bootstrap record from the persisted settings store.
+    Returns true when a record was successfully loaded, false when defaults
+    must be used.
+
+    Behaviour:
+      - fills the supplied structure
+      - leaves the caller to decide how to surface missing data
+      - reads the same on-disk settings source every time the app starts
+
+  const NeAiBootstrapConfig& NeAiBootstrap_Get()
+
+    Returns the cached bootstrap configuration after it has been loaded.
+    This is the convenience accessor used by the AI shell when it needs the
+    startup defaults without repeating the load path.
+
+================================================================================
+4. ne_ai_client.h
+================================================================================
+
+  bool NeAiClient_IsOllamaResponsive()
+
+    Performs a local responsiveness probe against Ollama on localhost.
+    The function is intentionally narrow: it answers only whether the local
+    client endpoint can be reached, not whether a full chat session is ready.
+
+    Intended use:
+      - startup readiness checks
+      - enabling/disabling local AI UI actions
+      - status indicators in the main editor or AI shell
+
+    Design notes:
+      - the check is separated from the window code so it can be reused
+      - the probe should stay quick and non-blocking from the caller's view
+      - the function should not mutate application state
+
+================================================================================
+5. INTEGRATION RULES
+================================================================================
+
+  - Include ollama_ai.h where the AI window is opened.
+  - Include ne_ai_bootstrap.h where startup defaults are needed.
+  - Include ne_ai_client.h where a local Ollama health check is needed.
+  - Keep UI code out of the bootstrap and client headers.
+  - Keep the bootstrap loader and the client probe reusable by future code.
+  - Do not reintroduce the AI shell implementation into NSBEdit.cpp.
+
+================================================================================
+6. STABILITY AND EXTENSION POINTS
+================================================================================
+
+  Current extension points that are expected to change later:
+    - the real chat send/receive pipeline
+    - cloud authentication and subscription wiring
+    - richer status reporting for local Ollama readiness
+    - additional model/provider menu actions
+
+  The public API should remain small even as the implementation grows.
+  If the shell gains new capabilities, prefer adding explicit functions or
+  fields here rather than having the UI reach into internals directly.

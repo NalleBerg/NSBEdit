@@ -1,5 +1,15 @@
 # Changelog
 
+## v2026.06.11.09 (Fix: Ollama model tags and install-time model pulls) - 11.06.2026 09:44
+
+- **Fix: Ollama requests now default to valid local model tags**: the AI shell now sends `qwen2.5-coder:7b` by default and falls back to `qwen2.5-coder:3b`, with old saved `*-instruct` values still normalised on load so existing installs keep working.
+- **Fix: installer now pulls both AI models when Ollama is available**: a fresh install provisions the default and fallback local models up front, so the AI window can answer immediately after setup.
+
+## v2026.06.10.12 (Fix: no shipped FTP db; fresh db on first run) - 10.06.2026 12:36
+
+- **Fix: release ZIP no longer ships `nsbedit.db`**: The packaging step now excludes the personal database file entirely, so FTP credentials and other user-specific records cannot be released by accident.
+- **Fix: empty database is created on first run**: Installed builds create `%APPDATA%\NSBEdit\nsbedit.db` on first launch, and portable builds create `nsbedit.db` next to the executable on first launch. If neither path is writable, the app falls back to in-memory mode and warns the user.
+
 ## v2026.06.10.11 (Release: Ollama icon + localized AI tooltip + GDI+ startup fix) - 10.06.2026 11:48
 
 - **Feature: AI button now uses the Ollama icon**: The toolbar AI button now loads `ollama.png` and renders the image in the owner-draw handler, with localized text as a fallback if the icon cannot be loaded.

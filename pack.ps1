@@ -24,7 +24,6 @@ New-Item -ItemType Directory -Path $stagingDir | Out-Null
 
 $files = @(
     'NSBEdit.exe',    # main executable
-    'nsbedit.db',     # SQLite3 stub — presence signals portable mode; installer copies to AppData
     'Changelog.html', # version history (human-readable)
     'GPLv2.md',       # licence
     'Install.bat',    # double-click launcher (opens _doinstall.ps1 in a PowerShell window)

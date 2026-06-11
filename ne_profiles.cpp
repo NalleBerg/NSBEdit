@@ -29,25 +29,73 @@ static std::wstring Np_U2W(const char* u)
     return w;
 }
 
+static bool Np_IStartsWith(const std::wstring& text, const std::wstring& prefix)
+{
+    if (prefix.empty() || text.size() < prefix.size()) return false;
+    return _wcsnicmp(text.c_str(), prefix.c_str(), prefix.size()) == 0;
+}
+
+static std::wstring Np_GetExeDir()
+{
+    wchar_t path[MAX_PATH] = {};
+    DWORD len = GetModuleFileNameW(NULL, path, MAX_PATH);
+    if (!len || len >= MAX_PATH) return {};
+    std::wstring exePath = path;
+    size_t pos = exePath.find_last_of(L"\\/");
+    if (pos != std::wstring::npos) exePath.resize(pos);
+    return exePath;
+}
+
+static bool Np_RunningFromProgramFiles()
+{
+    std::wstring exeDir = Np_GetExeDir();
+    if (exeDir.empty()) return false;
+
+    wchar_t pf[MAX_PATH] = {};
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROGRAM_FILES, NULL, SHGFP_TYPE_CURRENT, pf)) &&
+        Np_IStartsWith(exeDir, pf)) {
+        return true;
+    }
+
+#ifdef CSIDL_PROGRAM_FILESX86
+    wchar_t pf86[MAX_PATH] = {};
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_PROGRAM_FILESX86, NULL, SHGFP_TYPE_CURRENT, pf86)) &&
+        Np_IStartsWith(exeDir, pf86)) {
+        return true;
+    }
+#endif
+    return false;
+}
+
+static std::wstring Np_EnsureDbFolder(const std::wstring& dbPath)
+{
+    size_t pos = dbPath.find_last_of(L"\\/");
+    if (pos == std::wstring::npos) return dbPath;
+    std::wstring dir = dbPath.substr(0, pos);
+    SHCreateDirectoryExW(NULL, dir.c_str(), NULL);
+    return dbPath;
+}
+
 // ── DB path ───────────────────────────────────────────────────────────────────
 // Returns the path to use, or L":memory:" if no writable location is found.
 static std::wstring Np_GetDbPath()
 {
-    // 1. Installed: %APPDATA%\NSBEdit\nsbedit.db must already exist.
-    wchar_t appdata[MAX_PATH] = {};
-    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
-        std::wstring adPath = std::wstring(appdata) + L"\\NSBEdit\\nsbedit.db";
-        if (GetFileAttributesW(adPath.c_str()) != INVALID_FILE_ATTRIBUTES)
+    std::wstring exeDir = Np_GetExeDir();
+
+    // Installed builds keep their data in AppData; portable builds keep a local
+    // db next to the executable.
+    if (Np_RunningFromProgramFiles()) {
+        wchar_t appdata[MAX_PATH] = {};
+        if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
+            std::wstring adPath = Np_EnsureDbFolder(std::wstring(appdata) + L"\\NSBEdit\\nsbedit.db");
             return adPath;
+        }
     }
 
-    // 2. Portable: nsbedit.db next to the exe (stub from ZIP) — must be non-empty.
-    WIN32_FILE_ATTRIBUTE_DATA fa = {};
-    if (GetFileAttributesExW(L"nsbedit.db", GetFileExInfoStandard, &fa) &&
-        (fa.nFileSizeHigh > 0 || fa.nFileSizeLow > 0))
-        return L"nsbedit.db";
+    if (!exeDir.empty())
+        return exeDir + L"\\nsbedit.db";
 
-    // 3. Nothing found — caller will open :memory: and warn the user.
+    // Nothing better found — caller will open :memory: and warn the user.
     return L":memory:";
 }
 
@@ -57,14 +105,12 @@ bool NeProfiles_Init()
     if (s_db) return true;
     std::wstring wpath = Np_GetDbPath();
     s_isMemory    = (wpath == L":memory:");
-    s_isInstalled = !s_isMemory && (wpath.size() > 10 &&
-                    wpath.substr(wpath.size() - 10) == L"nsbedit.db" &&
-                    wpath.find(L"AppData") != std::wstring::npos);
+    s_isInstalled = !s_isMemory && Np_RunningFromProgramFiles();
     if (s_isMemory) {
         MessageBoxW(NULL,
             L"NSBEdit could not find a database file.\n\n"
-            L"Neither %APPDATA%\\NSBEdit\\nsbedit.db (installed) nor\n"
-            L"nsbedit.db next to the executable (portable) was found.\n\n"
+            L"Neither the installed AppData database nor the portable\n"
+            L"database next to the executable could be created.\n\n"
             L"FTP profiles and settings will be stored in memory only\n"
             L"and will be lost when the application closes.",
             L"NSBEdit \u2014 No database found",
@@ -73,6 +119,8 @@ bool NeProfiles_Init()
     std::string path = Np_W2U(wpath);
     if (sqlite3_open(path.c_str(), &s_db) != SQLITE_OK) {
         s_db = nullptr;
+        s_isMemory = false;
+        s_isInstalled = false;
         return false;
     }
     // WAL journal mode: COMMITs append to the WAL file instead of fsyncing the
@@ -124,6 +172,8 @@ bool NeProfiles_Init()
         if (err) sqlite3_free(err);
         sqlite3_close(s_db);
         s_db = nullptr;
+        s_isMemory = false;
+        s_isInstalled = false;
         return false;
     }
     // Migration: add web_url to existing databases (ignore error if column already exists).

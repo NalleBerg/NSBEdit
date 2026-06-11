@@ -19,9 +19,9 @@ struct NeProfile {
 };
 
 // Call NeProfiles_Init() after NeCrypto_Init().
-// DB lookup order: %APPDATA%\NSBEdit\nsbedit.db (installed, must exist)
-//                  .\nsbedit.db (portable stub from ZIP, must exist)
-//                  :memory:     (fallback — warns user, all data lost on exit)
+// DB lookup order: Program Files install -> %APPDATA%\NSBEdit\nsbedit.db
+//                  portable folder     -> .\nsbedit.db next to the exe
+//                  :memory:            -> fallback when no writable DB path
 bool NeProfiles_Init();
 bool NeProfiles_IsMemory(); // true when running on an in-memory DB
 void NeProfiles_Close();
@@ -40,8 +40,8 @@ bool NeProfiles_SetIntSetting(const char* key, int value);
 bool NeProfiles_GetStrSetting(const char* key, const std::string& defaultValue, std::string& out);
 bool NeProfiles_SetStrSetting(const char* key, const std::string& value);
 
-// True when using the installed database (%APPDATA%\NSBEdit\nsbedit.db).
-// False for portable mode (nsbedit.db next to exe) or in-memory fallback.
+// True when running from the installed Program Files layout.
+// False for portable mode (db next to exe) or in-memory fallback.
 bool NeProfiles_IsInstalled();
 
 // Expose the underlying sqlite3 handle.  Used only by ne_session.cpp.

@@ -1,0 +1,208 @@
+================================================================================
+  NSBEdit - AI Shell Internals (ollama_ai.cpp / ollama_ai.h)
+================================================================================
+
+  This note covers the standalone AI shell window that was extracted from
+  NSBEdit.cpp into ollama_ai.cpp / ollama_ai.h.
+
+FILES:
+  ollama_ai.h                 Public entry point: Ne_ShowAiWindow(HWND parent)
+  ollama_ai.cpp               Window class, menu logic, layout, owner-draw UI
+  ne_ai_bootstrap.h/.cpp      Loads persisted AI bootstrap settings
+  ne_ai_client.h/.cpp         Probes Ollama localhost availability
+
+================================================================================
+1. PURPOSE
+================================================================================
+
+  The AI shell is a separate top-level window owned by the main editor.
+  It provides a lightweight local/cloud control surface for the current AI
+  feature set without keeping the implementation inside NSBEdit.cpp.
+
+  Current responsibilities:
+    - Open and reuse the AI window.
+    - Show current model, fallback model, cloud/local state, and sign-in state.
+    - Offer menu actions for suggestion/agent model switching.
+    - Offer local/cloud mode toggles and sign-in/sign-out actions.
+    - Append user prompts and stubbed responses to the log.
+    - Persist the AI preferences through the existing profile store.
+
+================================================================================
+2. ENTRY POINT
+================================================================================
+
+  void Ne_ShowAiWindow(HWND parent)
+
+  Behaviour:
+    - Reuses the existing AI window if it is already open.
+    - Registers the NSBEditAIWindow class on first use.
+    - Centers the window over the parent when possible.
+    - Creates a WS_OVERLAPPEDWINDOW top-level window with modal-frame styling.
+    - Calls ShowWindow / UpdateWindow / SetForegroundWindow after creation.
+
+================================================================================
+3. WINDOW STATE
+================================================================================
+
+  AiWindowState stores the runtime state for the window:
+    - hHeader, hLog, hInput, hStatus
+    - hSendBtn, hCopyBtn, hClearBtn
+    - hFont
+    - dd (owner-draw button spec block)
+    - model, fallback
+    - cloudMode, signedIn
+
+  The state object is allocated before CreateWindowExW and attached through
+  WM_CREATE via GWLP_USERDATA. It is released on WM_DESTROY.
+
+================================================================================
+4. BOOTSTRAP AND PREFS
+================================================================================
+
+  Bootstrap defaults come from NeAiBootstrap_Get():
+    - model defaults to qwen2.5-coder:7b
+    - fallback defaults to qwen2.5-coder:3b
+
+  Saved preferences are loaded in Ai_LoadPrefs() and written back by
+  Ai_SavePrefs() using NeProfiles_SetStrSetting / NeProfiles_SetIntSetting.
+
+  Persisted keys:
+    - ai.model
+    - ai.fallback
+    - ai.cloud_mode
+    - ai.signed_in
+
+  The bootstrap reader is intentionally separate so the AI shell can fall back
+  to a safe default even if the profile store is empty.
+
+================================================================================
+5. MENU MODEL
+================================================================================
+
+  The AI window uses a simple menu bar with four submenus:
+    - Model
+    - Cloud
+    - Log
+    - Help
+
+  Model submenu:
+    - Suggestion: default model
+    - Agent: fallback model
+
+  Cloud submenu:
+    - Local only
+    - Cloud subscription
+    - Sign in to Ollama
+    - Sign out
+    - Open Ollama web site
+
+  Log submenu:
+    - Send prompt
+    - Clear log
+    - Copy log
+
+  Help submenu:
+    - About this window
+
+  Ai_RefreshUi() keeps the checkmarks and status text in sync with the stored
+  state after every menu change.
+
+================================================================================
+6. LAYOUT AND DRAWING
+================================================================================
+
+  The layout is a fixed client-size dialog-style arrangement:
+    - header/status summary at the top
+    - multiline read-only log in the middle
+    - single-line prompt edit near the bottom
+    - three owner-draw buttons aligned on the lower right
+    - status line below the input row
+
+  Current geometry is DPI-scaled through S(). Button widths are measured with
+  Ai_MeasureButtonWidth() so the label text and icon always fit.
+
+  Owner-draw buttons use Ai_DrawButton():
+    - Green for Send
+    - Blue for Copy
+    - Red for Clear
+
+  The button spec is stored in AiDialogData so WM_DRAWITEM can paint the
+  current button set without hardcoded text comparisons.
+
+  Known layout issue:
+    - The shell still needs tightening for cramped widths.
+    - Some button and field placements can overlap when the window is reduced.
+    - That should be fixed before more AI UI elements are added.
+
+================================================================================
+7. MESSAGE FLOW
+================================================================================
+
+  WM_CREATE
+    - Restores settings.
+    - Builds the menu.
+    - Creates the header, log, input, buttons, and status line.
+    - Applies the common 12pt dialog font.
+    - Populates the initial status text and opens the log with a startup line.
+
+  WM_SIZE
+    - Repositions all child controls.
+    - Uses a fixed bottom area for input and action buttons.
+    - Keeps the log as the flexible middle region.
+
+  WM_COMMAND
+    - Handles model/cloud/sign-in/log/help commands.
+    - Send triggers Ai_DoSend().
+    - Copy and Clear are also routed from their owner-draw buttons.
+
+  WM_DRAWITEM
+    - Paints the owner-draw buttons through Ai_DrawButton().
+
+  WM_CTLCOLORSTATIC / WM_CTLCOLOREDIT
+    - Uses normal window colors for the edit/static controls.
+
+  WM_DESTROY
+    - Deletes the font.
+    - Releases the state block.
+    - Clears the global window handle.
+
+================================================================================
+8. SEND BEHAVIOUR
+================================================================================
+
+  Ai_DoSend() now sends the current prompt to Ollama on localhost and waits for
+  a single response line.
+
+  Current request path:
+    - POST http://127.0.0.1:11434/api/generate
+    - send the selected model and prompt as JSON
+    - request non-streaming output so the dialog can append one answer line
+
+  The log still shows the user's question first, then the Ollama reply or a
+  short error message if the local service is not reachable.
+
+================================================================================
+9. EXTERNAL DEPENDENCIES
+================================================================================
+
+  The AI shell depends on the existing project helpers:
+    - dpi.h for S() scaling
+    - ne_profiles.h for persisted settings
+    - ne_ai_bootstrap.h for startup defaults
+    - ne_ai_client.h for local Ollama responsiveness checks and the send/reply
+      helper used by the AI window
+
+  The actual Ollama probe remains separate from the window so the UI can stay
+  responsive and the availability check can be reused from the main app.
+
+================================================================================
+10. MAINTENANCE NOTES
+================================================================================
+
+  - Keep the AI window implementation out of NSBEdit.cpp.
+  - Preserve the current local/default model split unless the product rules
+    change again.
+  - Keep cloud/subscription state separate from the local-only flow.
+  - Keep the prompt/log UI simple until the layout bug is fully fixed.
+  - Update this file whenever the AI shell gains real chat wiring or new menu
+    actions.

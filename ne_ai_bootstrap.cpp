@@ -24,6 +24,15 @@ static std::wstring Na_Utf8ToWide(const std::string& s)
     return w;
 }
 
+static void Na_NormalizeModelName(std::wstring& model)
+{
+    if (model == L"qwen2.5-coder:7b-instruct" || model == L"qwen2.5-coder") {
+        model = L"qwen2.5-coder:7b";
+    } else if (model == L"qwen2.5-coder:3b-instruct") {
+        model = L"qwen2.5-coder:3b";
+    }
+}
+
 static bool Na_ReadFileUtf8(const std::wstring& path, std::string& out)
 {
     out.clear();
@@ -96,6 +105,9 @@ bool NeAiBootstrap_Load(NeAiBootstrapConfig& out)
     Na_SplitJsonString(text, "note", out.note);
     Na_SplitJsonString(text, "installedAt", out.installedAt);
     Na_SplitJsonString(text, "version", out.version);
+
+    Na_NormalizeModelName(out.model);
+    Na_NormalizeModelName(out.fallback);
 
     s_aiBootstrap = out;
     return true;

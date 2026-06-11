@@ -36,6 +36,7 @@
 #include "ne_profiles.h"
 #include "ne_ai_bootstrap.h"
 #include "ne_ai_client.h"
+#include "ollama_ai.h"
 #include "ne_ftp.h"
 #include "ne_session.h"
 #include "rtf2html/ne_rtf2html_lib.h"
@@ -192,6 +193,27 @@ enum class NeEncoding {
 #define IDC_NE_PREVIEW          265   // toolbar Preview online button
 #define IDC_NE_COMMENT          266   // Comment / Uncomment  (Scintilla only)
 #define IDC_NE_AI               268   // Scintilla-side AI button (shown only when Ollama answers)
+
+// ── AI window commands ───────────────────────────────────────────────────────
+#define IDM_AI_MODEL_DEFAULT      1901
+#define IDM_AI_MODEL_FALLBACK     1902
+#define IDM_AI_MODE_LOCAL         1910
+#define IDM_AI_MODE_CLOUD         1911
+#define IDM_AI_SIGN_IN            1920
+#define IDM_AI_SIGN_OUT           1921
+#define IDM_AI_OPEN_PROVIDER      1922
+#define IDM_AI_LOG_CLEAR          1930
+#define IDM_AI_LOG_COPY           1931
+#define IDM_AI_SEND               1932
+#define IDM_AI_ABOUT              1933
+
+#define IDC_AI_HEADER             1951
+#define IDC_AI_LOG                1952
+#define IDC_AI_INPUT              1953
+#define IDC_AI_SEND_BTN           1954
+#define IDC_AI_COPY_BTN           1955
+#define IDC_AI_CLEAR_BTN          1956
+#define IDC_AI_STATUS             1957
 // ── Spell-check dialog controls ───────────────────────────────────────────────
 #define IDC_SPELL_WORD_LBL      300   // "Misspelled word:" label
 #define IDC_SPELL_WORD_VAL      301   // the misspelled word value (static)
@@ -268,6 +290,34 @@ static void Ne_DetachAllScrollbars()
 static bool s_aiOllamaReady = false;
 static ULONG_PTR s_gdiplusToken = 0;
 static bool s_gdiplusStarted = false;
+static HWND s_hwndAiWindow = NULL;
+
+static HFONT Ne_MakeDlgFont(HWND hwnd, bool bold);
+
+enum class NeBtnTone { Blue, Green, Red };
+
+struct NeDialogButtonSpec {
+    int id;
+    std::wstring text;
+    NeBtnTone tone;
+    const wchar_t* iconRes;
+    int width;
+    HICON hIconOverride = NULL;
+};
+
+struct NeDialogData {
+    std::wstring title;
+    std::wstring message;
+    int textH = 0;
+    int result = IDCANCEL;
+    int closeResult = IDCANCEL;
+    int buttonCount = 0;
+    NeDialogButtonSpec buttons[4];
+    HICON hMsgIcon = NULL;
+    HFONT hDlgFont = NULL;
+    int autoCloseMs = 0;
+    bool restoreOnClose = false;
+};
 
 // Show or hide each custom scrollbar bar window to match its edit's visibility,
 // and reposition bars for visible edits. Call after any tab switch or resize.
@@ -2614,31 +2664,6 @@ static void Ne_UpdateStatusText(HWND hwnd)
     else
         NeStatusBar_SetInfo(hSb, Ne_EncLabel(enc));
 }
-
-enum class NeBtnTone { Blue, Green, Red };
-
-struct NeDialogButtonSpec {
-    int id;
-    std::wstring text;
-    NeBtnTone tone;
-    const wchar_t* iconRes;
-    int width;
-    HICON hIconOverride = NULL;  // if set, used instead of iconRes
-};
-
-struct NeDialogData {
-    std::wstring title;
-    std::wstring message;
-    int textH = 0;
-    int result = IDCANCEL;
-    int closeResult = IDCANCEL;
-    int buttonCount = 0;
-    NeDialogButtonSpec buttons[4];
-    HICON hMsgIcon = NULL;   // optional left-side icon (e.g. IDI_WARNING)
-    HFONT hDlgFont = NULL;   // created in WM_CREATE, deleted in WM_NCDESTROY
-    int autoCloseMs = 0;     // if > 0, dialog auto-closes after this many ms
-    bool restoreOnClose = false; // parent was foreground at creation — restore it on close
-};
 
 static bool Ne_PromptSaveIfModified(HWND hwnd); // forward
 static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out,
@@ -13998,12 +14023,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         }
         if (wmId == IDC_NE_AI) {
-            const wchar_t* model = g_aiBootstrap.model.empty()
-                ? L"qwen2.5-coder:7b-instruct"
-                : g_aiBootstrap.model.c_str();
-            std::wstring msg = std::wstring(L"Ollama is answering on localhost.\n\nModel in use: ") + model +
-                L"\n\nThe full AI dialog comes next.";
-            MessageBoxW(hwnd, msg.c_str(), L"NSBEdit AI", MB_OK | MB_ICONINFORMATION);
+            Ne_ShowAiWindow(hwnd);
             return 0;
         }
         if (wmId == IDC_NE_CASE)       { Ne_ToggleCase(hEdit); SetFocus(hEdit); return 0; }
@@ -14895,6 +14915,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     // ── WM_DESTROY ────────────────────────────────────────────────────────────
     case WM_DESTROY: {
         // Detach custom scrollbars before NeTabs_Destroy destroys the edit HWNDs
+        if (s_hwndAiWindow && IsWindow(s_hwndAiWindow)) {
+            DestroyWindow(s_hwndAiWindow);
+            s_hwndAiWindow = NULL;
+        }
         Ne_DetachAllScrollbars();
         NeTabs_Destroy(hwnd);
 

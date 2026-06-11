@@ -1,19 +1,34 @@
 NSBEdit — handover notes
-Written: 2026-06-09
+Written: 2026-06-10
 
-Done today
-- Ran NewVersion.ps1 and bumped the release version to v2026.06.09.16.
-- Added Ollama to About -> Credits and updated all locale credit strings.
-- Pinned the local AI plan to qwen2.5-coder:7b-instruct, with qwen2.5-coder:3b-instruct as fallback.
-- Updated CHANGELOG.md, Changelog.html, and README.md for the new release.
-- Checked the API index files; NSBEdit.cpp is the only listed file relevant to this change and did not need a separate API note update.
+Current status
+- The AI shell was moved out of NSBEdit.cpp into its own ollama_ai.cpp/.h module.
+- makeit.bat now builds and packages successfully with the new AI module included.
+- The direct g++ compile/link check also passed.
+- The wrapper build path is the one to keep using for final validation.
 
-Next steps for tomorrow
-- Finish the actual local AI bridge/integration in NSBEdit.
-- Decide whether the bridge stores its model setting in a config file or in the existing database.
-- Run makeit.bat, then pack.ps1, then commit and push the finished release.
+Known issue
+- There is still a dialog layout problem in the AI shell and related dialogs: field sizes need tightening and some buttons overlap or crowd the available space.
+- That layout cleanup should be fixed before more AI UI work is added.
+
+How to continue
+- Run NewVersion.ps1 to stamp the current time.
+- Read curver.txt to get the publish/version string.
+- If the version has not changed since the last commit, keep the new work under the same version in the next changelog entry.
+- Manually update Changelog.html and CHANGELOG.md with the current version and the changes.
+- Update README.md.
+- Check .\MyStyle\API_list.txt and update any listed files there if they need it.
+- Keep all INTERNALS/API editing in MyStyle, since that is the main project for those notes now.
+- Run makeit.bat without parameters to build and package.
+- Run .\pack.ps1 to create the .zip release.
+- Commit and push with a good commit message.
 
 Notes
-- The current preferred default model is qwen2.5-coder:7b-instruct.
-- Use qwen2.5-coder:3b-instruct only if the machine feels memory-constrained or too slow.
+- Prioritise code quality over raw speed.
+- Keep qwen2.5-coder:7b-instruct as the default local model.
+- Keep qwen2.5-coder:3b-instruct as the fallback only if the machine feels memory-constrained or too slow.
+- If a cloud/subscription option is used later, keep it separate from the local-only flow.
+- The model picker should stay realtime, not restart-based.
+- Subscription access should stay separate from the local model list.
+- The post-login confirmation should not switch the model silently.
 - Portable mode should stay AI-free; installed mode can use Ollama locally.

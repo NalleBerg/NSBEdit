@@ -27,8 +27,8 @@ $installDir = Join-Path $env:ProgramFiles 'NSBEdit'
 $appDataDir = Join-Path $env:APPDATA       'NSBEdit'
 $aiConfigPath = Join-Path $appDataDir 'ai-settings.json'
 $ollamaDownloadUrl = 'https://ollama.com/download/windows'
-$defaultAiModel = 'qwen2.5-coder:7b-instruct'
-$fallbackAiModel = 'qwen2.5-coder:3b-instruct'
+$defaultAiModel = 'qwen2.5-coder:7b'
+$fallbackAiModel = 'qwen2.5-coder:3b'
 
 function Write-Section($text) {
     Write-Host ""
@@ -115,6 +115,27 @@ function Ensure-OllamaReady {
     return $false
 }
 
+function Install-OllamaModel([string]$modelName) {
+    if (-not $modelName) { return $false }
+
+    $cmd = Get-Command ollama -ErrorAction SilentlyContinue
+    if (-not $cmd) { return $false }
+
+    Write-Host "  ~ pulling Ollama model: $modelName"
+    try {
+        & $cmd.Source pull $modelName
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "  + model ready: $modelName"
+            return $true
+        }
+        Write-Host "  ! Ollama pull returned exit code $LASTEXITCODE for $modelName" -ForegroundColor Yellow
+    } catch {
+        Write-Host "  ! Ollama pull failed for $modelName : $_" -ForegroundColor Yellow
+    }
+
+    return $false
+}
+
 Write-Host ""
 Write-Host "  NSBEdit v$version -- Installer"
 Write-Host "  -------------------------------------------------"
@@ -126,10 +147,29 @@ Write-Host ""
 New-Item -ItemType Directory -Path $installDir -Force | Out-Null
 New-Item -ItemType Directory -Path $appDataDir -Force | Out-Null
 
+# -- Database migration --------------------------------------------------------
+$dbSrc = Join-Path $here 'nsbedit.db'
+$dbDst = Join-Path $appDataDir 'nsbedit.db'
+if (Test-Path $dbSrc) {
+    if (-not (Test-Path $dbDst)) {
+        Copy-Item $dbSrc $dbDst -Force
+        Write-Host "  + nsbedit.db -> AppData  (imported from installer folder)"
+    } else {
+        Write-Host "  ~ nsbedit.db already in AppData -- user data preserved"
+    }
+} else {
+    Write-Host "  ~ no nsbedit.db in installer folder -- AppData DB will be created on first run"
+}
+
 Write-Section "AI setup"
 $ollamaReady = Ensure-OllamaReady
 if ($ollamaReady) {
+    $defaultModelReady  = Install-OllamaModel $defaultAiModel
+    $fallbackModelReady  = Install-OllamaModel $fallbackAiModel
     Write-AiConfig $true 'ollama' $defaultAiModel $fallbackAiModel 'Local AI configured during install'
+    if (-not $defaultModelReady -or -not $fallbackModelReady) {
+        Write-Host "  ~ one or more AI models could not be pulled during install"
+    }
 } else {
     Write-AiConfig $false 'none' $defaultAiModel $fallbackAiModel 'Local AI not available during install'
 }
@@ -148,18 +188,6 @@ foreach ($f in @('NSBEdit.exe','Changelog.html','GPLv2.md')) {
 # -- Copy Uninstall.ps1 into Program Files -------------------------------------
 Copy-Item (Join-Path $here 'Uninstall.ps1') $installDir -Force
 Write-Host "  + Uninstall.ps1"
-
-# -- Copy database to AppData -- only on fresh install (preserve user data) ----
-$dbSrc = Join-Path $here 'nsbedit.db'
-$dbDst = Join-Path $appDataDir 'nsbedit.db'
-if (Test-Path $dbSrc) {
-    if (-not (Test-Path $dbDst)) {
-        Copy-Item $dbSrc $dbDst -Force
-        Write-Host "  + nsbedit.db -> AppData  (fresh install)"
-    } else {
-        Write-Host "  ~ nsbedit.db already in AppData -- user data preserved"
-    }
-}
 
 # -- Shortcuts (current user) --------------------------------------------------
 $exePath   = Join-Path $installDir 'NSBEdit.exe'

@@ -1,0 +1,114 @@
+================================================================================
+  NSBEdit - Install / Runtime / Database System
+================================================================================
+
+  This note explains the overall system that decides where NSBEdit stores its
+  data, how install-time imports work, and why FTP profiles remain safe during
+  upgrades.
+
+FILES:
+  ne_profiles.h / ne_profiles.cpp
+  _doinstall.ps1
+  pack.ps1
+  README.md
+
+RELATED:
+  ne_session.h / ne_session.cpp
+  ne_ftp.h / ne_ftp.cpp
+
+================================================================================
+1. WHAT THE SYSTEM OWNS
+================================================================================
+
+  The SQLite profile database is shared state for the application.
+
+  It holds:
+    - FTP/SFTP connection profiles
+    - general settings
+    - session metadata used by restore logic
+
+  Because FTP profiles live in the same database as the rest of the app state,
+  any rule that protects the database also protects FTP profiles.
+
+================================================================================
+2. RUNTIME LOCATION RULE
+================================================================================
+
+  NeProfiles_Init() chooses the database location from the executable layout.
+
+  Runtime modes:
+    - Installed build under Program Files:
+      use %APPDATA%\NSBEdit\nsbedit.db
+
+    - Portable build beside the exe:
+      use .\nsbedit.db in the current app folder
+
+    - Last-resort fallback:
+      use :memory: when no writable file-backed database can be opened
+
+  The database file is created on first open if it does not already exist.
+  That means a fresh machine does not need a prebuilt database shipped inside
+  the release zip.
+
+================================================================================
+3. INSTALLER IMPORT RULE
+================================================================================
+
+  The installer script may find a database beside the installer itself.
+
+  Rules:
+    - if nsbedit.db exists next to install.bat, copy it into AppData once
+    - if AppData already has nsbedit.db, keep the existing file
+    - if no database exists in the installer folder, do nothing and let first
+      run create a new database in the correct runtime location
+
+  This supports the common USB upgrade case:
+    - the USB copy can carry a working database
+    - install.bat can migrate that database into AppData
+    - the installed AppData copy becomes the long-term user database
+
+  If Ollama is available during install, the script also pulls both default AI
+  models so the AI shell can answer immediately after setup:
+    - qwen2.5-coder:7b
+    - qwen2.5-coder:3b
+
+================================================================================
+4. UPGRADE SAFETY RULE
+================================================================================
+
+  The database is treated as user data, not as a build artifact.
+
+  The following must not happen:
+    - shipping a personal database inside the release zip
+    - overwriting an existing AppData database during install
+    - replacing an existing portable database without explicit user action
+
+  Safe upgrade behaviour is additive:
+    - add tables with CREATE TABLE IF NOT EXISTS
+    - add columns with ALTER TABLE ... ADD COLUMN
+    - preserve existing rows and profile records
+
+================================================================================
+5. PRACTICAL SCENARIOS
+================================================================================
+
+  Scenario A: fresh machine, no database anywhere
+    - install.bat finds no db in the folder
+    - the app creates a new db on first run
+
+  Scenario B: USB or portable folder already has nsbedit.db
+    - install.bat imports it into AppData if AppData does not already have one
+    - running from the USB folder still uses the local file beside the exe
+
+  Scenario C: AppData already has nsbedit.db
+    - install.bat leaves it alone
+    - existing FTP profiles and settings remain intact
+
+================================================================================
+6. MAINTENANCE NOTES
+================================================================================
+
+  - Keep db-path decisions in ne_profiles.cpp.
+  - Keep install-time import logic in _doinstall.ps1.
+  - Keep packaging free of personal database files.
+  - Update this note whenever the runtime or install matrix changes.

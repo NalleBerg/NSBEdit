@@ -1,0 +1,71 @@
+================================================================================
+  NSBEdit - MyStyle System Overview
+================================================================================
+
+  This note describes the shared system rules that travel with MyStyle from
+  project to project.
+
+  It is not a one-off NSBEdit quirk. It is part of the reusable style package
+  that follows the author across Win32/C++ projects.
+
+FILES:
+  ne_profiles.h / ne_profiles.cpp
+  _doinstall.ps1
+  pack.ps1
+  README.md
+
+RELATED:
+  API_INTERNALS\INTERNALS\system_INTERNALS.txt
+
+================================================================================
+1. PUBLIC IDEA
+================================================================================
+
+  MyStyle treats the database and install flow as user-data infrastructure.
+
+  The public rule is simple:
+    - do not ship a personal database
+    - do not overwrite an existing database on upgrade
+    - do not hide where the runtime keeps its state
+
+  The implementation may change from project to project, but the policy stays
+  the same because the documentation style itself is portable.
+
+================================================================================
+2. WHAT USERS SHOULD EXPECT
+================================================================================
+
+  Installed mode:
+    - state lives in %APPDATA%\NSBEdit\nsbedit.db
+    - an installer may import a db from the install folder once
+    - existing AppData state is preserved
+    - if Ollama is present, install-time setup also pulls the two default AI
+      models so the AI window can reply right away
+
+  Portable mode:
+    - state lives beside the exe in nsbedit.db
+    - the first run creates the file if needed
+
+  First-run fallback:
+    - if no db exists anywhere, the app creates a fresh one
+
+================================================================================
+3. WHY THIS MATTERS
+================================================================================
+
+  The database contains FTP profiles and other saved settings.
+  Protecting the database protects those user-specific values.
+
+  That is why the same policy keeps showing up in MyStyle docs:
+    - the data is portable
+    - the rules are explicit
+    - upgrades stay safe
+
+================================================================================
+4. MAINTENANCE NOTES
+================================================================================
+
+  - Keep this note high-level and reusable.
+  - Keep the detailed implementation notes in INTERNALS.
+  - If the policy changes in one project, update the pattern everywhere MyStyle
+    is used.

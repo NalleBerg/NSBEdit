@@ -615,6 +615,32 @@
                                                 Mouse click acceptance guarded by
                                                 WM_MOUSEACTIVATE + WM_KILLFOCUS check.
 
+  ollama_ai.h                                   Public AI shell entry point. Exposes
+                                                Ne_ShowAiWindow(HWND parent) for opening
+                                                the standalone AI window owned by the
+                                                editor. See API_INTERNALS\API\ollama_ai_API.txt.
+
+  ne_ai_bootstrap.h / ne_ai_bootstrap.cpp       AI bootstrap config loader — reads the
+                                                startup model/provider settings from
+                                                %APPDATA%\NSBEdit\ai-settings.json and
+                                                exposes NeAiBootstrap_Load/Get().
+
+  ne_ai_client.h / ne_ai_client.cpp             Ollama localhost probe helper — WinHTTP
+                                                check used by the AI shell to decide
+                                                whether local Ollama is responsive.
+
+  API_INTERNALS\API\system_API.txt             Public MyStyle system overview — install and
+                                                runtime database rules, portable vs installed
+                                                storage, and why the same user-data policy
+                                                follows the author from project to project.
+
+  ollama_ai.cpp                                 AI shell window implementation. Owns the
+                                                menu bar, owner-draw controls, prompt log,
+                                                preference sync, prompt send/receive logic,
+                                                and layout for the standalone AI window.
+                                                Full layout and control-flow notes live in
+                                                API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
+
   locale\en_GB.txt                              Embedded locale (RCDATA 10). All user-
                                                 visible strings. Format: KEY = value,
                                                 # comments, \n CRLF \t tab \\ backslash.
@@ -685,19 +711,24 @@
 
   ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
                                                 SQLite3 (statically linked). DB lookup order
-                                                at init: (1) %APPDATA%\NSBEdit\nsbedit.db —
-                                                installed mode, file must pre-exist, directory
-                                                never auto-created; (2) .\nsbedit.db next to
-                                                the exe — portable mode, stub shipped in ZIP;
-                                                (3) :memory: — fallback with MessageBoxW
-                                                warning, all data lost on exit.
+                                                at init: (1) installed Program Files build →
+                                                %APPDATA%\NSBEdit\nsbedit.db (created on
+                                                first run if missing); (2) portable build →
+                                                .\nsbedit.db next to the exe (created on
+                                                first run if missing); (3) :memory: — fallback
+                                                with MessageBoxW warning, all data lost on exit.
                                                 NeProfiles_Init() / NeProfiles_Close().
                                                 NeProfiles_IsMemory() — true when running on
                                                 an in-memory DB.
-                                                NeProfiles_IsInstalled() — true when the DB
-                                                path is the AppData installed DB (contains
-                                                "AppData" and ends with "nsbedit.db"); used
+                                                NeProfiles_IsInstalled() — true when running
+                                                from the installed Program Files layout; used
                                                 by session restore to gate the feature.
+
+  API_INTERNALS\INTERNALS\system_INTERNALS.txt  Overall install/runtime/database system note —
+                                                executable-location DB selection, USB-to-AppData
+                                                import on install, upgrade safety rules, and
+                                                the reason FTP profiles stay safe when the DB
+                                                is treated as user data.
                                                 NeProfiles_GetDb() — returns the raw sqlite3*
                                                 handle; used by ne_session.cpp to share the
                                                 same connection.
@@ -715,10 +746,12 @@
                                                 Passwords encrypted at rest via NeCrypto
                                                 (ne_crypto.h); remember_pwd flag controls
                                                 whether password is persisted.
-                                                nsbedit.db: shipped as a 0-byte stub in
-                                                the ZIP; SQLite3 writes the schema on
-                                                first use. A 0-byte stub is skipped in
-                                                the portable path — AppData DB wins.
+                                                nsbedit.db: not shipped in the ZIP. The app
+                                                creates a fresh empty database on first run in
+                                                installed or portable mode, depending on where
+                                                it is launched from. Schema changes must stay
+                                                additive so existing AppData and portable DBs
+                                                are preserved during upgrades.
                                                 Schema includes session_tabs table (17
                                                 columns: id, sort_order, local_path,
                                                 is_ftp, ftp_profile_id, ftp_remote_path,

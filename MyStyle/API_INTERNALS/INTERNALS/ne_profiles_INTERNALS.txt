@@ -1,0 +1,94 @@
+================================================================================
+  NSBEdit - ne_profiles Internals
+================================================================================
+
+  This note covers the SQLite-backed profile/settings database managed by
+  ne_profiles.cpp. It is the shared storage layer for FTP profiles, generic
+  settings, and session-related data.
+
+FILES:
+  ne_profiles.h
+  ne_profiles.cpp
+
+RELATED:
+  ne_session.h / ne_session.cpp
+  ne_ftp.h / ne_ftp.cpp
+
+================================================================================
+1. DATABASE LIFECYCLE
+================================================================================
+
+  NeProfiles_Init() opens the database and prepares the schema.
+  NeProfiles_Close() shuts it down.
+
+  Current lookup/creation flow:
+    - Installed build: use %APPDATA%\NSBEdit\nsbedit.db
+    - Portable build: use .\nsbedit.db next to the executable
+    - Fallback: :memory:
+
+  The code now creates a fresh empty database on first run if the target file
+  does not already exist. Existing databases are not copied over or replaced by
+  the installer or packaging flow.
+
+================================================================================
+2. SCHEMA OWNERSHIP
+================================================================================
+
+  Tables owned here:
+    - profiles
+    - settings
+    - session_tabs
+
+  The schema is created with CREATE TABLE IF NOT EXISTS so a new empty database
+  can be initialized safely.
+
+  Runtime migrations are additive:
+    - new columns are added with ALTER TABLE ... ADD COLUMN
+    - existing user data is preserved
+    - no migration path should rewrite or delete the database file
+
+================================================================================
+3. MIGRATION RULES
+================================================================================
+
+  Treat the database as user data, not as a disposable asset.
+
+  Safe changes:
+    - add a new column with a default value
+    - add a new table with CREATE TABLE IF NOT EXISTS
+    - add a new key in settings
+
+  Changes that require extra care:
+    - renaming a column
+    - changing a column type or meaning
+    - dropping a column
+    - rebuilding the file from scratch
+
+  If one of those is required, introduce a versioned migration path that copies
+  the old data forward instead of overwriting the live database.
+
+================================================================================
+4. PRACTICAL UPGRADE RULE
+================================================================================
+
+  Upgrades should preserve both of these cases:
+    - existing installed users with %APPDATA%\NSBEdit\nsbedit.db
+    - existing portable users with .\nsbedit.db beside the exe
+
+  The installer must never ship a personal database file, and normal upgrades
+  must never overwrite an existing db on disk.
+
+  When in doubt, test three scenarios:
+    - fresh install with no database file
+    - upgrade with an existing AppData database
+    - portable upgrade with an existing local database
+
+================================================================================
+5. CALL-SITE NOTES
+================================================================================
+
+  ne_session.cpp shares the same sqlite3 connection through NeProfiles_GetDb().
+  ne_ftp.cpp uses the profile table for FTP/SFTP connection data.
+
+  Any new database-facing feature should consider whether it belongs in this
+  module or whether it should live beside the caller with a smaller helper API.
