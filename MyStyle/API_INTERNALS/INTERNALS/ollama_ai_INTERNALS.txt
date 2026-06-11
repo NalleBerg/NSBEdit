@@ -24,7 +24,9 @@ FILES:
     - Show current model, fallback model, cloud/local state, and sign-in state.
     - Offer menu actions for suggestion/agent model switching.
     - Offer local/cloud mode toggles and sign-in/sign-out actions.
-    - Append user prompts and stubbed responses to the log.
+    - Append user prompts and Ollama responses to the output pane.
+    - Keep the prompt box multiline so Shift+Enter can insert a newline.
+    - Clear the prompt immediately when Send is pressed.
     - Persist the AI preferences through the existing profile store.
 
 ================================================================================
@@ -46,8 +48,8 @@ FILES:
 
   AiWindowState stores the runtime state for the window:
     - hHeader, hLog, hInput, hStatus
-    - hSendBtn, hCopyBtn, hClearBtn
-    - hFont
+    - hSendBtn, hCopyBtn, hClearBtn, hCloseBtn
+    - hFont, hPaneFont
     - dd (owner-draw button spec block)
     - model, fallback
     - cloudMode, signedIn
@@ -117,13 +119,15 @@ FILES:
 
   The layout is a fixed client-size dialog-style arrangement:
     - header/status summary at the top
-    - multiline read-only log in the middle
-    - single-line prompt edit near the bottom
-    - three owner-draw buttons aligned on the lower right
-    - status line below the input row
+    - multiline prompt editor taking roughly one third of the body
+    - centered owner-draw action row directly under the prompt editor
+    - multiline read-only answer pane taking the remaining space
+    - status line pinned to the bottom
 
   Current geometry is DPI-scaled through S(). Button widths are measured with
-  Ai_MeasureButtonWidth() so the label text and icon always fit.
+  Ai_MeasureButtonWidth() so the label text and icon always fit. The answer
+  pane uses a monospace font so fenced code blocks and indentation remain easy
+  to read.
 
   The Ollama icon is loaded from ollama.png in the executable directory, not
   from the current working directory. That keeps the icon visible after install
@@ -131,10 +135,12 @@ FILES:
 
   Owner-draw buttons use Ai_DrawButton():
     - Green for Send
-    - Blue for Copy
+    - Blue for Copy, with a clipboard-style glyph
     - Red for Clear
+    - Red for Close
 
-  All three buttons draw the Ollama image when it is available.
+  Only the Send button uses the Ollama image; Copy uses the clipboard glyph,
+  and Clear/Close are plain text buttons.
 
   The button spec is stored in AiDialogData so WM_DRAWITEM can paint the
   current button set without hardcoded text comparisons.
@@ -151,19 +157,22 @@ FILES:
   WM_CREATE
     - Restores settings.
     - Builds the menu.
-    - Creates the header, log, input, buttons, and status line.
-    - Applies the common 12pt dialog font.
-    - Populates the initial status text and opens the log with a startup line.
+    - Creates the header, prompt editor, answer pane, buttons, and status line.
+    - Applies the common 12pt dialog font to chrome and a monospace pane font
+      to the text areas.
+    - Populates the initial status text and opens the answer pane with a
+      startup line.
 
   WM_SIZE
     - Repositions all child controls.
-    - Uses a fixed bottom area for input and action buttons.
-    - Keeps the log as the flexible middle region.
+    - Keeps the prompt editor around one third of the body height.
+    - Centers the action row under the prompt editor.
+    - Lets the answer pane use the remaining space.
 
   WM_COMMAND
     - Handles model/cloud/sign-in/log/help commands.
     - Send triggers Ai_DoSend().
-    - Copy and Clear are also routed from their owner-draw buttons.
+    - Copy, Clear, and Close are also routed from their owner-draw buttons.
 
   WM_DRAWITEM
     - Paints the owner-draw buttons through Ai_DrawButton().
@@ -188,7 +197,10 @@ FILES:
     - send the selected model and prompt as JSON
     - request non-streaming output so the dialog can append one answer line
 
-  The log still shows the user's question first, then the Ollama reply or a
+  Before sending, the AI window prefixes a short markdown instruction so code
+  answers are more likely to come back fenced and indentation-safe.
+
+  The output pane shows the user's question first, then the Ollama reply or a
   short error message if the local service is not reachable.
 
 ================================================================================

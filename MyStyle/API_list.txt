@@ -637,12 +637,17 @@
                                                 follows the author from project to project.
 
   ollama_ai.cpp                                 AI shell window implementation. Owns the
-                                                menu bar, owner-draw controls, prompt log,
-                                                preference sync, prompt send/receive logic,
-                                                and layout for the standalone AI window.
+                                                menu bar, owner-draw controls, split prompt
+                                                and answer panes, preference sync, prompt
+                                                send/receive logic, and layout for the
+                                                standalone AI window.
                                                 It also resolves `ollama.png` from the
                                                 executable directory so the AI buttons
-                                                keep their icon after install.
+                                                keep their icon after install. Enter sends
+                                                the prompt, Shift+Enter inserts a newline,
+                                                code prompts are nudged into fenced markdown
+                                                blocks, and the action row includes Send,
+                                                Copy, Clear, and Close.
                                                 Full layout and control-flow notes live in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
 

@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <gdiplus.h>
 #include <commctrl.h>
+#include <richedit.h>
 #include <shellapi.h>
 #include <string>
 
@@ -18,6 +19,7 @@
 #define IDC_AI_COPY_BTN           1955
 #define IDC_AI_CLEAR_BTN          1956
 #define IDC_AI_STATUS             1957
+#define IDC_AI_CLOSE_BTN          1958
 
 #define IDM_AI_MODEL_DEFAULT      1901
 #define IDM_AI_MODEL_FALLBACK     1902
@@ -45,6 +47,7 @@ struct AiButtonSpec {
     AiBtnTone tone = AiBtnTone::Blue;
     int width = 0;
     bool useOllamaImage = false;
+    bool useCopyGlyph = false;
 };
 
 struct AiDialogData {
@@ -60,7 +63,9 @@ struct AiWindowState {
     HWND hSendBtn = NULL;
     HWND hCopyBtn = NULL;
     HWND hClearBtn = NULL;
+    HWND hCloseBtn = NULL;
     HFONT hFont = NULL;
+    HFONT hPaneFont = NULL;
     AiDialogData* dd = NULL;
     std::wstring model;
     std::wstring fallback;
@@ -144,6 +149,18 @@ static HFONT Ai_MakeDlgFont(HWND hwnd, bool bold = false)
     return CreateFontIndirectW(&ncm.lfMessageFont);
 }
 
+static HFONT Ai_MakePaneFont(HWND hwnd)
+{
+    NONCLIENTMETRICSW ncm = {};
+    ncm.cbSize = sizeof(ncm);
+    SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
+    UINT dpi = hwnd ? GetDpiForWindow(hwnd) : GetDpiForSystem();
+    ncm.lfMessageFont.lfHeight = -MulDiv(11, dpi > 0 ? dpi : 96, 72);
+    ncm.lfMessageFont.lfQuality = CLEARTYPE_QUALITY;
+    lstrcpyW(ncm.lfMessageFont.lfFaceName, L"Consolas");
+    return CreateFontIndirectW(&ncm.lfMessageFont);
+}
+
 static int Ai_MeasureButtonWidth(const std::wstring& text)
 {
     HDC hdc = GetDC(NULL);
@@ -220,6 +237,27 @@ static void Ai_DrawButton(const DRAWITEMSTRUCT* dis, const AiDialogData* dd)
             int y = iconY + (S(16) - iconSz) / 2;
             g.DrawImage(aiImg, x, y, iconSz, iconSz);
         }
+    } else if (b.useCopyGlyph) {
+        COLORREF edge = disabled ? RGB(150, 150, 150) : RGB(70, 70, 70);
+        COLORREF fill = disabled ? RGB(235, 235, 235) : RGB(250, 250, 250);
+        HPEN hPen = CreatePen(PS_SOLID, 1, edge);
+        HBRUSH hFill = CreateSolidBrush(fill);
+        HPEN oldPen = (HPEN)SelectObject(hdc, hPen);
+        HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, hFill);
+
+        RECT back = { startX + S(4), iconY + S(3), startX + S(14), iconY + S(13) };
+        Rectangle(hdc, back.left, back.top, back.right, back.bottom);
+        RECT front = { startX, iconY, startX + S(10), iconY + S(10) };
+        Rectangle(hdc, front.left, front.top, front.right, front.bottom);
+        MoveToEx(hdc, front.left + S(2), front.top + S(3), NULL);
+        LineTo(hdc, front.right - S(2), front.top + S(3));
+        MoveToEx(hdc, front.left + S(2), front.top + S(5), NULL);
+        LineTo(hdc, front.right - S(2), front.top + S(5));
+
+        SelectObject(hdc, oldBrush);
+        SelectObject(hdc, oldPen);
+        DeleteObject(hFill);
+        DeleteObject(hPen);
     } else {
         HICON hIcon = LoadIconW(NULL, MAKEINTRESOURCEW(b.id == IDC_AI_CLEAR_BTN ? kSystemIconError : kSystemIconInfo));
         if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
@@ -364,12 +402,16 @@ static void Ai_AppendLog(HWND hwnd, const std::wstring& line)
 static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR dwRefData)
 {
-    if (msg == WM_KEYDOWN && wParam == VK_RETURN) {
+    bool plainEnter = !(GetKeyState(VK_SHIFT) & 0x8000) && !(GetKeyState(VK_CONTROL) & 0x8000);
+    if (msg == WM_KEYDOWN && wParam == VK_RETURN && plainEnter) {
         HWND hParent = (HWND)dwRefData;
         if (hParent) {
             Ai_DoSend(hParent);
             return 0;
         }
+    }
+    if (msg == WM_CHAR && wParam == L'\r' && plainEnter) {
+        return 0;
     }
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
@@ -377,10 +419,11 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
 static void Ai_ApplyButtons(AiWindowState* st)
 {
     if (!st || !st->dd) return;
-    st->dd->buttonCount = 3;
+    st->dd->buttonCount = 4;
     st->dd->buttons[0] = AiButtonSpec{ IDC_AI_SEND_BTN,  L"Send",  AiBtnTone::Green, Ai_MeasureButtonWidth(L"Send"),  true };
-    st->dd->buttons[1] = AiButtonSpec{ IDC_AI_COPY_BTN,  L"Copy",  AiBtnTone::Blue,  Ai_MeasureButtonWidth(L"Copy"),  true };
+    st->dd->buttons[1] = AiButtonSpec{ IDC_AI_COPY_BTN,  L"Copy",  AiBtnTone::Blue,  Ai_MeasureButtonWidth(L"Copy"),  false, true };
     st->dd->buttons[2] = AiButtonSpec{ IDC_AI_CLEAR_BTN, L"Clear", AiBtnTone::Red,   Ai_MeasureButtonWidth(L"Clear"), true };
+    st->dd->buttons[3] = AiButtonSpec{ IDC_AI_CLOSE_BTN, L"Close", AiBtnTone::Red,   Ai_MeasureButtonWidth(L"Close"), true };
 }
 
 static HMENU Ai_BuildMenu()
@@ -430,14 +473,19 @@ static void Ai_DoSend(HWND hwnd)
     if (hInput) GetWindowTextW(hInput, prompt, 2048);
     if (!prompt[0]) return;
 
+    if (hInput) SetWindowTextW(hInput, L"");
+
     std::wstring userLine = L"You: ";
     userLine += prompt;
     Ai_AppendLog(hwnd, userLine);
 
+    std::wstring formattedPrompt = L"Answer in Markdown. Preserve indentation and use fenced code blocks for any code.\r\n\r\n";
+    formattedPrompt += prompt;
+
     std::wstring reply;
     std::wstring error;
     std::wstring selectedModel = st->model.empty() ? Ai_DefaultModelName() : st->model;
-    if (NeAiClient_AskOllama(selectedModel, prompt, reply, error)) {
+    if (NeAiClient_AskOllama(selectedModel, formattedPrompt, reply, error)) {
         Ai_AppendLog(hwnd, L"Ollama: " + reply);
     } else {
         std::wstring fallbackModel = st->fallback.empty() ? Ai_FallbackModelName() : st->fallback;
@@ -448,15 +496,13 @@ static void Ai_DoSend(HWND hwnd)
         if (modelMissing && fallbackModel != selectedModel) {
             Ai_AppendLog(hwnd, L"Ollama: selected model not found, retrying with fallback model.");
             error.clear();
-            if (NeAiClient_AskOllama(fallbackModel, prompt, reply, error)) {
+            if (NeAiClient_AskOllama(fallbackModel, formattedPrompt, reply, error)) {
                 Ai_AppendLog(hwnd, L"Ollama: " + reply);
                 return;
             }
         }
         Ai_AppendLog(hwnd, L"Ollama: " + (error.empty() ? L"No response." : error));
     }
-
-    if (hInput) SetWindowTextW(hInput, L"");
 }
 
 static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -473,7 +519,18 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (!st->dd) return -1;
 
         st->hFont = Ai_MakeDlgFont(hwnd, false);
+        st->hPaneFont = Ai_MakePaneFont(hwnd);
         Ai_ApplyButtons(st);
+
+        LoadLibraryW(L"Msftedit.dll");
+        const wchar_t* reClass = L"EDIT";
+        HMODULE hMsft = GetModuleHandleW(L"Msftedit.dll");
+        if (hMsft) {
+            WNDCLASSEXW wce = { sizeof(wce) };
+            if (GetClassInfoExW(hMsft, L"RICHEDIT50W", &wce)) {
+                reClass = L"RICHEDIT50W";
+            }
+        }
 
         SetMenu(hwnd, Ai_BuildMenu());
 
@@ -482,18 +539,21 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             S(10), S(10), S(800), S(72), hwnd, (HMENU)(UINT_PTR)IDC_AI_HEADER, GetModuleHandleW(NULL), NULL);
         if (hHdr && st->hFont) SendMessageW(hHdr, WM_SETFONT, (WPARAM)st->hFont, TRUE);
 
-        HWND hLog = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL | ES_READONLY,
+        HWND hLog = CreateWindowExW(WS_EX_CLIENTEDGE, reClass, L"",
+            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_VSCROLL | WS_HSCROLL | ES_READONLY | ES_NOHIDESEL,
             S(10), S(86), S(820), S(340), hwnd, (HMENU)(UINT_PTR)IDC_AI_LOG, GetModuleHandleW(NULL), NULL);
-        if (hLog && st->hFont) SendMessageW(hLog, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+        if (hLog && st->hPaneFont) SendMessageW(hLog, WM_SETFONT, (WPARAM)st->hPaneFont, TRUE);
+        if (hLog) {
+            SendMessageW(hLog, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
+        }
 
-        HWND hInput = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+        HWND hInput = CreateWindowExW(WS_EX_CLIENTEDGE, reClass, L"",
+            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_VSCROLL | WS_HSCROLL,
             S(10), S(438), S(640), S(24), hwnd, (HMENU)(UINT_PTR)IDC_AI_INPUT, GetModuleHandleW(NULL), NULL);
-        if (hInput && st->hFont) SendMessageW(hInput, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+        if (hInput && st->hPaneFont) SendMessageW(hInput, WM_SETFONT, (WPARAM)st->hPaneFont, TRUE);
         if (hInput) SetWindowSubclass(hInput, Ai_InputSubclassProc, 1, (DWORD_PTR)hwnd);
 
-        int totalBtnW = st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width;
+        int totalBtnW = st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10) + st->dd->buttons[3].width;
         int btnY = S(438);
         int btnX = S(10) + S(820) - totalBtnW;
         HWND hSend = CreateWindowExW(0, L"BUTTON", st->dd->buttons[0].text.c_str(),
@@ -511,6 +571,11 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10), btnY, st->dd->buttons[2].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_CLEAR_BTN, GetModuleHandleW(NULL), NULL);
         if (hClear && st->hFont) SendMessageW(hClear, WM_SETFONT, (WPARAM)st->hFont, TRUE);
 
+        HWND hClose = CreateWindowExW(0, L"BUTTON", st->dd->buttons[3].text.c_str(),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
+            btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10), btnY, st->dd->buttons[3].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_CLOSE_BTN, GetModuleHandleW(NULL), NULL);
+        if (hClose && st->hFont) SendMessageW(hClose, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
         HWND hStatus = CreateWindowExW(0, L"STATIC", L"",
             WS_CHILD | WS_VISIBLE | SS_LEFT,
             S(10), S(470), S(820), S(22), hwnd, (HMENU)(UINT_PTR)IDC_AI_STATUS, GetModuleHandleW(NULL), NULL);
@@ -523,6 +588,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         st->hSendBtn = hSend;
         st->hCopyBtn = hCopy;
         st->hClearBtn = hClear;
+        st->hCloseBtn = hClose;
 
         Ai_RefreshUi(hwnd);
         Ai_AppendLog(hwnd, L"AI window opened.");
@@ -533,30 +599,37 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (!st) break;
         RECT rc; GetClientRect(hwnd, &rc);
         int pad = S(10);
-        int bottomH = S(118);
         int hdrH = S(72);
         int statusH = S(18);
-        int inputH = S(24);
+        int buttonH = S(34);
+        int gap = S(6);
         HWND hHdr = GetDlgItem(hwnd, IDC_AI_HEADER);
         HWND hLog = GetDlgItem(hwnd, IDC_AI_LOG);
         HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
         HWND hSend = GetDlgItem(hwnd, IDC_AI_SEND_BTN);
         HWND hCopy = GetDlgItem(hwnd, IDC_AI_COPY_BTN);
         HWND hClear = GetDlgItem(hwnd, IDC_AI_CLEAR_BTN);
+        HWND hClose = GetDlgItem(hwnd, IDC_AI_CLOSE_BTN);
         HWND hStatus = GetDlgItem(hwnd, IDC_AI_STATUS);
+        int contentTop = pad + hdrH + gap;
+        int contentBottom = std::max(contentTop, (int)rc.bottom - pad - statusH - gap);
+        int contentH = std::max(0, contentBottom - contentTop);
+        int availableForEditors = std::max(0, contentH - buttonH - gap);
+        int inputH = std::max(S(96), availableForEditors / 3);
+        int logH = std::max(0, availableForEditors - inputH);
+        int inputW = std::max(0, (int)rc.right - 2 * pad);
+        int logY = contentTop + inputH + gap + buttonH + gap;
+        int btnY = contentTop + inputH + gap;
+        int totalBtnW = st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10) + st->dd->buttons[3].width;
+        int btnX = pad + std::max(0, (inputW - totalBtnW) / 2);
         if (hHdr) SetWindowPos(hHdr, NULL, pad, pad, rc.right - 2 * pad, hdrH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hLog) SetWindowPos(hLog, NULL, pad, pad + hdrH + S(6), rc.right - 2 * pad,
-            std::max(0, (int)(rc.bottom - (pad + hdrH + S(6)) - bottomH)), SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hInput) SetWindowPos(hInput, NULL, pad, rc.bottom - S(58),
-            std::max(0, (int)(rc.right - 3 * pad - S(220))), inputH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hSend) SetWindowPos(hSend, NULL, rc.right - pad - st->dd->buttons[0].width,
-            rc.bottom - S(62), st->dd->buttons[0].width, S(34), SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hCopy) SetWindowPos(hCopy, NULL, rc.right - pad - st->dd->buttons[0].width - S(10) - st->dd->buttons[1].width,
-            rc.bottom - S(62), st->dd->buttons[1].width, S(34), SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hClear) SetWindowPos(hClear, NULL, rc.right - pad - st->dd->buttons[0].width - S(10) - st->dd->buttons[1].width - S(10) - st->dd->buttons[2].width,
-            rc.bottom - S(62), st->dd->buttons[2].width, S(34), SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hStatus) SetWindowPos(hStatus, NULL, pad, rc.bottom - S(86),
-            rc.right - 2 * pad, statusH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hInput) SetWindowPos(hInput, NULL, pad, contentTop, inputW, inputH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hSend) SetWindowPos(hSend, NULL, btnX, btnY, st->dd->buttons[0].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hCopy) SetWindowPos(hCopy, NULL, btnX + st->dd->buttons[0].width + S(10), btnY, st->dd->buttons[1].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hClear) SetWindowPos(hClear, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10), btnY, st->dd->buttons[2].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hClose) SetWindowPos(hClose, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10), btnY, st->dd->buttons[3].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hLog) SetWindowPos(hLog, NULL, pad, logY, rc.right - 2 * pad, logH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hStatus) SetWindowPos(hStatus, NULL, pad, rc.bottom - pad - statusH, rc.right - 2 * pad, statusH, SWP_NOZORDER | SWP_NOACTIVATE);
         return 0;
     }
     case WM_COMMAND:
@@ -646,6 +719,9 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDC_AI_CLEAR_BTN:
             SendMessageW(hwnd, WM_COMMAND, IDM_AI_LOG_CLEAR, 0);
             return 0;
+        case IDC_AI_CLOSE_BTN:
+            DestroyWindow(hwnd);
+            return 0;
         case IDM_AI_ABOUT:
             Ai_AppendLog(hwnd, L"This is the AI shell window. Full Ollama chat wiring will follow.");
             return 0;
@@ -678,6 +754,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_DESTROY:
         if (st) {
             if (st->hFont) DeleteObject(st->hFont);
+            if (st->hPaneFont) DeleteObject(st->hPaneFont);
             delete st->dd;
             delete st;
         }
