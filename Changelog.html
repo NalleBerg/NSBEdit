@@ -1,15 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 June 2026 &mdash; v2026.06.11.14 (14:52)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 June 2026 &mdash; v2026.06.11.15 (15:10)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
-<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.14 (Fix: AI button crash after launch)</span></h3>
-<p><strong>Fix: AI button crash after launch (11.06.2026, 14:52):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.15 (Fix: AI window wraps text instead of using sideways scroll)</span></h3>
+<p><strong>Fix: AI window wraps text instead of using sideways scroll (11.06.2026, 15:10):</strong></p>
 <ul>
-<li><strong>Fix: the AI button no longer crashes the app:</strong> the AI window now allocates space for all four owner-draw buttons instead of writing past the end of its button table when the window opens.</li>
-<li><strong>Fix: Enter still sends and clears the prompt immediately:</strong> the AI input box is multiline, but a plain Enter keypress now sends the prompt and empties the field right away, while Shift+Enter still inserts a newline.</li>
-<li><strong>Fix: the AI window keeps the 1/3 prompt / 2/3 answer split:</strong> the prompt editor takes the top third of the body, the answer pane fills the rest, and both panes are multiline with scrollbars so long conversations and code blocks stay readable.</li>
-<li><strong>Fix: action buttons stay centered under the prompt field:</strong> Send, Copy, Clear, and Close sit in a centered row below the query box, and Copy uses a clipboard-style icon while Send keeps the Ollama icon.</li>
-<li><strong>Fix: answers are nudged into formatted markdown:</strong> prompts are prefixed with a short instruction so code responses are more likely to come back fenced and indentation-safe.</li>
+<li><strong>Fix: the AI log and prompt boxes now wrap to the control width:</strong> the standalone AI window now uses RichEdit wrap-to-window mode instead of horizontal scrolling, so long replies and prompts stay readable without a sideways scrollbar.</li>
+<li><strong>Fix: the AI input still sends on plain Enter:</strong> the prompt box remains multiline, Enter sends the prompt immediately, and Shift+Enter still inserts a newline.</li>
+<li><strong>Fix: the AI window keeps the centered action row:</strong> Send, Copy, Clear, and Close stay centered under the prompt field, and the output pane still fills the remaining space.</li>
 </ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.11 (Fix: shared AppData DB for portable and installed launches)</span></h3>

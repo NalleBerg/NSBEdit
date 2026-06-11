@@ -1,5 +1,13 @@
 # Changelog
 
+# Changelog
+
+## v2026.06.11.15 (Fix: AI window wraps text instead of using sideways scroll) - 11.06.2026 15:10
+
+- **Fix: the AI log and prompt boxes now wrap to the control width**: the standalone AI window now uses RichEdit wrap-to-window mode instead of horizontal scrolling, so long replies and prompts stay readable without a sideways scrollbar.
+- **Fix: the AI input still sends on plain Enter**: the prompt box remains multiline, Enter sends the prompt immediately, and Shift+Enter still inserts a newline.
+- **Fix: the AI window keeps the centered action row**: Send, Copy, Clear, and Close stay centered under the prompt field, and the output pane still fills the remaining space.
+
 ## v2026.06.11.14 (Fix: AI button crash after launch) - 11.06.2026 14:52
 
 - **Fix: the AI button no longer crashes the app**: the AI window now allocates space for all four owner-draw buttons instead of writing past the end of its button table when the window opens.

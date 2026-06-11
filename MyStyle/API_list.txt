@@ -643,11 +643,14 @@
                                                 standalone AI window.
                                                 It also resolves `ollama.png` from the
                                                 executable directory so the AI buttons
-                                                keep their icon after install. Enter sends
-                                                the prompt, Shift+Enter inserts a newline,
-                                                code prompts are nudged into fenced markdown
-                                                blocks, and the action row includes Send,
-                                                Copy, Clear, and Close.
+                                                keep their icon after install. The prompt
+                                                and answer RichEdit panes wrap to the
+                                                control width via EM_SETTARGETDEVICE(NULL,0)
+                                                so there is no sideways scroll bar. Enter
+                                                sends the prompt, Shift+Enter inserts a
+                                                newline, code prompts are nudged into fenced
+                                                markdown blocks, and the action row includes
+                                                Send, Copy, Clear, and Close.
                                                 Full layout and control-flow notes live in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
 

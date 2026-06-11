@@ -46,6 +46,11 @@
     - send a single prompt to Ollama and show the reply in the log
     - allow copying or clearing the current log
 
+  Text handling:
+    - Both RichEdit panes wrap to the control width with no sideways scroll.
+    - The prompt box remains multiline so Shift+Enter can insert a newline.
+    - Plain Enter still sends the current prompt.
+
   Ownership and lifetime:
     - The caller passes the parent HWND for centering and ownership.
     - The AI window manages its own child controls, font, menu, and state.

@@ -399,6 +399,13 @@ static void Ai_AppendLog(HWND hwnd, const std::wstring& line)
     SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
 }
 
+static void Ai_SetWrapToWindow(HWND hwndEdit)
+{
+    if (hwndEdit) {
+        SendMessageW(hwndEdit, EM_SETTARGETDEVICE, (WPARAM)NULL, 0);
+    }
+}
+
 static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR dwRefData)
 {
@@ -540,17 +547,19 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (hHdr && st->hFont) SendMessageW(hHdr, WM_SETFONT, (WPARAM)st->hFont, TRUE);
 
         HWND hLog = CreateWindowExW(WS_EX_CLIENTEDGE, reClass, L"",
-            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_VSCROLL | WS_HSCROLL | ES_READONLY | ES_NOHIDESEL,
+            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL | ES_READONLY | ES_NOHIDESEL,
             S(10), S(86), S(820), S(340), hwnd, (HMENU)(UINT_PTR)IDC_AI_LOG, GetModuleHandleW(NULL), NULL);
         if (hLog && st->hPaneFont) SendMessageW(hLog, WM_SETFONT, (WPARAM)st->hPaneFont, TRUE);
         if (hLog) {
             SendMessageW(hLog, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
+            Ai_SetWrapToWindow(hLog);
         }
 
         HWND hInput = CreateWindowExW(WS_EX_CLIENTEDGE, reClass, L"",
-            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_AUTOHSCROLL | WS_VSCROLL | WS_HSCROLL,
+            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL,
             S(10), S(438), S(640), S(24), hwnd, (HMENU)(UINT_PTR)IDC_AI_INPUT, GetModuleHandleW(NULL), NULL);
         if (hInput && st->hPaneFont) SendMessageW(hInput, WM_SETFONT, (WPARAM)st->hPaneFont, TRUE);
+        if (hInput) Ai_SetWrapToWindow(hInput);
         if (hInput) SetWindowSubclass(hInput, Ai_InputSubclassProc, 1, (DWORD_PTR)hwnd);
 
         int totalBtnW = st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10) + st->dd->buttons[3].width;
@@ -624,11 +633,13 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         int btnX = pad + std::max(0, (inputW - totalBtnW) / 2);
         if (hHdr) SetWindowPos(hHdr, NULL, pad, pad, rc.right - 2 * pad, hdrH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hInput) SetWindowPos(hInput, NULL, pad, contentTop, inputW, inputH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hInput) Ai_SetWrapToWindow(hInput);
         if (hSend) SetWindowPos(hSend, NULL, btnX, btnY, st->dd->buttons[0].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hCopy) SetWindowPos(hCopy, NULL, btnX + st->dd->buttons[0].width + S(10), btnY, st->dd->buttons[1].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hClear) SetWindowPos(hClear, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10), btnY, st->dd->buttons[2].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hClose) SetWindowPos(hClose, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10), btnY, st->dd->buttons[3].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hLog) SetWindowPos(hLog, NULL, pad, logY, rc.right - 2 * pad, logH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (hLog) Ai_SetWrapToWindow(hLog);
         if (hStatus) SetWindowPos(hStatus, NULL, pad, rc.bottom - pad - statusH, rc.right - 2 * pad, statusH, SWP_NOZORDER | SWP_NOACTIVATE);
         return 0;
     }
