@@ -52,7 +52,7 @@ struct AiButtonSpec {
 
 struct AiDialogData {
     int buttonCount = 0;
-    AiButtonSpec buttons[3];
+    AiButtonSpec buttons[4];
 };
 
 struct AiWindowState {

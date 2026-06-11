@@ -1,10 +1,11 @@
 # Changelog
 
-## v2026.06.11.13 (Fix: AI window send/format/layout polish) - 11.06.2026 13:45
+## v2026.06.11.14 (Fix: AI button crash after launch) - 11.06.2026 14:52
 
-- **Fix: Enter now sends and clears the prompt immediately**: the AI input box is multiline, but a plain Enter keypress now sends the prompt and empties the field right away, while Shift+Enter still inserts a newline.
-- **Fix: the AI window now uses a 1/3 prompt / 2/3 answer split**: the prompt editor takes the top third of the body, the answer pane fills the rest, and both panes are multiline with scrollbars so long conversations and code blocks stay readable.
-- **Fix: action buttons are centered under the prompt field**: Send, Copy, Clear, and Close now sit in a centered row below the query box, and Copy uses a clipboard-style icon while Send keeps the Ollama icon.
+- **Fix: the AI button no longer crashes the app**: the AI window now allocates space for all four owner-draw buttons instead of writing past the end of its button table when the window opens.
+- **Fix: Enter still sends and clears the prompt immediately**: the AI input box is multiline, but a plain Enter keypress now sends the prompt and empties the field right away, while Shift+Enter still inserts a newline.
+- **Fix: the AI window keeps the 1/3 prompt / 2/3 answer split**: the prompt editor takes the top third of the body, the answer pane fills the rest, and both panes are multiline with scrollbars so long conversations and code blocks stay readable.
+- **Fix: action buttons stay centered under the prompt field**: Send, Copy, Clear, and Close sit in a centered row below the query box, and Copy uses a clipboard-style icon while Send keeps the Ollama icon.
 - **Fix: answers are nudged into formatted markdown**: prompts are prefixed with a short instruction so code responses are more likely to come back fenced and indentation-safe.
 
 ## v2026.06.11.11 (Fix: shared AppData DB for portable and installed launches) - 11.06.2026 11:00
