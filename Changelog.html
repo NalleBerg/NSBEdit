@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 June 2026 &mdash; v2026.06.11.09 (09:44)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 June 2026 &mdash; v2026.06.11.10 (10:07)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.10 (Fix: installed AI self-heal and packaged Ollama icon)</span></h3>
+<p><strong>Fix: installed AI self-heal and packaged Ollama icon (11.06.2026, 10:07):</strong></p>
+<ul>
+<li><strong>Fix: installed AI prefs now normalise old model tags on load:</strong> the standalone AI window now converts any saved <code>qwen2.5-coder:7b-instruct</code> / <code>qwen2.5-coder:3b-instruct</code> values back to the valid current <code>qwen2.5-coder:7b</code> / <code>qwen2.5-coder:3b</code> tags when it starts, so older AppData settings stop forcing the stale <code>instruct</code> names.</li>
+<li><strong>Fix: Ollama icon is now shipped with the release and installer:</strong> <code>ollama.png</code> is included in the ZIP and copied by the installer, and the UI resolves it from the executable directory instead of relying on the current working directory.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.09 (Fix: Ollama model tags and install-time model pulls)</span></h3>
 <p><strong>Fix: Ollama model tags and install-time model pulls (11.06.2026, 09:44):</strong></p>

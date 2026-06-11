@@ -63,6 +63,10 @@ FILES:
     - model defaults to qwen2.5-coder:7b
     - fallback defaults to qwen2.5-coder:3b
 
+  If older saved prefs still contain qwen2.5-coder:7b-instruct or
+  qwen2.5-coder:3b-instruct, Ai_LoadPrefs() normalises them back to the valid
+  current tags on startup so installed builds self-heal.
+
   Saved preferences are loaded in Ai_LoadPrefs() and written back by
   Ai_SavePrefs() using NeProfiles_SetStrSetting / NeProfiles_SetIntSetting.
 
@@ -121,10 +125,16 @@ FILES:
   Current geometry is DPI-scaled through S(). Button widths are measured with
   Ai_MeasureButtonWidth() so the label text and icon always fit.
 
+  The Ollama icon is loaded from ollama.png in the executable directory, not
+  from the current working directory. That keeps the icon visible after install
+  and when the app is launched through a shortcut.
+
   Owner-draw buttons use Ai_DrawButton():
     - Green for Send
     - Blue for Copy
     - Red for Clear
+
+  All three buttons draw the Ollama image when it is available.
 
   The button spec is stored in AiDialogData so WM_DRAWITEM can paint the
   current button set without hardcoded text comparisons.

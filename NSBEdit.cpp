@@ -2830,7 +2830,16 @@ static Gdiplus::Image* Ne_GetOllamaButtonImage()
     static bool s_ollamaImageTried = false;
     if (!s_ollamaImageTried) {
         s_ollamaImageTried = true;
-        s_ollamaImage = Gdiplus::Image::FromFile(L".\\ollama.png", FALSE);
+        wchar_t exePath[MAX_PATH] = {};
+        if (GetModuleFileNameW(NULL, exePath, MAX_PATH)) {
+            wchar_t* slash = wcsrchr(exePath, L'\\');
+            if (slash) {
+                *(slash + 1) = L'\0';
+                std::wstring imagePath = exePath;
+                imagePath += L"ollama.png";
+                s_ollamaImage = Gdiplus::Image::FromFile(imagePath.c_str(), FALSE);
+            }
+        }
         if (s_ollamaImage && s_ollamaImage->GetLastStatus() != Gdiplus::Ok) {
             delete s_ollamaImage;
             s_ollamaImage = NULL;

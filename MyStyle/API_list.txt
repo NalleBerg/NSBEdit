@@ -624,6 +624,8 @@
                                                 startup model/provider settings from
                                                 %APPDATA%\NSBEdit\ai-settings.json and
                                                 exposes NeAiBootstrap_Load/Get().
+                                                Old `*-instruct` model names are
+                                                normalised to the current valid tags.
 
   ne_ai_client.h / ne_ai_client.cpp             Ollama localhost probe helper — WinHTTP
                                                 check used by the AI shell to decide
@@ -638,6 +640,9 @@
                                                 menu bar, owner-draw controls, prompt log,
                                                 preference sync, prompt send/receive logic,
                                                 and layout for the standalone AI window.
+                                                It also resolves `ollama.png` from the
+                                                executable directory so the AI buttons
+                                                keep their icon after install.
                                                 Full layout and control-flow notes live in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
 

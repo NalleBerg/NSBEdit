@@ -1,5 +1,10 @@
 # Changelog
 
+## v2026.06.11.10 (Fix: installed AI self-heal and packaged Ollama icon) - 11.06.2026 10:07
+
+- **Fix: installed AI prefs now normalise old model tags on load**: the standalone AI window now converts any saved `qwen2.5-coder:7b-instruct` / `qwen2.5-coder:3b-instruct` values back to the valid current `qwen2.5-coder:7b` / `qwen2.5-coder:3b` tags when it starts, so older AppData settings stop forcing the stale `instruct` names.
+- **Fix: Ollama icon is now shipped with the release and installer**: `ollama.png` is included in the ZIP and copied by the installer, and the UI resolves it from the executable directory instead of relying on the current working directory.
+
 ## v2026.06.11.09 (Fix: Ollama model tags and install-time model pulls) - 11.06.2026 09:44
 
 - **Fix: Ollama requests now default to valid local model tags**: the AI shell now sends `qwen2.5-coder:7b` by default and falls back to `qwen2.5-coder:3b`, with old saved `*-instruct` values still normalised on load so existing installs keep working.

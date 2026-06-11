@@ -43,9 +43,8 @@ struct AiButtonSpec {
     int id = 0;
     std::wstring text;
     AiBtnTone tone = AiBtnTone::Blue;
-    const wchar_t* iconRes = nullptr;
     int width = 0;
-    HICON hIconOverride = NULL;
+    bool useOllamaImage = false;
 };
 
 struct AiDialogData {
@@ -71,6 +70,35 @@ struct AiWindowState {
 
 static HWND s_hwndAiWindow = NULL;
 
+static std::wstring Ai_GetExeDir()
+{
+    wchar_t exePath[MAX_PATH] = {};
+    if (!GetModuleFileNameW(NULL, exePath, MAX_PATH)) return {};
+    wchar_t* slash = wcsrchr(exePath, L'\\');
+    if (!slash) return {};
+    *(slash + 1) = L'\0';
+    return exePath;
+}
+
+static Gdiplus::Image* Ai_GetOllamaButtonImage()
+{
+    static Gdiplus::Image* s_ollamaImage = NULL;
+    static bool s_ollamaImageTried = false;
+    if (!s_ollamaImageTried) {
+        s_ollamaImageTried = true;
+        std::wstring imagePath = Ai_GetExeDir();
+        if (!imagePath.empty()) {
+            imagePath += L"ollama.png";
+            s_ollamaImage = Gdiplus::Image::FromFile(imagePath.c_str(), FALSE);
+        }
+        if (s_ollamaImage && s_ollamaImage->GetLastStatus() != Gdiplus::Ok) {
+            delete s_ollamaImage;
+            s_ollamaImage = NULL;
+        }
+    }
+    return s_ollamaImage;
+}
+
 static std::string Ai_WideToUtf8(const std::wstring& w)
 {
     if (w.empty()) return {};
@@ -91,6 +119,15 @@ static std::wstring Ai_FallbackModelName()
 {
     const NeAiBootstrapConfig& bootstrap = NeAiBootstrap_Get();
     return bootstrap.fallback.empty() ? L"qwen2.5-coder:3b" : bootstrap.fallback;
+}
+
+static void Ai_NormalizeModelName(std::wstring& model)
+{
+    if (model == L"qwen2.5-coder:7b-instruct" || model == L"qwen2.5-coder") {
+        model = L"qwen2.5-coder:7b";
+    } else if (model == L"qwen2.5-coder:3b-instruct") {
+        model = L"qwen2.5-coder:3b";
+    }
 }
 
 static void Ai_DoSend(HWND hwnd);
@@ -171,8 +208,22 @@ static void Ai_DrawButton(const DRAWITEMSTRUCT* dis, const AiDialogData* dd)
     int startX = rc.left + ((rc.right - rc.left) - contentW) / 2;
     int iconY = rc.top + ((rc.bottom - rc.top) - S(16)) / 2;
 
-    HICON hIcon = b.hIconOverride ? b.hIconOverride : LoadIconW(NULL, b.iconRes ? b.iconRes : MAKEINTRESOURCEW(kSystemIconInfo));
-    if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
+    if (b.useOllamaImage) {
+        Gdiplus::Image* aiImg = Ai_GetOllamaButtonImage();
+        if (aiImg) {
+            Gdiplus::Graphics g(hdc);
+            g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+            int iconSz = std::min(rc.right - rc.left, rc.bottom - rc.top) - S(8);
+            if (iconSz > S(18)) iconSz = S(18);
+            if (iconSz < S(12)) iconSz = S(12);
+            int x = startX + (S(16) - iconSz) / 2;
+            int y = iconY + (S(16) - iconSz) / 2;
+            g.DrawImage(aiImg, x, y, iconSz, iconSz);
+        }
+    } else {
+        HICON hIcon = LoadIconW(NULL, MAKEINTRESOURCEW(b.id == IDC_AI_CLEAR_BTN ? kSystemIconError : kSystemIconInfo));
+        if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
+    }
 
     RECT tr = rc;
     tr.left = startX + S(16) + S(8);
@@ -226,6 +277,9 @@ static void Ai_LoadPrefs(AiWindowState* st)
             st->fallback = std::move(wide);
         }
     }
+
+    Ai_NormalizeModelName(st->model);
+    Ai_NormalizeModelName(st->fallback);
 
     int mode = 0, signedIn = 0;
     NeProfiles_GetIntSetting("ai.cloud_mode", 0, mode);
@@ -324,9 +378,9 @@ static void Ai_ApplyButtons(AiWindowState* st)
 {
     if (!st || !st->dd) return;
     st->dd->buttonCount = 3;
-    st->dd->buttons[0] = AiButtonSpec{ IDC_AI_SEND_BTN,  L"Send",  AiBtnTone::Green, MAKEINTRESOURCEW(kSystemIconInfo),  Ai_MeasureButtonWidth(L"Send"),  NULL };
-    st->dd->buttons[1] = AiButtonSpec{ IDC_AI_COPY_BTN,  L"Copy",  AiBtnTone::Blue,  MAKEINTRESOURCEW(kSystemIconInfo),  Ai_MeasureButtonWidth(L"Copy"),  NULL };
-    st->dd->buttons[2] = AiButtonSpec{ IDC_AI_CLEAR_BTN, L"Clear", AiBtnTone::Red,   MAKEINTRESOURCEW(kSystemIconError), Ai_MeasureButtonWidth(L"Clear"), NULL };
+    st->dd->buttons[0] = AiButtonSpec{ IDC_AI_SEND_BTN,  L"Send",  AiBtnTone::Green, Ai_MeasureButtonWidth(L"Send"),  true };
+    st->dd->buttons[1] = AiButtonSpec{ IDC_AI_COPY_BTN,  L"Copy",  AiBtnTone::Blue,  Ai_MeasureButtonWidth(L"Copy"),  true };
+    st->dd->buttons[2] = AiButtonSpec{ IDC_AI_CLEAR_BTN, L"Clear", AiBtnTone::Red,   Ai_MeasureButtonWidth(L"Clear"), true };
 }
 
 static HMENU Ai_BuildMenu()

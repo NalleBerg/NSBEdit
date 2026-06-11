@@ -72,6 +72,9 @@ RELATED:
     - qwen2.5-coder:7b
     - qwen2.5-coder:3b
 
+  The installer also includes ollama.png in the payload so the installed AI
+  shell can draw its button icon from the executable directory.
+
 ================================================================================
 4. UPGRADE SAFETY RULE
 ================================================================================
