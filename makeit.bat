@@ -62,6 +62,7 @@ g++ -v -std=c++17 -O2 -Wall -mwindows -municode ^
     NSBEdit.cpp ne_tabs.cpp ne_statusbar.cpp dpi.cpp tooltip\tooltip.cpp scroll\my_scrollbar_vscroll.cpp ^
     highlight\highlight.cpp checkbox.cpp ^
     ne_crypto.cpp ne_profiles.cpp ne_ai_bootstrap.cpp ne_ai_client.cpp ne_session.cpp ne_ftp.cpp ne_autocomplete\ne_autocomplete.cpp ^
+    spinner\spinner_dialog.cpp ^
     ollama_ai.cpp ^
     rtf2html\ne_rtf2html_lib.cpp ^
     sqlite3\sqlite3.o curl\lib\quic_stubs.o NSBEdit.res ^

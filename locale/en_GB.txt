@@ -41,6 +41,7 @@ MENU_SHORTCUTS  = &Keyboard Shortcuts...\tF1
 MENU_ABOUT      = &About NSBEdit
 BTN_AI          = AI
 TIP_AI          = Ask Ollama A.I.
+AI_WAKING_OLLAMA = Asking Ollama, please wait!
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = Con&vert

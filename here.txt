@@ -1,15 +1,13 @@
 NSBEdit — handover notes
-Written: 2026-06-10
+Written: 2026-06-12
 
 Current status
-- The AI shell was moved out of NSBEdit.cpp into its own ollama_ai.cpp/.h module.
-- makeit.bat now builds and packages successfully with the new AI module included.
-- The direct g++ compile/link check also passed.
-- The wrapper build path is the one to keep using for final validation.
+- The AI shell lives in ollama_ai.cpp/.h and is now focused on reply rendering and copy affordances.
+- The reply pane has a visible Copy code header for fenced blocks and a Copy answer popup for the whole rendered response.
+- The current renderer unescapes model HTML tokens and maps simple formatting hints into RichEdit runs, but it still needs a final polish pass for the AI sample content.
 
 Known issue
-- There is still a dialog layout problem in the AI shell and related dialogs: field sizes need tightening and some buttons overlap or crowd the available space.
-- That layout cleanup should be fixed before more AI UI work is added.
+- The AI reply rendering still needs a final visual check for color spans, emoji fallback, and font effects on the target machine.
 
 How to continue
 - Run NewVersion.ps1 to stamp the current time.

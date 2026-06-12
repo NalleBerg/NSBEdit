@@ -1491,28 +1491,36 @@ static void Ne_LoadLocale()
         case 14: resId = IDR_LOCALE_SE_NO; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
-    HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(resId), RT_RCDATA);
-    if (!hRes) return;
-    HGLOBAL hG = LoadResource(hi, hRes);
-    if (!hG) return;
-    const char* data = (const char*)LockResource(hG);
-    DWORD sz = SizeofResource(hi, hRes);
-    if (!data || !sz) return;
-    int wn = MultiByteToWideChar(CP_UTF8, 0, data, (int)sz, NULL, 0);
-    std::wstring text(wn, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, data, (int)sz, text.data(), wn);
-    std::wstringstream ss(text);
-    std::wstring line;
-    while (std::getline(ss, line)) {
-        if (!line.empty() && line.back() == L'\r') line.pop_back();
-        if (line.empty() || line[0] == L'#') continue;
-        size_t eq = line.find(L'=');
-        if (eq == std::wstring::npos) continue;
-        std::wstring key = line.substr(0, eq);
-        std::wstring val = line.substr(eq + 1);
-        while (!key.empty() && key.back() == L' ') key.pop_back();
-        if (!val.empty() && val.front() == L' ') val.erase(0, 1);
-        g_str[std::move(key)] = Ne_Unescape(val);
+    auto loadResource = [&](int id) {
+        HRSRC hRes = FindResourceW(hi, MAKEINTRESOURCEW(id), RT_RCDATA);
+        if (!hRes) return;
+        HGLOBAL hG = LoadResource(hi, hRes);
+        if (!hG) return;
+        const char* data = (const char*)LockResource(hG);
+        DWORD sz = SizeofResource(hi, hRes);
+        if (!data || !sz) return;
+        int wn = MultiByteToWideChar(CP_UTF8, 0, data, (int)sz, NULL, 0);
+        std::wstring text(wn, L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, data, (int)sz, text.data(), wn);
+        std::wstringstream ss(text);
+        std::wstring line;
+        while (std::getline(ss, line)) {
+            if (!line.empty() && line.back() == L'\r') line.pop_back();
+            if (line.empty() || line[0] == L'#') continue;
+            size_t eq = line.find(L'=');
+            if (eq == std::wstring::npos) continue;
+            std::wstring key = line.substr(0, eq);
+            std::wstring val = line.substr(eq + 1);
+            while (!key.empty() && key.back() == L' ') key.pop_back();
+            if (!val.empty() && val.front() == L' ') val.erase(0, 1);
+            g_str[std::move(key)] = Ne_Unescape(val);
+        }
+    };
+
+    g_str.clear();
+    loadResource(IDR_LOCALE_EN_GB);
+    if (resId != IDR_LOCALE_EN_GB) {
+        loadResource(resId);
     }
 }
 
@@ -1521,6 +1529,11 @@ static const wchar_t* Ls(const wchar_t* key)
 {
     auto it = g_str.find(key);
     return (it != g_str.end()) ? it->second.c_str() : key;
+}
+
+const wchar_t* Ne_Ls(const wchar_t* key)
+{
+    return Ls(key);
 }
 
 // Builds a double-null-terminated filter string from a locale key using '|' as pair separator.

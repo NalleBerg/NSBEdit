@@ -28,12 +28,23 @@ FILES:
     - Keep the prompt box multiline so Shift+Enter can insert a newline.
     - Clear the prompt immediately when Send is pressed.
     - Persist the AI preferences through the existing profile store.
+    - Provide a visible Copy code header for fenced blocks and a right-click
+      Copy answer command for the whole rendered response.
 
   Text wrapping:
     - Both RichEdit panes are created without horizontal scrolling.
     - EM_SETTARGETDEVICE(NULL, 0) is applied so each pane wraps to its current
       control width.
     - WM_SIZE reapplies the wrap target after the controls are resized.
+
+  Reply rendering:
+    - The reply parser now normalises model escape text like u003c/u003e before
+      it reaches RichEdit so sample HTML-like spans do not print literally.
+    - Simple colour spans, bold, italic, underline, and strikethrough are
+      translated into RichEdit character-format runs.
+    - Code blocks use a separate monospaced run and a visible Copy code label;
+      the click target is measured from the rendered label position and width
+      instead of being guessed from the raw text index.
 
 ================================================================================
 2. ENTRY POINT
@@ -111,7 +122,7 @@ FILES:
   Log submenu:
     - Send prompt
     - Clear log
-    - Copy log
+    - Copy answer
 
   Help submenu:
     - About this window
@@ -179,6 +190,12 @@ FILES:
     - Handles model/cloud/sign-in/log/help commands.
     - Send triggers Ai_DoSend().
     - Copy, Clear, and Close are also routed from their owner-draw buttons.
+    - Copy answer uses the rendered answer range, not the whole log buffer.
+
+  WM_CONTEXTMENU
+    - Right-click on the answer pane opens a small popup menu with Copy.
+    - That menu calls the same answer-copy path as the Log submenu and Copy
+      button.
 
   WM_DRAWITEM
     - Paints the owner-draw buttons through Ai_DrawButton().
@@ -214,6 +231,8 @@ FILES:
 
   The output pane shows the user's question first, then the Ollama reply or a
   short error message if the local service is not reachable.
+  The reply path now tries to preserve visible emphasis and color hints from
+  the model output instead of flattening everything to plain text.
 
 ================================================================================
 9. EXTERNAL DEPENDENCIES

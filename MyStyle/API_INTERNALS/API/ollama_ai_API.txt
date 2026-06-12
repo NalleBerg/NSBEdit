@@ -44,12 +44,18 @@
     - expose sign-in/sign-out controls
     - provide a prompt box and output log
     - send a single prompt to Ollama and show the reply in the log
-    - allow copying or clearing the current log
+    - allow copying the rendered answer or clearing the current log
+    - keep a visible copy affordance for code blocks inside the answer pane
 
   Text handling:
     - Both RichEdit panes wrap to the control width with no sideways scroll.
     - The prompt box remains multiline so Shift+Enter can insert a newline.
     - Plain Enter still sends the current prompt.
+    - Reply text is rendered with a small markdown/markup pass so bold,
+      italic, underline, strike, and simple colour spans survive when the
+      model emits them in its response.
+    - The answer pane uses an emoji-capable face for normal reply text so
+      emoji glyphs have a chance to render on the target machine.
 
   Ownership and lifetime:
     - The caller passes the parent HWND for centering and ownership.
@@ -61,6 +67,9 @@
     - Repeated calls are safe; the same window is reused while open.
     - The send path is synchronous and returns one response line from the
       local Ollama service before the dialog is tweaked further.
+    - The output pane offers a right-click Copy action for the rendered
+      answer, and code fences add a visible Copy code header that copies the
+      fenced block content.
 
 ================================================================================
 3. ne_ai_bootstrap.h
