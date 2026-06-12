@@ -2,11 +2,12 @@
 
 # Changelog
 
-## v2026.06.11.16 (Fix: AI cloud mode and local model selection split) - 11.06.2026 16:05
+## v2026.06.12.09 (Fix: AI cloud mode and local model selection split) - 12.06.2026 09:17
 
 - **Fix: the AI menu now keeps local and cloud choices separate**: the Model menu still lets you pick local Ollama models for offline use, but it also adds grayed-out cloud entries that become active after sign-in. Cloud selections are shown with the same green tick style as the spell-check menu.
 - **Fix: cloud mode no longer falls back into the local send path**: if Cloud is selected, the AI window does not call the local Ollama send path. The current mode is shown in the title and status line so you can see whether you are on a local model or a cloud choice.
 - **Fix: signed-in cloud selections are remembered**: after sign-in, the selected cloud role stays active and is restored through the existing AI preference store along with the local model and fallback settings.
+- **Fix: unsigned cloud sends now open Ollama sign-in / sign-up**: if Cloud is selected and the user is not signed in, Send now opens the Ollama sign-up page and stops instead of pretending the request was sent.
 
 # Changelog
 

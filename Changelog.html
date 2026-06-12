@@ -1,13 +1,14 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 11 June 2026 &mdash; v2026.06.11.16 (16:05)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 12 June 2026 &mdash; v2026.06.12.09 (09:17)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
-<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.16 (Fix: AI cloud mode and local model selection split)</span></h3>
-<p><strong>Fix: AI cloud mode and local model selection split (11.06.2026, 16:05):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.12.09 (Fix: AI cloud mode and local model selection split)</span></h3>
+<p><strong>Fix: AI cloud mode and local model selection split (12.06.2026, 09:17):</strong></p>
 <ul>
 <li><strong>Fix: the AI menu now keeps local and cloud choices separate:</strong> the Model menu still lets you pick local Ollama models for offline use, but it also adds grayed-out cloud entries that become active after sign-in. Cloud selections are shown with the same green tick style as the spell-check menu.</li>
 <li><strong>Fix: cloud mode no longer falls back into the local send path:</strong> if Cloud is selected, the AI window does not call the local Ollama send path. The current mode is shown in the title and status line so you can see whether you are on a local model or a cloud choice.</li>
 <li><strong>Fix: signed-in cloud selections are remembered:</strong> after sign-in, the selected cloud role stays active and is restored through the existing AI preference store along with the local model and fallback settings.</li>
+<li><strong>Fix: unsigned cloud sends now open Ollama sign-in / sign-up:</strong> if Cloud is selected and the user is not signed in, Send now opens the Ollama sign-up page and stops instead of pretending the request was sent.</li>
 </ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.11.11 (Fix: shared AppData DB for portable and installed launches)</span></h3>

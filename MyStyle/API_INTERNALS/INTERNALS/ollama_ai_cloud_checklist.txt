@@ -1,0 +1,103 @@
+================================================================================
+  NSBEdit - Ollama Cloud / Subscription Checklist
+================================================================================
+
+  Working note for getting the AI shell ready for Ollama cloud usage while
+  keeping the current local Ollama path intact.
+
+GOAL:
+  - Keep local models working exactly as they do now.
+  - Add a real cloud path for Ollama subscription users.
+  - Make the UI honest about what is available right now.
+  - Preserve the current editable prompt history behavior.
+
+WHAT THE WEB DOCS SAY:
+  - Local API base URL: http://localhost:11434/api
+  - Cloud API base URL: https://ollama.com/api
+  - Cloud models require an Ollama account.
+  - Sign-in can be done with:
+      ollama signin
+  - Direct API access can be done with an API key:
+      Authorization: Bearer <OLLAMA_API_KEY>
+  - Cloud model availability and usage limits depend on the plan.
+
+CHECKLIST:
+  1. Confirm the cloud auth model we want to support first:
+       - browser sign-in via ollama.com
+       - API key via OLLAMA_API_KEY
+       - or both
+
+  2. Decide how the app should detect cloud readiness:
+       - signed in through Ollama CLI/session
+       - API key present
+       - both
+      - if not logged in, send the user to sign in / sign up
+
+  3. Keep local-only routing unchanged:
+       - local tags and local generate/chat stay on 127.0.0.1:11434
+       - local model selection remains available offline
+
+  4. Define the cloud request path:
+       - use https://ollama.com/api
+       - send the same style of request body as the local API
+       - add auth handling for the cloud endpoint
+
+  5. Decide how the UI should behave when cloud is not ready:
+       - show cloud mode as unavailable or grayed out
+       - explain why it is unavailable
+       - avoid pretending the request was sent
+
+  6. Make sure cloud and local stay mutually exclusive:
+       - one active mode only
+       - the selected model/role should be clear
+       - cloud should not fall back into the local send path
+
+  7. Keep history and prompt editing intact:
+       - last 500 prompts stay in the DB
+       - Up/Down recall should work after reopening the editor
+       - recalled text must remain editable
+       - Enter should resend the edited prompt
+
+    8. Keep the implementation modular:
+      - isolate cloud auth from local Ollama transport
+      - keep UI state separate from request code
+      - avoid mixing cloud, local, and history concerns in one change
+
+    9. Keep i18n in scope:
+      - any new labels, status text, or prompts must be localizable
+      - do not hardcode cloud/sign-in strings in the UI flow
+      - keep language files aligned with any new keys
+
+    10. Verify the cloud model list source:
+       - separate local models from cloud-enabled models
+       - do not mix the two unless the docs clearly allow it
+
+    11. Test the end-to-end flows:
+       - local prompt send
+       - cloud-ready detection
+       - cloud prompt send
+       - restart/reopen with history restored
+       - cloud unavailable state
+
+    12. Finish with clear user feedback in the window:
+       - current mode
+       - current model
+       - sign-in / cloud readiness state
+       - what happens when Send is pressed
+
+OPEN QUESTIONS:
+  - Does the app need to call ollama signin itself, or only detect that the user
+    already signed in?
+  - Should cloud support use an API key first, since the docs show direct API
+    access that way?
+  - Which cloud endpoints are expected by the editor feature set: chat, generate,
+    or both?
+  - Do we want to persist the cloud auth choice separately from the local model
+    choice?
+
+NOTES:
+  - The current code already saves cloud_mode and signed_in locally, but that is
+    only UI state until it is connected to a real Ollama cloud auth/request path.
+  - The current transport is still local-only today.
+  - First implemented slice: unsigned cloud Send now opens the Ollama sign-up
+    page and returns without calling the local send path.

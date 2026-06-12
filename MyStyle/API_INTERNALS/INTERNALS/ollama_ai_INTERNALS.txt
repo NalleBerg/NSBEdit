@@ -198,6 +198,12 @@ FILES:
   Ai_DoSend() now sends the current prompt to Ollama on localhost and waits for
   a single response line.
 
+  Cloud login gate:
+    - If cloudMode is true and signedIn is false, Ai_DoSend() opens the Ollama
+      sign-up page and returns immediately.
+    - That keeps the local transport path isolated from the sign-in redirect.
+    - Real cloud request handling stays a separate follow-up slice.
+
   Current request path:
     - POST http://127.0.0.1:11434/api/generate
     - send the selected model and prompt as JSON
@@ -231,6 +237,7 @@ FILES:
   - Preserve the current local/default model split unless the product rules
     change again.
   - Keep cloud/subscription state separate from the local-only flow.
+  - Keep the unsigned-cloud redirect separate from the local transport.
   - Keep the prompt/log UI simple until the layout bug is fully fixed.
   - Update this file whenever the AI shell gains real chat wiring or new menu
     actions.

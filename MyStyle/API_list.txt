@@ -640,7 +640,10 @@
                                                 menu bar, owner-draw controls, split prompt
                                                 and answer panes, preference sync, prompt
                                                 send/receive logic, and layout for the
-                                                standalone AI window.
+                                                standalone AI window. If Cloud is selected
+                                                while the user is signed out, Send opens the
+                                                Ollama sign-up page and returns instead of
+                                                falling through to the local transport.
                                                 It also resolves `ollama.png` from the
                                                 executable directory so the AI buttons
                                                 keep their icon after install. The prompt

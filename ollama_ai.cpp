@@ -78,6 +78,8 @@ struct AiWindowState {
     AiMenuRole role = AiMenuRole::Suggest;
     bool cloudMode = false;
     bool signedIn = false;
+    int historyIndex = -1;
+    std::wstring historyDraft;
 };
 
 struct AiMenuItemData {
@@ -98,6 +100,8 @@ static HFONT s_hAiMenuFont = NULL;
 static std::vector<AiMenuItemData*> s_aiMenuItems;
 static std::vector<AiModelMenuItem> s_aiModelMenuItems;
 static UINT s_aiNextModelMenuId = IDM_AI_MODEL_DEFAULT;
+static std::vector<std::wstring> s_aiInputHistory;
+static constexpr size_t kAiInputHistoryLimit = 500;
 
 static std::wstring Ai_GetExeDir()
 {
@@ -138,6 +142,21 @@ static std::string Ai_WideToUtf8(const std::wstring& w)
     return out;
 }
 
+static std::wstring Ai_Utf8ToWide(const std::string& s)
+{
+    if (s.empty()) return {};
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, NULL, 0);
+    if (wlen <= 1) return {};
+    std::wstring out((size_t)wlen - 1, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, &out[0], wlen);
+    return out;
+}
+
+static void Ai_OpenOllamaSignUp(HWND hwnd)
+{
+    ShellExecuteW(hwnd, L"open", L"https://ollama.com/signup", NULL, NULL, SW_SHOWNORMAL);
+}
+
 static std::wstring Ai_DefaultModelName()
 {
     const NeAiBootstrapConfig& bootstrap = NeAiBootstrap_Get();
@@ -163,6 +182,7 @@ static void Ai_DoSend(HWND hwnd);
 static void Ai_AppendMenuOD(HMENU hMenu, UINT flags, UINT_PTR id, const wchar_t* text, bool isBar = false);
 static HMENU Ai_BuildMenu(const AiWindowState* st);
 static std::wstring Ai_CurrentModeLabel(const AiWindowState* st);
+static void Ai_OpenOllamaSignUp(HWND hwnd);
 
 static HFONT Ai_MakeDlgFont(HWND hwnd, bool bold = false)
 {
@@ -222,6 +242,64 @@ static int Ai_ButtonIndexById(const AiDialogData* dd, int id)
         if (dd->buttons[i].id == id) return i;
     }
     return -1;
+}
+
+static void Ai_HistorySetInput(HWND hwnd, const std::wstring& text)
+{
+    HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
+    if (!hInput) return;
+    SetWindowTextW(hInput, text.c_str());
+    int len = (int)GetWindowTextLengthW(hInput);
+    SendMessageW(hInput, EM_SETSEL, (WPARAM)len, (LPARAM)len);
+    SendMessageW(hInput, EM_SCROLLCARET, 0, 0);
+}
+
+static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& text)
+{
+    if (!st || text.empty()) return;
+    if (!s_aiInputHistory.empty() && s_aiInputHistory.back() == text) {
+        st->historyIndex = -1;
+        st->historyDraft.clear();
+        return;
+    }
+    s_aiInputHistory.push_back(text);
+    if (s_aiInputHistory.size() > kAiInputHistoryLimit) {
+        s_aiInputHistory.erase(s_aiInputHistory.begin());
+    }
+    st->historyIndex = -1;
+    st->historyDraft.clear();
+}
+
+static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
+{
+    if (!st || s_aiInputHistory.empty()) return false;
+
+    if (st->historyIndex < 0) {
+        HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
+        wchar_t current[2048] = {};
+        if (hInput) GetWindowTextW(hInput, current, 2048);
+        st->historyDraft = current;
+        st->historyIndex = (int)s_aiInputHistory.size() - 1;
+    } else if (direction < 0) {
+        if (st->historyIndex > 0) {
+            --st->historyIndex;
+        }
+    } else {
+        if (st->historyIndex + 1 < (int)s_aiInputHistory.size()) {
+            ++st->historyIndex;
+        } else {
+            st->historyIndex = -1;
+            Ai_HistorySetInput(hwnd, st->historyDraft);
+            return true;
+        }
+    }
+
+    if (st->historyIndex >= 0 && st->historyIndex < (int)s_aiInputHistory.size()) {
+        Ai_HistorySetInput(hwnd, s_aiInputHistory[(size_t)st->historyIndex]);
+        return true;
+    }
+
+    return false;
 }
 
 static void Ai_DrawButton(const DRAWITEMSTRUCT* dis, const AiDialogData* dd)
@@ -306,6 +384,35 @@ static void Ai_DrawButton(const DRAWITEMSTRUCT* dis, const AiDialogData* dd)
     if (hf) DeleteObject(hf);
 }
 
+static void Ai_SaveHistory()
+{
+    NeProfiles_SetIntSetting("ai.history.count", (int)s_aiInputHistory.size());
+    for (size_t i = 0; i < s_aiInputHistory.size(); ++i) {
+        std::string key = "ai.history." + std::to_string(i);
+        NeProfiles_SetStrSetting(key.c_str(), Ai_WideToUtf8(s_aiInputHistory[i]));
+    }
+}
+
+static void Ai_LoadHistory()
+{
+    s_aiInputHistory.clear();
+
+    int count = 0;
+    if (!NeProfiles_GetIntSetting("ai.history.count", 0, count) || count <= 0) {
+        return;
+    }
+
+    count = std::min(count, (int)kAiInputHistoryLimit);
+    s_aiInputHistory.reserve((size_t)count);
+    for (int i = 0; i < count; ++i) {
+        std::string saved;
+        std::string key = "ai.history." + std::to_string(i);
+        if (NeProfiles_GetStrSetting(key.c_str(), "", saved) && !saved.empty()) {
+            s_aiInputHistory.push_back(Ai_Utf8ToWide(saved));
+        }
+    }
+}
+
 static void Ai_SavePrefs(const AiWindowState* st)
 {
     if (!st) return;
@@ -314,6 +421,7 @@ static void Ai_SavePrefs(const AiWindowState* st)
     NeProfiles_SetIntSetting("ai.role", (int)st->role);
     NeProfiles_SetIntSetting("ai.cloud_mode", st->cloudMode ? 1 : 0);
     NeProfiles_SetIntSetting("ai.signed_in", st->signedIn ? 1 : 0);
+    Ai_SaveHistory();
 }
 
 static void Ai_LoadPrefs(AiWindowState* st)
@@ -355,6 +463,7 @@ static void Ai_LoadPrefs(AiWindowState* st)
     st->cloudMode = (mode != 0);
     st->signedIn = (signedIn != 0);
     st->role = (role == (int)AiMenuRole::Agent) ? AiMenuRole::Agent : AiMenuRole::Suggest;
+    Ai_LoadHistory();
 }
 
 static std::wstring Ai_BuildSummary(const AiWindowState* st)
@@ -612,7 +721,26 @@ static bool Ai_DrawMenuItem(HWND hwnd, const DRAWITEMSTRUCT* dis)
 static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR dwRefData)
 {
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW((HWND)dwRefData, GWLP_USERDATA);
     bool plainEnter = !(GetKeyState(VK_SHIFT) & 0x8000) && !(GetKeyState(VK_CONTROL) & 0x8000);
+    if (msg == WM_KEYDOWN && wParam == VK_UP && st) {
+        DWORD selStart = 0;
+        DWORD selEnd = 0;
+        SendMessageW(hwnd, EM_GETSEL, (WPARAM)&selStart, (LPARAM)&selEnd);
+        int line = (int)SendMessageW(hwnd, EM_LINEFROMCHAR, (WPARAM)selStart, 0);
+        if (line <= 0 && Ai_HistoryBrowse((HWND)dwRefData, st, -1)) {
+            return 0;
+        }
+    }
+    if (msg == WM_KEYDOWN && wParam == VK_DOWN && st) {
+        DWORD selStart = 0;
+        DWORD selEnd = 0;
+        SendMessageW(hwnd, EM_GETSEL, (WPARAM)&selStart, (LPARAM)&selEnd);
+        int line = (int)SendMessageW(hwnd, EM_LINEFROMCHAR, (WPARAM)selStart, 0);
+        if (st->historyIndex >= 0 && line <= 0 && Ai_HistoryBrowse((HWND)dwRefData, st, +1)) {
+            return 0;
+        }
+    }
     if (msg == WM_KEYDOWN && wParam == VK_RETURN && plainEnter) {
         HWND hParent = (HWND)dwRefData;
         if (hParent) {
@@ -698,6 +826,9 @@ static void Ai_DoSend(HWND hwnd)
     if (hInput) GetWindowTextW(hInput, prompt, 2048);
     if (!prompt[0]) return;
 
+    Ai_HistoryRemember(st, prompt);
+    Ai_SavePrefs(st);
+
     if (hInput) SetWindowTextW(hInput, L"");
 
     std::wstring userLine = L"You: ";
@@ -712,6 +843,8 @@ static void Ai_DoSend(HWND hwnd)
     if (st->cloudMode) {
         if (!st->signedIn) {
             Ai_AppendLog(hwnd, L"Cloud mode is selected, but you are not signed in yet.");
+            Ai_OpenOllamaSignUp(hwnd);
+            Ai_AppendLog(hwnd, L"Opened Ollama sign-in / subscription page.");
         } else {
             Ai_AppendLog(hwnd, L"Cloud mode is selected; local Ollama is not used in this path yet.");
         }
