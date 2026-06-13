@@ -659,6 +659,8 @@ static COLORREF Ai_ParseSpanColor(const std::wstring& openTag)
     return Ai_ParseHtmlColorValue(style.substr(colorPos, colorEnd - colorPos));
 }
 
+static void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format);
+
 static void Ai_AppendStyledRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* baseFmt, COLORREF color, bool bold, bool italic, bool underline, bool strike)
 {
     if (text.empty()) return;

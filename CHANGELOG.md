@@ -2,6 +2,11 @@
 
 # Changelog
 
+## v2026.06.13.09 (Fix: stable AI window restored and release metadata bumped) - 13.06.2026 09:26
+
+- **Fix: the AI window is back on the stable reply-rendering baseline**: the temporary copy-code experiment was rolled back so the standalone AI pane now tracks the known-good local renderer again.
+- **Fix: release metadata and version stamp were updated together**: `curver.txt`, the build-time version header, and the docs now all point at `2026.06.13.09`.
+
 ## v2026.06.12.10 (Fix: AI reply renderer, copy answer, and code-link hit testing) - 12.06.2026 10:59
 
 - **Fix: AI replies now unescape model-generated HTML tokens before rendering**: the reply pane now normalises bare `u003c` / `u003e` tokens and common HTML entities before the RichEdit pass, so code examples and inline HTML-like spans are no longer shown as literal escape text.
