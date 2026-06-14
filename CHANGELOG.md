@@ -2,6 +2,11 @@
 
 # Changelog
 
+## v2026.06.14.11 (Fix: About dialog edition line wraps correctly) - 14.06.2026 11:39
+
+- **Fix: the About dialog now forces the edition value onto its own line**: the locale strings for the edition line now end with a newline marker, so the text after `ß` drops below the label instead of staying on the same baseline.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.14.11`.
+
 ## v2026.06.13.09 (Fix: stable AI window restored and release metadata bumped) - 13.06.2026 09:26
 
 - **Fix: the AI window is back on the stable reply-rendering baseline**: the temporary copy-code experiment was rolled back so the standalone AI pane now tracks the known-good local renderer again.
