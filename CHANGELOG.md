@@ -2,6 +2,12 @@
 
 # Changelog
 
+## v2026.06.15.11 (Fix: AI code boundaries and end-marker handling) - 15.06.2026 11:46
+
+- **Fix: the AI shell now keeps code examples inside explicit boundaries**: the reply renderer now treats the visible `Copy code` label as the start of the block and closes the rendered code again when it reaches a real end marker, a standalone ellipsis, a closing fence, or the next markdown heading.
+- **Fix: the AI reply parser now prefers explicit marker lines when they are present**: the model prompt now asks for clear begin/end sentinels around code samples, and the parser uses those boundaries first instead of guessing from the prose around them.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.15.11`.
+
 ## v2026.06.14.11 (Fix: About dialog edition line wraps correctly) - 14.06.2026 11:39
 
 - **Fix: the About dialog now forces the edition value onto its own line**: the locale strings for the edition line now end with a newline marker, so the text after `ß` drops below the label instead of staying on the same baseline.

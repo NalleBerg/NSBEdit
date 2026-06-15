@@ -1,6 +1,14 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 14 June 2026 &mdash; v2026.06.14.11 (11:39)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 15 June 2026 &mdash; v2026.06.15.11 (11:46)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.15.11 (Fix: AI code boundaries and end-marker handling)</span></h3>
+<p><strong>Fix: AI code boundaries and end-marker handling (15.06.2026, 11:46):</strong></p>
+<ul>
+<li><strong>Fix: the AI shell now keeps code examples inside explicit boundaries:</strong> the reply renderer now treats the visible <code>Copy code</code> label as the start of the block and closes the rendered code again when it reaches a real end marker, a standalone ellipsis, a closing fence, or the next markdown heading.</li>
+<li><strong>Fix: the AI reply parser now prefers explicit marker lines when they are present:</strong> the model prompt now asks for clear begin/end sentinels around code samples, and the parser uses those boundaries first instead of guessing from the prose around them.</li>
+<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.15.11</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.14.11 (Fix: About dialog edition line wraps correctly)</span></h3>
 <p><strong>Fix: About dialog edition line wraps correctly (14.06.2026, 11:39):</strong></p>

@@ -1,32 +1,29 @@
-NSBEdit — handover notes
-Written: 2026-06-12
+NSBEdit handover notes
+Written: 2026-06-15
 
 Current status
-- The AI shell lives in ollama_ai.cpp/.h and is now focused on reply rendering and copy affordances.
-- The reply pane has a visible Copy code header for fenced blocks and a Copy answer popup for the whole rendered response.
-- The current renderer unescapes model HTML tokens and maps simple formatting hints into RichEdit runs, but it still needs a final polish pass for the AI sample content.
+- The AI reply beginning is now handled correctly by the rendered Copy code header.
+- The reply end is still not reliable. The explanation text can still inherit code formatting when the model does not emit a clean end marker.
+- The most likely fix is to stop guessing from the rendered text and instead keep a raw reply log so the end of the code sample can be detected from explicit markers in the model output.
 
-Known issue
-- The AI reply rendering still needs a final visual check for color spans, emoji fallback, and font effects on the target machine.
-
-How to continue
+What to do next
+- Log the raw AI answer to a text file before rendering it.
+- Search that raw text for the actual start and end markers the model emits.
+- Make the renderer consume only those markers for code boundaries.
+- If the version has not changed since the last commit, keep the new work under the same version in the next changelog entry.
 - Run NewVersion.ps1 to stamp the current time.
 - Read curver.txt to get the publish/version string.
-- If the version has not changed since the last commit, keep the new work under the same version in the next changelog entry.
-- Manually update Changelog.html and CHANGELOG.md with the current version and the changes.
+- Manually update Changelog.html and CHANGELOG.md with the current version and changes.
 - Update README.md.
 - Check .\MyStyle\API_list.txt and update any listed files there if they need it.
-- Keep all INTERNALS/API editing in MyStyle, since that is the main project for those notes now.
+- Keep INTERNALS/API editing in MyStyle, since that is the main project for those notes now.
 - Run makeit.bat without parameters to build and package.
-- Run .\pack.ps1 to create the .zip release.
 - Commit and push with a good commit message.
 
 Notes
-- Prioritise code quality over raw speed.
-- Keep qwen2.5-coder:7b-instruct as the default local model.
-- Keep qwen2.5-coder:3b-instruct as the fallback only if the machine feels memory-constrained or too slow.
-- If a cloud/subscription option is used later, keep it separate from the local-only flow.
-- The model picker should stay realtime, not restart-based.
-- Subscription access should stay separate from the local model list.
-- The post-login confirmation should not switch the model silently.
+- The boundary problem is now mainly about the end of the code sample, not the start.
+- A raw text log will make it much easier to see what the model actually sent.
+- The raw log should be temporary and only used for debugging until the boundary rules are stable.
+- Keep local AI and cloud AI flows separate.
+- Keep the model picker realtime, not restart-based.
 - Portable mode should stay AI-free; installed mode can use Ollama locally.

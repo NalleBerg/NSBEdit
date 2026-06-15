@@ -1,5 +1,6 @@
 #include "ollama_ai.h"
 #include "NSBEdit.h"
+#include "copy_ai_code.h"
 
 #include "dpi.h"
 #include "ne_ai_client.h"
@@ -104,12 +105,6 @@ struct AiSendWorkItem {
     std::wstring prompt;
 };
 
-struct AiCodeBlockCopyInfo {
-    int headerStartChar = -1;
-    std::wstring headerText;
-    std::wstring code;
-};
-
 struct AiMenuItemData {
     std::wstring text;
     bool isSeparator = false;
@@ -129,7 +124,6 @@ static std::vector<AiMenuItemData*> s_aiMenuItems;
 static std::vector<AiModelMenuItem> s_aiModelMenuItems;
 static UINT s_aiNextModelMenuId = IDM_AI_MODEL_DEFAULT;
 static std::vector<std::wstring> s_aiInputHistory;
-static std::map<HWND, std::vector<AiCodeBlockCopyInfo>> s_aiCodeCopyBlocks;
 static std::map<HWND, CHARRANGE> s_aiAnswerCopyRanges;
 static constexpr size_t kAiInputHistoryLimit = 500;
 
@@ -596,6 +590,30 @@ static void Ai_UnescapeModelText(std::wstring& text)
     Ai_ReplaceAll(text, L"&amp;", L"&");
 }
 
+static bool Ai_IsCodeRelatedPrompt(const std::wstring& prompt)
+{
+    if (prompt.empty()) return false;
+
+    std::wstring lower = prompt;
+    for (wchar_t& ch : lower) {
+        ch = (wchar_t)towlower(ch);
+    }
+
+    return lower.find(L"#include") != std::wstring::npos ||
+        lower.find(L"c++") != std::wstring::npos ||
+        lower.find(L"cpp") != std::wstring::npos ||
+        lower.find(L"code") != std::wstring::npos ||
+        lower.find(L"compile") != std::wstring::npos ||
+        lower.find(L"callback") != std::wstring::npos ||
+        lower.find(L"class") != std::wstring::npos ||
+        lower.find(L"struct") != std::wstring::npos ||
+        lower.find(L"function") != std::wstring::npos ||
+        lower.find(L"snippet") != std::wstring::npos ||
+        lower.find(L"source") != std::wstring::npos ||
+        lower.find(L"win32") != std::wstring::npos ||
+        lower.find(L"windows api") != std::wstring::npos;
+}
+
 static COLORREF Ai_ParseHtmlColorValue(const std::wstring& value)
 {
     std::wstring v = value;
@@ -793,57 +811,6 @@ static void Ai_ApplyRichFormatRange(HWND hLog, int start, int end, const CHARFOR
     SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)format);
 }
 
-static RECT Ai_MeasureTextRect(HWND hLog, int startChar, const std::wstring& text)
-{
-    RECT rc = { 0, 0, 0, 0 };
-    if (!hLog || startChar < 0 || text.empty()) return rc;
-
-    LRESULT pos = SendMessageW(hLog, EM_POSFROMCHAR, (WPARAM)startChar, 0);
-    POINT pt = { (LONG)(short)LOWORD(pos), (LONG)(short)HIWORD(pos) };
-
-    HFONT hFont = (HFONT)SendMessageW(hLog, WM_GETFONT, 0, 0);
-    HDC hdc = GetDC(hLog);
-    if (!hdc) {
-        rc.left = pt.x;
-        rc.top = pt.y;
-        return rc;
-    }
-
-    HFONT oldFont = hFont ? (HFONT)SelectObject(hdc, hFont) : NULL;
-    SIZE size = {};
-    GetTextExtentPoint32W(hdc, text.c_str(), (int)text.size(), &size);
-    TEXTMETRICW tm = {};
-    GetTextMetricsW(hdc, &tm);
-    if (oldFont) SelectObject(hdc, oldFont);
-    ReleaseDC(hLog, hdc);
-
-    rc.left = pt.x;
-    rc.top = pt.y;
-    rc.right = pt.x + size.cx;
-    rc.bottom = pt.y + tm.tmHeight + tm.tmExternalLeading;
-    return rc;
-}
-
-static void Ai_CopyTextToClipboard(HWND hwnd, const std::wstring& text)
-{
-    if (text.empty()) return;
-    if (!OpenClipboard(hwnd)) return;
-    EmptyClipboard();
-    SIZE_T bytes = (text.size() + 1) * sizeof(wchar_t);
-    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, bytes);
-    if (hMem) {
-        wchar_t* dst = (wchar_t*)GlobalLock(hMem);
-        if (dst) {
-            memcpy(dst, text.c_str(), bytes);
-            GlobalUnlock(hMem);
-            SetClipboardData(CF_UNICODETEXT, hMem);
-        } else {
-            GlobalFree(hMem);
-        }
-    }
-    CloseClipboard();
-}
-
 static std::wstring Ai_GetTextRange(HWND hwnd, const CHARRANGE& range)
 {
     if (!hwnd || range.cpMin >= range.cpMax) return {};
@@ -884,58 +851,15 @@ static bool Ai_CopyAnswerText(HWND hwndLog)
     return false;
 }
 
-static void Ai_AppendInlineMarkdownLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt)
-{
-    size_t pos = 0;
-    bool bold = false;
-    bool italic = false;
-
-    while (pos < line.size()) {
-        size_t nextSpecial = std::wstring::npos;
-        bool nextIsDouble = false;
-        for (size_t i = pos; i < line.size(); ++i) {
-            if (line[i] == L'*' || line[i] == L'_') {
-                nextSpecial = i;
-                nextIsDouble = (i + 1 < line.size() && line[i + 1] == line[i]);
-                break;
-            }
-        }
-
-        size_t segmentEnd = (nextSpecial == std::wstring::npos) ? line.size() : nextSpecial;
-        if (segmentEnd > pos) {
-            const CHARFORMAT2W* fmt = nullptr;
-            if (bold && italic) {
-                fmt = boldFmt ? boldFmt : italicFmt;
-            } else if (bold) {
-                fmt = boldFmt;
-            } else if (italic) {
-                fmt = italicFmt;
-            } else {
-                fmt = normalFmt;
-            }
-            Ai_AppendRichRun(hLog, line.substr(pos, segmentEnd - pos), fmt);
-        }
-
-        if (nextSpecial == std::wstring::npos) {
-            break;
-        }
-
-        if (nextIsDouble) {
-            bold = !bold;
-            pos = nextSpecial + 2;
-        } else {
-            italic = !italic;
-            pos = nextSpecial + 1;
-        }
-    }
-}
-
 static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
 {
     HWND hLog = GetDlgItem(hwnd, IDC_AI_LOG);
     if (!hLog) return;
 
-    s_aiCodeCopyBlocks[hLog].clear();
+    AiCopyCode_Clear(hLog);
+
+    constexpr const wchar_t* kCodeBeginMarker = L"[[CODE_BEGIN]]";
+    constexpr const wchar_t* kCodeEndMarker = L"[[CODE_END]]";
 
     static const CHARFORMAT2W kHeaderFmt = []() {
         CHARFORMAT2W cf = {};
@@ -983,9 +907,9 @@ static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
         cf.cbSize = sizeof(cf);
         cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR;
         cf.yHeight = MulDiv(12, 20, 1);
-        cf.crTextColor = RGB(30, 30, 30);
-        cf.crBackColor = RGB(245, 245, 245);
-        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
+        cf.crTextColor = RGB(47, 79, 79);
+        cf.crBackColor = RGB(236, 246, 239);
+        lstrcpyW(cf.szFaceName, L"Consolas");
         return cf;
     }();
 
@@ -1016,8 +940,7 @@ static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
     bool codeHasContent = false;
     std::wstring codeLang;
     bool outerMarkdownFence = false;
-    std::wstring currentCode;
-    int currentHeaderEnd = -1;
+    bool explicitCodeMarkers = false;
 
     size_t lineStart = 0;
     while (lineStart <= text.size()) {
@@ -1025,7 +948,72 @@ static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
         std::wstring line = (lineEnd == std::wstring::npos) ? text.substr(lineStart) : text.substr(lineStart, lineEnd - lineStart);
         std::wstring trimmed = Ai_TrimCopy(line);
 
-        if (!inCode && trimmed.rfind(L"```", 0) == 0) {
+        bool isMarkdownHeadingBoundary = false;
+        if (inCode && !trimmed.empty() && trimmed[0] == L'#') {
+            size_t headingLevel = 0;
+            while (headingLevel < trimmed.size() && trimmed[headingLevel] == L'#') {
+                ++headingLevel;
+            }
+            isMarkdownHeadingBoundary = headingLevel > 0 && headingLevel <= 6 &&
+                headingLevel < trimmed.size() && trimmed[headingLevel] == L' ';
+        }
+
+        if (isMarkdownHeadingBoundary) {
+            if (codeHasContent) {
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            }
+            AiCopyCode_EndBlock(hLog);
+            inCode = false;
+            codeLang.clear();
+        }
+
+        if (trimmed == kCodeBeginMarker) {
+            explicitCodeMarkers = true;
+            if (!inCode) {
+                inCode = true;
+                codeHasContent = false;
+                codeLang.clear();
+                Ai_AppendRichRun(hLog, L"📋 ", nullptr);
+                int labelStart = GetWindowTextLengthW(hLog);
+                std::wstring copyLabel = L"Copy code";
+                Ai_AppendRichRun(hLog, copyLabel, nullptr);
+                Ai_ApplyRichFormatRange(hLog, labelStart, GetWindowTextLengthW(hLog), &kCopyLinkFmt);
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+                AiCopyCode_BeginBlock(hLog, labelStart, copyLabel, GetWindowTextLengthW(hLog));
+            }
+        } else if (inCode && (trimmed == L"..." || trimmed == L"```")) {
+            if (codeHasContent) {
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            }
+            AiCopyCode_EndBlock(hLog);
+            inCode = false;
+            codeLang.clear();
+        } else if (trimmed == kCodeEndMarker) {
+            if (inCode) {
+                if (codeHasContent) {
+                    Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+                }
+                AiCopyCode_EndBlock(hLog);
+                inCode = false;
+                codeLang.clear();
+            }
+        } else if (explicitCodeMarkers && inCode) {
+            codeHasContent = true;
+            Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt);
+            AiCopyCode_AppendCodeLine(hLog, line + L"\r\n");
+        } else if (inCode && trimmed.rfind(L"### ", 0) == 0) {
+            if (codeHasContent) {
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            }
+            AiCopyCode_EndBlock(hLog);
+            inCode = false;
+            codeLang.clear();
+        } else if (!explicitCodeMarkers && inCode && codeLang.empty() && trimmed.rfind(L"```", 0) == 0) {
+            // Keep accepting legacy fenced blocks inside marker mode only as plain content.
+            codeHasContent = true;
+            Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt);
+            AiCopyCode_AppendCodeLine(hLog, line + L"\r\n");
+        } else if (!explicitCodeMarkers && !inCode && trimmed.rfind(L"```", 0) == 0) {
             codeLang = Ai_TrimCopy(trimmed.substr(3));
             if (codeLang == L"markdown" || codeLang == L"md") {
                 outerMarkdownFence = true;
@@ -1034,35 +1022,25 @@ static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
             } else {
                 inCode = true;
                 codeHasContent = false;
-                currentCode.clear();
                 Ai_AppendRichRun(hLog, L"📋 ", nullptr);
                 int labelStart = GetWindowTextLengthW(hLog);
                 std::wstring copyLabel = L"Copy code";
                 Ai_AppendRichRun(hLog, copyLabel, nullptr);
-                currentHeaderEnd = GetWindowTextLengthW(hLog);
-                Ai_ApplyRichFormatRange(hLog, labelStart, currentHeaderEnd, &kCopyLinkFmt);
-                AiCodeBlockCopyInfo block;
-                block.headerStartChar = labelStart;
-                block.headerText = copyLabel;
-                s_aiCodeCopyBlocks[hLog].push_back(std::move(block));
+                Ai_ApplyRichFormatRange(hLog, labelStart, GetWindowTextLengthW(hLog), &kCopyLinkFmt);
                 Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+                AiCopyCode_BeginBlock(hLog, labelStart, copyLabel, GetWindowTextLengthW(hLog));
             }
-        } else if (inCode && trimmed.rfind(L"```", 0) == 0) {
+        } else if (!explicitCodeMarkers && inCode && trimmed.rfind(L"```", 0) == 0) {
             if (codeHasContent) {
                 Ai_AppendRichRun(hLog, L"\r\n", nullptr);
             }
-            if (!s_aiCodeCopyBlocks[hLog].empty()) {
-                s_aiCodeCopyBlocks[hLog].back().code = currentCode;
-            }
+            AiCopyCode_EndBlock(hLog);
             inCode = false;
             codeLang.clear();
-            currentCode.clear();
-            currentHeaderEnd = -1;
         } else if (inCode) {
             codeHasContent = true;
-            currentCode += line;
-            currentCode += L"\r\n";
             Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt);
+            AiCopyCode_AppendCodeLine(hLog, line + L"\r\n");
         } else if (!trimmed.empty()) {
             std::wstring normal = line;
             if (normal.rfind(L"- ", 0) == 0 || normal.rfind(L"* ", 0) == 0 || normal.rfind(L"+ ", 0) == 0) {
@@ -1083,6 +1061,7 @@ static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
     }
 
     if (inCode) {
+        AiCopyCode_EndBlock(hLog);
         Ai_AppendRichRun(hLog, L"\r\n", nullptr);
     }
 
@@ -1096,34 +1075,25 @@ static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
     if (st && st->hLogSb) msb_notify_content_changed(st->hLogSb);
 }
 
-static bool Ai_CopyCodeBlockAtPoint(HWND hwndLog, POINT pt)
-{
-    auto it = s_aiCodeCopyBlocks.find(hwndLog);
-    if (it == s_aiCodeCopyBlocks.end()) return false;
-    for (const AiCodeBlockCopyInfo& block : it->second) {
-        RECT headerRect = Ai_MeasureTextRect(hwndLog, block.headerStartChar, block.headerText);
-        bool inRect = headerRect.right > headerRect.left && headerRect.bottom > headerRect.top &&
-            pt.x >= headerRect.left && pt.x <= headerRect.right &&
-            pt.y >= headerRect.top && pt.y <= headerRect.bottom;
-        bool inRange = false;
-        if (!inRect && block.headerStartChar >= 0) {
-            long clickPos = (long)SendMessageW(hwndLog, EM_CHARFROMPOS, 0, MAKELPARAM(pt.x, pt.y));
-            int headerEnd = block.headerStartChar + (int)block.headerText.size();
-            inRange = (clickPos >= block.headerStartChar && clickPos <= headerEnd);
-        }
-        if (inRect || inRange) {
-            Ai_CopyTextToClipboard(hwndLog, block.code);
-            return true;
-        }
-    }
-    return false;
-}
-
 static LRESULT CALLBACK Ai_LogSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR dwRefData)
 {
     HWND hwndParent = (HWND)dwRefData;
     switch (msg) {
+    case WM_SETCURSOR:
+        if (LOWORD(lParam) == HTCLIENT) {
+            POINT pt = {};
+            GetCursorPos(&pt);
+            ScreenToClient(hwnd, &pt);
+            if (AiCopyCode_IsHot(hwnd, pt)) {
+                SetCursor(LoadCursorW(NULL, IDC_HAND));
+                return TRUE;
+            }
+        }
+        break;
+    case WM_TIMER:
+        AiCopyCode_HandleTimer(hwnd, (UINT_PTR)wParam);
+        return 0;
     case WM_CONTEXTMENU: {
         POINT pt = { (short)LOWORD(lParam), (short)HIWORD(lParam) };
         if (pt.x == -1 && pt.y == -1) {
@@ -1183,7 +1153,14 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
 
     std::thread([work = std::move(work)]() mutable {
         auto* result = new AiSendResult();
-        std::wstring formattedPrompt = L"Answer in Markdown. Preserve indentation and use fenced code blocks for any code.\r\n\r\n";
+        std::wstring formattedPrompt = L"Answer in Markdown. Preserve indentation.\r\n\r\n";
+        if (Ai_IsCodeRelatedPrompt(work.prompt)) {
+            formattedPrompt +=
+                L"For every code example, wrap only the code itself between these exact standalone lines:\r\n"
+                L"[[CODE_BEGIN]]\r\n"
+                L"[[CODE_END]]\r\n"
+                L"Put any explanation before or after the code, outside the markers.\r\n\r\n";
+        }
         formattedPrompt += work.prompt;
 
         if (NeAiClient_AskOllama(work.model, formattedPrompt, result->reply, result->error)) {
@@ -1749,7 +1726,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDM_AI_LOG_CLEAR:
             if (st && st->hLog) {
                 SetWindowTextW(st->hLog, L"");
-                s_aiCodeCopyBlocks[st->hLog].clear();
+                AiCopyCode_Clear(st->hLog);
                 s_aiAnswerCopyRanges.erase(st->hLog);
             }
             return 0;
@@ -1788,7 +1765,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             ENLINK* link = (ENLINK*)lParam;
             if (link && link->msg == WM_LBUTTONUP) {
                 POINT pt = { (LONG)(short)LOWORD(link->lParam), (LONG)(short)HIWORD(link->lParam) };
-                if (Ai_CopyCodeBlockAtPoint(hdr->hwndFrom, pt)) {
+                if (AiCopyCode_HandleClick(hdr->hwndFrom, pt)) {
                     return 0;
                 }
             }
@@ -1876,7 +1853,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (s_hAiMenuFont) DeleteObject(s_hAiMenuFont);
             Ai_ClearMenuStorage();
             if (st->hLog) {
-                s_aiCodeCopyBlocks.erase(st->hLog);
+                AiCopyCode_HandleDestroy(st->hLog);
                 s_aiAnswerCopyRanges.erase(st->hLog);
             }
             delete st->dd;
