@@ -45,7 +45,7 @@
                                                 WinMain, Ne_WndProc, File menu (New/Open/
                                                 Save/SaveAs/Print/Export as PDF/Exit),
                                                 Edit menu (Undo/Redo/Cut/Copy/Paste/
-                                                Select All, Insert Date/Time (F5),
+                                                Select All, Insert Date/Time (Shift+F5),
                                                 Go to Line, Toggle Bookmark,
                                                 Go to Bookmark, greyed via
                                                 WM_INITMENUPOPUP),

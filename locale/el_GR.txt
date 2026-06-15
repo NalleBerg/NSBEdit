@@ -92,6 +92,8 @@ DLG_SAVE_CHANGES  = Αποθήκευση αλλαγών
 BTN_SAVE          = Αποθήκευση
 BTN_DONT_SAVE     = Χωρίς αποθήκευση
 BTN_CANCEL        = Ακύρωση
+DLG_DISCARD_CHANGES = Απόρριψη αλλαγών
+MSG_DISCARD_AND_RELOAD = Έχετε μη αποθηκευμένες αλλαγές σε αυτό το αρχείο.\n\nΝα απορριφθούν και να επαναφορτωθεί το αρχείο;
 BTN_OK            = ΟΚBTN_CONTINUE      = Συνέχεια
 DLG_CONV_TO_PLAIN = Αφαίρεση μορφοποίησης
 DLG_FILE_CHANGED        = Το αρχείο άλλαξε στο δίσκο
@@ -520,7 +522,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Σύγκριση καρτελών…
-MENU_INSERT_DATETIME      = Εισαγωγή &ημερ./ώρας	F5
+MENU_INSERT_DATETIME      = Εισαγωγή &ημερ./ώρας	Shift+F5
 DLG_COMPARE_TITLE         = Σύγκριση καρτελών
 DLG_COMPARE_LABEL_A       = Καρτέλα Α:
 DLG_COMPARE_LABEL_B       = Καρτέλα Β:

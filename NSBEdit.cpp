@@ -229,6 +229,7 @@ enum class NeEncoding {
 #define IDM_COMPARE_TABS        137   // Edit menu: "Compare Tabs…"
 #define IDM_SAVE_ALL            138   // File menu: "Save All"
 #define IDM_INSERT_DATETIME     139   // Edit menu: "Insert Date/Time"
+#define IDM_RELOAD_FILE         140   // File menu: "Reload"
 #define IDC_NE_DLG_CMPA         285   // listbox: Tab A in compare picker
 #define IDC_NE_DLG_CMPB         286   // listbox: Tab B in compare picker
 // Diff margin markers (margin 3, markers 26-28; 21-25 are fold internals)
@@ -3347,7 +3348,8 @@ static const ShortcutRow s_shortcuts[] = {
     { L"[Ctrl]+V",             L"SCF_PASTE",         L"SCD_PASTE" },
     { L"[Ctrl]+A",             L"SCF_SELECT_ALL",    L"SCD_SELECT_ALL" },
     // ── File ──────────────────────────────────────────────────────────────────
-    { L"[F5]",                 L"SCF_INSERT_DATETIME", L"SCD_INSERT_DATETIME" },
+    { L"[F5]",                 L"SCF_RELOAD_FILE",      L"SCD_RELOAD_FILE" },
+    { L"[Shift]+[F5]",         L"SCF_INSERT_DATETIME",  L"SCD_INSERT_DATETIME" },
     { L"[Ctrl]+S",             L"SCF_SAVE",          L"SCD_SAVE" },
     { L"[Ctrl]+[Shift]+S",     L"SCF_SAVE_AS",       L"SCD_SAVE_AS" },
     { L"[Ctrl]+[Shift]+A",     L"SCF_SAVE_ALL",      L"SCD_SAVE_ALL" },
@@ -8615,6 +8617,77 @@ static void Ne_InsertDateTime(HWND hwnd)
     }
 }
 
+static bool Ne_ReloadActiveFile(HWND hwnd)
+{
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    if (!doc) return false;
+
+    const bool canReloadLocal  = !doc->path.empty();
+    const bool canReloadRemote  = doc->isFtpFile && !doc->ftpRemotePath.empty();
+    if (!canReloadLocal && !canReloadRemote) return false;
+
+    if (doc->modified) {
+        wchar_t msg[MAX_PATH + 256] = {};
+        swprintf_s(msg, _countof(msg), Ls(L"MSG_DISCARD_AND_RELOAD"));
+        NeDialogButtonSpec btns[2] = {
+            { IDYES, Ls(L"BTN_RELOAD"), NeBtnTone::Red,  IDI_WARNING,     0 },
+            { IDNO,  Ls(L"BTN_CANCEL"), NeBtnTone::Blue, IDI_INFORMATION, 0 },
+        };
+        if (Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_DISCARD_CHANGES"), msg, btns, 2, IDNO) != IDYES)
+            return false;
+    }
+
+    bool prevSuppress = s_suppressDiskCheck;
+    s_suppressDiskCheck = true;
+    bool ok = false;
+
+    if (canReloadRemote) {
+        bool connected = NeFtp_SetActiveConn(doc->ftpProfileId);
+        if (!connected) {
+            NeProfile prof;
+            if (NeProfiles_GetById(doc->ftpProfileId, prof))
+                connected = NeFtp_Connect(prof);
+        }
+        if (!connected) {
+            NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 };
+            Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"),
+                                Ls(L"FTP_NOT_CONNECTED"), &btn, 1, IDOK);
+            s_suppressDiskCheck = prevSuppress;
+            return false;
+        }
+
+        std::wstring localPath;
+        SetCursor(LoadCursorW(NULL, IDC_WAIT));
+        bool dlOk = NeFtp_DownloadToTemp(doc->ftpRemotePath, localPath);
+        SetCursor(LoadCursorW(NULL, IDC_ARROW));
+        if (!dlOk) {
+            NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Red, IDI_ERROR, 0 };
+            Ne_ShowChoiceDialog(hwnd, Ls(L"FTP_CONN_FAILED"),
+                                NeFtp_GetLastError(), &btn, 1, IDOK);
+            s_suppressDiskCheck = prevSuppress;
+            return false;
+        }
+
+        ok = Ne_LoadPathIntoEditor(hwnd, localPath);
+        if (ok) {
+            NeTabDoc* docReloaded = NeTabs_GetActiveDoc(hwnd);
+            if (docReloaded) {
+                docReloaded->isFtpFile       = true;
+                docReloaded->ftpProfileId    = doc->ftpProfileId;
+                docReloaded->ftpRemotePath   = doc->ftpRemotePath;
+                docReloaded->ftpFriendlyName = doc->ftpFriendlyName;
+            }
+        } else {
+            DeleteFileW(localPath.c_str());
+        }
+    } else {
+        ok = Ne_LoadPathIntoEditor(hwnd, doc->path);
+    }
+
+    s_suppressDiskCheck = prevSuppress;
+    return ok;
+}
+
 static void Ne_SaveAll(HWND hwnd)
 {
     int count    = NeTabs_GetCount(hwnd);
@@ -9759,6 +9832,10 @@ static void Ne_BuildMainMenu(HWND hwnd)
     HMENU hFile  = CreatePopupMenu();
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_NEW,        Ls(L"MENU_NEW"));
     Ne_AppendMenuOD(hFile, MF_STRING,    IDM_OPEN,       Ls(L"MENU_OPEN"));
+    {
+        std::wstring reloadTxt = std::wstring(Ls(L"BTN_RELOAD")) + L"\tF5";
+        Ne_AppendMenuOD(hFile, MF_STRING, IDM_RELOAD_FILE, reloadTxt.c_str());
+    }
     s_hRecentMenu = CreatePopupMenu();
     Ne_AppendMenuOD(hFile, MF_POPUP | MF_STRING, (UINT_PTR)s_hRecentMenu, Ls(L"MENU_RECENT"));
     Ne_AppendMenuOD(hFile, MF_SEPARATOR, 0, NULL);
@@ -13509,6 +13586,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         if (wmId == IDM_NEW || wmId == IDC_NE_TABCTRL + 10) { Ne_New(hwnd); return 0; }
         if (wmId == IDM_OPEN)       { Ne_Open(hwnd);              return 0; }
+        if (wmId == IDM_RELOAD_FILE){ Ne_ReloadActiveFile(hwnd);  return 0; }
         if (wmId == IDM_SAVE)       { Ne_Save(hwnd);              return 0; }
         if (wmId == IDM_SAVEAS)     { Ne_SaveAs(hwnd);            return 0; }
         if (wmId == IDM_SAVE_ALL)   { Ne_SaveAll(hwnd);           return 0; }
@@ -14380,6 +14458,14 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             AppendMenuW(hCtx, MF_STRING, IDM_PREVIEW_FTP, Ls(L"MENU_PREVIEW_FTP"));
             AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
         }
+        if (ctxDocFtp) {
+            std::wstring reloadTxt = Ls(L"BTN_RELOAD");
+            bool canReload = !ctxDocFtp->path.empty() ||
+                             (ctxDocFtp->isFtpFile && !ctxDocFtp->ftpRemotePath.empty());
+            AppendMenuW(hCtx, MF_STRING | (canReload ? 0 : MF_GRAYED),
+                        IDM_RELOAD_FILE, reloadTxt.c_str());
+            AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
+        }
         if (ctxSciDoc) {
             // Scintilla editor — use SCI_ messages.
             HWND hS = ctxSciDoc->hSci;
@@ -14792,6 +14878,16 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         }
 
+        // ── File popup ────────────────────────────────────────────────────────
+        if (GetMenuState(hPop, IDM_OPEN, MF_BYCOMMAND) != (UINT)-1) {
+            NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+            bool canReload = doc && (!doc->path.empty() ||
+                                     (doc->isFtpFile && !doc->ftpRemotePath.empty()));
+            EnableMenuItem(hPop, IDM_RELOAD_FILE,
+                           MF_BYCOMMAND | (canReload ? MF_ENABLED : MF_GRAYED));
+            return 0;
+        }
+
         // ── Convert popup ─────────────────────────────────────────────────────
         if (GetMenuState(hPop, IDM_CONV_TO_PLAIN, MF_BYCOMMAND) != (UINT)-1) {
             NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
@@ -15164,9 +15260,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
                 continue; // consume — don't pass to native RichEdit/Scintilla zoom handler
             }
         }
-        // F5 → Insert date/time
+        // F5 → Reload, Shift+F5 → Insert date/time
         if (msg.message == WM_KEYDOWN && msg.wParam == VK_F5) {
-            SendMessageW(s_hwndMain, WM_COMMAND, IDM_INSERT_DATETIME, 0);
+            bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+            SendMessageW(s_hwndMain, WM_COMMAND,
+                         shift ? IDM_INSERT_DATETIME : IDM_RELOAD_FILE, 0);
             continue;
         }
         // F1 → Keyboard Shortcuts dialog

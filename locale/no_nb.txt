@@ -92,6 +92,8 @@ DLG_SAVE_CHANGES  = Lagre endringer
 BTN_SAVE          = Lagre
 BTN_DONT_SAVE     = Ikke lagre
 BTN_CANCEL        = Avbryt
+DLG_DISCARD_CHANGES = Forkast endringer
+MSG_DISCARD_AND_RELOAD = Du har ulagrede endringer i denne filen.\n\nForkaste dem og laste filen på nytt?
 BTN_OK            = OK
 BTN_CONTINUE      = Fortsett
 DLG_CONV_TO_PLAIN = Fjern formatering
@@ -522,7 +524,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Sammenlign faner…
-MENU_INSERT_DATETIME      = Sett inn &dato/tid	F5
+MENU_INSERT_DATETIME      = Sett inn &dato/tid	Shift+F5
 DLG_COMPARE_TITLE         = Sammenlign faner
 DLG_COMPARE_LABEL_A       = Fane A:
 DLG_COMPARE_LABEL_B       = Fane B:

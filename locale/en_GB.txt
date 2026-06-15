@@ -93,6 +93,8 @@ DLG_SAVE_CHANGES  = Save Changes
 BTN_SAVE          = Save
 BTN_DONT_SAVE     = Don't Save
 BTN_CANCEL        = Cancel
+DLG_DISCARD_CHANGES = Discard Changes
+MSG_DISCARD_AND_RELOAD = You have unsaved changes in this file.\n\nDiscard them and reload it?
 BTN_OK            = OK
 BTN_CONTINUE      = Continue
 DLG_CONV_TO_PLAIN = Strip Formatting
@@ -290,6 +292,7 @@ SCF_WORD_RIGHT    = Word right
 SCF_EXTEND_SEL    = Extend selection
 SCF_SEL_WORD      = Select word
 SCF_INSERT_DATETIME = Insert date/time
+SCF_RELOAD_FILE   = Reload file
 SCF_COL_SEL       = Column selection
 SCF_ZOOM_IN       = Zoom in
 SCF_ZOOM_OUT      = Zoom out
@@ -330,6 +333,7 @@ SCD_WORD_RIGHT    = Move cursor one word to the right
 SCD_EXTEND_SEL    = Extend text selection one character
 SCD_SEL_WORD      = Extend selection one word at a time
 SCD_INSERT_DATETIME = Insert current date and time at cursor
+SCD_RELOAD_FILE   = Reload the current file from disk or FTP, discarding local edits
 SCD_COL_SEL       = Start a rectangular/column selection (drag)
 SCD_COL_SEL_KB    = Extend rectangular selection with keyboard
 SCD_ZOOM_IN       = Increase zoom level
@@ -523,7 +527,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Compare Tabs…
-MENU_INSERT_DATETIME      = Insert &Date/Time	F5
+MENU_INSERT_DATETIME      = Insert &Date/Time	Shift+F5
 DLG_COMPARE_TITLE         = Compare Tabs
 DLG_COMPARE_LABEL_A       = Tab A:
 DLG_COMPARE_LABEL_B       = Tab B:

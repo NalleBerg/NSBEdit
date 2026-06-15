@@ -94,6 +94,8 @@ DLG_SAVE_CHANGES  = Wijzigingen bewaren
 BTN_SAVE          = Bewaar
 BTN_DONT_SAVE     = Niet bewaren
 BTN_CANCEL        = Annuleren
+DLG_DISCARD_CHANGES = Wijzigingen verwerpen
+MSG_DISCARD_AND_RELOAD = Er zijn niet-opgeslagen wijzigingen in dit bestand.\n\nWilt u ze verwerpen en het bestand opnieuw laden?
 BTN_OK            = OK
 BTN_CONTINUE      = Doorgaan
 DLG_CONV_TO_PLAIN = Opmaak verwijderen
@@ -524,7 +526,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Tabbladen vergelijken…
-MENU_INSERT_DATETIME      = Datum/tijd &invoegen	F5
+MENU_INSERT_DATETIME      = Datum/tijd &invoegen	Shift+F5
 DLG_COMPARE_TITLE         = Tabbladen vergelijken
 DLG_COMPARE_LABEL_A       = Tabblad A:
 DLG_COMPARE_LABEL_B       = Tabblad B:

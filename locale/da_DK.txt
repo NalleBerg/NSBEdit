@@ -92,6 +92,8 @@ DLG_SAVE_CHANGES  = Gem ændringer
 BTN_SAVE          = Gem
 BTN_DONT_SAVE     = Gem ikke
 BTN_CANCEL        = Annullér
+DLG_DISCARD_CHANGES = Kassér ændringer
+MSG_DISCARD_AND_RELOAD = Du har ikke-gemte ændringer i denne fil.\n\nKassér dem og genindlæs filen?
 BTN_OK            = OKBTN_CONTINUE      = Fortsæt
 DLG_CONV_TO_PLAIN = Fjern formatering
 DLG_FILE_CHANGED        = Filen er ændret på disken
@@ -520,7 +522,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Sammenlign faner…
-MENU_INSERT_DATETIME      = Indsæt &dato/tid	F5
+MENU_INSERT_DATETIME      = Indsæt &dato/tid	Shift+F5
 DLG_COMPARE_TITLE         = Sammenlign faner
 DLG_COMPARE_LABEL_A       = Fane A:
 DLG_COMPARE_LABEL_B       = Fane B:

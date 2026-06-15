@@ -92,6 +92,8 @@ DLG_SAVE_CHANGES  = Änderungen speichern
 BTN_SAVE          = Speichern
 BTN_DONT_SAVE     = Nicht speichern
 BTN_CANCEL        = Abbrechen
+DLG_DISCARD_CHANGES = Änderungen verwerfen
+MSG_DISCARD_AND_RELOAD = Sie haben ungespeicherte Änderungen in dieser Datei.\n\nÄnderungen verwerfen und Datei neu laden?
 BTN_OK            = OK
 BTN_CONTINUE      = Fortfahren
 DLG_CONV_TO_PLAIN = Formatierung entfernen
@@ -522,7 +524,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Tabs vergleichen…
-MENU_INSERT_DATETIME      = &Datum/Uhrzeit einfügen	F5
+MENU_INSERT_DATETIME      = &Datum/Uhrzeit einfügen	Shift+F5
 DLG_COMPARE_TITLE         = Tabs vergleichen
 DLG_COMPARE_LABEL_A       = Tab A:
 DLG_COMPARE_LABEL_B       = Tab B:

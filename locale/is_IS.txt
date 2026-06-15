@@ -92,6 +92,8 @@ DLG_SAVE_CHANGES  = Vista breytingar
 BTN_SAVE          = Vista
 BTN_DONT_SAVE     = Ekki vista
 BTN_CANCEL        = Hætta við
+DLG_DISCARD_CHANGES = Henda breytingum
+MSG_DISCARD_AND_RELOAD = Þú ert með óvistaðar breytingar í þessari skrá.\n\nHenda þeim og endurhlaða skránna?
 BTN_OK            = Í lagi
 BTN_CONTINUE      = Halda áfram
 DLG_CONV_TO_PLAIN = Fjarlægja snið
@@ -486,7 +488,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Bera saman flipa…
-MENU_INSERT_DATETIME      = Setja inn &dagsetningu/tíma	F5
+MENU_INSERT_DATETIME      = Setja inn &dagsetningu/tíma	Shift+F5
 DLG_COMPARE_TITLE         = Bera saman flipa
 DLG_COMPARE_LABEL_A       = Flipi A:
 DLG_COMPARE_LABEL_B       = Flipi B:

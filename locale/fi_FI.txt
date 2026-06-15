@@ -92,6 +92,8 @@ DLG_SAVE_CHANGES  = Tallenna muutokset
 BTN_SAVE          = Tallenna
 BTN_DONT_SAVE     = Älä tallenna
 BTN_CANCEL        = Peruuta
+DLG_DISCARD_CHANGES = Hylkää muutokset
+MSG_DISCARD_AND_RELOAD = Tässä tiedostossa on tallentamattomia muutoksia.\n\nHylätäänkö ne ja ladataanko tiedosto uudelleen?
 BTN_OK            = OK
 BTN_CONTINUE      = Jatka
 DLG_CONV_TO_PLAIN = Poista muotoilu
@@ -522,7 +524,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Vertaile välilehtiä…
-MENU_INSERT_DATETIME      = Lisää &päivämäärä/aika	F5
+MENU_INSERT_DATETIME      = Lisää &päivämäärä/aika	Shift+F5
 DLG_COMPARE_TITLE         = Vertaile välilehtiä
 DLG_COMPARE_LABEL_A       = Välilehti A:
 DLG_COMPARE_LABEL_B       = Välilehti B:

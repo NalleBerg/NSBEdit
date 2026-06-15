@@ -94,6 +94,8 @@ DLG_SAVE_CHANGES  = Vurket nuppástusaid
 BTN_SAVE          = Vurket
 BTN_DONT_SAVE     = Ii vurke
 BTN_CANCEL        = Jávkadit
+DLG_DISCARD_CHANGES = Hildit bargguid
+MSG_DISCARD_AND_RELOAD = Dus leat vurkenkeahttá rievdadusat dán fiillas.\n\nHilddii dáid ja viežžat fiilla ođđasit?
 BTN_OK            = Dohkket
 BTN_CONTINUE      = Jatkat
 DLG_CONV_TO_PLAIN = Čállosapmašupmi sihkut
@@ -523,7 +525,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Veardádit fápmuid…
-MENU_INSERT_DATETIME      = Čállit &beaivváš/áigi	F5
+MENU_INSERT_DATETIME      = Čállit &beaivváš/áigi	Shift+F5
 DLG_COMPARE_TITLE         = Veardádit fápmuid
 DLG_COMPARE_LABEL_A       = Fápmu A:
 DLG_COMPARE_LABEL_B       = Fápmu B:

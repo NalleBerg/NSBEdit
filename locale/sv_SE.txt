@@ -92,6 +92,8 @@ DLG_SAVE_CHANGES  = Spara ändringar
 BTN_SAVE          = Spara
 BTN_DONT_SAVE     = Spara inte
 BTN_CANCEL        = Avbryt
+DLG_DISCARD_CHANGES = Förkasta ändringar
+MSG_DISCARD_AND_RELOAD = Du har osparade ändringar i den här filen.\n\nFörkasta dem och ladda om filen?
 BTN_OK            = OK
 BTN_CONTINUE      = Fortsätt
 DLG_CONV_TO_PLAIN = Ta bort formatering
@@ -486,7 +488,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Jämför flikar…
-MENU_INSERT_DATETIME      = Infoga &datum/tid	F5
+MENU_INSERT_DATETIME      = Infoga &datum/tid	Shift+F5
 DLG_COMPARE_TITLE         = Jämför flikar
 DLG_COMPARE_LABEL_A       = Flik A:
 DLG_COMPARE_LABEL_B       = Flik B:

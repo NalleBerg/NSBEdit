@@ -92,6 +92,8 @@ DLG_SAVE_CHANGES  = Guardar alterações
 BTN_SAVE          = Guardar
 BTN_DONT_SAVE     = Não guardar
 BTN_CANCEL        = Cancelar
+DLG_DISCARD_CHANGES = Descartar alterações
+MSG_DISCARD_AND_RELOAD = Tem alterações por guardar neste ficheiro.\n\nDescartar as alterações e recarregar o ficheiro?
 BTN_OK            = OK
 BTN_CONTINUE      = Continuar
 DLG_CONV_TO_PLAIN = Remover formatação
@@ -522,7 +524,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Comparar separadores…
-MENU_INSERT_DATETIME      = Inserir &data/hora	F5
+MENU_INSERT_DATETIME      = Inserir &data/hora	Shift+F5
 DLG_COMPARE_TITLE         = Comparar separadores
 DLG_COMPARE_LABEL_A       = Separador A:
 DLG_COMPARE_LABEL_B       = Separador B:

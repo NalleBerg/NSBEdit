@@ -2,6 +2,11 @@
 
 # Changelog
 
+## v2026.06.15.15 (Fix: shortcut label now shows Shift+F5) - 15.06.2026 15:58
+
+- **Fix: the Insert Date/Time menu entry now shows Shift+F5**: the shortcut label in the locale menu strings and the API list now matches the actual remapped key binding.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.15.15`.
+
 ## v2026.06.15.11 (Fix: AI code boundaries and end-marker handling) - 15.06.2026 11:46
 
 - **Fix: the AI shell now keeps code examples inside explicit boundaries**: the reply renderer now treats the visible `Copy code` label as the start of the block and closes the rendered code again when it reaches a real end marker, a standalone ellipsis, a closing fence, or the next markdown heading.

@@ -93,6 +93,8 @@ DLG_SAVE_CHANGES  = Зберегти зміни
 BTN_SAVE          = Зберегти
 BTN_DONT_SAVE     = Не зберігати
 BTN_CANCEL        = Скасувати
+DLG_DISCARD_CHANGES = Відхилити зміни
+MSG_DISCARD_AND_RELOAD = У цьому файлі є незбережені зміни.\n\nВідхилити їх і перезавантажити файл?
 BTN_OK            = ОКBTN_CONTINUE      = Продовжити
 DLG_CONV_TO_PLAIN = Видалити форматування
 DLG_FILE_CHANGED        = Файл змінено на диску
@@ -521,7 +523,7 @@ Reload the latest version from disk, or keep your locally cached version?
 
 // ── Compare Tabs ─────────────────────────────────────────────────────────────
 MENU_COMPARE_TABS         = &Порівняти вкладки…
-MENU_INSERT_DATETIME      = Вставити &дату/час	F5
+MENU_INSERT_DATETIME      = Вставити &дату/час	Shift+F5
 DLG_COMPARE_TITLE         = Порівняти вкладки
 DLG_COMPARE_LABEL_A       = Вкладка A:
 DLG_COMPARE_LABEL_B       = Вкладка B:
