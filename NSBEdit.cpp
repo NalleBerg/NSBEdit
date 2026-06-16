@@ -10124,7 +10124,6 @@ static void Ne_RebuildFtpMenu(HWND hwnd)
     int64_t activeTabProfileId = (aDoc && aDoc->isFtpFile) ? aDoc->ftpProfileId : 0;
     if (activeTabProfileId && NeFtp_IsConnected(activeTabProfileId)) {
         Ne_AppendMenuOD(s_hFtpMenu, MF_STRING, IDM_PREVIEW_FTP,    Ls(L"MENU_PREVIEW_FTP"));
-        Ne_AppendMenuOD(s_hFtpMenu, MF_STRING, IDM_FTP_DISCONNECT, Ls(L"FTP_DISCONNECT"));
     }
     Ne_AppendMenuOD(s_hFtpMenu, MF_SEPARATOR, 0, NULL);
     std::vector<NeProfile> ftpProfiles;
