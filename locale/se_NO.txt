@@ -43,6 +43,11 @@ MENU_SHORTCUTS  = &Njuikenvuogit...\tF1
 MENU_ABOUT      = &NSBEdit birra
 BTN_AI          = AI
 TIP_AI          = Jeara Ollamas AI.
+REGEX_GUIDE_TITLE = Regex-veiledning
+REGEX_GUIDE_LABEL = Inneholder
+REGEX_GUIDE_NOTE = Ctrl+F fokuserer søkefeltet. Søket oppdateres mens du skriver.
+REGEX_GUIDE_SEARCH = Søk i veiledningen
+REGEX_GUIDE_CLEAR = Tøm søk
 
 # ── Convert menu ─────────────────────────────────────────────────────────────
 MENU_CONVERT        = &Nuppástuhttit

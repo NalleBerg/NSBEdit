@@ -91,6 +91,13 @@
                                                 Ne_ShowShortcuts — modal ListView dialog,
                                                 44 rows, NM_CUSTOMDRAW bold col 0 /
                                                 royal-blue col 2.
+                                                highlight/highlight.h|cpp — RichEdit
+                                                search-result highlighting helper used by
+                                                the regex guide and any similar search UI.
+                                                Saves original per-character formatting,
+                                                paints all matches, and restores the
+                                                document exactly on clear/close.
+                                                See API_INTERNALS/API/search_highlight_API.txt.
                                                 Ne_ShowChoiceDialog — custom modal
                                                 white-background question dialog with
                                                 owner-draw icon buttons (Save/Don't

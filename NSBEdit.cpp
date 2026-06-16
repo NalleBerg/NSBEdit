@@ -32,6 +32,7 @@
 #include "scroll/my_scrollbar_hscroll.h"
 #include "highlight/highlight.h"
 #include "checkbox.h"
+#include "regex_guide/regex_guide.h"
 #include "ne_crypto.h"
 #include "ne_profiles.h"
 #include "ne_ai_bootstrap.h"
@@ -101,6 +102,8 @@
 #define IDM_ENC_ISO8859_1   125
 #define IDM_CONV_TO_RTF     126
 #define IDM_CONV_TO_HTML5   127
+
+#define IDM_REGEX_GUIDE     141
 
 enum class NeEncoding {
     Unknown  = 0,
@@ -9908,6 +9911,7 @@ static void Ne_BuildMainMenu(HWND hwnd)
     // ── Help menu ─────────────────────────────────────────────────────────
     HMENU hHelp = CreatePopupMenu();
     Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_SHORTCUTS, Ls(L"MENU_SHORTCUTS"));
+    Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_REGEX_GUIDE, Ls(L"MENU_REGEX_GUIDE"));
     Ne_AppendMenuOD(hHelp, MF_SEPARATOR, 0,             NULL);
     Ne_AppendMenuOD(hHelp, MF_STRING,    IDM_ABOUT,     Ls(L"MENU_ABOUT"));
     Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ls(L"MENU_HELP"), true);
@@ -13882,8 +13886,16 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (wmId == IDM_SELECTALL) { if (hEdit) SendMessageW(hEdit, EM_SETSEL, 0, -1);               SetFocus(hEdit); return 0; }
         if (wmId == IDM_PREFS)     { Ne_ShowPrefsDialog(hwnd); return 0; }
         // ── Help menu ─────────────────────────────────────────────────────────
-        if (wmId == IDM_SHORTCUTS) { Ne_ShowShortcuts(hwnd);      return 0; }
-        if (wmId == IDM_ABOUT)     { ShowNsbAboutDialog(hwnd);     return 0; }
+        if (wmId == IDM_SHORTCUTS)   { Ne_ShowShortcuts(hwnd); return 0; }
+        if (wmId == IDM_REGEX_GUIDE) { RegexGuide_Show(hwnd, false,
+                         Ls(L"REGEX_GUIDE_TITLE"),
+                         Ls(L"REGEX_GUIDE_LABEL"),
+                         Ls(L"REGEX_GUIDE_NOTE"),
+                         Ls(L"REGEX_GUIDE_TEXT"),
+                         Ls(L"REGEX_GUIDE_SEARCH"),
+                         Ls(L"REGEX_GUIDE_CLEAR"),
+                         Ls(L"BTN_CLOSE")); return 0; }
+        if (wmId == IDM_ABOUT)       { ShowNsbAboutDialog(hwnd); return 0; }
         // ── FTP menu ──────────────────────────────────────────────────────────
         if (wmId == IDM_FTP_ADD_SITE) {
             Ne_ShowFtpSiteDialog(hwnd, nullptr);
@@ -15037,6 +15049,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             DestroyWindow(s_hwndAiWindow);
             s_hwndAiWindow = NULL;
         }
+        RegexGuide_Close();
         Ne_DetachAllScrollbars();
         NeTabs_Destroy(hwnd);
 

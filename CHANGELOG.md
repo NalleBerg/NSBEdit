@@ -2,6 +2,12 @@
 
 # Changelog
 
+## v2026.06.16.12 (Feature: regex guide window) - 16.06.2026 12:26
+
+- **Feature: regex guide is now a floating help window with its own taskbar entry**: the new regex page opens as a separate window from Help, tracks search-as-you-type, highlights all matches, and keeps the clear button and tooltip behavior in the guide itself.
+- **Feature: regex guide explanations are localized**: the guide content now comes from locale text instead of a hardcoded English body, so the same help page can be translated alongside the rest of the UI.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.16.12`.
+
 ## v2026.06.15.15 (Fix: shortcut label now shows Shift+F5) - 15.06.2026 15:58
 
 - **Fix: the Insert Date/Time menu entry now shows Shift+F5**: the shortcut label in the locale menu strings and the API list now matches the actual remapped key binding.

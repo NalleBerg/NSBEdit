@@ -1,0 +1,112 @@
+================================================================================
+  NSBEdit Search Highlight API
+================================================================================
+
+This module provides the RichEdit search-result highlighting used by the regex
+guide and any other rich-text search UI that needs to show every match at once.
+
+The design is intentionally non-destructive:
+- All original per-character foreground/background data is captured before the
+  highlight pass.
+- The active match is drawn with a stronger foreground/background pair.
+- All inactive matches keep their original text colour and receive a softer
+  background colour.
+- Clearing the search restores the document to its exact prior formatting.
+
+The implementation uses RichEdit selection formatting, so the caller should only
+use it on controls that support EM_GETCHARFORMAT / EM_SETCHARFORMAT.
+
+================================================================================
+PUBLIC API
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+void NeHighlight_SetAll(
+    HWND                               hEdit,
+    const std::vector<NeHighlightRange>& matches,
+    int                                activeIdx,
+    COLORREF                           activeFg,
+    COLORREF                           activeBg,
+    COLORREF                           inactiveBg,
+    NeHighlightState&                  state)
+────────────────────────────────────────────────────────────────────────────────
+Apply highlights for all match ranges in one pass.
+
+Behaviour
+  • Saves the original formatting for every character covered by matches.
+  • Applies inactiveBg to all matches.
+  • Applies activeFg + activeBg to activeIdx when it is valid.
+  • Scrolls the active range into view by selecting it after redraw is restored.
+
+Call pattern
+  • Collect all match ranges first.
+  • Call this after each search edit or when the search phrase changes.
+  • Zero-initialise NeHighlightState before first use.
+
+Returns
+  Nothing.
+
+Notes
+  • The function suppresses redraw while it rewrites formatting to avoid visual
+    flicker and selection jumping.
+  • The match ranges are treated as half-open intervals [start, end).
+
+────────────────────────────────────────────────────────────────────────────────
+void NeHighlight_SetActive(
+    HWND                  hEdit,
+    int                   newActiveIdx,
+    COLORREF              activeFg,
+    COLORREF              activeBg,
+    COLORREF              inactiveBg,
+    NeHighlightState&     state)
+────────────────────────────────────────────────────────────────────────────────
+Move the active highlight from one match to another without rebuilding all
+match formatting.
+
+Behaviour
+  • Restores the previous active range back to inactive styling.
+  • Promotes the new range to active styling.
+  • Keeps the rest of the document untouched.
+
+Use this when stepping through results with keyboard navigation.
+
+────────────────────────────────────────────────────────────────────────────────
+void NeHighlight_Clear(HWND hEdit, NeHighlightState& state)
+────────────────────────────────────────────────────────────────────────────────
+Restore the document to its original formatting and clear the stored state.
+
+Use this when the search string is cleared, the search UI closes, or the host
+document is being torn down.
+
+================================================================================
+DATA TYPES
+================================================================================
+
+NeHighlightRange
+  Integer half-open range [start, end) for one match.
+
+NeHighlightState
+  Caller-owned state object that stores saved character formatting and the list
+  of current match ranges. It must live for as long as the search highlight is
+  active.
+
+Colours
+  NE_HL_FG          active match foreground
+  NE_HL_BG          active match background
+  NE_HL_BG_INACTIVE inactive match background
+
+================================================================================
+USAGE NOTES
+================================================================================
+
+The highlight pass is designed for search UIs that find every occurrence as the
+user types. The intended flow is:
+  1. Parse the current search string.
+  2. Build the match list.
+  3. Call NeHighlight_SetAll().
+  4. If the user presses Next/Previous, call NeHighlight_SetActive().
+  5. On clear/close, call NeHighlight_Clear().
+
+This keeps the visible search experience consistent with the rest of NSBEdit:
+the active occurrence is easy to spot, while the remaining matches stay visible
+for mouse-based scanning.
