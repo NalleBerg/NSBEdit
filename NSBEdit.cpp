@@ -8707,6 +8707,109 @@ static void Ne_SaveAll(HWND hwnd)
         NeTabs_SetActive(hwnd, origIdx);
 }
 
+static bool Ne_QuietWriteDocToPath(HWND hwnd, NeTabDoc* doc, const std::wstring& path)
+{
+    UNREFERENCED_PARAMETER(hwnd);
+    if (!doc || doc->isDiffResult || path.empty()) return false;
+
+    // ── Scintilla tab: save UTF-8 directly ───────────────────────────────────
+    if (doc->hSci) {
+        std::string utf8 = Ne_SciGetText(doc->hSci);
+        FILE* f = nullptr;
+        if (_wfopen_s(&f, path.c_str(), L"wb") != 0 || !f) return false;
+        fwrite(utf8.data(), 1, utf8.size(), f);
+        fclose(f);
+        doc->path = path;
+        doc->encoding = (int)NeEncoding::UTF8;
+        SendMessageW(doc->hSci, SCI_SETSAVEPOINT, 0, 0);
+        Ne_RememberDiskStamp(doc);
+        return true;
+    }
+
+    HWND hEdit = doc->hEdit;
+    if (!hEdit) return false;
+
+    bool asRtf = Ne_DocIsRtf(doc);
+    if (!asRtf && Ne_HasFormatting(hEdit)) return false;
+
+    std::string bytes = Ne_StreamOut(hEdit, asRtf);
+    std::string writeBytes;
+    if (!asRtf) {
+        const wchar_t* wptr = reinterpret_cast<const wchar_t*>(bytes.data());
+        int wlen = (int)(bytes.size() / sizeof(wchar_t));
+        NeEncoding enc = (NeEncoding)doc->encoding;
+        UINT cp = CP_UTF8;
+        if      (enc == NeEncoding::UTF16LE)   cp = 1200;
+        else if (enc == NeEncoding::ANSI)      cp = CP_ACP;
+        else if (enc == NeEncoding::Win1252)   cp = 1252;
+        else if (enc == NeEncoding::ISO8859_1) cp = 28591;
+
+        if (cp == 1200) {
+            writeBytes.assign(reinterpret_cast<const char*>(wptr), (size_t)wlen * sizeof(wchar_t));
+        } else {
+            int n = WideCharToMultiByte(cp, 0, wptr, wlen, NULL, 0, "?", NULL);
+            if (n > 0) {
+                writeBytes.resize(n);
+                WideCharToMultiByte(cp, 0, wptr, wlen, writeBytes.data(), n, "?", NULL);
+            }
+        }
+    } else {
+        writeBytes = bytes;
+    }
+
+    FILE* f = nullptr;
+    if (_wfopen_s(&f, path.c_str(), L"wb") != 0 || !f) return false;
+    if (!writeBytes.empty()) fwrite(writeBytes.data(), 1, writeBytes.size(), f);
+    fclose(f);
+
+    doc->path = path;
+    if (asRtf) doc->encoding = (int)NeEncoding::RichText;
+    else if ((NeEncoding)doc->encoding == NeEncoding::Unknown)
+        doc->encoding = (int)NeEncoding::UTF8;
+    Ne_RememberDiskStamp(doc);
+    return true;
+}
+
+static void Ne_AutoSaveTabs(HWND hwnd)
+{
+    const int count = NeTabs_GetCount(hwnd);
+    const int activeIdx = NeTabs_GetActiveIndex(hwnd);
+
+    for (int i = 0; i < count; ++i) {
+        NeTabDoc* doc = NeTabs_GetDocByIndex(hwnd, i);
+        if (!doc || !doc->modified || doc->path.empty() || doc->isDiffResult)
+            continue;
+
+        if (doc->isFtpFile && !doc->ftpRemotePath.empty()) {
+            if (!Ne_QuietWriteDocToPath(hwnd, doc, doc->path))
+                continue;
+
+            bool connected = NeFtp_SetActiveConn(doc->ftpProfileId);
+            if (!connected) {
+                NeProfile prof;
+                if (NeProfiles_GetById(doc->ftpProfileId, prof))
+                    connected = NeFtp_Connect(prof);
+            }
+            if (!connected || !NeFtp_Upload(doc->path, doc->ftpRemotePath)) {
+                doc->modified = true;
+                NeTabs_UpdateTabTitle(hwnd, i);
+                if (i == activeIdx) Ne_UpdateTitle(hwnd);
+                continue;
+            }
+        } else {
+            if (!Ne_QuietWriteDocToPath(hwnd, doc, doc->path))
+                continue;
+        }
+
+        doc->modified = false;
+        NeTabs_UpdateTabTitle(hwnd, i);
+        if (i == activeIdx) {
+            Ne_UpdateTitle(hwnd);
+            Ne_UpdateStatusText(hwnd);
+        }
+    }
+}
+
 static bool Ne_PromptSaveIfModified(HWND hwnd)
 {
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
@@ -15025,8 +15128,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     // ── WM_TIMER — periodic session autosave ─────────────────────────────────
     case WM_TIMER:
-        if (wParam == NE_TIMER_SESSION)
+        if (wParam == NE_TIMER_SESSION) {
+            Ne_AutoSaveTabs(hwnd);
             Ne_SessionSave(hwnd);
+        }
         if (wParam == NE_TIMER_SPELL) {
             KillTimer(hwnd, NE_TIMER_SPELL);
             NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
