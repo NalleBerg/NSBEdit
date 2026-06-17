@@ -161,14 +161,14 @@ void AiCopyCode_AppendCodeLine(HWND hwndLog, const std::wstring& line)
     it->second.blocks.back().codeEndChar += (int)line.size();
 }
 
-void AiCopyCode_EndBlock(HWND hwndLog)
+void AiCopyCode_EndBlock(HWND hwndLog, int codeEndChar)
 {
     if (!hwndLog) return;
 
     auto it = s_states.find(hwndLog);
     if (it == s_states.end() || it->second.blocks.empty()) return;
 
-    it->second.blocks.back().codeEndChar = GetWindowTextLengthW(hwndLog);
+    it->second.blocks.back().codeEndChar = codeEndChar;
 }
 
 bool AiCopyCode_IsHot(HWND hwndLog, POINT ptClient)

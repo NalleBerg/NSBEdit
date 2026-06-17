@@ -28,8 +28,8 @@ FILES:
     - Keep the prompt box multiline so Shift+Enter can insert a newline.
     - Clear the prompt immediately when Send is pressed.
     - Persist the AI preferences through the existing profile store.
-    - Provide a visible Copy code header for fenced blocks and a right-click
-      Copy answer command for the whole rendered response.
+    - Provide a visible Copy code header for explicit marker blocks and a
+      right-click Copy answer command for the whole rendered response.
 
   Text wrapping:
     - Both RichEdit panes are created without horizontal scrolling.
@@ -44,7 +44,9 @@ FILES:
       translated into RichEdit character-format runs.
     - Code blocks use a separate monospaced run and a visible Copy code label;
       the click target is measured from the rendered label position and width
-      instead of being guessed from the raw text index.
+      instead of being guessed from the raw text index. The AI reply path now
+      expects `[[CODE_BLOCK_START]]` / `[[CODE_BLOCK_END]]` marker lines for
+      code and ignores markdown fences in that code path.
 
 ================================================================================
 2. ENTRY POINT

@@ -46,6 +46,7 @@
     - send a single prompt to Ollama and show the reply in the log
     - allow copying the rendered answer or clearing the current log
     - keep a visible copy affordance for code blocks inside the answer pane
+    - use descriptive start/end marker lines for code in the AI reply path
 
   Text handling:
     - Both RichEdit panes wrap to the control width with no sideways scroll.
@@ -68,8 +69,9 @@
     - The send path is synchronous and returns one response line from the
       local Ollama service before the dialog is tweaked further.
     - The output pane offers a right-click Copy action for the rendered
-      answer, and code fences add a visible Copy code header that copies the
-      fenced block content.
+      answer, and explicit `[[CODE_BLOCK_START]]` / `[[CODE_BLOCK_END]]`
+      lines add a visible Copy code header that copies only the text between
+      those markers.
 
 ================================================================================
 3. ne_ai_bootstrap.h

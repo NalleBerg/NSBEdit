@@ -1,29 +1,26 @@
 NSBEdit handover notes
-Written: 2026-06-15
+Written: 2026-06-17
 
 Current status
-- The AI reply beginning is now handled correctly by the rendered Copy code header.
-- The reply end is still not reliable. The explanation text can still inherit code formatting when the model does not emit a clean end marker.
-- The most likely fix is to stop guessing from the rendered text and instead keep a raw reply log so the end of the code sample can be detected from explicit markers in the model output.
+- The AI marker contract was changed away from markdown fences and now uses descriptive tags: `[[CODE_BLOCK_START]]` and `[[CODE_BLOCK_END]]`.
+- The reply renderer currently shows the tags visibly, styles them separately from the code, and tries to stop the copied range at the end boundary instead of the whole log.
+- The compile break from the signature change has been fixed. `AiCopyCode_EndBlock()` now takes an explicit end position and the stale call site in `ollama_ai.cpp` was updated.
+- The remaining visible problem in the screenshots is visual correctness: the code coloring can still bleed and the end tag / copied span still needs a cleaner boundary strategy.
+- The safest next technical step is to keep a raw AI reply capture, then render only after the actual raw markers have been detected and validated. That would avoid inferring boundaries from already-styled RichEdit content.
 
 What to do next
-- Log the raw AI answer to a text file before rendering it.
-- Search that raw text for the actual start and end markers the model emits.
-- Make the renderer consume only those markers for code boundaries.
-- If the version has not changed since the last commit, keep the new work under the same version in the next changelog entry.
-- Run NewVersion.ps1 to stamp the current time.
-- Read curver.txt to get the publish/version string.
-- Manually update Changelog.html and CHANGELOG.md with the current version and changes.
-- Update README.md.
-- Check .\MyStyle\API_list.txt and update any listed files there if they need it.
-- Keep INTERNALS/API editing in MyStyle, since that is the main project for those notes now.
-- Run makeit.bat without parameters to build and package.
-- Commit and push with a good commit message.
+- Continue with the raw-reply capture idea so the renderer can see the exact text the model produced before any formatting or truncation happens.
+- Keep the contract strict: only `[[CODE_BLOCK_START]]` and `[[CODE_BLOCK_END]]` should define code boundaries in the explicit-marker path.
+- If the model omits the end tag, synthesize the end marker only after the raw reply has been fully inspected, and keep the explanation text outside the copy span.
+- If the version changes again before the next commit, keep all of this work under the same new version tag in the docs.
+- Run `makeit.bat` without parameters before committing so the package reflects the current code and docs.
+- Commit and push with a message that makes the marker-contract change obvious.
 
 Notes
-- The boundary problem is now mainly about the end of the code sample, not the start.
-- A raw text log will make it much easier to see what the model actually sent.
-- The raw log should be temporary and only used for debugging until the boundary rules are stable.
+- The current debugging pain point is that the rendered output is not a faithful source of the raw model text.
+- The start marker is better than it was, but the end boundary still needs a more deterministic handoff from raw text to styled output.
+- Legacy markdown fences should stay out of the explicit-marker code path.
+- The raw log should be temporary and only used until the boundary rules are stable.
 - Keep local AI and cloud AI flows separate.
 - Keep the model picker realtime, not restart-based.
 - Portable mode should stay AI-free; installed mode can use Ollama locally.

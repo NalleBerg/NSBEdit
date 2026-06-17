@@ -2,10 +2,17 @@
 
 # Changelog
 
-## v2026.06.16.12 (Feature: regex guide window) - 16.06.2026 12:26
+## v2026.06.17.11 (Fix: AI marker contract uses descriptive tags) - 17.06.2026 11:03
+
+- **Fix: the AI shell now uses descriptive code markers instead of markdown fences**: code replies are now driven by the literal `[[CODE_BLOCK_START]]` and `[[CODE_BLOCK_END]]` tags, with the AI prompt explicitly rejecting ```cpp / ``` fences in that path.
+- **Fix: the visible Copy code header remains separate from the copied block**: the reply renderer keeps the header and marker labels visible in the answer pane while the copied span is tracked independently through the copy helper.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.17.11`.
+
+## v2026.06.16.12 (Feature: regex guide window; FTP menu cleanup) - 16.06.2026 12:26
 
 - **Feature: regex guide is now a floating help window with its own taskbar entry**: the new regex page opens as a separate window from Help, tracks search-as-you-type, highlights all matches, and keeps the clear button and tooltip behavior in the guide itself.
 - **Feature: regex guide explanations are localized**: the guide content now comes from locale text instead of a hardcoded English body, so the same help page can be translated alongside the rest of the UI.
+- **Fix: the FTP menu now uses only "Lukk tilkobling" for closing an active connection**: the separate direct-disconnect entry was removed from the FTP popup, so the menu keeps a single close-connection action instead of two overlapping commands.
 - **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.16.12`.
 
 ## v2026.06.15.15 (Fix: shortcut label now shows Shift+F5) - 15.06.2026 15:58

@@ -628,7 +628,8 @@
                                                 editor. See API_INTERNALS\API\ollama_ai_API.txt.
 
   copy_ai_code.cpp / copy_ai_code.h             AI reply copy-boundary helper. Owns the
-                                                visible Copy code label, code block
+                                                visible Copy code label, descriptive
+                                                `[[CODE_BLOCK_START]]` / `[[CODE_BLOCK_END]]`
                                                 boundary tracking, clipboard copy, and the
                                                 transient Copied tooltip used by the
                                                 standalone AI window.
@@ -664,9 +665,10 @@
                                                 control width via EM_SETTARGETDEVICE(NULL,0)
                                                 so there is no sideways scroll bar. Enter
                                                 sends the prompt, Shift+Enter inserts a
-                                                newline, code prompts are nudged into fenced
-                                                markdown blocks with explicit begin/end code
-                                                markers when the prompt is code-related, and
+                                                newline, code prompts are nudged into
+                                                descriptive begin/end code markers when the
+                                                prompt is code-related, and markdown fence
+                                                lines are ignored in that path, and
                                                 the action row includes Send, Copy, Clear,
                                                 and Close. The reply pane now unescapes model
                                                 HTML tokens, renders simple color spans and
