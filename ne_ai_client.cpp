@@ -229,7 +229,7 @@ bool NeAiClient_AskOllama(const std::wstring& model, const std::wstring& prompt,
             NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
         if (hRequest) {
             std::string body = std::string("{\"model\":\"") +
-                Ai_EscapeJson(Ai_WideToUtf8(model.empty() ? L"qwen2.5-coder:7b" : model)) +
+                Ai_EscapeJson(Ai_WideToUtf8(model.empty() ? L"qwen3-coder" : model)) +
                 "\",\"prompt\":\"" +
                 Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
                 "\",\"stream\":false}";

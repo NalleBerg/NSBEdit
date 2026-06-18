@@ -81,12 +81,12 @@ FILES:
 ================================================================================
 
   Bootstrap defaults come from NeAiBootstrap_Get():
-    - model defaults to qwen2.5-coder:7b
+      - model defaults to qwen3-coder
     - fallback defaults to qwen2.5-coder:3b
 
-  If older saved prefs still contain qwen2.5-coder:7b-instruct or
-  qwen2.5-coder:3b-instruct, Ai_LoadPrefs() normalises them back to the valid
-  current tags on startup so installed builds self-heal.
+    If older saved prefs still contain qwen2.5-coder:7b-instruct,
+    qwen2.5-coder:7b, or qwen2.5-coder, Ai_LoadPrefs() normalises them back to
+    qwen3-coder on startup so installed builds self-heal.
 
   Saved preferences are loaded in Ai_LoadPrefs() and written back by
   Ai_SavePrefs() using NeProfiles_SetStrSetting / NeProfiles_SetIntSetting.

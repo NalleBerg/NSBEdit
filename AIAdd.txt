@@ -26,8 +26,8 @@ AI:
 If you want the most practical first build, I would do:
 
 Backend: Ollama
-Model: qwen2.5-coder:7b-instruct
-Fallback: qwen2.5-coder:3b-instruct
+Model: qwen3-coder
+Fallback: qwen2.5-coder:3b
 Editor integration: localhost API bridge
 UI: floating always-on-top tool window
 Modes: Suggestions and Agent

@@ -20,6 +20,7 @@ Notes
 - The current debugging pain point is that the rendered output is not a faithful source of the raw model text.
 - The start marker is better than it was, but the end boundary still needs a more deterministic handoff from raw text to styled output.
 - Legacy markdown fences should stay out of the explicit-marker code path.
+- Search highlighting is also misaligned: it looks about 3 characters too far to the left, so the next session should fix the highlight position before chasing any more AI boundary issues.
 - The raw log should be temporary and only used until the boundary rules are stable.
 - Keep local AI and cloud AI flows separate.
 - Keep the model picker realtime, not restart-based.

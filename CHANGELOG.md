@@ -1,6 +1,10 @@
 # Changelog
 
-# Changelog
+## v2026.06.18.10 (Fix: qwen3-coder is now the default AI model) - 18.06.2026 10:41
+
+- **Fix: the standalone AI window now opens on qwen3-coder by default**: the model loader, install defaults, and saved-preference migration now all prefer `qwen3-coder`, so the dialog no longer comes back on `qwen2.5-coder:7b` after a restart.
+- **Fix: installer and local AI docs now match the new default**: the reinstall path seeds `qwen3-coder`, while the internal release notes and AI window notes now describe the new model selection and fallback handling.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.18.10`.
 
 ## v2026.06.17.11 (Fix: AI marker contract uses descriptive tags) - 17.06.2026 11:03
 

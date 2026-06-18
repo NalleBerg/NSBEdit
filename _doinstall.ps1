@@ -27,7 +27,7 @@ $installDir = Join-Path $env:ProgramFiles 'NSBEdit'
 $appDataDir = Join-Path $env:APPDATA       'NSBEdit'
 $aiConfigPath = Join-Path $appDataDir 'ai-settings.json'
 $ollamaDownloadUrl = 'https://ollama.com/download/windows'
-$defaultAiModel = 'qwen2.5-coder:7b'
+$defaultAiModel = 'qwen3-coder'
 $fallbackAiModel = 'qwen2.5-coder:3b'
 
 function Write-Section($text) {

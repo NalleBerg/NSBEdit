@@ -184,7 +184,7 @@ static void Ai_OpenOllamaSignUp(HWND hwnd)
 static std::wstring Ai_DefaultModelName()
 {
     const NeAiBootstrapConfig& bootstrap = NeAiBootstrap_Get();
-    return bootstrap.model.empty() ? L"qwen2.5-coder:7b" : bootstrap.model;
+    return bootstrap.model.empty() ? L"qwen3-coder" : bootstrap.model;
 }
 
 static std::wstring Ai_FallbackModelName()
@@ -466,6 +466,12 @@ static void Ai_LoadPrefs(AiWindowState* st)
             wide.resize((size_t)wlen - 1);
             st->model = std::move(wide);
         }
+    }
+
+    if (st->model == L"qwen2.5-coder:7b-instruct" ||
+        st->model == L"qwen2.5-coder:7b" ||
+        st->model == L"qwen2.5-coder") {
+        st->model = Ai_DefaultModelName();
     }
 
     saved.clear();

@@ -71,7 +71,7 @@ RELATED:
 
   If Ollama is available during install, the script also pulls both default AI
   models so the AI shell can answer immediately after setup:
-    - qwen2.5-coder:7b
+    - qwen3-coder
     - qwen2.5-coder:3b
 
   The installer also includes ollama.png in the payload so the installed AI
