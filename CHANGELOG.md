@@ -1,5 +1,11 @@
 # Changelog
 
+## v2026.06.18.11 (Fix: AI model check action now lives under Cloud) - 18.06.2026 11:46
+
+- **Fix: Cloud now offers a dedicated local model check**: the AI window adds a `Check local models` command that opens a modal in-app progress dialog, checks the installed Ollama models, and streams each check/download status inside the dialog.
+- **Fix: the model-check dialog now uses the project button style**: the Close control is owner-drawn like the rest of NSBEdit's custom buttons and stays disabled until the check completes.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.18.11`.
+
 ## v2026.06.18.10 (Fix: qwen3-coder is now the default AI model) - 18.06.2026 10:41
 
 - **Fix: the standalone AI window now opens on qwen3-coder by default**: the model loader, install defaults, and saved-preference migration now all prefer `qwen3-coder`, so the dialog no longer comes back on `qwen2.5-coder:7b` after a restart.

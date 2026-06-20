@@ -1,3 +1,14 @@
+MENU_AI_CHECK_MODELS = Check local models
+AI_MODEL_CHECK_TITLE = Check local models
+AI_MODEL_CHECK_START = Checking local models...
+AI_MODEL_CHECK_NO_MODELS = No local models were found.
+AI_MODEL_CHECKING_MODEL = Checking model %s...
+AI_MODEL_DOWNLOADING_MODEL = Downloading update to model %s...
+AI_MODEL_UPTODATE_MODEL = Model %s is up to date ✓
+AI_MODEL_CHECK_FAILED_SIMPLE = Model %s could not be checked.
+AI_MODEL_CHECK_FAILED = Model %s could not be checked:
+AI_MODEL_CHECK_ALL_DONE = All models are now up to date! ✓
+AI_MODEL_CHECK_FINISHED_ERROR = Model check finished with errors.
 # NSBEdit locale file — sv_SE (Svenska)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash

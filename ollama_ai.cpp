@@ -36,11 +36,14 @@
 #define IDM_AI_SIGN_IN            1920
 #define IDM_AI_SIGN_OUT           1921
 #define IDM_AI_OPEN_PROVIDER      1922
+#define IDM_AI_CHECK_MODELS       1923
 #define IDM_AI_LOG_CLEAR          1930
 #define IDM_AI_LOG_COPY           1931
 #define IDM_AI_SEND               1932
 #define IDM_AI_ABOUT              1933
 #define WM_AI_SEND_COMPLETE       (WM_APP + 71)
+#define WM_AI_MODELCHECK_APPEND   (WM_APP + 72)
+#define WM_AI_MODELCHECK_DONE     (WM_APP + 73)
 
 #include "spinner/spinner_dialog.h"
 
@@ -103,6 +106,22 @@ struct AiSendWorkItem {
     std::wstring model;
     std::wstring fallback;
     std::wstring prompt;
+};
+
+struct AiModelCheckState {
+    HWND hwnd = NULL;
+    HWND parent = NULL;
+    HWND hLog = NULL;
+    HWND hClose = NULL;
+    HFONT hFont = NULL;
+    AiDialogData* dd = NULL;
+    bool done = false;
+};
+
+struct AiModelCheckProgressContext {
+    HWND hwnd = NULL;
+    std::wstring model;
+    bool announcedDownload = false;
 };
 
 struct AiMenuItemData {
@@ -210,6 +229,8 @@ static void Ai_AppendMenuOD(HMENU hMenu, UINT flags, UINT_PTR id, const wchar_t*
 static HMENU Ai_BuildMenu(const AiWindowState* st);
 static std::wstring Ai_CurrentModeLabel(const AiWindowState* st);
 static void Ai_OpenOllamaSignUp(HWND hwnd);
+static void Ai_NormalizeModelNameLocal(std::wstring& model);
+static void Ai_AddUniqueModel(std::vector<std::wstring>& models, const std::wstring& model);
 
 static HFONT Ai_MakeDlgFont(HWND hwnd, bool bold = false)
 {
@@ -391,7 +412,7 @@ static void Ai_DrawButton(const DRAWITEMSTRUCT* dis, const AiDialogData* dd)
         DeleteObject(hFill);
         DeleteObject(hPen);
     } else {
-        HICON hIcon = LoadIconW(NULL, MAKEINTRESOURCEW(b.id == IDC_AI_CLEAR_BTN ? kSystemIconError : kSystemIconInfo));
+        HICON hIcon = LoadIconW(NULL, MAKEINTRESOURCEW(b.tone == AiBtnTone::Red ? kSystemIconError : kSystemIconInfo));
         if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
     }
 
@@ -1190,6 +1211,232 @@ static void Ai_EndBusyState(HWND hwnd)
     }
 }
 
+static void Ai_ModelCheckPostLine(HWND hwnd, const std::wstring& line)
+{
+    if (!IsWindow(hwnd)) return;
+    auto* text = new std::wstring(line);
+    PostMessageW(hwnd, WM_AI_MODELCHECK_APPEND, 0, (LPARAM)text);
+}
+static std::wstring Ai_FormatLocaleText(const wchar_t* fmt, const std::wstring& value)
+{
+    std::wstring text = fmt ? fmt : L"";
+    size_t pos = text.find(L"%s");
+    if (pos != std::wstring::npos) {
+        text.replace(pos, 2, value);
+    }
+    return text;
+}
+
+static void Ai_ModelCheckProgress(void* context, const std::wstring& status,
+    unsigned long long completed, unsigned long long total)
+{
+    auto* pc = (AiModelCheckProgressContext*)context;
+    if (!pc || !IsWindow(pc->hwnd)) return;
+    std::wstring lower = status;
+    for (wchar_t& ch : lower) ch = (wchar_t)towlower(ch);
+    if (!pc->announcedDownload && ((completed > 0 && total > 0) || lower.find(L"downloading") != std::wstring::npos || lower.find(L"pulling") != std::wstring::npos)) {
+        pc->announcedDownload = true;
+        Ai_ModelCheckPostLine(pc->hwnd, Ai_FormatLocaleText(Ne_Ls(L"AI_MODEL_DOWNLOADING_MODEL"), pc->model));
+    }
+}
+
+static void Ai_ModelCheckWorker(HWND hwnd)
+{
+    std::thread([hwnd]() {
+        auto post = [hwnd](const std::wstring& line) {
+            Ai_ModelCheckPostLine(hwnd, line);
+        };
+
+        std::vector<std::wstring> models;
+        if (NeAiClient_ListOllamaModels(models)) {
+            for (std::wstring& model : models) {
+                Ai_NormalizeModelNameLocal(model);
+            }
+        }
+        Ai_AddUniqueModel(models, Ai_DefaultModelName());
+        Ai_AddUniqueModel(models, Ai_FallbackModelName());
+
+        bool anyError = false;
+        if (models.empty()) {
+            post(Ne_Ls(L"AI_MODEL_CHECK_NO_MODELS"));
+        } else {
+            for (const std::wstring& model : models) {
+                post(Ai_FormatLocaleText(Ne_Ls(L"AI_MODEL_CHECKING_MODEL"), model));
+                AiModelCheckProgressContext progress = {};
+                progress.hwnd = hwnd;
+                progress.model = model;
+                std::wstring error;
+                if (NeAiClient_PullOllamaModel(model, &progress, Ai_ModelCheckProgress, error)) {
+                    post(Ai_FormatLocaleText(Ne_Ls(L"AI_MODEL_UPTODATE_MODEL"), model));
+                } else {
+                    anyError = true;
+                    if (error.empty()) {
+                        post(Ai_FormatLocaleText(Ne_Ls(L"AI_MODEL_CHECK_FAILED_SIMPLE"), model));
+                    } else {
+                        post(Ai_FormatLocaleText(Ne_Ls(L"AI_MODEL_CHECK_FAILED"), model) + L" " + error);
+                    }
+                }
+            }
+        }
+
+        post(anyError ? Ne_Ls(L"AI_MODEL_CHECK_FINISHED_ERROR") : Ne_Ls(L"AI_MODEL_CHECK_ALL_DONE"));
+        if (IsWindow(hwnd)) {
+            PostMessageW(hwnd, WM_AI_MODELCHECK_DONE, (WPARAM)(anyError ? 1 : 0), 0);
+        }
+    }).detach();
+}
+
+static LRESULT CALLBACK Ai_ModelCheckWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    AiModelCheckState* st = (AiModelCheckState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    switch (msg) {
+    case WM_CREATE: {
+        auto* cs = (CREATESTRUCTW*)lParam;
+        st = (AiModelCheckState*)cs->lpCreateParams;
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)st);
+        if (!st) return -1;
+        st->hwnd = hwnd;
+        st->hFont = Ai_MakeDlgFont(hwnd, false);
+        st->dd = new AiDialogData();
+        if (!st->dd) return -1;
+        st->dd->buttonCount = 1;
+        st->dd->buttons[0] = AiButtonSpec{ IDC_AI_CLOSE_BTN, Ne_Ls(L"BTN_CLOSE"), AiBtnTone::Red, Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLOSE")), true };
+
+        HWND hTitle = CreateWindowExW(0, L"STATIC", Ne_Ls(L"AI_MODEL_CHECK_TITLE"),
+            WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP,
+            S(12), S(12), S(500), S(22), hwnd, NULL, GetModuleHandleW(NULL), NULL);
+        if (hTitle && st->hFont) SendMessageW(hTitle, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        st->hLog = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL,
+            S(12), S(40), S(620), S(280), hwnd, NULL, GetModuleHandleW(NULL), NULL);
+        if (st->hLog && st->hFont) SendMessageW(st->hLog, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        st->hClose = CreateWindowExW(0, L"BUTTON", Ne_Ls(L"BTN_CLOSE"),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW | WS_DISABLED,
+            S(12), S(332), st->dd->buttons[0].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_CLOSE_BTN, GetModuleHandleW(NULL), NULL);
+        if (st->hClose && st->hFont) SendMessageW(st->hClose, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        Ai_ModelCheckPostLine(hwnd, Ne_Ls(L"AI_MODEL_CHECK_START"));
+        Ai_ModelCheckWorker(hwnd);
+        return 0;
+    }
+    case WM_SIZE: {
+        if (!st) break;
+        RECT rc = {};
+        GetClientRect(hwnd, &rc);
+        int pad = S(12);
+        int btnW = st->dd ? st->dd->buttons[0].width : S(100);
+        int btnH = S(34);
+        if (st->hLog) SetWindowPos(st->hLog, NULL, pad, S(40), std::max(0, (int)rc.right - pad * 2), std::max(0, (int)rc.bottom - S(40) - pad - btnH - S(10)), SWP_NOZORDER | SWP_NOACTIVATE);
+        if (st->hClose) SetWindowPos(st->hClose, NULL, std::max(pad, ((int)rc.right - btnW) / 2), rc.bottom - pad - btnH, btnW, btnH, SWP_NOZORDER | SWP_NOACTIVATE);
+        return 0;
+    }
+    case WM_COMMAND:
+        if (st && st->done && (LOWORD(wParam) == IDC_AI_CLOSE_BTN || LOWORD(wParam) == IDCANCEL)) {
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        return 0;
+    case WM_CLOSE:
+        if (st && !st->done) {
+            MessageBeep(MB_ICONASTERISK);
+            return 0;
+        }
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_AI_MODELCHECK_APPEND: {
+        auto* line = (std::wstring*)lParam;
+        if (st && st->hLog && line) {
+            int len = GetWindowTextLengthW(st->hLog);
+            SendMessageW(st->hLog, EM_SETSEL, (WPARAM)len, (LPARAM)len);
+            if (len > 0) SendMessageW(st->hLog, EM_REPLACESEL, FALSE, (LPARAM)L"\r\n");
+            SendMessageW(st->hLog, EM_REPLACESEL, FALSE, (LPARAM)line->c_str());
+            SendMessageW(st->hLog, EM_SCROLLCARET, 0, 0);
+        }
+        delete line;
+        return 0;
+    }
+    case WM_AI_MODELCHECK_DONE:
+        if (st) {
+            st->done = true;
+            if (st->hClose) EnableWindow(st->hClose, TRUE);
+        }
+        return 0;
+    case WM_DRAWITEM:
+        if (st && st->dd) {
+            DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+            if (dis && Ai_ButtonIndexById(st->dd, dis->CtlID) >= 0) {
+                Ai_DrawButton(dis, st->dd);
+                return TRUE;
+            }
+        }
+        break;
+    case WM_DESTROY:
+        if (st && st->hFont) {
+            DeleteObject(st->hFont);
+            st->hFont = NULL;
+        }
+        if (st && st->dd) {
+            delete st->dd;
+            st->dd = NULL;
+        }
+        return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static void Ai_ShowModelCheckDialog(HWND parent)
+{
+    if (!parent || !IsWindow(parent)) return;
+    auto* st = new AiModelCheckState();
+    st->parent = parent;
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = Ai_ModelCheckWndProc;
+    wc.hInstance = hi;
+    wc.hCursor = LoadCursorW(NULL, MAKEINTRESOURCEW(kSystemArrowCursor));
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszClassName = L"NSBEditAiModelCheckDialog";
+    if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) {
+        RegisterClassW(&wc);
+    }
+
+    RECT pr = {};
+    GetWindowRect(parent, &pr);
+    const int clientW = S(640);
+    const int clientH = S(380);
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE);
+    int winW = wr.right - wr.left;
+    int winH = wr.bottom - wr.top;
+    int x = pr.left + std::max(0, (int)((pr.right - pr.left - winW) / 2));
+    int y = pr.top + std::max(0, (int)((pr.bottom - pr.top - winH) / 2));
+
+    EnableWindow(parent, FALSE);
+    HWND hwnd = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE,
+        wc.lpszClassName, Ne_Ls(L"AI_MODEL_CHECK_TITLE"),
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+        x, y, winW, winH, parent, NULL, hi, st);
+    if (!hwnd) {
+        EnableWindow(parent, TRUE);
+        delete st;
+        return;
+    }
+    st->hwnd = hwnd;
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    SetForegroundWindow(hwnd);
+
+    MSG msg = {};
+    while (IsWindow(hwnd) && GetMessageW(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessageW(&msg);
+    }
+    EnableWindow(parent, TRUE);
+    SetForegroundWindow(parent);
+}
+
 static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback)
 {
     AiSendWorkItem work;
@@ -1506,6 +1753,8 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_IN, L"Sign in to Ollama");
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_OUT, L"Sign out");
     Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_CHECK_MODELS, Ne_Ls(L"MENU_AI_CHECK_MODELS"));
+    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL);
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_OPEN_PROVIDER, L"Open Ollama web site");
 
     Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_SEND, L"Send prompt");
@@ -1771,6 +2020,9 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         case IDM_AI_OPEN_PROVIDER:
             ShellExecuteW(hwnd, L"open", L"https://ollama.com", NULL, NULL, SW_SHOWNORMAL);
+            return 0;
+        case IDM_AI_CHECK_MODELS:
+            Ai_ShowModelCheckDialog(hwnd);
             return 0;
         case IDM_AI_LOG_CLEAR:
             if (st && st->hLog) {

@@ -658,6 +658,10 @@
                                                 while the user is signed out, Send opens the
                                                 Ollama sign-up page and returns instead of
                                                 falling through to the local transport.
+                                                The Cloud menu also includes a modal Check
+                                                local models maintenance action that streams
+                                                progress while it checks the installed
+                                                Ollama models.
                                                 It also resolves `ollama.png` from the
                                                 executable directory so the AI buttons
                                                 keep their icon after install. The prompt

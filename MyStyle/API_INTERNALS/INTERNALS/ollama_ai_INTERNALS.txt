@@ -24,6 +24,8 @@ FILES:
     - Show current model, fallback model, cloud/local state, and sign-in state.
     - Offer menu actions for suggestion/agent model switching.
     - Offer local/cloud mode toggles and sign-in/sign-out actions.
+    - Offer a Cloud maintenance action to check local models in-place and show
+      its progress inside a modal dialog.
     - Append user prompts and Ollama responses to the output pane.
     - Keep the prompt box multiline so Shift+Enter can insert a newline.
     - Clear the prompt immediately when Send is pressed.
@@ -255,6 +257,9 @@ FILES:
 ================================================================================
 
   - Keep the AI window implementation out of NSBEdit.cpp.
+  - Keep the AI window locale-driven where possible; the maintenance dialog
+    now uses locale keys, but the rest of the AI module still needs a full
+    language pass.
   - Preserve the current local/default model split unless the product rules
     change again.
   - Keep cloud/subscription state separate from the local-only flow.

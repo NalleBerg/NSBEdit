@@ -7,6 +7,7 @@ Current status
 - The compile break from the signature change has been fixed. `AiCopyCode_EndBlock()` now takes an explicit end position and the stale call site in `ollama_ai.cpp` was updated.
 - The remaining visible problem in the screenshots is visual correctness: the code coloring can still bleed and the end tag / copied span still needs a cleaner boundary strategy.
 - The safest next technical step is to keep a raw AI reply capture, then render only after the actual raw markers have been detected and validated. That would avoid inferring boundaries from already-styled RichEdit content.
+- The AI module does not follow the selected language consistently yet, so tomorrow we need to fix one language throughout the program before pushing further.
 
 What to do next
 - Continue with the raw-reply capture idea so the renderer can see the exact text the model produced before any formatting or truncation happens.
@@ -25,3 +26,4 @@ Notes
 - Keep local AI and cloud AI flows separate.
 - Keep the model picker realtime, not restart-based.
 - Portable mode should stay AI-free; installed mode can use Ollama locally.
+- Tomorrow start with one language throughout the program, then bring the AI module in line with it.

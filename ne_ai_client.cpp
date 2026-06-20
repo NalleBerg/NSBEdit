@@ -102,6 +102,32 @@ static bool Ai_FindJsonStringField(const std::string& json, const char* field, s
     return false;
 }
 
+static bool Ai_FindJsonNumberField(const std::string& json, const char* field, unsigned long long& outValue)
+{
+    outValue = 0;
+    std::string needle = std::string("\"") + field + "\"";
+    size_t pos = json.find(needle);
+    if (pos == std::string::npos) return false;
+    pos = json.find(':', pos + needle.size());
+    if (pos == std::string::npos) return false;
+    ++pos;
+    while (pos < json.size() && isspace((unsigned char)json[pos])) ++pos;
+    size_t start = pos;
+    while (pos < json.size() && isdigit((unsigned char)json[pos])) ++pos;
+    if (pos <= start) return false;
+    outValue = _strtoui64(json.substr(start, pos - start).c_str(), NULL, 10);
+    return true;
+}
+
+static std::string Ai_TrimJsonLine(const std::string& line)
+{
+    size_t start = 0;
+    while (start < line.size() && (line[start] == '\r' || line[start] == '\n' || isspace((unsigned char)line[start]))) ++start;
+    size_t end = line.size();
+    while (end > start && (line[end - 1] == '\r' || line[end - 1] == '\n' || isspace((unsigned char)line[end - 1]))) --end;
+    return line.substr(start, end - start);
+}
+
 static std::wstring Ai_Utf8ToWide(const std::string& s);
 
 static bool Ai_FindJsonArrayStringFields(const std::string& json, const char* field, std::vector<std::wstring>& outValues)
@@ -207,6 +233,142 @@ bool NeAiClient_ListOllamaModels(std::vector<std::wstring>& outModels)
 
     WinHttpCloseHandle(hSession);
     return ok;
+}
+
+bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
+    NeAiPullProgressFn onProgress, std::wstring& outError)
+{
+    outError.clear();
+
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) {
+        outError = L"Could not open WinHTTP session.";
+        return false;
+    }
+
+    bool ok = false;
+    HINTERNET hConnect = WinHttpConnect(hSession, L"127.0.0.1", 11434, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/pull",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (hRequest) {
+            std::string body = std::string("{\"model\":\"") +
+                Ai_EscapeJson(Ai_WideToUtf8(model)) +
+                "\",\"stream\":true}";
+
+            const wchar_t* headers = L"Content-Type: application/json\r\n";
+            if (WinHttpSendRequest(hRequest, headers, (DWORD)-1L,
+                (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0;
+                DWORD statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
+                    if (status == 200) {
+                        DWORD available = 0;
+                        std::string pending;
+                        while (WinHttpQueryDataAvailable(hRequest, &available) && available > 0) {
+                            std::string chunk;
+                            chunk.resize(available);
+                            DWORD read = 0;
+                            if (!WinHttpReadData(hRequest, chunk.data(), available, &read) || read == 0) {
+                                outError = L"Failed to read Ollama response.";
+                                break;
+                            }
+                            chunk.resize(read);
+                            pending += chunk;
+
+                            size_t linePos = 0;
+                            while ((linePos = pending.find('\n')) != std::string::npos) {
+                                std::string rawLine = pending.substr(0, linePos);
+                                pending.erase(0, linePos + 1);
+                                std::string line = Ai_TrimJsonLine(rawLine);
+                                if (line.empty()) continue;
+
+                                std::string statusUtf8;
+                                unsigned long long completed = 0;
+                                unsigned long long total = 0;
+                                if (Ai_FindJsonStringField(line, "status", statusUtf8)) {
+                                    Ai_FindJsonNumberField(line, "completed", completed);
+                                    Ai_FindJsonNumberField(line, "total", total);
+                                    if (onProgress) {
+                                        onProgress(context, Ai_Utf8ToWide(statusUtf8), completed, total);
+                                    }
+                                    if (statusUtf8 == "success") {
+                                        ok = true;
+                                    } else if (statusUtf8 == "error") {
+                                        std::string errUtf8;
+                                        if (Ai_FindJsonStringField(line, "error", errUtf8)) {
+                                            outError = Ai_Utf8ToWide(errUtf8);
+                                        } else {
+                                            outError = L"Ollama returned an error while pulling the model.";
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!outError.empty()) break;
+                        }
+                        if (outError.empty() && !pending.empty()) {
+                            std::string line = Ai_TrimJsonLine(pending);
+                            if (!line.empty()) {
+                                std::string statusUtf8;
+                                unsigned long long completed = 0;
+                                unsigned long long total = 0;
+                                if (Ai_FindJsonStringField(line, "status", statusUtf8)) {
+                                    Ai_FindJsonNumberField(line, "completed", completed);
+                                    Ai_FindJsonNumberField(line, "total", total);
+                                    if (onProgress) {
+                                        onProgress(context, Ai_Utf8ToWide(statusUtf8), completed, total);
+                                    }
+                                    if (statusUtf8 == "success") {
+                                        ok = true;
+                                    } else if (statusUtf8 == "error") {
+                                        std::string errUtf8;
+                                        if (Ai_FindJsonStringField(line, "error", errUtf8)) {
+                                            outError = Ai_Utf8ToWide(errUtf8);
+                                        } else {
+                                            outError = L"Ollama returned an error while pulling the model.";
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        std::string response;
+                        if (Ai_ReadBody(hRequest, response)) {
+                            std::string errUtf8;
+                            if (Ai_FindJsonStringField(response, "error", errUtf8)) {
+                                outError = Ai_Utf8ToWide(errUtf8);
+                            } else {
+                                outError = L"Ollama returned HTTP status ";
+                                outError += std::to_wstring(status);
+                                outError += L".";
+                            }
+                        } else {
+                            outError = L"Could not read Ollama error response.";
+                        }
+                    }
+                } else {
+                    outError = L"Could not query Ollama response status.";
+                }
+            } else {
+                outError = L"Could not send model pull request to Ollama.";
+            }
+
+            WinHttpCloseHandle(hRequest);
+        } else {
+            outError = L"Could not open Ollama pull request.";
+        }
+        WinHttpCloseHandle(hConnect);
+    } else {
+        outError = L"Could not connect to Ollama on localhost.";
+    }
+
+    WinHttpCloseHandle(hSession);
+    return ok && outError.empty();
 }
 
 bool NeAiClient_AskOllama(const std::wstring& model, const std::wstring& prompt,
