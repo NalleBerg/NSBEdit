@@ -254,5 +254,3 @@ Write-Host ""
     Write-Host "  ERROR: $_" -ForegroundColor Red
     Write-Host ""
 }
-
-Read-Host "  Press Enter to close"

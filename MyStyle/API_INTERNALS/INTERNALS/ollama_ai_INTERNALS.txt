@@ -32,6 +32,9 @@ FILES:
     - Persist the AI preferences through the existing profile store.
     - Provide a visible Copy code header for explicit marker blocks and a
       right-click Copy answer command for the whole rendered response.
+    - Keep the rendered answer close to the Ollama app's live output so code
+      colours, links, and copy affordances remain visible while the reply is
+      streaming.
 
   Text wrapping:
     - Both RichEdit panes are created without horizontal scrolling.
@@ -216,8 +219,8 @@ FILES:
 8. SEND BEHAVIOUR
 ================================================================================
 
-  Ai_DoSend() now sends the current prompt to Ollama on localhost and waits for
-  a single response line.
+  Ai_DoSend() now sends the current prompt to Ollama on localhost on a worker
+  thread and returns immediately to the UI.
 
   Cloud login gate:
     - If cloudMode is true and signedIn is false, Ai_DoSend() opens the Ollama
@@ -228,15 +231,18 @@ FILES:
   Current request path:
     - POST http://127.0.0.1:11434/api/generate
     - send the selected model and prompt as JSON
-    - request non-streaming output so the dialog can append one answer line
+    - stream the response and post completion back to the window when the
+      request is finished
 
   Before sending, the AI window prefixes a short markdown instruction so code
   answers are more likely to come back fenced and indentation-safe.
 
   The output pane shows the user's question first, then the Ollama reply or a
   short error message if the local service is not reachable.
-  The reply path now tries to preserve visible emphasis and color hints from
-  the model output instead of flattening everything to plain text.
+  The current follow-up issue is that the rendered reply still does not match
+  Ollama's own live output faithfully enough. Colours, links, and code afford-
+  ances need to survive the render pass exactly the way the Ollama app shows
+  them while the answer is streaming.
 
 ================================================================================
 9. EXTERNAL DEPENDENCIES

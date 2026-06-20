@@ -2,28 +2,18 @@ NSBEdit handover notes
 Written: 2026-06-17
 
 Current status
-- The AI marker contract was changed away from markdown fences and now uses descriptive tags: `[[CODE_BLOCK_START]]` and `[[CODE_BLOCK_END]]`.
-- The reply renderer currently shows the tags visibly, styles them separately from the code, and tries to stop the copied range at the end boundary instead of the whole log.
-- The compile break from the signature change has been fixed. `AiCopyCode_EndBlock()` now takes an explicit end position and the stale call site in `ollama_ai.cpp` was updated.
-- The remaining visible problem in the screenshots is visual correctness: the code coloring can still bleed and the end tag / copied span still needs a cleaner boundary strategy.
-- The safest next technical step is to keep a raw AI reply capture, then render only after the actual raw markers have been detected and validated. That would avoid inferring boundaries from already-styled RichEdit content.
-- The AI module does not follow the selected language consistently yet, so tomorrow we need to fix one language throughout the program before pushing further.
+- The installer pause at the end was removed, so the package should no longer sit there waiting for Enter after the Ollama model pulls finish.
+- The AI shell still does not render Ollama replies faithfully yet. Ollama answers, but the NSBEdit pane is still losing code colours, links, and copy-code affordances that the Ollama app shows live while the reply arrives.
+- The current AI work is focused on making the pane display Ollama output as-is, not flattening it to plain text or dropping the visual cues that make code usable.
+- The AI module still needs a single consistent language sweep, but the immediate blocker is the rendering fidelity of the reply pane.
 
 What to do next
-- Continue with the raw-reply capture idea so the renderer can see the exact text the model produced before any formatting or truncation happens.
-- Keep the contract strict: only `[[CODE_BLOCK_START]]` and `[[CODE_BLOCK_END]]` should define code boundaries in the explicit-marker path.
-- If the model omits the end tag, synthesize the end marker only after the raw reply has been fully inspected, and keep the explanation text outside the copy span.
-- If the version changes again before the next commit, keep all of this work under the same new version tag in the docs.
-- Run `makeit.bat` without parameters before committing so the package reflects the current code and docs.
-- Commit and push with a message that makes the marker-contract change obvious.
+- Keep the reply renderer focused on faithfully showing what Ollama sends, including code colouring, links, and copy affordances.
+- If the AI pane still stalls, revisit the send/completion path after the versioned docs are updated and rebuilt.
+- Update the changelog, README, and API docs under the new version tag before committing.
 
 Notes
-- The current debugging pain point is that the rendered output is not a faithful source of the raw model text.
-- The start marker is better than it was, but the end boundary still needs a more deterministic handoff from raw text to styled output.
-- Legacy markdown fences should stay out of the explicit-marker code path.
-- Search highlighting is also misaligned: it looks about 3 characters too far to the left, so the next session should fix the highlight position before chasing any more AI boundary issues.
-- The raw log should be temporary and only used until the boundary rules are stable.
+- Ollama itself is answering; the open problem is our answer pane fidelity.
+- The Ollama app is still the reference for the desired behaviour: live rendering, colours, links, and code affordances as the reply arrives.
 - Keep local AI and cloud AI flows separate.
 - Keep the model picker realtime, not restart-based.
-- Portable mode should stay AI-free; installed mode can use Ollama locally.
-- Tomorrow start with one language throughout the program, then bring the AI module in line with it.

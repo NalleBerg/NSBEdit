@@ -66,12 +66,16 @@
   Behaviour notes:
     - The window is top-level, not a dialog resource.
     - Repeated calls are safe; the same window is reused while open.
-    - The send path is synchronous and returns one response line from the
-      local Ollama service before the dialog is tweaked further.
+    - The send path is asynchronous from the caller's point of view and
+      posts a completion message back to the window after the Ollama request
+      finishes.
     - The output pane offers a right-click Copy action for the rendered
       answer, and explicit `[[CODE_BLOCK_START]]` / `[[CODE_BLOCK_END]]`
       lines add a visible Copy code header that copies only the text between
       those markers.
+    - The remaining open issue is faithful live rendering of Ollama output:
+      code colours, links, and copy affordances still need to survive the
+      render path the same way they do in the Ollama app.
 
 ================================================================================
 3. ne_ai_bootstrap.h
