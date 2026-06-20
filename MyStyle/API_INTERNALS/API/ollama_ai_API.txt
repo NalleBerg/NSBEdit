@@ -44,19 +44,18 @@
     - expose sign-in/sign-out controls
     - provide a prompt box and output log
     - send a single prompt to Ollama and show the reply in the log
+    - stream the reply into the output pane as chunks arrive
     - allow copying the rendered answer or clearing the current log
-    - keep a visible copy affordance for code blocks inside the answer pane
-    - use descriptive start/end marker lines for code in the AI reply path
+    - keep a visible copy affordance for fenced code blocks inside the answer pane
 
   Text handling:
     - Both RichEdit panes wrap to the control width with no sideways scroll.
     - The prompt box remains multiline so Shift+Enter can insert a newline.
     - Plain Enter still sends the current prompt.
-    - Reply text is rendered with a small markdown/markup pass so bold,
-      italic, underline, strike, and simple colour spans survive when the
-      model emits them in its response.
-    - The answer pane uses an emoji-capable face for normal reply text so
-      emoji glyphs have a chance to render on the target machine.
+    - Reply text is repainted live as plain text while the Ollama stream is
+      still arriving.
+    - Fenced code blocks keep a visible Copy code header and tracked copy
+      span; richer colour and emoji formatting is still a later follow-up.
 
   Ownership and lifetime:
     - The caller passes the parent HWND for centering and ownership.
@@ -70,12 +69,10 @@
       posts a completion message back to the window after the Ollama request
       finishes.
     - The output pane offers a right-click Copy action for the rendered
-      answer, and explicit `[[CODE_BLOCK_START]]` / `[[CODE_BLOCK_END]]`
-      lines add a visible Copy code header that copies only the text between
-      those markers.
-    - The remaining open issue is faithful live rendering of Ollama output:
-      code colours, links, and copy affordances still need to survive the
-      render path the same way they do in the Ollama app.
+      answer, and fenced code blocks add a visible Copy code header that
+      copies only the text inside the fenced block.
+    - The remaining follow-up is richer colour and emoji styling for the
+      live answer path.
 
 ================================================================================
 3. ne_ai_bootstrap.h

@@ -17,8 +17,9 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <vector>
 #include <thread>
+
+#include "spinner/spinner_dialog.h"
 
 #define IDC_AI_HEADER             1951
 #define IDC_AI_LOG                1952
@@ -44,8 +45,7 @@
 #define WM_AI_SEND_COMPLETE       (WM_APP + 71)
 #define WM_AI_MODELCHECK_APPEND   (WM_APP + 72)
 #define WM_AI_MODELCHECK_DONE     (WM_APP + 73)
-
-#include "spinner/spinner_dialog.h"
+#define WM_AI_SEND_APPEND         (WM_APP + 74)
 
 namespace {
 
@@ -91,12 +91,15 @@ struct AiWindowState {
     bool signedIn = false;
     int historyIndex = -1;
     std::wstring historyDraft;
+    int replyBaseStart = 0;
+    std::wstring liveReply;
     SpinnerDialog* spinner = NULL;
 };
 
 struct AiSendResult {
     bool ok = false;
     bool usedFallback = false;
+    bool streamed = false;
     std::wstring reply;
     std::wstring error;
 };
@@ -106,6 +109,14 @@ struct AiSendWorkItem {
     std::wstring model;
     std::wstring fallback;
     std::wstring prompt;
+    int answerStart = 0;
+};
+
+struct AiStreamChunk {
+    HWND hwnd = NULL;
+    int answerStart = 0;
+    bool streamed = false;
+    std::wstring chunk;
 };
 
 struct AiModelCheckState {
@@ -203,7 +214,7 @@ static void Ai_OpenOllamaSignUp(HWND hwnd)
 static std::wstring Ai_DefaultModelName()
 {
     const NeAiBootstrapConfig& bootstrap = NeAiBootstrap_Get();
-    return bootstrap.model.empty() ? L"qwen3-coder" : bootstrap.model;
+    return bootstrap.model.empty() ? L"qwen2.5-coder:7b" : bootstrap.model;
 }
 
 static std::wstring Ai_FallbackModelName()
@@ -214,6 +225,16 @@ static std::wstring Ai_FallbackModelName()
 
 static void Ai_NormalizeModelName(std::wstring& model)
 {
+    while (!model.empty() && iswspace(model.back())) {
+        model.pop_back();
+    }
+    const wchar_t* kAgentSuffix = L" Agent";
+    const wchar_t* kSuggestSuffix = L" Suggest";
+    if (model.size() > 6 && model.compare(model.size() - 6, 6, kAgentSuffix) == 0) {
+        model.erase(model.size() - 6);
+    } else if (model.size() > 8 && model.compare(model.size() - 8, 8, kSuggestSuffix) == 0) {
+        model.erase(model.size() - 8);
+    }
     if (model == L"qwen2.5-coder:7b-instruct" || model == L"qwen2.5-coder") {
         model = L"qwen2.5-coder:7b";
     } else if (model == L"qwen2.5-coder:3b-instruct") {
@@ -221,16 +242,20 @@ static void Ai_NormalizeModelName(std::wstring& model)
     }
 }
 
-static void Ai_DoSend(HWND hwnd);
-static void Ai_BeginBusyState(HWND hwnd);
-static void Ai_EndBusyState(HWND hwnd);
-static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback);
-static void Ai_AppendMenuOD(HMENU hMenu, UINT flags, UINT_PTR id, const wchar_t* text, bool isBar = false);
-static HMENU Ai_BuildMenu(const AiWindowState* st);
-static std::wstring Ai_CurrentModeLabel(const AiWindowState* st);
-static void Ai_OpenOllamaSignUp(HWND hwnd);
+static Gdiplus::Image* Ai_GetOllamaButtonImage();
+static std::string Ai_WideToUtf8(const std::wstring& w);
+static std::wstring Ai_Utf8ToWide(const std::string& s);
+static std::wstring Ai_DefaultModelName();
+static std::wstring Ai_FallbackModelName();
+static void Ai_NormalizeModelName(std::wstring& model);
 static void Ai_NormalizeModelNameLocal(std::wstring& model);
 static void Ai_AddUniqueModel(std::vector<std::wstring>& models, const std::wstring& model);
+static std::wstring Ai_CurrentModeLabel(const AiWindowState* st);
+static HMENU Ai_BuildMenu(const AiWindowState* st);
+static void Ai_AppendMenuOD(HMENU hMenu, UINT flags, UINT_PTR id, const wchar_t* text, bool isBar = false);
+static void Ai_DoSend(HWND hwnd);
+static void Ai_OpenOllamaSignUp(HWND hwnd);
+static void Ai_StreamChunkCallback(void* context, const std::wstring& chunk);
 
 static HFONT Ai_MakeDlgFont(HWND hwnd, bool bold = false)
 {
@@ -250,9 +275,9 @@ static HFONT Ai_MakePaneFont(HWND hwnd)
     ncm.cbSize = sizeof(ncm);
     SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
     UINT dpi = hwnd ? GetDpiForWindow(hwnd) : GetDpiForSystem();
-    ncm.lfMessageFont.lfHeight = -MulDiv(11, dpi > 0 ? dpi : 96, 72);
+    ncm.lfMessageFont.lfHeight = -MulDiv(12, dpi > 0 ? dpi : 96, 72);
     ncm.lfMessageFont.lfQuality = CLEARTYPE_QUALITY;
-    lstrcpyW(ncm.lfMessageFont.lfFaceName, L"Consolas");
+    lstrcpyW(ncm.lfMessageFont.lfFaceName, L"Segoe UI");
     return CreateFontIndirectW(&ncm.lfMessageFont);
 }
 
@@ -523,14 +548,21 @@ static void Ai_LoadPrefs(AiWindowState* st)
 static std::wstring Ai_BuildSummary(const AiWindowState* st)
 {
     std::wstring summary;
-    summary += L"Ollama on localhost | Current: ";
+    summary += Ne_Ls(L"AI_SUMMARY_LOCALHOST");
+    summary += L" | ";
+    summary += Ne_Ls(L"AI_SUMMARY_CURRENT");
+    summary += L" ";
     summary += ((st && !st->model.empty()) ? st->model : Ai_DefaultModelName());
     summary += L" ";
-    summary += (st && st->role == AiMenuRole::Agent) ? L"Agent" : L"Suggest";
-    summary += L" | Cloud: ";
-    summary += ((st && st->cloudMode) ? L"Cloud subscription" : L"Local only");
-    summary += L" | Account: ";
-    summary += ((st && st->signedIn) ? L"signed in" : L"not signed in");
+    summary += (st && st->role == AiMenuRole::Agent) ? Ne_Ls(L"AI_ROLE_AGENT") : Ne_Ls(L"AI_ROLE_SUGGEST");
+    summary += L" | ";
+    summary += Ne_Ls(L"AI_SUMMARY_CLOUD");
+    summary += L" ";
+    summary += ((st && st->cloudMode) ? Ne_Ls(L"AI_MODE_CLOUD_SUBSCRIPTION") : Ne_Ls(L"AI_MODE_LOCAL_ONLY"));
+    summary += L" | ";
+    summary += Ne_Ls(L"AI_SUMMARY_ACCOUNT");
+    summary += L" ";
+    summary += ((st && st->signedIn) ? Ne_Ls(L"AI_SIGNED_IN") : Ne_Ls(L"AI_NOT_SIGNED_IN"));
     return summary;
 }
 
@@ -539,7 +571,7 @@ static void Ai_RefreshUi(HWND hwnd)
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (!st) return;
 
-    std::wstring title = L"NSBEdit AI - ";
+    std::wstring title = Ne_Ls(L"AI_WINDOW_TITLE_PREFIX");
     title += Ai_CurrentModeLabel(st);
     SetWindowTextW(hwnd, title.c_str());
 
@@ -548,11 +580,16 @@ static void Ai_RefreshUi(HWND hwnd)
 
     HWND hStatus = GetDlgItem(hwnd, IDC_AI_STATUS);
     if (hStatus) {
-        std::wstring status = L"Cloud: ";
-        status += (st->cloudMode ? L"Cloud subscription" : L"Local only");
-        status += L" | Sign-in: ";
-        status += (st->signedIn ? L"yes" : L"no");
-        status += L" | Current: ";
+        std::wstring status = Ne_Ls(L"AI_STATUS_CLOUD");
+        status += L" ";
+        status += (st->cloudMode ? Ne_Ls(L"AI_MODE_CLOUD_SUBSCRIPTION") : Ne_Ls(L"AI_MODE_LOCAL_ONLY"));
+        status += L" | ";
+        status += Ne_Ls(L"AI_STATUS_SIGNIN");
+        status += L" ";
+        status += (st->signedIn ? Ne_Ls(L"BTN_YES") : Ne_Ls(L"BTN_NO"));
+        status += L" | ";
+        status += Ne_Ls(L"AI_STATUS_CURRENT");
+        status += L" ";
         status += Ai_CurrentModeLabel(st);
         SetWindowTextW(hStatus, status.c_str());
     }
@@ -581,17 +618,15 @@ static void Ai_AppendLog(HWND hwnd, const std::wstring& line)
     if (st && st->hLogSb) msb_notify_content_changed(st->hLogSb);
 }
 
-static std::wstring Ai_TrimCopy(const std::wstring& text)
+static void Ai_StreamChunkCallback(void* context, const std::wstring& chunk)
 {
-    size_t first = 0;
-    while (first < text.size() && iswspace(text[first])) {
-        ++first;
-    }
-    size_t last = text.size();
-    while (last > first && iswspace(text[last - 1])) {
-        --last;
-    }
-    return text.substr(first, last - first);
+    auto* chunkInfo = (AiStreamChunk*)context;
+    if (!chunkInfo || chunk.empty() || !IsWindow(chunkInfo->hwnd)) return;
+    chunkInfo->streamed = true;
+    auto* posted = new AiStreamChunk(*chunkInfo);
+    posted->streamed = true;
+    posted->chunk = chunk;
+    PostMessageW(chunkInfo->hwnd, WM_AI_SEND_APPEND, 0, (LPARAM)posted);
 }
 
 static void Ai_ReplaceAll(std::wstring& text, const std::wstring& from, const std::wstring& to)
@@ -641,227 +676,6 @@ static bool Ai_IsCodeRelatedPrompt(const std::wstring& prompt)
         lower.find(L"windows api") != std::wstring::npos;
 }
 
-static COLORREF Ai_ParseHtmlColorValue(const std::wstring& value)
-{
-    std::wstring v = value;
-    for (wchar_t& ch : v) {
-        ch = (wchar_t)towlower(ch);
-    }
-
-    if (v == L"red") return RGB(220, 50, 47);
-    if (v == L"green") return RGB(38, 139, 78);
-    if (v == L"blue") return RGB(38, 112, 191);
-    if (v == L"yellow") return RGB(181, 137, 0);
-    if (v == L"purple") return RGB(108, 113, 196);
-    if (v == L"orange") return RGB(203, 75, 22);
-    if (v == L"black") return RGB(0, 0, 0);
-    if (v == L"gray" || v == L"grey") return RGB(128, 128, 128);
-
-    if (!v.empty() && v[0] == L'#') {
-        unsigned int rgb = 0;
-        if (swscanf_s(v.c_str() + 1, L"%x", &rgb) == 1) {
-            if (v.size() == 7) {
-                return RGB((rgb >> 16) & 0xff, (rgb >> 8) & 0xff, rgb & 0xff);
-            }
-        }
-    }
-
-    return RGB(0, 0, 0);
-}
-
-static std::wstring Ai_GetHtmlAttributeValue(const std::wstring& tag, const std::wstring& attrName)
-{
-    size_t pos = tag.find(attrName);
-    if (pos == std::wstring::npos) return {};
-    pos = tag.find(L'=', pos + attrName.size());
-    if (pos == std::wstring::npos) return {};
-    ++pos;
-    while (pos < tag.size() && iswspace(tag[pos])) ++pos;
-    if (pos >= tag.size()) return {};
-
-    wchar_t quote = 0;
-    if (tag[pos] == L'"' || tag[pos] == L'\'') {
-        quote = tag[pos++];
-    }
-    size_t end = pos;
-    while (end < tag.size() && ((quote && tag[end] != quote) || (!quote && !iswspace(tag[end]) && tag[end] != L'>'))) {
-        ++end;
-    }
-    return tag.substr(pos, end - pos);
-}
-
-static COLORREF Ai_ParseSpanColor(const std::wstring& openTag)
-{
-    std::wstring style = Ai_GetHtmlAttributeValue(openTag, L"style");
-    if (style.empty()) return RGB(0, 0, 0);
-
-    size_t colorPos = style.find(L"color:");
-    if (colorPos == std::wstring::npos) return RGB(0, 0, 0);
-    colorPos += 6;
-    while (colorPos < style.size() && iswspace(style[colorPos])) ++colorPos;
-    size_t colorEnd = colorPos;
-    while (colorEnd < style.size() && style[colorEnd] != L';' && !iswspace(style[colorEnd])) ++colorEnd;
-    return Ai_ParseHtmlColorValue(style.substr(colorPos, colorEnd - colorPos));
-}
-
-static bool Ai_IsLikelyProseBoundary(const std::wstring& trimmed)
-{
-    if (trimmed.empty()) return false;
-
-    std::wstring lower = trimmed;
-    for (wchar_t& ch : lower) {
-        ch = (wchar_t)towlower(ch);
-    }
-
-    if (lower.rfind(L"explanation", 0) == 0 ||
-        lower.rfind(L"summary", 0) == 0 ||
-        lower.rfind(L"notes", 0) == 0 ||
-        lower.rfind(L"answer", 0) == 0) {
-        return true;
-    }
-
-    if (trimmed.size() < 8) return false;
-    if (!iswalpha(trimmed[0]) || !iswupper(trimmed[0])) return false;
-    if (trimmed.find(L' ') == std::wstring::npos) return false;
-    if (trimmed.find(L'.') == std::wstring::npos && trimmed.find(L'!') == std::wstring::npos && trimmed.find(L'?') == std::wstring::npos) return false;
-
-    return true;
-}
-
-static void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format);
-
-static void Ai_AppendStyledRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* baseFmt, COLORREF color, bool bold, bool italic, bool underline, bool strike)
-{
-    if (text.empty()) return;
-
-    CHARFORMAT2W fmt = {};
-    if (baseFmt) fmt = *baseFmt;
-    fmt.cbSize = sizeof(fmt);
-    fmt.dwMask |= CFM_COLOR | CFM_BOLD | CFM_ITALIC | CFM_UNDERLINE | CFM_STRIKEOUT;
-    if (color != RGB(0, 0, 0)) fmt.crTextColor = color;
-    if (bold) fmt.dwEffects |= CFE_BOLD;
-    if (italic) fmt.dwEffects |= CFE_ITALIC;
-    if (underline) fmt.dwEffects |= CFE_UNDERLINE;
-    if (strike) fmt.dwEffects |= CFE_STRIKEOUT;
-    Ai_AppendRichRun(hLog, text, &fmt);
-}
-
-static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt)
-{
-    size_t pos = 0;
-    bool bold = false;
-    bool italic = false;
-    bool underline = false;
-    bool strike = false;
-    COLORREF color = RGB(0, 0, 0);
-
-    while (pos < line.size()) {
-        size_t open = line.find(L'<', pos);
-        size_t star = line.find(L'*', pos);
-        size_t under = line.find(L'_', pos);
-        size_t tilde = line.find(L'~', pos);
-        size_t next = std::wstring::npos;
-        if (open != std::wstring::npos) next = open;
-        if (star != std::wstring::npos) next = (next == std::wstring::npos) ? star : std::min(next, star);
-        if (under != std::wstring::npos) next = (next == std::wstring::npos) ? under : std::min(next, under);
-        if (tilde != std::wstring::npos) next = (next == std::wstring::npos) ? tilde : std::min(next, tilde);
-
-        if (next == std::wstring::npos) {
-            Ai_AppendStyledRun(hLog, line.substr(pos), normalFmt, color, bold, italic, underline, strike);
-            break;
-        }
-
-        if (next > pos) {
-            Ai_AppendStyledRun(hLog, line.substr(pos, next - pos), normalFmt, color, bold, italic, underline, strike);
-        }
-
-        if (line[next] == L'*' || line[next] == L'_') {
-            bool doubleMarker = (next + 1 < line.size() && line[next + 1] == line[next]);
-            if (doubleMarker) {
-                bold = !bold;
-                pos = next + 2;
-            } else {
-                italic = !italic;
-                pos = next + 1;
-            }
-            continue;
-        }
-
-        if (line[next] == L'~') {
-            bool doubleMarker = (next + 1 < line.size() && line[next + 1] == L'~');
-            if (doubleMarker) {
-                strike = !strike;
-                pos = next + 2;
-            } else {
-                Ai_AppendStyledRun(hLog, line.substr(next, 1), normalFmt, color, bold, italic, underline, strike);
-                pos = next + 1;
-            }
-            continue;
-        }
-
-        size_t close = line.find(L'>', next + 1);
-        if (close == std::wstring::npos) {
-            Ai_AppendStyledRun(hLog, line.substr(next), normalFmt, color, bold, italic, underline, strike);
-            break;
-        }
-
-        std::wstring tag = line.substr(next + 1, close - next - 1);
-        std::wstring lowerTag = tag;
-        for (wchar_t& ch : lowerTag) ch = (wchar_t)towlower(ch);
-
-        if (!tag.empty() && tag[0] == L'/') {
-            if (lowerTag == L"/span") color = RGB(0, 0, 0);
-            else if (lowerTag == L"/b" || lowerTag == L"/strong") bold = false;
-            else if (lowerTag == L"/i" || lowerTag == L"/em") italic = false;
-            else if (lowerTag == L"/u") underline = false;
-        } else if (lowerTag.rfind(L"span", 0) == 0) {
-            color = Ai_ParseSpanColor(tag);
-        } else if (lowerTag == L"b" || lowerTag == L"strong") {
-            bold = true;
-        } else if (lowerTag == L"i" || lowerTag == L"em") {
-            italic = true;
-        } else if (lowerTag == L"u") {
-            underline = true;
-        } else if (lowerTag == L"s" || lowerTag == L"strike" || lowerTag == L"del") {
-            strike = true;
-        } else {
-            Ai_AppendStyledRun(hLog, line.substr(next, close - next + 1), normalFmt, color, bold, italic, underline, strike);
-        }
-
-        pos = close + 1;
-    }
-}
-
-static void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format)
-{
-    if (!hLog || text.empty()) return;
-
-    int start = GetWindowTextLengthW(hLog);
-    CHARRANGE range = { start, start };
-    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
-    SendMessageW(hLog, EM_REPLACESEL, FALSE, (LPARAM)text.c_str());
-
-    int end = GetWindowTextLengthW(hLog);
-    if (format && end > start) {
-        CHARRANGE styled = { start, end };
-        SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&styled);
-        SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)format);
-    }
-
-    range.cpMin = end;
-    range.cpMax = end;
-    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
-    SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
-}
-
-static void Ai_ApplyRichFormatRange(HWND hLog, int start, int end, const CHARFORMAT2W* format)
-{
-    if (!hLog || !format || start > end) return;
-    CHARRANGE range = { start, end };
-    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
-    SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)format);
-}
-
 static std::wstring Ai_GetTextRange(HWND hwnd, const CHARRANGE& range)
 {
     if (!hwnd || range.cpMin >= range.cpMax) return {};
@@ -902,223 +716,115 @@ static bool Ai_CopyAnswerText(HWND hwndLog)
     return false;
 }
 
-static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
+static void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format, const CHARFORMAT2W* resetFormat = nullptr);
+
+static void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format, const CHARFORMAT2W* resetFormat)
+{
+    if (!hLog || text.empty()) return;
+
+    int start = GetWindowTextLengthW(hLog);
+    CHARRANGE range = { start, start };
+    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
+    SendMessageW(hLog, EM_REPLACESEL, FALSE, (LPARAM)text.c_str());
+
+    int end = GetWindowTextLengthW(hLog);
+    if (format && end > start) {
+        CHARRANGE styled = { start, end };
+        SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&styled);
+        SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)format);
+    }
+
+    if (resetFormat) {
+        CHARRANGE caret = { end, end };
+        SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&caret);
+        SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)resetFormat);
+    }
+
+    range.cpMin = end;
+    range.cpMax = end;
+    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
+    SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
+}
+
+static void Ai_RenderMarkdownReply(HWND hwnd, int baseStart, const std::wstring& reply)
 {
     HWND hLog = GetDlgItem(hwnd, IDC_AI_LOG);
     if (!hLog) return;
 
+    int logLen = GetWindowTextLengthW(hLog);
+    int clearStart = std::max(0, baseStart);
+    if (clearStart < logLen) {
+        CHARRANGE erase = { clearStart, logLen };
+        SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&erase);
+        SendMessageW(hLog, EM_REPLACESEL, FALSE, (LPARAM)L"");
+    }
+
     AiCopyCode_Clear(hLog);
-
-    constexpr const wchar_t* kCodeBeginMarker = L"[[CODE_BLOCK_START]]";
-    constexpr const wchar_t* kCodeEndMarker = L"[[CODE_BLOCK_END]]";
-
-    static const CHARFORMAT2W kHeaderFmt = []() {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_BOLD | CFM_COLOR;
-        cf.dwEffects = CFE_BOLD;
-        cf.crTextColor = RGB(0, 120, 215);
-        return cf;
-    }();
-
-    static const CHARFORMAT2W kInlineNormalFmt = []() {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR;
-        cf.yHeight = MulDiv(12, 20, 1);
-        cf.crTextColor = RGB(0, 0, 0);
-        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
-        return cf;
-    }();
-
-    static const CHARFORMAT2W kInlineBoldFmt = []() {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BOLD;
-        cf.dwEffects = CFE_BOLD;
-        cf.yHeight = MulDiv(12, 20, 1);
-        cf.crTextColor = RGB(0, 0, 0);
-        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
-        return cf;
-    }();
-
-    static const CHARFORMAT2W kInlineItalicFmt = []() {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_ITALIC;
-        cf.dwEffects = CFE_ITALIC;
-        cf.yHeight = MulDiv(12, 20, 1);
-        cf.crTextColor = RGB(0, 0, 0);
-        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
-        return cf;
-    }();
-
-    static const CHARFORMAT2W kCodeFmt = []() {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR;
-        cf.yHeight = MulDiv(12, 20, 1);
-        cf.crTextColor = RGB(47, 79, 79);
-        cf.crBackColor = RGB(236, 246, 239);
-        lstrcpyW(cf.szFaceName, L"Consolas");
-        return cf;
-    }();
-
-    static const CHARFORMAT2W kCopyLinkFmt = []() {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_BOLD | CFM_COLOR | CFM_UNDERLINE | CFM_LINK;
-        cf.dwEffects = CFE_BOLD | CFE_UNDERLINE | CFE_LINK;
-        cf.crTextColor = RGB(0, 120, 215);
-        return cf;
-    }();
-
-    static const CHARFORMAT2W kMarkerFmt = []() {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_COLOR | CFM_BACKCOLOR | CFM_BOLD | CFM_ITALIC;
-        cf.dwEffects = CFE_BOLD | CFE_ITALIC;
-        cf.crTextColor = RGB(65, 105, 225);
-        cf.crBackColor = RGB(232, 241, 255);
-        return cf;
-    }();
 
     std::wstring text = reply;
     Ai_ReplaceAll(text, L"\r\n", L"\n");
     Ai_ReplaceAll(text, L"\r", L"\n");
     Ai_UnescapeModelText(text);
 
-    if (GetWindowTextLengthW(hLog) > 0) {
-        Ai_AppendRichRun(hLog, L"\r\n", nullptr);
-    }
-
-    Ai_AppendRichRun(hLog, L"Ollama:\r\n", &kHeaderFmt);
-    Ai_AppendRichRun(hLog, L"\r\n", nullptr);
-
-    CHARRANGE answerRange = { GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog) };
+    auto trimCopy = [](const std::wstring& value) {
+        size_t first = 0;
+        while (first < value.size() && iswspace(value[first])) {
+            ++first;
+        }
+        size_t last = value.size();
+        while (last > first && iswspace(value[last - 1])) {
+            --last;
+        }
+        return value.substr(first, last - first);
+    };
 
     bool inCode = false;
     bool codeHasContent = false;
-    std::wstring codeLang;
-    bool outerMarkdownFence = false;
-    bool explicitCodeMarkers = false;
 
-    auto appendEndMarker = [&]() {
-        if (codeHasContent) {
-            Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+    auto appendCodeHeader = [&](const std::wstring& lang) {
+        std::wstring label = L"📋 Copy code";
+        std::wstring trimmedLang = trimCopy(lang);
+        if (!trimmedLang.empty()) {
+            label += L" (" + trimmedLang + L")";
         }
-        Ai_AppendRichRun(hLog, kCodeEndMarker, &kMarkerFmt);
-        Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+
+        int headerStart = GetWindowTextLengthW(hLog);
+        Ai_AppendRichRun(hLog, label, nullptr, nullptr);
+        Ai_AppendRichRun(hLog, L"\r\n", nullptr, nullptr);
+        int codeStart = GetWindowTextLengthW(hLog);
+        AiCopyCode_BeginBlock(hLog, headerStart, label, codeStart);
+    };
+
+    auto endCodeBlock = [&]() {
+        if (!inCode) return;
+        AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
+        if (codeHasContent) {
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr, nullptr);
+        }
+        inCode = false;
+        codeHasContent = false;
     };
 
     size_t lineStart = 0;
     while (lineStart <= text.size()) {
         size_t lineEnd = text.find(L'\n', lineStart);
         std::wstring line = (lineEnd == std::wstring::npos) ? text.substr(lineStart) : text.substr(lineStart, lineEnd - lineStart);
-        std::wstring trimmed = Ai_TrimCopy(line);
+        std::wstring trimmed = trimCopy(line);
 
-        if (explicitCodeMarkers && inCode && codeHasContent && Ai_IsLikelyProseBoundary(trimmed)) {
-            AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
-            appendEndMarker();
-            Ai_ApplyRichFormatRange(hLog, GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog), &kInlineNormalFmt);
-            inCode = false;
-            codeLang.clear();
-        }
-
-        if (!explicitCodeMarkers && trimmed.rfind(L"```", 0) == 0) {
-            continue;
-        }
-
-        if (trimmed == kCodeBeginMarker) {
-            explicitCodeMarkers = true;
-            if (!inCode) {
-                inCode = true;
-                codeHasContent = false;
-                codeLang.clear();
-                Ai_AppendRichRun(hLog, L"📋 ", nullptr);
-                int labelStart = GetWindowTextLengthW(hLog);
-                std::wstring copyLabel = L"Copy code";
-                Ai_AppendRichRun(hLog, copyLabel, nullptr);
-                Ai_ApplyRichFormatRange(hLog, labelStart, GetWindowTextLengthW(hLog), &kCopyLinkFmt);
-                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
-                Ai_AppendRichRun(hLog, kCodeBeginMarker, &kMarkerFmt);
-                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
-                AiCopyCode_BeginBlock(hLog, labelStart, copyLabel, GetWindowTextLengthW(hLog));
-            }
-        } else if (inCode && (trimmed == L"..." || trimmed == L"```")) {
-            AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
-            appendEndMarker();
-            Ai_ApplyRichFormatRange(hLog, GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog), &kInlineNormalFmt);
-            inCode = false;
-            codeLang.clear();
-        } else if (trimmed == kCodeEndMarker) {
-            if (inCode) {
-                AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
-                appendEndMarker();
-                Ai_ApplyRichFormatRange(hLog, GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog), &kInlineNormalFmt);
-                inCode = false;
-                codeLang.clear();
-            }
-        } else if (explicitCodeMarkers && inCode && trimmed.rfind(L"```", 0) == 0) {
-            // Ignore legacy fence lines when explicit markers are in use.
-        } else if (explicitCodeMarkers && inCode) {
-            codeHasContent = true;
-            Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt);
-            AiCopyCode_AppendCodeLine(hLog, line + L"\r\n");
-        } else if (inCode && trimmed.rfind(L"### ", 0) == 0) {
-            if (codeHasContent) {
-                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
-            }
-            AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
-            inCode = false;
-            codeLang.clear();
-        } else if (!explicitCodeMarkers && inCode && codeLang.empty() && trimmed.rfind(L"```", 0) == 0) {
-            // Keep accepting legacy fenced blocks inside marker mode only as plain content.
-            codeHasContent = true;
-            Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt);
-            AiCopyCode_AppendCodeLine(hLog, line + L"\r\n");
-        } else if (!explicitCodeMarkers && !inCode && trimmed.rfind(L"```", 0) == 0) {
-            codeLang = Ai_TrimCopy(trimmed.substr(3));
-            if (codeLang == L"markdown" || codeLang == L"md") {
-                outerMarkdownFence = true;
-            } else if (codeLang.empty() && outerMarkdownFence) {
-                // Closing wrapper fence for a top-level markdown response.
-            } else {
-                inCode = true;
-                codeHasContent = false;
-                Ai_AppendRichRun(hLog, L"📋 ", nullptr);
-                int labelStart = GetWindowTextLengthW(hLog);
-                std::wstring copyLabel = L"Copy code";
-                Ai_AppendRichRun(hLog, copyLabel, nullptr);
-                Ai_ApplyRichFormatRange(hLog, labelStart, GetWindowTextLengthW(hLog), &kCopyLinkFmt);
-                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
-                Ai_AppendRichRun(hLog, kCodeBeginMarker, &kMarkerFmt);
-                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
-                AiCopyCode_BeginBlock(hLog, labelStart, copyLabel, GetWindowTextLengthW(hLog));
-            }
-        } else if (!explicitCodeMarkers && inCode && trimmed.rfind(L"```", 0) == 0) {
-            if (codeHasContent) {
-                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
-            }
-            AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
-            Ai_ApplyRichFormatRange(hLog, GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog), &kInlineNormalFmt);
-            inCode = false;
-            codeLang.clear();
+        if (!inCode && trimmed.rfind(L"```", 0) == 0) {
+            inCode = true;
+            codeHasContent = false;
+            appendCodeHeader(trimmed.substr(3));
+        } else if (inCode && trimmed.rfind(L"```", 0) == 0) {
+            endCodeBlock();
         } else if (inCode) {
             codeHasContent = true;
-            Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt);
+            Ai_AppendRichRun(hLog, line, nullptr, nullptr);
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr, nullptr);
             AiCopyCode_AppendCodeLine(hLog, line + L"\r\n");
-        } else if (!trimmed.empty()) {
-            std::wstring normal = line;
-            if (normal.rfind(L"- ", 0) == 0 || normal.rfind(L"* ", 0) == 0 || normal.rfind(L"+ ", 0) == 0) {
-                normal.replace(0, 2, L"• ");
-            } else if (normal.rfind(L"> ", 0) == 0) {
-                normal.replace(0, 2, L"› ");
-            }
-            Ai_AppendMarkupLine(hLog, normal, &kInlineNormalFmt, &kInlineBoldFmt, &kInlineItalicFmt);
-            Ai_AppendRichRun(hLog, L"\r\n", nullptr);
         } else {
-            Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            Ai_AppendRichRun(hLog, line, nullptr, nullptr);
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr, nullptr);
         }
 
         if (lineEnd == std::wstring::npos) {
@@ -1129,11 +835,10 @@ static void Ai_AppendMarkdownReply(HWND hwnd, const std::wstring& reply)
 
     if (inCode) {
         AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
-        Ai_ApplyRichFormatRange(hLog, GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog), &kInlineNormalFmt);
-        Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+        Ai_AppendRichRun(hLog, L"\r\n", nullptr, nullptr);
     }
 
-    answerRange.cpMax = GetWindowTextLengthW(hLog);
+    CHARRANGE answerRange = { std::max(0, baseStart), GetWindowTextLengthW(hLog) };
     s_aiAnswerCopyRanges[hLog] = answerRange;
 
     CHARRANGE endRange = { GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog) };
@@ -1173,7 +878,7 @@ static LRESULT CALLBACK Ai_LogSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, L
         }
         HMENU hMenu = CreatePopupMenu();
         if (hMenu) {
-            AppendMenuW(hMenu, MF_STRING, IDM_AI_LOG_COPY, L"Copy");
+            AppendMenuW(hMenu, MF_STRING, IDM_AI_LOG_COPY, Ne_Ls(L"BTN_COPY"));
             SetForegroundWindow(hwndParent);
             TrackPopupMenu(hMenu, TPM_RIGHTBUTTON | TPM_LEFTALIGN | TPM_TOPALIGN, pt.x, pt.y, 0, hwndParent, NULL);
             DestroyMenu(hMenu);
@@ -1437,29 +1142,30 @@ static void Ai_ShowModelCheckDialog(HWND parent)
     SetForegroundWindow(parent);
 }
 
-static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback)
+static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback, int answerStart)
 {
     AiSendWorkItem work;
     work.hwnd = hwnd;
     work.prompt = std::move(prompt);
     work.model = std::move(model);
     work.fallback = std::move(fallback);
+    work.answerStart = answerStart;
 
     std::thread([work = std::move(work)]() mutable {
         auto* result = new AiSendResult();
-        std::wstring formattedPrompt = L"Answer in Markdown. Preserve indentation.\r\n\r\n";
+        std::wstring formattedPrompt = L"Answer plainly. Preserve indentation.\r\n\r\n";
         if (Ai_IsCodeRelatedPrompt(work.prompt)) {
             formattedPrompt +=
-                L"For every code example, you must use exactly this contract and nothing else for code delimiting:\r\n"
-                L"[[CODE_BLOCK_START]]\r\n"
-                L"[[CODE_BLOCK_END]]\r\n"
-                L"Both marker lines are mandatory, must be standalone, and must contain no extra text, spaces, or punctuation.\r\n"
-                L"Never omit [[CODE_BLOCK_END]]. The code block is invalid unless the closing marker appears on its own line after the final code line.\r\n"
-                L"Do not use markdown fences like ```cpp or ```. Put any explanation before or after the code, outside the markers.\r\n\r\n";
+                L"If you include code, keep it readable and do not add extra markup around it.\r\n\r\n";
         }
+        formattedPrompt += L"Keep the response concise unless the task needs detail.\r\n\r\n";
         formattedPrompt += work.prompt;
 
-        if (NeAiClient_AskOllama(work.model, formattedPrompt, result->reply, result->error)) {
+        AiStreamChunk chunkInfo = {};
+        chunkInfo.hwnd = work.hwnd;
+        chunkInfo.answerStart = work.answerStart;
+
+        if (NeAiClient_AskOllamaStream(work.model, formattedPrompt, &chunkInfo, Ai_StreamChunkCallback, result->reply, result->error)) {
             result->ok = true;
         } else {
             bool modelMissing = !result->error.empty() &&
@@ -1469,7 +1175,8 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
             if (modelMissing && work.fallback != work.model) {
                 result->usedFallback = true;
                 std::wstring fallbackError;
-                if (NeAiClient_AskOllama(work.fallback, formattedPrompt, result->reply, fallbackError)) {
+                chunkInfo.streamed = false;
+                if (NeAiClient_AskOllamaStream(work.fallback, formattedPrompt, &chunkInfo, Ai_StreamChunkCallback, result->reply, fallbackError)) {
                     result->ok = true;
                     result->error.clear();
                 } else {
@@ -1477,6 +1184,25 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
                 }
             }
         }
+
+        if (result->reply.empty() && !chunkInfo.streamed) {
+            std::wstring recoveryModel = work.fallback.empty() ? work.model : work.fallback;
+            if (recoveryModel.empty()) {
+                recoveryModel = Ai_DefaultModelName();
+            }
+
+            std::wstring recoveryReply;
+            std::wstring recoveryError;
+            if (NeAiClient_AskOllama(recoveryModel, formattedPrompt, recoveryReply, recoveryError) && !recoveryReply.empty()) {
+                result->ok = true;
+                result->reply = recoveryReply;
+                result->error.clear();
+            } else if (result->error.empty() && !recoveryError.empty()) {
+                result->error = recoveryError;
+            }
+        }
+
+        result->streamed = result->streamed || chunkInfo.streamed;
 
         if (IsWindow(work.hwnd)) {
             PostMessageW(work.hwnd, WM_AI_SEND_COMPLETE, 0, (LPARAM)result);
@@ -1505,6 +1231,16 @@ static void Ai_ClearMenuStorage()
 
 static void Ai_NormalizeModelNameLocal(std::wstring& model)
 {
+    while (!model.empty() && iswspace(model.back())) {
+        model.pop_back();
+    }
+    const wchar_t* kAgentSuffix = L" Agent";
+    const wchar_t* kSuggestSuffix = L" Suggest";
+    if (model.size() > 6 && model.compare(model.size() - 6, 6, kAgentSuffix) == 0) {
+        model.erase(model.size() - 6);
+    } else if (model.size() > 8 && model.compare(model.size() - 8, 8, kSuggestSuffix) == 0) {
+        model.erase(model.size() - 8);
+    }
     if (model == L"qwen2.5-coder:7b-instruct" || model == L"qwen2.5-coder") {
         model = L"qwen2.5-coder:7b";
     } else if (model == L"qwen2.5-coder:3b-instruct") {
@@ -1548,18 +1284,20 @@ static std::vector<std::wstring> Ai_GetModelCandidates()
 static std::wstring Ai_ModelMenuLabel(const std::wstring& model, AiMenuRole role)
 {
     std::wstring label = model;
-    label += (role == AiMenuRole::Suggest) ? L" Suggest" : L" Agent";
+    label += L" ";
+    label += (role == AiMenuRole::Suggest) ? Ne_Ls(L"AI_ROLE_SUGGEST") : Ne_Ls(L"AI_ROLE_AGENT");
     return label;
 }
 
 static std::wstring Ai_CurrentModeLabel(const AiWindowState* st)
 {
-    if (!st) return Ai_DefaultModelName() + L" Suggest";
+    if (!st) return Ai_DefaultModelName() + L" " + Ne_Ls(L"AI_ROLE_SUGGEST");
     if (st->cloudMode) {
-        return std::wstring(L"Cloud ") + ((st->role == AiMenuRole::Suggest) ? L"Suggest" : L"Agent");
+        return std::wstring(Ne_Ls(L"AI_MENU_CLOUD")) + L" " + ((st->role == AiMenuRole::Suggest) ? Ne_Ls(L"AI_ROLE_SUGGEST") : Ne_Ls(L"AI_ROLE_AGENT"));
     }
     std::wstring label = st->model.empty() ? Ai_DefaultModelName() : st->model;
-    label += (st->role == AiMenuRole::Suggest) ? L" Suggest" : L" Agent";
+    label += L" ";
+    label += (st->role == AiMenuRole::Suggest) ? Ne_Ls(L"AI_ROLE_SUGGEST") : Ne_Ls(L"AI_ROLE_AGENT");
     return label;
 }
 
@@ -1575,7 +1313,7 @@ static void Ai_AddModelMenuItem(HMENU hMenu, const std::wstring& model, AiMenuRo
     if (!enabled) {
         flags |= MF_GRAYED;
     }
-    Ai_AppendMenuOD(hMenu, flags, entry.id, Ai_ModelMenuLabel(model, role).c_str());
+    Ai_AppendMenuOD(hMenu, flags, entry.id, Ai_ModelMenuLabel(model, role).c_str(), false);
 }
 
 static const AiModelMenuItem* Ai_FindModelMenuItem(UINT id)
@@ -1722,10 +1460,10 @@ static void Ai_ApplyButtons(AiWindowState* st)
 {
     if (!st || !st->dd) return;
     st->dd->buttonCount = 4;
-    st->dd->buttons[0] = AiButtonSpec{ IDC_AI_SEND_BTN,  L"Send",  AiBtnTone::Green, Ai_MeasureButtonWidth(L"Send"),  true };
-    st->dd->buttons[1] = AiButtonSpec{ IDC_AI_COPY_BTN,  L"Copy",  AiBtnTone::Blue,  Ai_MeasureButtonWidth(L"Copy"),  false, true };
-    st->dd->buttons[2] = AiButtonSpec{ IDC_AI_CLEAR_BTN, L"Clear", AiBtnTone::Red,   Ai_MeasureButtonWidth(L"Clear"), true };
-    st->dd->buttons[3] = AiButtonSpec{ IDC_AI_CLOSE_BTN, L"Close", AiBtnTone::Red,   Ai_MeasureButtonWidth(L"Close"), true };
+    st->dd->buttons[0] = AiButtonSpec{ IDC_AI_SEND_BTN,  Ne_Ls(L"BTN_SEND"),  AiBtnTone::Green, Ai_MeasureButtonWidth(Ne_Ls(L"BTN_SEND")),  true };
+    st->dd->buttons[1] = AiButtonSpec{ IDC_AI_COPY_BTN,  Ne_Ls(L"BTN_COPY"),  AiBtnTone::Blue,  Ai_MeasureButtonWidth(Ne_Ls(L"BTN_COPY")),  false, true };
+    st->dd->buttons[2] = AiButtonSpec{ IDC_AI_CLEAR_BTN, Ne_Ls(L"BTN_CLEAR"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLEAR")), true };
+    st->dd->buttons[3] = AiButtonSpec{ IDC_AI_CLOSE_BTN, Ne_Ls(L"BTN_CLOSE"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLOSE")), true };
 }
 
 static HMENU Ai_BuildMenu(const AiWindowState* st)
@@ -1743,30 +1481,30 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
         Ai_AddModelMenuItem(hModel, model, AiMenuRole::Agent);
     }
 
-    Ai_AppendMenuOD(hModel, MF_SEPARATOR, 0, NULL);
-    Ai_AddModelMenuItem(hModel, L"Cloud", AiMenuRole::Suggest, true, st && st->signedIn);
-    Ai_AddModelMenuItem(hModel, L"Cloud", AiMenuRole::Agent, true, st && st->signedIn);
+    Ai_AppendMenuOD(hModel, MF_SEPARATOR, 0, NULL, false);
+    Ai_AddModelMenuItem(hModel, Ne_Ls(L"AI_MENU_CLOUD"), AiMenuRole::Suggest, true, st && st->signedIn);
+    Ai_AddModelMenuItem(hModel, Ne_Ls(L"AI_MENU_CLOUD"), AiMenuRole::Agent, true, st && st->signedIn);
 
-    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_LOCAL, L"Local only");
-    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_CLOUD, L"Cloud subscription");
-    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL);
-    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_IN, L"Sign in to Ollama");
-    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_OUT, L"Sign out");
-    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL);
-    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_CHECK_MODELS, Ne_Ls(L"MENU_AI_CHECK_MODELS"));
-    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL);
-    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_OPEN_PROVIDER, L"Open Ollama web site");
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_LOCAL, Ne_Ls(L"AI_MENU_LOCAL_ONLY"), false);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_CLOUD, Ne_Ls(L"AI_MENU_CLOUD_SUBSCRIPTION"), false);
+    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL, false);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_IN, Ne_Ls(L"AI_MENU_SIGN_IN"), false);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_OUT, Ne_Ls(L"AI_MENU_SIGN_OUT"), false);
+    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL, false);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_CHECK_MODELS, Ne_Ls(L"MENU_AI_CHECK_MODELS"), false);
+    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL, false);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_OPEN_PROVIDER, Ne_Ls(L"AI_MENU_OPEN_PROVIDER"), false);
 
-    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_SEND, L"Send prompt");
-    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_LOG_CLEAR, L"Clear log");
-    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_LOG_COPY, L"Copy answer");
+    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_SEND, Ne_Ls(L"AI_MENU_SEND_PROMPT"), false);
+    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_LOG_CLEAR, Ne_Ls(L"AI_MENU_CLEAR_LOG"), false);
+    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_LOG_COPY, Ne_Ls(L"AI_MENU_COPY_ANSWER"), false);
 
-    Ai_AppendMenuOD(hHelp, MF_STRING, IDM_AI_ABOUT, L"About this window");
+    Ai_AppendMenuOD(hHelp, MF_STRING, IDM_AI_ABOUT, Ne_Ls(L"AI_MENU_ABOUT_WINDOW"), false);
 
-    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hModel, L"Model", true);
-    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hCloud, L"Cloud", true);
-    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hLog, L"Log", true);
-    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, L"Help", true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hModel, Ne_Ls(L"AI_MENU_MODEL"), true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hCloud, Ne_Ls(L"AI_MENU_CLOUD"), true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hLog, Ne_Ls(L"AI_MENU_LOG"), true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ne_Ls(L"AI_MENU_HELP"), true);
 
     if (st) {
         for (const AiModelMenuItem& item : s_aiModelMenuItems) {
@@ -1797,25 +1535,44 @@ static void Ai_DoSend(HWND hwnd)
 
     if (hInput) SetWindowTextW(hInput, L"");
 
-    std::wstring userLine = L"You: ";
+    std::wstring userLine = Ne_Ls(L"AI_LOG_USER_PREFIX");
     userLine += prompt;
     Ai_AppendLog(hwnd, userLine);
     if (st->cloudMode) {
         if (!st->signedIn) {
-            Ai_AppendLog(hwnd, L"Cloud mode is selected, but you are not signed in yet.");
+            Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_CLOUD_NEEDS_SIGNIN"));
             Ai_OpenOllamaSignUp(hwnd);
-            Ai_AppendLog(hwnd, L"Opened Ollama sign-in / subscription page.");
+            Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_OPENED_SIGNUP"));
         } else {
-            Ai_AppendLog(hwnd, L"Cloud mode is selected; local Ollama is not used in this path yet.");
+            Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_CLOUD_NOT_USED_YET"));
         }
         return;
     }
 
     Ai_BeginBusyState(hwnd);
 
+    HWND hLog = GetDlgItem(hwnd, IDC_AI_LOG);
+    if (hLog) {
+        st->historyDraft.clear();
+        st->historyIndex = -1;
+        Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+        Ai_AppendRichRun(hLog, L"Ollama:\r\n", nullptr);
+    }
+
     std::wstring selectedModel = st->model.empty() ? Ai_DefaultModelName() : st->model;
     std::wstring fallbackModel = st->fallback.empty() ? Ai_FallbackModelName() : st->fallback;
-    Ai_StartSendWorker(hwnd, prompt, selectedModel, fallbackModel);
+    Ai_NormalizeModelNameLocal(selectedModel);
+    Ai_NormalizeModelNameLocal(fallbackModel);
+    if (hLog) {
+        st->replyBaseStart = GetWindowTextLengthW(hLog);
+        st->historyDraft = L"";
+        AiSendWorkItem work;
+        work.answerStart = st->replyBaseStart;
+        Ai_StartSendWorker(hwnd, prompt, selectedModel, fallbackModel, work.answerStart);
+    } else {
+        st->replyBaseStart = 0;
+        Ai_StartSendWorker(hwnd, prompt, selectedModel, fallbackModel, 0);
+    }
 }
 
 static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -1910,7 +1667,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         st->hCloseBtn = hClose;
 
         Ai_RefreshUi(hwnd);
-        Ai_AppendLog(hwnd, L"AI window opened.");
+        Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_WINDOW_OPENED"));
         SetFocus(hInput);
         return 0;
     }
@@ -1974,11 +1731,11 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 }
                 Ai_AppendLog(hwnd, modelItem->isCloud
                     ? ((modelItem->role == AiMenuRole::Suggest)
-                        ? L"Cloud suggestion mode selected."
-                        : L"Cloud agent mode selected.")
+                        ? Ne_Ls(L"AI_LOG_CLOUD_SUGGEST_SELECTED")
+                        : Ne_Ls(L"AI_LOG_CLOUD_AGENT_SELECTED"))
                     : ((modelItem->role == AiMenuRole::Suggest)
-                        ? L"Model switched to suggestion mode."
-                        : L"Model switched to agent mode."));
+                        ? Ne_Ls(L"AI_LOG_MODEL_SWITCHED_SUGGESTION")
+                        : Ne_Ls(L"AI_LOG_MODEL_SWITCHED_AGENT")));
                 Ai_SavePrefs(st);
                 Ai_RefreshUi(hwnd);
                 return 0;
@@ -1990,7 +1747,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 st->cloudMode = false;
                 Ai_SavePrefs(st);
                 Ai_RefreshUi(hwnd);
-                Ai_AppendLog(hwnd, L"Cloud mode switched to local only.");
+                Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_CLOUD_LOCAL_ONLY"));
             }
             return 0;
         case IDM_AI_MODE_CLOUD:
@@ -1998,7 +1755,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 st->cloudMode = true;
                 Ai_SavePrefs(st);
                 Ai_RefreshUi(hwnd);
-                Ai_AppendLog(hwnd, L"Cloud subscription mode selected.");
+                Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_CLOUD_SUB_SELECTED"));
             }
             return 0;
         case IDM_AI_SIGN_IN:
@@ -2007,7 +1764,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 Ai_SavePrefs(st);
                 Ai_RefreshUi(hwnd);
                 ShellExecuteW(hwnd, L"open", L"https://ollama.com", NULL, NULL, SW_SHOWNORMAL);
-                Ai_AppendLog(hwnd, L"Opened Ollama sign-in / subscription page.");
+                Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_OPENED_SIGNUP"));
             }
             return 0;
         case IDM_AI_SIGN_OUT:
@@ -2015,7 +1772,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 st->signedIn = false;
                 Ai_SavePrefs(st);
                 Ai_RefreshUi(hwnd);
-                Ai_AppendLog(hwnd, L"Signed out locally.");
+                Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_SIGNED_OUT_LOCALLY"));
             }
             return 0;
         case IDM_AI_OPEN_PROVIDER:
@@ -2050,7 +1807,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             DestroyWindow(hwnd);
             return 0;
         case IDM_AI_ABOUT:
-            Ai_AppendLog(hwnd, L"This is the AI shell window. Full Ollama chat wiring will follow.");
+            Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_ABOUT_WINDOW"));
             return 0;
         }
         break;
@@ -2073,17 +1830,44 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         break;
     }
+    case WM_AI_SEND_APPEND: {
+        auto* chunk = (AiStreamChunk*)lParam;
+        if (st && chunk && !chunk->chunk.empty()) {
+            st->liveReply += chunk->chunk;
+            if (st->spinner) {
+                st->spinner->Hide();
+                delete st->spinner;
+                st->spinner = NULL;
+            }
+            Ai_RenderMarkdownReply(hwnd, st->replyBaseStart, st->liveReply);
+        }
+        if (chunk) {
+            delete chunk;
+        }
+        return 0;
+    }
     case WM_AI_SEND_COMPLETE: {
         Ai_EndBusyState(hwnd);
         auto* result = (AiSendResult*)lParam;
         if (result) {
             if (result->usedFallback) {
-                Ai_AppendLog(hwnd, L"Ollama: selected model not found, retrying with fallback model.");
+                Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_RETRY_FALLBACK"));
             }
-            if (result->ok) {
-                Ai_AppendMarkdownReply(hwnd, result->reply);
+            if (!result->reply.empty()) {
+                if (st) {
+                    if (!result->streamed) {
+                        st->liveReply = result->reply;
+                    }
+                    Ai_RenderMarkdownReply(hwnd, st->replyBaseStart, st->liveReply.empty() ? result->reply : st->liveReply);
+                } else {
+                    Ai_RenderMarkdownReply(hwnd, 0, result->reply);
+                }
+            } else if (!result->ok && result->reply.empty()) {
+                Ai_AppendLog(hwnd, std::wstring(Ne_Ls(L"AI_LOG_OLLAMA_PREFIX")) + L" " + (result->error.empty() ? Ne_Ls(L"AI_LOG_NO_RESPONSE") : result->error));
             } else {
-                Ai_AppendLog(hwnd, L"Ollama: " + (result->error.empty() ? L"No response." : result->error));
+                if (!result->ok && !result->error.empty()) {
+                    Ai_AppendLog(hwnd, std::wstring(Ne_Ls(L"AI_LOG_OLLAMA_PREFIX")) + L" " + result->error);
+                }
             }
             delete result;
         }
@@ -2202,7 +1986,7 @@ void Ne_ShowAiWindow(HWND parent)
     Ai_LoadPrefs(st);
 
     HWND hwnd = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE,
-        wc.lpszClassName, L"NSBEdit AI",
+        wc.lpszClassName, Ne_Ls(L"AI_WINDOW_TITLE_PREFIX"),
         WS_OVERLAPPEDWINDOW,
         x, y, W, H, parent, NULL, hi, st);
     if (!hwnd) {

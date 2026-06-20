@@ -30,11 +30,11 @@ FILES:
     - Keep the prompt box multiline so Shift+Enter can insert a newline.
     - Clear the prompt immediately when Send is pressed.
     - Persist the AI preferences through the existing profile store.
-    - Provide a visible Copy code header for explicit marker blocks and a
-      right-click Copy answer command for the whole rendered response.
-    - Keep the rendered answer close to the Ollama app's live output so code
-      colours, links, and copy affordances remain visible while the reply is
-      streaming.
+    - Provide a visible Copy code header for fenced blocks and a right-click
+      Copy answer command for the whole rendered response.
+    - Keep the rendered answer streaming live as plain text while reply
+      chunks arrive, with code-copy affordances layered on top of fenced
+      blocks.
 
   Text wrapping:
     - Both RichEdit panes are created without horizontal scrolling.
@@ -43,15 +43,12 @@ FILES:
     - WM_SIZE reapplies the wrap target after the controls are resized.
 
   Reply rendering:
-    - The reply parser now normalises model escape text like u003c/u003e before
+    - The reply parser normalises model escape text like u003c/u003e before
       it reaches RichEdit so sample HTML-like spans do not print literally.
-    - Simple colour spans, bold, italic, underline, and strikethrough are
-      translated into RichEdit character-format runs.
-    - Code blocks use a separate monospaced run and a visible Copy code label;
-      the click target is measured from the rendered label position and width
-      instead of being guessed from the raw text index. The AI reply path now
-      expects `[[CODE_BLOCK_START]]` / `[[CODE_BLOCK_END]]` marker lines for
-      code and ignores markdown fences in that code path.
+    - Reply text is repainted live as plain text while the Ollama stream is
+      still arriving.
+    - Fenced code blocks get a visible Copy code label and tracked copy
+      range; richer colour, emoji, and markdown styling is a later pass.
 
 ================================================================================
 2. ENTRY POINT

@@ -1,13 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 20 June 2026 &mdash; v2026.06.20.11 (11:21)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 20 June 2026 &mdash; v2026.06.20.16 (16:30)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
-<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.20.11 (Status: AI reply rendering still needs faithful Ollama output)</span></h3>
-<p><strong>Status: AI reply rendering still needs faithful Ollama output (20.06.2026, 11:21):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.20.16 (Fix: live Ollama replies again, with code blocks copyable)</span></h3>
+<p><strong>Fix: live Ollama replies again, with code blocks copyable (20.06.2026, 16:30):</strong></p>
 <ul>
-<li><strong>Fix: the installer no longer waits for an extra Enter at the end:</strong> after Ollama is detected and the models are pulled, the installer exits instead of stopping on a final prompt.</li>
-<li><strong>Status: the standalone AI pane still needs faithful Ollama rendering:</strong> Ollama answers, but NSBEdit is still not preserving the live code colouring, links, and copy-code affordances that the Ollama app shows while the reply arrives.</li>
-<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.20.11</code>.</li>
+<li><strong>Fix: the AI answer pane now updates while the reply streams:</strong> incoming Ollama chunks repaint the live answer text immediately again, so the output appears progressively instead of waiting for the final completion message.</li>
+<li><strong>Fix: fenced code blocks have a working Copy code header again:</strong> the reply pane now restores a visible copy affordance for code blocks while keeping the rest of the answer plain text.</li>
+<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.20.16</code>.</li>
 </ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.18.10 (Fix: qwen3-coder is now the default AI model)</span></h3>
