@@ -47,8 +47,7 @@ Write-Host "  + version.txt  ($version)"
 $zipDir = "$PSScriptRoot\zip"
 if (-not (Test-Path $zipDir)) { New-Item -ItemType Directory -Path $zipDir | Out-Null }
 $zipPath = "$zipDir\$zipName"
-if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
-Compress-Archive -Path "$PSScriptRoot\_pack_staging\*" -DestinationPath $zipPath
+Compress-Archive -Path "$PSScriptRoot\_pack_staging\*" -DestinationPath $zipPath -Force
 Remove-Item "$PSScriptRoot\_pack_staging" -Recurse -Force
 
 $sizeMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 2)

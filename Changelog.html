@@ -7,6 +7,7 @@
 <ul>
 <li><strong>Fix: the AI answer pane now updates while the reply streams:</strong> incoming Ollama chunks repaint the live answer text immediately again, so the output appears progressively instead of waiting for the final completion message.</li>
 <li><strong>Fix: fenced code blocks have a working Copy code header again:</strong> the reply pane now restores a visible copy affordance for code blocks while keeping the rest of the answer plain text.</li>
+<li><strong>Fix: streamed code and colour hints now appear incrementally too:</strong> the AI pane keeps applying the lightweight live formatter while chunks arrive, so code blocks and simple colour styling show up as the reply is still streaming instead of only after the final render.</li>
 <li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.20.16</code>.</li>
 </ul>
 

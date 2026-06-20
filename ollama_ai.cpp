@@ -93,6 +93,9 @@ struct AiWindowState {
     std::wstring historyDraft;
     int replyBaseStart = 0;
     std::wstring liveReply;
+    bool liveInCode = false;
+    bool liveCodeHasContent = false;
+    std::wstring liveCodeLang;
     SpinnerDialog* spinner = NULL;
 };
 
@@ -116,6 +119,8 @@ struct AiStreamChunk {
     HWND hwnd = NULL;
     int answerStart = 0;
     bool streamed = false;
+    std::wstring pendingText;
+    bool inCodeBlock = false;
     std::wstring chunk;
 };
 
@@ -717,6 +722,90 @@ static bool Ai_CopyAnswerText(HWND hwndLog)
 }
 
 static void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format, const CHARFORMAT2W* resetFormat = nullptr);
+
+static void Ai_AppendLiveChunkText(HWND hLog, const std::wstring& text, bool codeBlock)
+{
+    if (!hLog || text.empty()) return;
+
+    static const CHARFORMAT2W kLiveTextFmt = []() {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR;
+        cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(0, 0, 0);
+        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
+        return cf;
+    }();
+
+    static const CHARFORMAT2W kLiveCodeFmt = []() {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR;
+        cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(34, 34, 34);
+        lstrcpyW(cf.szFaceName, L"Consolas");
+        return cf;
+    }();
+
+    if (codeBlock) {
+        Ai_AppendRichRun(hLog, text, &kLiveCodeFmt, &kLiveTextFmt);
+    } else {
+        Ai_AppendRichRun(hLog, text, &kLiveTextFmt, nullptr);
+    }
+}
+
+static void Ai_FlushLiveChunk(AiStreamChunk& chunkInfo, HWND hLog, bool force = false)
+{
+    if (!hLog) return;
+
+    size_t pos = 0;
+    while (pos < chunkInfo.pendingText.size()) {
+        size_t lineEnd = chunkInfo.pendingText.find(L'\n', pos);
+        bool hasNewline = lineEnd != std::wstring::npos;
+        std::wstring line = hasNewline ? chunkInfo.pendingText.substr(pos, lineEnd - pos) : chunkInfo.pendingText.substr(pos);
+        std::wstring trimmed = line;
+        while (!trimmed.empty() && iswspace(trimmed.front())) trimmed.erase(trimmed.begin());
+        while (!trimmed.empty() && iswspace(trimmed.back())) trimmed.pop_back();
+
+        if (!chunkInfo.inCodeBlock && trimmed.rfind(L"```", 0) == 0) {
+            chunkInfo.inCodeBlock = true;
+            std::wstring label = L"📋 Copy code";
+            std::wstring lang = trimmed.substr(3);
+            while (!lang.empty() && iswspace(lang.front())) lang.erase(lang.begin());
+            if (!lang.empty()) {
+                label += L" (" + lang + L")";
+            }
+            int headerStart = GetWindowTextLengthW(hLog);
+            Ai_AppendRichRun(hLog, label, nullptr, nullptr);
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr, nullptr);
+            int codeStart = GetWindowTextLengthW(hLog);
+            AiCopyCode_BeginBlock(hLog, headerStart, label, codeStart);
+        } else if (chunkInfo.inCodeBlock && trimmed.rfind(L"```", 0) == 0) {
+            chunkInfo.inCodeBlock = false;
+            AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr, nullptr);
+        } else {
+            if (!line.empty() || hasNewline || force) {
+                Ai_AppendLiveChunkText(hLog, line, chunkInfo.inCodeBlock);
+                if (hasNewline) {
+                    Ai_AppendRichRun(hLog, L"\r\n", nullptr, nullptr);
+                }
+                if (chunkInfo.inCodeBlock) {
+                    AiCopyCode_AppendCodeLine(hLog, line + (hasNewline ? L"\r\n" : L""));
+                }
+            }
+        }
+
+        if (!hasNewline) {
+            break;
+        }
+        pos = lineEnd + 1;
+    }
+
+    if (pos > 0) {
+        chunkInfo.pendingText.erase(0, pos);
+    }
+}
 
 static void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format, const CHARFORMAT2W* resetFormat)
 {
@@ -1839,7 +1928,11 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 delete st->spinner;
                 st->spinner = NULL;
             }
-            Ai_RenderMarkdownReply(hwnd, st->replyBaseStart, st->liveReply);
+            HWND hLog = GetDlgItem(hwnd, IDC_AI_LOG);
+            if (hLog) {
+                chunk->pendingText += chunk->chunk;
+                Ai_FlushLiveChunk(*chunk, hLog);
+            }
         }
         if (chunk) {
             delete chunk;
