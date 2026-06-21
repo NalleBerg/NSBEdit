@@ -6,6 +6,7 @@ Current status
 - Special characters render again, so the reply output is no longer collapsing into escaped junk.
 - The current rendering is still not right: code blocks are being detected inconsistently, the copy-code header is duplicated in some replies, the surviving copy marker is not styled cleanly, and the body text is being underlined more than it should be.
 - Closing the AI window still needs a focus handoff fix so the main editor comes to the front reliably after the dialog is closed.
+- cmark-gfm is now downloaded under third_party/cmark-gfm, and that is the renderer we should aim at instead of stretching RichEdit further.
 
 What needs fixing next
 - Make code-fence detection deterministic so the renderer always knows when a reply line is code and when it is prose.
@@ -14,9 +15,14 @@ What needs fixing next
 - Restore the close-window focus behavior by using the existing always-on-top handoff pattern on close, then clearing it again when the main window is active.
 
 Fix strategy
-- Treat the live stream as markdown-first, but split the responsibilities more cleanly: stream buffering, code-block detection, copy-header rendering, and final answer cleanup should each own one job.
-- Use the Ollama app as the reference for the end state: live incremental rendering, correct code block recognition, readable code colours, and a single copy affordance.
-- Keep the helper module focused on rendering only; keep controller focus and window-activation behavior in ollama_ai.cpp.
+- Treat the live stream as markdown-first, but move the actual parsing and HTML generation over to cmark-gfm instead of extending the RichEdit renderer further.
+- Keep the streaming path thin: buffer chunks, feed cmark-gfm, then display the rendered result instead of hand-encoding every markdown rule in RichEdit.
+- Keep the helper module focused on the window/controller split for now; the long-term renderer should be the vendored cmark-gfm copy in third_party/cmark-gfm.
+
+Renderer target
+- The goal is no longer to perfect the RichEdit markdown emulation.
+- The goal is to use cmark-gfm as the real Markdown engine for the AI reply view, then render its output cleanly in the UI.
+- RichEdit can stay as a temporary bridge, but it should stop being the place where markdown semantics are invented.
 
 Release notes
 - When the rendering slice is stable, refresh version metadata, changelog, README, and the API notes together before committing.

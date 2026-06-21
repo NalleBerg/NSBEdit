@@ -1528,11 +1528,34 @@ static void Ne_LoadLocale()
     }
 }
 
+static const wchar_t* Ne_CmarkGfmCredit()
+{
+    switch (g_localeId) {
+        case 1:  return L"cmark-gfm er en utvidet CommonMark-tolk med støtte for GitHub Flavored Markdown. NSBEdit flytter Markdown-gjengivelsen i AI-visningen til cmark-gfm, slik at svarvisningen kan holde opp med å finne opp markdown-regler i RichEdit. Lisensiert under BSD-lisensen med 2 klausuler.\r\n\r\n";
+        case 2:  return L"cmark-gfm er en utvidet CommonMark-tolk med støtte for GitHub Flavored Markdown. NSBEdit flytter Markdown-gjengivelsen i AI-visningen til cmark-gfm, slik at svarvisningen kan slutte å finne opp markdown-regler i RichEdit. Lisensiert under BSD-lisensen med 2 klausuler.\r\n\r\n";
+        case 3:  return L"cmark-gfm är en utökad CommonMark-tolk med stöd för GitHub Flavored Markdown. NSBEdit flyttar Markdown-renderingen i AI-vyn till cmark-gfm så att svarsytan kan sluta hitta på markdown-regler i RichEdit. Licensierat under BSD-licensen med 2 klausuler.\r\n\r\n";
+        case 4:  return L"cmark-gfm er en udvidet CommonMark-fortolker med understøttelse af GitHub Flavored Markdown. NSBEdit flytter Markdown-gengivelsen i AI-visningen til cmark-gfm, så svarvisningen kan holde op med at opfinde markdown-regler i RichEdit. Licenseret under BSD 2-Clause-licensen.\r\n\r\n";
+        case 5:  return L"cmark-gfm on laajennettu CommonMark-tulkitsin, jossa on GitHub Flavored Markdown -tuki. NSBEdit siirtää AI-näkymän Markdown-renderöinnin cmark-gfm:ään, jotta vastausnäkymän ei tarvitse enää keksiä markdown-sääntöjä RichEditissä. Lisensoitu BSD 2-Clause -lisenssillä.\r\n\r\n";
+        case 6:  return L"cmark-gfm ist ein erweiterter CommonMark-Parser mit Unterstützung für GitHub Flavored Markdown. NSBEdit verlagert das Markdown-Rendering der AI-Ansicht auf cmark-gfm, damit die Antwortansicht in RichEdit keine Markdown-Regeln mehr erfinden muss. Lizenziert unter der BSD-2-Klausel-Lizenz.\r\n\r\n";
+        case 7:  return L"cmark-gfm est un analyseur CommonMark étendu avec prise en charge de GitHub Flavored Markdown. NSBEdit déplace le rendu Markdown de la vue IA vers cmark-gfm afin que la vue des réponses n'ait plus à inventer des règles markdown dans RichEdit. Sous licence BSD à 2 clauses.\r\n\r\n";
+        case 8:  return L"cmark-gfm es un analizador CommonMark ampliado con compatibilidad con GitHub Flavored Markdown. NSBEdit está trasladando el renderizador de Markdown de la vista de IA a cmark-gfm para que la vista de respuestas deje de inventar reglas de markdown en RichEdit. Con licencia BSD de 2 cláusulas.\r\n\r\n";
+        case 9:  return L"cmark-gfm არის გაფართოებული CommonMark-ის ანალიზატორი GitHub Flavored Markdown-ის მხარდაჭერით. NSBEdit AI-ის ხედის Markdown-რენდერირებას cmark-gfm-ზე გადააქვს, რათა პასუხების ხედმა RichEdit-ში markdown-ის წესების გამოგონება აღარ მოახდინოს. BSD 2-Clause ლიცენზიის ქვეშაა.\r\n\r\n";
+        case 10: return L"Το cmark-gfm είναι ένας επεκταμένος αναλυτής CommonMark με υποστήριξη GitHub Flavored Markdown. Το NSBEdit μεταφέρει την απόδοση Markdown της προβολής AI στο cmark-gfm, ώστε η προβολή απαντήσεων να μην χρειάζεται να εφευρίσκει κανόνες markdown στο RichEdit. Με άδεια BSD 2-Clause.\r\n\r\n";
+        case 11: return L"cmark-gfm é um analisador CommonMark estendido com suporte para GitHub Flavored Markdown. O NSBEdit está a transferir o renderizador Markdown da vista de IA para cmark-gfm, para que a vista de respostas deixe de inventar regras de markdown no RichEdit. Licenciado sob a licença BSD de 2 cláusulas.\r\n\r\n";
+        case 12: return L"cmark-gfm is een uitgebreide CommonMark-parser met ondersteuning voor GitHub Flavored Markdown. NSBEdit verplaatst de Markdown-renderer van de AI-weergave naar cmark-gfm, zodat de antwoordweergave geen markdown-regels meer hoeft te verzinnen in RichEdit. Gelicentieerd onder de BSD-licentie met 2 clausules.\r\n\r\n";
+        case 13: return L"cmark-gfm is een uitgebreide CommonMark-parser met ondersteuning voor GitHub Flavored Markdown. NSBEdit verplaatst de Markdown-renderer van de AI-weergave naar cmark-gfm, zodat de antwoordweergave geen markdown-regels meer hoeft te verzinnen in RichEdit. Gelicentieerd onder de BSD-licentie met 2 clausules.\r\n\r\n";
+        case 14: return L"cmark-gfm er en utvidet CommonMark-tolk med støtte for GitHub Flavored Markdown. NSBEdit flytter Markdown-gjengivelsen i AI-visningen til cmark-gfm, slik at svarvisningen kan holde opp med å finne opp markdown-regler i RichEdit. Lisensiert under BSD-lisensen med 2 klausuler.\r\n\r\n";
+        default: return L"cmark-gfm is an extended CommonMark parser with GitHub Flavored Markdown support. NSBEdit is moving the AI view Markdown renderer to cmark-gfm so the reply view can stop inventing markdown rules in RichEdit. Licensed under the BSD 2-Clause License.\r\n\r\n";
+    }
+}
+
 // Returns the localized string for key, or key itself as fallback.
 static const wchar_t* Ls(const wchar_t* key)
 {
+    if (wcscmp(key, L"CREDITS_CMARK_GFM") == 0) return Ne_CmarkGfmCredit();
     auto it = g_str.find(key);
-    return (it != g_str.end()) ? it->second.c_str() : key;
+    if (it != g_str.end()) return it->second.c_str();
+    return key;
 }
 
 const wchar_t* Ne_Ls(const wchar_t* key)
@@ -12637,6 +12660,17 @@ static void ShowNsbCreditsDialog(HWND parent)
         false, RGB(140,60,0), 0, true);
     AppendNsbRich(hEdit, Ls(L"CREDITS_RTF2HTML"), false, RGB(40,40,40), 0, false);
     AppendNsbRich(hEdit, L"https://github.com/lvu/rtf2html\r\n", false, RGB(0,80,160), 0, false);
+
+    // ── cmark-gfm ────────────────────────────────────────────────────────────
+    AppendNsbRich(hEdit,
+        L"\r\n=================================================\r\n",
+        false, RGB(100,100,100), 9, true);
+    AppendNsbRich(hEdit, L"CMARK-GFM\r\n", true, RGB(60,90,180), 18, true);
+    AppendNsbRich(hEdit,
+        L"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\r\n",
+        false, RGB(60,90,180), 0, true);
+    AppendNsbRich(hEdit, Ls(L"CREDITS_CMARK_GFM"), false, RGB(40,40,40), 0, false);
+    AppendNsbRich(hEdit, L"https://github.com/github/cmark-gfm\r\n", false, RGB(0,80,160), 0, false);
 
     // ── Ollama ───────────────────────────────────────────────────────────────
     AppendNsbRich(hEdit,

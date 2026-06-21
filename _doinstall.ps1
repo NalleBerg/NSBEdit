@@ -175,6 +175,7 @@ if ($ollamaReady) {
 }
 
 # -- Copy program files --------------------------------------------------------
+Write-Section "Copy program files"
 foreach ($f in @('NSBEdit.exe','ollama.png','Changelog.html','GPLv2.md')) {
     $src = Join-Path $here $f
     if (Test-Path $src) {
@@ -190,6 +191,7 @@ Copy-Item (Join-Path $here 'Uninstall.ps1') $installDir -Force
 Write-Host "  + Uninstall.ps1"
 
 # -- Shortcuts (current user) --------------------------------------------------
+Write-Section "Create shortcuts"
 $exePath   = Join-Path $installDir 'NSBEdit.exe'
 $desk      = [Environment]::GetFolderPath('Desktop')
 $startMenu = [Environment]::GetFolderPath('StartMenu')
@@ -214,6 +216,7 @@ New-Lnk (Join-Path $startMenu 'NSBEdit.lnk') $exePath 'NSBEdit RTF Notepad'
 New-Lnk (Join-Path $programs  'NSBEdit.lnk') $exePath 'NSBEdit RTF Notepad'
 
 # -- Registry uninstall entry --------------------------------------------------
+Write-Section "Write uninstall registry entry"
 $regKey    = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\NSBEdit'
 $uninstPs  = Join-Path $installDir 'Uninstall.ps1'
 $uninstCmd = "powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$uninstPs`""
@@ -229,7 +232,7 @@ $strProps = [ordered]@{
     URLInfoAbout    = 'https://github.com/NalleBerg/NSBdit'
 }
 foreach ($kv in $strProps.GetEnumerator()) {
-    Set-ItemProperty -Path $regKey -Name $kv.Key -Value $kv.Value -Type String
+    New-ItemProperty -Path $regKey -Name $kv.Key -Value $kv.Value -PropertyType String -Force | Out-Null
 }
 $dwordProps = [ordered]@{
     EstimatedSize = [int]([math]::Ceiling((Get-Item $exePath).Length / 1KB))
@@ -237,7 +240,7 @@ $dwordProps = [ordered]@{
     NoRepair      = 1
 }
 foreach ($kv in $dwordProps.GetEnumerator()) {
-    Set-ItemProperty -Path $regKey -Name $kv.Key -Value $kv.Value -Type DWord
+    New-ItemProperty -Path $regKey -Name $kv.Key -Value $kv.Value -PropertyType DWord -Force | Out-Null
 }
 
 Write-Host ""
