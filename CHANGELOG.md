@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.06.21.10 (Fix: live markdown rendering restored, code-header polish still follows) - 21.06.2026 10:28
+
+- **Fix: the AI reply pane now streams through the markdown renderer again**: streamed Ollama chunks are rendered incrementally instead of waiting for a single final plain-text dump, so the answer arrives as live formatted output again.
+- **Fix: special characters render correctly again**: the streamed reply path now keeps the model text in a renderable form instead of flattening the output into escaped junk.
+- **Follow-up: copy-code styling and window-close focus still need the next pass**: code-fence header polish, exact copy-link handling, and the main-window focus handoff are still the next slice of work.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.21.10`.
+
 ## v2026.06.20.16 (Fix: live Ollama replies again, with code blocks copyable) - 20.06.2026 16:30
 
 - **Fix: the AI answer pane now updates while the reply streams**: incoming Ollama chunks repaint the live answer text immediately again, so the output appears progressively instead of waiting for the final completion message.

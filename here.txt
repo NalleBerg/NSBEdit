@@ -1,19 +1,23 @@
 NSBEdit handover notes
-Written: 2026-06-17
+Written: 2026-06-21
 
 Current status
-- The installer pause at the end was removed, so the package should no longer sit there waiting for Enter after the Ollama model pulls finish.
-- The AI shell still does not render Ollama replies faithfully yet. Ollama answers, but the NSBEdit pane is still losing code colours, links, and copy-code affordances that the Ollama app shows live while the reply arrives.
-- The current AI work is focused on making the pane display Ollama output as-is, not flattening it to plain text or dropping the visual cues that make code usable.
-- The AI module still needs a single consistent language sweep, but the immediate blocker is the rendering fidelity of the reply pane.
+- The AI pane now streams text live again, and the markdown renderer is back in the reply path.
+- Special characters render again, so the reply output is no longer collapsing into escaped junk.
+- The current rendering is still not right: code blocks are being detected inconsistently, the copy-code header is duplicated in some replies, the surviving copy marker is not styled cleanly, and the body text is being underlined more than it should be.
+- Closing the AI window still needs a focus handoff fix so the main editor comes to the front reliably after the dialog is closed.
 
-What to do next
-- Keep the reply renderer focused on faithfully showing what Ollama sends, including code colouring, links, and copy affordances.
-- If the AI pane still stalls, revisit the send/completion path after the versioned docs are updated and rebuilt.
-- Update the changelog, README, and API docs under the new version tag before committing.
+What needs fixing next
+- Make code-fence detection deterministic so the renderer always knows when a reply line is code and when it is prose.
+- Strip any model-emitted copy-code header from the visible output, and keep only one renderer-owned copy header with a clear color treatment.
+- Revisit the live markdown path so the plain prose color starts at the right point and does not underline the whole body.
+- Restore the close-window focus behavior by using the existing always-on-top handoff pattern on close, then clearing it again when the main window is active.
 
-Notes
-- Ollama itself is answering; the open problem is our answer pane fidelity.
-- The Ollama app is still the reference for the desired behaviour: live rendering, colours, links, and code affordances as the reply arrives.
-- Keep local AI and cloud AI flows separate.
-- Keep the model picker realtime, not restart-based.
+Fix strategy
+- Treat the live stream as markdown-first, but split the responsibilities more cleanly: stream buffering, code-block detection, copy-header rendering, and final answer cleanup should each own one job.
+- Use the Ollama app as the reference for the end state: live incremental rendering, correct code block recognition, readable code colours, and a single copy affordance.
+- Keep the helper module focused on rendering only; keep controller focus and window-activation behavior in ollama_ai.cpp.
+
+Release notes
+- When the rendering slice is stable, refresh version metadata, changelog, README, and the API notes together before committing.
+- MyStyle remains the main documentation tree for API_INTERNALS/API work.

@@ -675,15 +675,14 @@
                                                 and Close. The reply pane now repaints
                                                 streamed text live, unescapes model HTML
                                                 tokens, offers a right-click Copy answer
-                                                popup, and restores a visible Copy code
-                                                label on fenced blocks while tracking their
-                                                copy span through copy_ai_code.cpp/h. Live
-                                                chunk appends now also carry the lightweight
-                                                code and colour formatting as the stream
-                                                arrives, so the reply pane no longer waits
-                                                for the final render before showing styled
-                                                code blocks. Richer colour and emoji
-                                                formatting is the next follow-up.
+                                                popup, and keeps the markdown renderer in
+                                                the live stream path so special characters
+                                                and fenced code stay readable while chunks
+                                                arrive. The visible Copy code header still
+                                                lives in copy_ai_code.cpp/h, and the next
+                                                follow-up is tighter header styling, exact
+                                                copy-link hit testing, and the close-window
+                                                focus handoff back to the main editor.
                                                 Full layout and control-flow notes live in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
 

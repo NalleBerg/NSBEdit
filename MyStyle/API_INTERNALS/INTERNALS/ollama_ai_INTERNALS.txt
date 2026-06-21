@@ -32,12 +32,11 @@ FILES:
     - Persist the AI preferences through the existing profile store.
     - Provide a visible Copy code header for fenced blocks and a right-click
       Copy answer command for the whole rendered response.
-    - Keep the rendered answer streaming live as plain text while reply
-      chunks arrive, with code-copy affordances layered on top of fenced
-      blocks.
-    - Apply the lightweight live formatter to incoming chunks so code blocks
-      and simple colour hints appear incrementally instead of waiting for the
-      final render pass.
+    - Keep the rendered answer streaming live through the markdown renderer
+      while reply chunks arrive, so special characters and code blocks remain
+      readable incrementally instead of waiting for the final pass.
+    - Keep the copy-code affordance and reply formatting separate so the live
+      stream can stay incremental while the renderer still owns the final look.
 
   Text wrapping:
     - Both RichEdit panes are created without horizontal scrolling.
@@ -48,12 +47,13 @@ FILES:
   Reply rendering:
     - The reply parser normalises model escape text like u003c/u003e before
       it reaches RichEdit so sample HTML-like spans do not print literally.
-    - Reply text is repainted live as plain text while the Ollama stream is
-      still arriving.
+    - Reply text is repainted live through the markdown renderer while the
+      Ollama stream is still arriving.
     - Incoming chunks also feed the incremental live formatter so styled code
       blocks can appear before completion.
     - Fenced code blocks get a visible Copy code label and tracked copy
-      range; richer colour, emoji, and markdown styling is a later pass.
+      range; richer header styling, exact copy-link hit testing, and focus
+      handoff after closing the AI window are still later passes.
 
 ================================================================================
 2. ENTRY POINT

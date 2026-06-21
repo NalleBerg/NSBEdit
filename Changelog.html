@@ -1,6 +1,15 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 20 June 2026 &mdash; v2026.06.20.16 (16:30)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 21 June 2026 &mdash; v2026.06.21.10 (10:28)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.21.10 (Fix: live markdown rendering restored, code-header polish still follows)</span></h3>
+<p><strong>Fix: live markdown rendering restored, code-header polish still follows (21.06.2026, 10:28):</strong></p>
+<ul>
+<li><strong>Fix: the AI reply pane now streams through the markdown renderer again:</strong> streamed Ollama chunks are rendered incrementally instead of waiting for a single final plain-text dump, so the answer arrives as live formatted output again.</li>
+<li><strong>Fix: special characters render correctly again:</strong> the streamed reply path now keeps the model text in a renderable form instead of flattening the output into escaped junk.</li>
+<li><strong>Follow-up: copy-code styling and window-close focus still need the next pass:</strong> code-fence header polish, exact copy-link handling, and the main-window focus handoff are still the next slice of work.</li>
+<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.21.10</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.20.16 (Fix: live Ollama replies again, with code blocks copyable)</span></h3>
 <p><strong>Fix: live Ollama replies again, with code blocks copyable (20.06.2026, 16:30):</strong></p>

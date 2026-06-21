@@ -52,13 +52,14 @@
     - Both RichEdit panes wrap to the control width with no sideways scroll.
     - The prompt box remains multiline so Shift+Enter can insert a newline.
     - Plain Enter still sends the current prompt.
-    - Reply text is repainted live as plain text while the Ollama stream is
-      still arriving.
-    - Live chunk appends also apply the lightweight code and colour styling
-      while the stream is still arriving, so code blocks show up before the
-      final render completes.
+    - Reply text is repainted live through the markdown renderer while the
+      Ollama stream is still arriving.
+    - Live chunk appends still keep the answer incremental, and the renderer
+      now owns the visible code/header styling again instead of flattening the
+      output to plain text.
     - Fenced code blocks keep a visible Copy code header and tracked copy
-      span; richer colour and emoji formatting is still a later follow-up.
+      span; richer header styling, exact copy-link hit testing, and focus
+      handoff after closing the window are still later follow-ups.
 
   Ownership and lifetime:
     - The caller passes the parent HWND for centering and ownership.
@@ -74,9 +75,9 @@
     - The output pane offers a right-click Copy action for the rendered
       answer, and fenced code blocks add a visible Copy code header that
       copies only the text inside the fenced block.
-    - The remaining follow-up is richer colour and emoji styling for the
-      live answer path, beyond the lightweight live code formatting already
-      applied during streaming.
+    - The remaining follow-up is richer copy-header styling, exact hit
+      testing for the code-copy span, and a better focus handoff back to the
+      main editor when the AI window closes.
 
 ================================================================================
 3. ne_ai_bootstrap.h
