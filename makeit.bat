@@ -54,9 +54,68 @@ echo [STEP_DONE 4/6]
 echo.
 
 :: ─────────────────────────────────────────────────────────────────────────────
-echo [STEP 5/6] Compile ^& link  --  NSBEdit.cpp + all sources  -^>  NSBEdit.exe
+echo [STEP 5/6] cmark-gfm  --  vendored C sources  -^>  .o
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\arena.c -o third_party\cmark-gfm\src\arena.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm arena compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\blocks.c -o third_party\cmark-gfm\src\blocks.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm blocks compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\buffer.c -o third_party\cmark-gfm\src\buffer.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm buffer compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\cmark.c -o third_party\cmark-gfm\src\cmark.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm cmark compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\cmark_ctype.c -o third_party\cmark-gfm\src\cmark_ctype.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm cmark_ctype compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\commonmark.c -o third_party\cmark-gfm\src\commonmark.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm commonmark compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\footnotes.c -o third_party\cmark-gfm\src\footnotes.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm footnotes compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\html.c -o third_party\cmark-gfm\src\html.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm html compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\houdini_href_e.c -o third_party\cmark-gfm\src\houdini_href_e.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm houdini_href_e compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\houdini_html_e.c -o third_party\cmark-gfm\src\houdini_html_e.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm houdini_html_e compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\houdini_html_u.c -o third_party\cmark-gfm\src\houdini_html_u.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm houdini_html_u compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\inlines.c -o third_party\cmark-gfm\src\inlines.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm inlines compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\iterator.c -o third_party\cmark-gfm\src\iterator.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm iterator compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\latex.c -o third_party\cmark-gfm\src\latex.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm latex compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\linked_list.c -o third_party\cmark-gfm\src\linked_list.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm linked_list compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\man.c -o third_party\cmark-gfm\src\man.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm man compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\map.c -o third_party\cmark-gfm\src\map.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm map compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\node.c -o third_party\cmark-gfm\src\node.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm node compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\plaintext.c -o third_party\cmark-gfm\src\plaintext.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm plaintext compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\plugin.c -o third_party\cmark-gfm\src\plugin.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm plugin compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\references.c -o third_party\cmark-gfm\src\references.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm references compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\registry.c -o third_party\cmark-gfm\src\registry.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm registry compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\render.c -o third_party\cmark-gfm\src\render.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm render compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\scanners.c -o third_party\cmark-gfm\src\scanners.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm scanners compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\syntax_extension.c -o third_party\cmark-gfm\src\syntax_extension.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm syntax_extension compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\utf8.c -o third_party\cmark-gfm\src\utf8.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm utf8 compile FAILED & exit /b 1 )
+gcc -v -O2 -std=c99 -Ithird_party\cmark-gfm\src -c third_party\cmark-gfm\src\xml.c -o third_party\cmark-gfm\src\xml.o
+@if !ERRORLEVEL! neq 0 ( echo [ERROR] cmark-gfm xml compile FAILED & exit /b 1 )
+echo [STEP_DONE 5/6]
+echo.
+
+:: ─────────────────────────────────────────────────────────────────────────────
+echo [STEP 6/6] Compile ^& link  --  NSBEdit.cpp + all sources  -^>  NSBEdit.exe
 g++ -v -std=c++17 -O2 -Wall -mwindows -municode ^
-    -I. -Isqlite3 -Icurl\include ^
+    -I. -Isqlite3 -Icurl\include -Ithird_party\cmark-gfm\src ^
     -DCURL_STATICLIB ^
     -Iscintilla_src\scintilla\include -Ilexilla_src\lexilla\include ^
     NSBEdit.cpp ne_tabs.cpp ne_statusbar.cpp dpi.cpp tooltip\tooltip.cpp scroll\my_scrollbar_vscroll.cpp ^
@@ -67,6 +126,16 @@ g++ -v -std=c++17 -O2 -Wall -mwindows -municode ^
     copy_ai_code.cpp ^
     ollama_ai.cpp ^
     rtf2html\ne_rtf2html_lib.cpp ^
+    third_party\cmark-gfm\src\arena.o third_party\cmark-gfm\src\blocks.o third_party\cmark-gfm\src\buffer.o ^
+    third_party\cmark-gfm\src\cmark.o third_party\cmark-gfm\src\cmark_ctype.o third_party\cmark-gfm\src\commonmark.o ^
+    third_party\cmark-gfm\src\footnotes.o third_party\cmark-gfm\src\html.o third_party\cmark-gfm\src\houdini_href_e.o ^
+    third_party\cmark-gfm\src\houdini_html_e.o third_party\cmark-gfm\src\houdini_html_u.o third_party\cmark-gfm\src\inlines.o ^
+    third_party\cmark-gfm\src\iterator.o third_party\cmark-gfm\src\latex.o third_party\cmark-gfm\src\linked_list.o ^
+    third_party\cmark-gfm\src\man.o third_party\cmark-gfm\src\map.o third_party\cmark-gfm\src\node.o ^
+    third_party\cmark-gfm\src\plaintext.o third_party\cmark-gfm\src\plugin.o ^
+    third_party\cmark-gfm\src\references.o third_party\cmark-gfm\src\registry.o third_party\cmark-gfm\src\render.o ^
+    third_party\cmark-gfm\src\scanners.o third_party\cmark-gfm\src\syntax_extension.o third_party\cmark-gfm\src\utf8.o ^
+    third_party\cmark-gfm\src\xml.o ^
     sqlite3\sqlite3.o curl\lib\quic_stubs.o NSBEdit.res ^
     -lcomctl32 -lcomdlg32 -lshell32 -lole32 -luuid -luser32 -lgdi32 -lgdiplus -lwinspool -lmsimg32 -ldwmapi -luxtheme ^
     -Lscintilla_src\scintilla\bin -Llexilla_src\lexilla\bin -lscintilla -llexilla ^
@@ -76,7 +145,7 @@ g++ -v -std=c++17 -O2 -Wall -mwindows -municode ^
     -static -static-libgcc -static-libstdc++ ^
     -o NSBEdit.exe
 @if !ERRORLEVEL! neq 0 ( echo. & echo [ERROR] Compile/link FAILED & exit /b 1 )
-echo [STEP_DONE 5/6]
+echo [STEP_DONE 6/6]
 echo.
 
 :: ─────────────────────────────────────────────────────────────────────────────

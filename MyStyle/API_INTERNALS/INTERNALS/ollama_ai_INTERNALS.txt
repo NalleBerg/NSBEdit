@@ -9,7 +9,8 @@ FILES:
   ollama_ai.h                 Public entry point: Ne_ShowAiWindow(HWND parent)
   ollama_ai.cpp               Window class, menu logic, layout, owner-draw UI
   ne_ai_bootstrap.h/.cpp      Loads persisted AI bootstrap settings
-  ne_ai_client.h/.cpp         Probes Ollama localhost availability
+  ne_ai_client.h/.cpp         Probes Ollama localhost availability and streams
+                              reply chunks through the curl-backed transport
 
 ================================================================================
 1. PURPOSE
@@ -37,6 +38,8 @@ FILES:
       readable incrementally instead of waiting for the final pass.
     - Keep the copy-code affordance and reply formatting separate so the live
       stream can stay incremental while the renderer still owns the final look.
+    - Restore the owner/main window to the foreground on close with the brief
+      TOPMOST trick, then immediately remove the pin so it does not stay on top.
 
   Text wrapping:
     - Both RichEdit panes are created without horizontal scrolling.
@@ -231,20 +234,19 @@ FILES:
     - Real cloud request handling stays a separate follow-up slice.
 
   Current request path:
-    - POST http://127.0.0.1:11434/api/generate
+    - curl POST http://127.0.0.1:11434/api/generate
     - send the selected model and prompt as JSON
-    - stream the response and post completion back to the window when the
-      request is finished
+    - stream the response through the curl write callback and post each chunk
+      back to the window as soon as it is parsed
 
   Before sending, the AI window prefixes a short markdown instruction so code
   answers are more likely to come back fenced and indentation-safe.
 
   The output pane shows the user's question first, then the Ollama reply or a
   short error message if the local service is not reachable.
-  The current follow-up issue is that the rendered reply still does not match
-  Ollama's own live output faithfully enough. Colours, links, and code afford-
-  ances need to survive the render pass exactly the way the Ollama app shows
-  them while the answer is streaming.
+  The answer path is now incremental all the way from curl to the live typing
+  queue, so the visible response starts writing as soon as the first chunks
+  land.
 
 ================================================================================
 9. EXTERNAL DEPENDENCIES

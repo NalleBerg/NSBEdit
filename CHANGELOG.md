@@ -1,11 +1,18 @@
 # Changelog
 
-## v2026.06.21.10 (Fix: live markdown rendering restored, code-header polish still follows) - 21.06.2026 10:28
+## v2026.06.22.12 (Status: AI reply renderer still needs the final visibility pass) - 22.06.2026 12:09
 
-- **Fix: the AI reply pane now streams through the markdown renderer again**: streamed Ollama chunks are rendered incrementally instead of waiting for a single final plain-text dump, so the answer arrives as live formatted output again.
-- **Fix: special characters render correctly again**: the streamed reply path now keeps the model text in a renderable form instead of flattening the output into escaped junk.
-- **Follow-up: copy-code styling and window-close focus still need the next pass**: code-fence header polish, exact copy-link handling, and the main-window focus handoff are still the next slice of work.
-- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.21.10`.
+- **Status: the AI reply pane is still not visibly writing output yet**: the spinner now stops when the model starts answering, but the answer text itself still needs the final rendering fix in the app.
+- **Fix: cmark-gfm is now compiled and linked from the vendored source tree**: the build now brings in the parser implementation directly, so the markdown parsing path is part of the executable again.
+- **Fix: the answer pane now forces visible default text colour**: the RichEdit prose blocks are no longer allowed to inherit invisible white-on-white formatting from the control default.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.22.12`.
+
+## v2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff) - 22.06.2026 10:40
+
+- **Fix: the AI reply pane now starts writing as soon as chunks arrive**: the streamed Ollama response is fed straight into the live typing path, so the answer begins appearing immediately instead of waiting for the end of the request.
+- **Fix: curl is now shipped with the app folder**: the package and installer both copy the curl static libraries into the app tree, so the AI transport is no longer a build-only dependency.
+- **Fix: closing the AI window now restores the main editor to the front**: the owner window gets the brief topmost nudge on close, then the pin is removed again so it stays usable without remaining always-on-top.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.22.10`.
 
 ## v2026.06.20.16 (Fix: live Ollama replies again, with code blocks copyable) - 20.06.2026 16:30
 

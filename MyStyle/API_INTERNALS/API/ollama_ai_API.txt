@@ -8,7 +8,8 @@
   The AI surface is intentionally split into three small headers:
     - ollama_ai.h        -> open the AI shell window
     - ne_ai_bootstrap.h  -> load persisted bootstrap settings
-    - ne_ai_client.h     -> probe local Ollama availability
+    - ne_ai_client.h     -> probe local Ollama availability and stream reply
+                           chunks from the curl-backed transport
 
   The goal is to keep the window module reusable, keep configuration loading
   isolated, and keep the local health check independent from the UI.
@@ -78,6 +79,8 @@
     - The remaining follow-up is richer copy-header styling, exact hit
       testing for the code-copy span, and a better focus handoff back to the
       main editor when the AI window closes.
+    - Closing the AI window now restores the owner/main window to the front
+      with the brief TOPMOST nudge, then clears the pin immediately.
 
 ================================================================================
 3. ne_ai_bootstrap.h

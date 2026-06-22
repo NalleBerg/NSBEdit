@@ -1,29 +1,20 @@
 NSBEdit handover notes
-Written: 2026-06-21
+Written: 2026-06-22
 
 Current status
-- The AI pane now streams text live again, and the markdown renderer is back in the reply path.
-- Special characters render again, so the reply output is no longer collapsing into escaped junk.
-- The current rendering is still not right: code blocks are being detected inconsistently, the copy-code header is duplicated in some replies, the surviving copy marker is not styled cleanly, and the body text is being underlined more than it should be.
-- Closing the AI window still needs a focus handoff fix so the main editor comes to the front reliably after the dialog is closed.
-- cmark-gfm is now downloaded under third_party/cmark-gfm, and that is the renderer we should aim at instead of stretching RichEdit further.
+- The AI reply path is still not producing visible output in the app, even though the spinner now stops when the model starts writing the answer.
+- The renderer/build work is not finished yet, so the current problem remains unresolved.
+- cmark-gfm is now linked into the build, and the next pass should focus on why the reply text is not appearing correctly in the answer pane.
+- The close-window focus handoff work is still relevant and should stay in the release notes once the AI display path is stable again.
 
 What needs fixing next
-- Make code-fence detection deterministic so the renderer always knows when a reply line is code and when it is prose.
-- Strip any model-emitted copy-code header from the visible output, and keep only one renderer-owned copy header with a clear color treatment.
-- Revisit the live markdown path so the plain prose color starts at the right point and does not underline the whole body.
-- Restore the close-window focus behavior by using the existing always-on-top handoff pattern on close, then clearing it again when the main window is active.
+- Make the AI answer actually show in the app again, then verify whether the live prose and code-block split renderer is painting with the right colors.
+- Confirm the copy-code and Scintilla code-block path still behaves once text is visible.
+- Keep the main window focus restore behavior in place when the AI window closes.
 
-Fix strategy
-- Treat the live stream as markdown-first, but move the actual parsing and HTML generation over to cmark-gfm instead of extending the RichEdit renderer further.
-- Keep the streaming path thin: buffer chunks, feed cmark-gfm, then display the rendered result instead of hand-encoding every markdown rule in RichEdit.
-- Keep the helper module focused on the window/controller split for now; the long-term renderer should be the vendored cmark-gfm copy in third_party/cmark-gfm.
-
-Renderer target
-- The goal is no longer to perfect the RichEdit markdown emulation.
-- The goal is to use cmark-gfm as the real Markdown engine for the AI reply view, then render its output cleanly in the UI.
-- RichEdit can stay as a temporary bridge, but it should stop being the place where markdown semantics are invented.
+Suggested continuance
+- Resume from the answer-pane rendering path in ollama_ai.cpp and check where the visible text is being lost.
+- Once that is stable, refresh the release docs, API notes, and README together before the next commit.
 
 Release notes
-- When the rendering slice is stable, refresh version metadata, changelog, README, and the API notes together before committing.
 - MyStyle remains the main documentation tree for API_INTERNALS/API work.

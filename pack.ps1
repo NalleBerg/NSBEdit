@@ -11,14 +11,18 @@ $version = ($curver | Where-Object { $_ -match '^Version:\s*(.+)' } |
             Select-Object -First 1) -replace '^Version:\s*', ''
 if (-not $version) { throw "Could not read version from curver.txt" }
 
-$zipName = "NSBEdit_v$version.zip"
-$stagingDir = "$PSScriptRoot\_pack_staging\NSBEdit"
+$timestamp = Get-Date -Format 'HH-mm-ss'
+$zipStamp = Get-Date -Format 'yyyyMMdd-HH-mm-ss'
+$zipName = "NSBEdit_v${version}_$zipStamp.zip"
+$folderName = "NSBEdit-$timestamp"
+$stagingRoot = "$PSScriptRoot\_pack_staging"
+$stagingDir = Join-Path $stagingRoot $folderName
 
 Write-Host "Packaging NSBEdit v$version..."
 
 # ── Stage files ──────────────────────────────────────────────────────────────
-if (Test-Path "$PSScriptRoot\_pack_staging") {
-    Remove-Item "$PSScriptRoot\_pack_staging" -Recurse -Force
+if (Test-Path $stagingRoot) {
+    Remove-Item $stagingRoot -Recurse -Force
 }
 New-Item -ItemType Directory -Path $stagingDir | Out-Null
 
@@ -39,6 +43,16 @@ foreach ($f in $files) {
     Write-Host "  + $f"
 }
 
+$curlLibSrc = Join-Path $PSScriptRoot 'curl\lib'
+if (Test-Path $curlLibSrc) {
+    $curlLibDst = Join-Path $stagingDir 'curl\lib'
+    New-Item -ItemType Directory -Path $curlLibDst -Force | Out-Null
+    Get-ChildItem -Path $curlLibSrc -Filter '*.a' | Copy-Item -Destination $curlLibDst
+    Write-Host "  + curl\lib\*.a"
+} else {
+    Write-Warning '  Skipping curl\lib (not found)'
+}
+
 # Write version.txt so the installer can read the version without curver.txt
 $version | Set-Content (Join-Path $stagingDir 'version.txt') -Encoding UTF8
 Write-Host "  + version.txt  ($version)"
@@ -47,8 +61,11 @@ Write-Host "  + version.txt  ($version)"
 $zipDir = "$PSScriptRoot\zip"
 if (-not (Test-Path $zipDir)) { New-Item -ItemType Directory -Path $zipDir | Out-Null }
 $zipPath = "$zipDir\$zipName"
-Compress-Archive -Path "$PSScriptRoot\_pack_staging\*" -DestinationPath $zipPath -Force
-Remove-Item "$PSScriptRoot\_pack_staging" -Recurse -Force
+
+Get-ChildItem -Path $zipDir -Directory | Remove-Item -Recurse -Force
+Copy-Item $stagingDir $zipDir -Recurse -Force
+Compress-Archive -Path (Join-Path $zipDir $folderName) -DestinationPath $zipPath -Force
+Remove-Item $stagingRoot -Recurse -Force
 
 $sizeMB = [math]::Round((Get-Item $zipPath).Length / 1MB, 2)
 Write-Host ""

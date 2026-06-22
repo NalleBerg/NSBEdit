@@ -639,9 +639,11 @@
                                                 Old `*-instruct` model names are
                                                 normalised to the current valid tags.
 
-  ne_ai_client.h / ne_ai_client.cpp             Ollama localhost probe helper — WinHTTP
-                                                check used by the AI shell to decide
-                                                whether local Ollama is responsive.
+  ne_ai_client.h / ne_ai_client.cpp             Ollama localhost probe and streaming
+                                                transport helper — curl-backed local
+                                                Ollama request path used by the AI shell
+                                                to decide whether local Ollama is
+                                                responsive and to stream reply chunks.
 
   API_INTERNALS\API\system_API.txt             Public MyStyle system overview — install and
                                                 runtime database rules, portable vs installed
@@ -674,15 +676,19 @@
                                                 the action row includes Send, Copy, Clear,
                                                 and Close. The reply pane now repaints
                                                 streamed text live, unescapes model HTML
-                                                tokens, offers a right-click Copy answer
-                                                popup, and keeps the markdown renderer in
-                                                the live stream path so special characters
-                                                and fenced code stay readable while chunks
-                                                arrive. The visible Copy code header still
-                                                lives in copy_ai_code.cpp/h, and the next
-                                                follow-up is tighter header styling, exact
-                                                copy-link hit testing, and the close-window
-                                                focus handoff back to the main editor.
+                                                tokens, and now routes prose through
+                                                RichEdit while fenced code blocks are parsed
+                                                with cmark-gfm and displayed in Scintilla.
+                                                The current answer pane still needs its final
+                                                visibility pass, so the next follow-up is to
+                                                finish the visible output path and verify the
+                                                code-block styling and copy handling. The
+                                                visible Copy code header still lives in
+                                                copy_ai_code.cpp/h, and the close-window
+                                                focus handoff back to the main editor still
+                                                uses the brief TOPMOST trick on close so the
+                                                editor comes back to the front without
+                                                staying pinned.
                                                 Full layout and control-flow notes live in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
 

@@ -1,6 +1,7 @@
 #include "ne_ai_client.h"
 
 #include <winhttp.h>
+#include "curl/include/curl/curl.h"
 
 #include <regex>
 #include <string>
@@ -9,6 +10,15 @@
 namespace {
 
 static constexpr const wchar_t* kOllamaHost = L"localhost";
+
+struct OllamaStreamState {
+    void* context = nullptr;
+    NeAiOllamaChunkFn onChunk = nullptr;
+    std::string pending;
+    std::wstring outReply;
+    std::wstring outError;
+    bool ok = false;
+};
 
 static std::string Ai_WideToUtf8(const std::wstring& w)
 {
@@ -62,6 +72,63 @@ static bool Ai_ReadBody(HINTERNET hRequest, std::string& outBody)
         outBody += chunk;
     }
     return true;
+}
+
+static std::string Ai_TrimJsonLine(const std::string& line);
+static bool Ai_FindJsonStringField(const std::string& json, const char* field, std::string& outValue);
+static bool Ai_FindJsonNumberField(const std::string& json, const char* field, unsigned long long& outValue);
+static bool Ai_FindJsonBoolField(const std::string& json, const char* field, bool& outValue);
+static std::wstring Ai_Utf8ToWide(const std::string& s);
+
+static size_t Ai_OllamaWriteCallback(char* ptr, size_t size, size_t nmemb, void* userdata)
+{
+    auto* state = (OllamaStreamState*)userdata;
+    if (!state || !ptr) return 0;
+
+    size_t total = size * nmemb;
+    if (total == 0) return 0;
+
+    state->pending.append(ptr, total);
+
+    size_t linePos = 0;
+    while ((linePos = state->pending.find('\n')) != std::string::npos) {
+        std::string rawLine = state->pending.substr(0, linePos);
+        state->pending.erase(0, linePos + 1);
+        std::string line = Ai_TrimJsonLine(rawLine);
+        if (line.empty()) continue;
+
+        std::string replyUtf8;
+        if (Ai_FindJsonStringField(line, "response", replyUtf8)) {
+            std::wstring wideChunk = Ai_Utf8ToWide(replyUtf8);
+            state->outReply += wideChunk;
+            if (state->onChunk && !wideChunk.empty()) {
+                state->onChunk(state->context, wideChunk);
+            }
+        }
+
+        std::string thinkingUtf8;
+        if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8)) {
+            std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
+            state->outReply += wideChunk;
+            if (state->onChunk && !wideChunk.empty()) {
+                state->onChunk(state->context, wideChunk);
+            }
+        }
+
+        bool done = false;
+        if (Ai_FindJsonBoolField(line, "done", done) && done) {
+            state->ok = true;
+            break;
+        }
+
+        std::string errUtf8;
+        if (Ai_FindJsonStringField(line, "error", errUtf8)) {
+            state->outError = Ai_Utf8ToWide(errUtf8);
+            break;
+        }
+    }
+
+    return total;
 }
 
 static bool Ai_FindJsonStringField(const std::string& json, const char* field, std::string& outValue)
@@ -423,151 +490,96 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
     outReply.clear();
     outError.clear();
 
-    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
-    if (!hSession) {
-        outError = L"Could not open WinHTTP session.";
+    bool ok = false;
+    CURL* curl = curl_easy_init();
+    if (!curl) {
+        outError = L"Could not initialize curl.";
         return false;
     }
 
-    bool ok = false;
-    HINTERNET hConnect = WinHttpConnect(hSession, kOllamaHost, 11434, 0);
-    if (hConnect) {
-        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/generate",
-            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
-        if (hRequest) {
-            std::string body = std::string("{\"model\":\"") +
-                Ai_EscapeJson(Ai_WideToUtf8(model.empty() ? L"qwen3-coder" : model)) +
-                "\",\"prompt\":\"" +
-                Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
-                "\",\"stream\":true,\"keep_alive\":\"30m\"}";
+    OllamaStreamState state = {};
+    state.context = context;
+    state.onChunk = onChunk;
 
-            const wchar_t* headers = L"Content-Type: application/json\r\n";
-            if (WinHttpSendRequest(hRequest, headers, (DWORD)-1L,
-                (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0) &&
-                WinHttpReceiveResponse(hRequest, NULL)) {
-                DWORD status = 0;
-                DWORD statusSize = sizeof(status);
-                if (WinHttpQueryHeaders(hRequest,
-                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
-                    if (status == 200) {
-                        DWORD available = 0;
-                        std::string pending;
-                        while (WinHttpQueryDataAvailable(hRequest, &available) && available > 0) {
-                            std::string chunk;
-                            chunk.resize(available);
-                            DWORD read = 0;
-                            if (!WinHttpReadData(hRequest, chunk.data(), available, &read) || read == 0) {
-                                outError = L"Failed to read Ollama response.";
-                                break;
-                            }
-                            chunk.resize(read);
-                            pending += chunk;
+    std::string body = std::string("{\"model\":\"") +
+        Ai_EscapeJson(Ai_WideToUtf8(model.empty() ? L"qwen3-coder" : model)) +
+        "\",\"prompt\":\"" +
+        Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
+        "\",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\"}";
 
-                            size_t linePos = 0;
-                            while ((linePos = pending.find('\n')) != std::string::npos) {
-                                std::string rawLine = pending.substr(0, linePos);
-                                pending.erase(0, linePos + 1);
-                                std::string line = Ai_TrimJsonLine(rawLine);
-                                if (line.empty()) continue;
+    std::string responseBody;
+    char errbuf[CURL_ERROR_SIZE] = {};
 
-                                std::string replyUtf8;
-                                if (Ai_FindJsonStringField(line, "response", replyUtf8)) {
-                                    std::wstring wideChunk = Ai_Utf8ToWide(replyUtf8);
-                                    outReply += wideChunk;
-                                    if (onChunk && !wideChunk.empty()) {
-                                        onChunk(context, wideChunk);
-                                    }
-                                }
+    curl_easy_setopt(curl, CURLOPT_URL, "http://localhost:11434/api/generate");
+    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.size());
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, (struct curl_slist*)NULL);
+    struct curl_slist* headers = NULL;
+    headers = curl_slist_append(headers, "Content-Type: application/json");
+    headers = curl_slist_append(headers, "Accept: application/json");
+    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, Ai_OllamaWriteCallback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &state);
+    curl_easy_setopt(curl, CURLOPT_ERRORBUFFER, errbuf);
+    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, 15L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 0L);
+    curl_easy_setopt(curl, CURLOPT_TCP_KEEPALIVE, 1L);
+    curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 1024L);
+    curl_easy_setopt(curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 
-                                std::string thinkingUtf8;
-                                if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8)) {
-                                    std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
-                                    outReply += wideChunk;
-                                    if (onChunk && !wideChunk.empty()) {
-                                        onChunk(context, wideChunk);
-                                    }
-                                }
-
-                                bool done = false;
-                                if (Ai_FindJsonBoolField(line, "done", done) && done) {
-                                    ok = true;
-                                    break;
-                                }
-
-                                std::string errUtf8;
-                                if (Ai_FindJsonStringField(line, "error", errUtf8)) {
-                                    outError = Ai_Utf8ToWide(errUtf8);
-                                    break;
-                                }
-                            }
-                            if (!outError.empty() || ok) break;
-                        }
-
-                        if (!ok && outError.empty() && !pending.empty()) {
-                            std::string line = Ai_TrimJsonLine(pending);
-                            if (!line.empty()) {
-                                std::string replyUtf8;
-                                if (Ai_FindJsonStringField(line, "response", replyUtf8)) {
-                                    std::wstring wideChunk = Ai_Utf8ToWide(replyUtf8);
-                                    outReply += wideChunk;
-                                    if (onChunk && !wideChunk.empty()) {
-                                        onChunk(context, wideChunk);
-                                    }
-                                }
-
-                                std::string thinkingUtf8;
-                                if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8)) {
-                                    std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
-                                    outReply += wideChunk;
-                                    if (onChunk && !wideChunk.empty()) {
-                                        onChunk(context, wideChunk);
-                                    }
-                                }
-
-                                bool done = false;
-                                if (Ai_FindJsonBoolField(line, "done", done) && done) {
-                                    ok = true;
-                                } else {
-                                    std::string errUtf8;
-                                    if (Ai_FindJsonStringField(line, "error", errUtf8)) {
-                                        outError = Ai_Utf8ToWide(errUtf8);
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        std::string response;
-                        if (!Ai_ReadBody(hRequest, response)) {
-                            outError = Ai_FormatWinHttpErrorAt(L"Could not read Ollama error response", L"read body");
-                        } else {
-                            std::string errUtf8;
-                            if (Ai_FindJsonStringField(response, "error", errUtf8)) {
-                                outError = Ai_Utf8ToWide(errUtf8);
-                            } else {
-                                outError = L"Ollama returned HTTP status ";
-                                outError += std::to_wstring(status);
-                                outError += L".";
-                            }
+    CURLcode rc = curl_easy_perform(curl);
+    if (rc == CURLE_OK) {
+        long status = 0;
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+        if (status == 200) {
+            if (!state.ok && state.outError.empty() && !state.pending.empty()) {
+                std::string line = Ai_TrimJsonLine(state.pending);
+                if (!line.empty()) {
+                    std::string replyUtf8;
+                    if (Ai_FindJsonStringField(line, "response", replyUtf8)) {
+                        std::wstring wideChunk = Ai_Utf8ToWide(replyUtf8);
+                        state.outReply += wideChunk;
+                        if (state.onChunk && !wideChunk.empty()) {
+                            state.onChunk(state.context, wideChunk);
                         }
                     }
-                } else {
-                    outError = Ai_FormatWinHttpErrorAt(L"Could not query Ollama response status", L"query headers");
+
+                    std::string thinkingUtf8;
+                    if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8)) {
+                        std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
+                        state.outReply += wideChunk;
+                        if (state.onChunk && !wideChunk.empty()) {
+                            state.onChunk(state.context, wideChunk);
+                        }
+                    }
+
+                    bool done = false;
+                    if (Ai_FindJsonBoolField(line, "done", done) && done) {
+                        state.ok = true;
+                    } else {
+                        std::string errUtf8;
+                        if (Ai_FindJsonStringField(line, "error", errUtf8)) {
+                            state.outError = Ai_Utf8ToWide(errUtf8);
+                        }
+                    }
                 }
             }
-
-            WinHttpCloseHandle(hRequest);
+            ok = state.ok;
+            outReply = std::move(state.outReply);
+            outError = std::move(state.outError);
         } else {
-            outError = L"Could not open Ollama request.";
+            outError = L"Ollama returned HTTP status ";
+            outError += std::to_wstring(status);
+            outError += L".";
         }
-        WinHttpCloseHandle(hConnect);
     } else {
-        outError = L"Could not connect to Ollama on localhost.";
+        outError = errbuf[0] ? Ai_Utf8ToWide(errbuf) : Ai_FormatWinHttpErrorAt(L"Could not read Ollama response", L"curl perform");
     }
 
-    WinHttpCloseHandle(hSession);
-    return ok;
+    if (headers) curl_slist_free_all(headers);
+    curl_easy_cleanup(curl);
+    return ok && outError.empty();
 }
 
 bool NeAiClient_AskOllama(const std::wstring& model, const std::wstring& prompt,

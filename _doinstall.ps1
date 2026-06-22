@@ -186,6 +186,16 @@ foreach ($f in @('NSBEdit.exe','ollama.png','Changelog.html','GPLv2.md')) {
     }
 }
 
+$curlLibSrc = Join-Path $here 'curl\lib'
+if (Test-Path $curlLibSrc) {
+    $curlLibDst = Join-Path $installDir 'curl\lib'
+    New-Item -ItemType Directory -Path $curlLibDst -Force | Out-Null
+    Get-ChildItem -Path $curlLibSrc -Filter '*.a' | Copy-Item -Destination $curlLibDst -Force
+    Write-Host "  + curl\lib\*.a"
+} else {
+    Write-Warning '  Skipping curl\lib (not found)'
+}
+
 # -- Copy Uninstall.ps1 into Program Files -------------------------------------
 Copy-Item (Join-Path $here 'Uninstall.ps1') $installDir -Force
 Write-Host "  + Uninstall.ps1"
