@@ -679,10 +679,14 @@
                                                 tokens, and now routes prose through
                                                 RichEdit while fenced code blocks are parsed
                                                 with cmark-gfm and displayed in Scintilla.
-                                                The current answer pane still needs its final
-                                                visibility pass, so the next follow-up is to
-                                                finish the visible output path and verify the
-                                                code-block styling and copy handling. The
+                                                The answer host no longer draws its own
+                                                scrollbar; the live timer is right-aligned on
+                                                the status line and Scintilla keeps the code
+                                                block's sideways scrollbar. The remaining
+                                                follow-up is to make the first visible block
+                                                choose the right code/prose start when a reply
+                                                begins with code, then verify the code-block
+                                                styling and copy handling. The
                                                 visible Copy code header still lives in
                                                 copy_ai_code.cpp/h, and the close-window
                                                 focus handoff back to the main editor still

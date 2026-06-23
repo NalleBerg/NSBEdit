@@ -38,6 +38,10 @@ FILES:
       readable incrementally instead of waiting for the final pass.
     - Keep the copy-code affordance and reply formatting separate so the live
       stream can stay incremental while the renderer still owns the final look.
+    - Keep the answer host itself scrollbar-free; Scintilla keeps the code
+      block's own sideways scrollbar.
+    - Keep the timer/status line split so the live elapsed timer stays on the
+      right and the cloud / sign-in / model info stays on the left.
     - Restore the owner/main window to the foreground on close with the brief
       TOPMOST trick, then immediately remove the pin so it does not stay on top.
 
@@ -175,7 +179,8 @@ FILES:
   current button set without hardcoded text comparisons.
 
   Known layout issue:
-    - The shell still needs tightening for cramped widths.
+    - Replies that begin with code still need one more viewport/space
+      reservation pass so the first visible block is chosen correctly.
     - Some button and field placements can overlap when the window is reduced.
     - That should be fixed before more AI UI elements are added.
 

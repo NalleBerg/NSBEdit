@@ -1,11 +1,11 @@
 # Changelog
 
-## v2026.06.22.12 (Status: AI reply renderer still needs the final visibility pass) - 22.06.2026 12:09
+## v2026.06.23.10 (Status: AI pane layout now shows the answer again, but the first code block still needs the final viewport pass) - 23.06.2026 10:47
 
-- **Status: the AI reply pane is still not visibly writing output yet**: the spinner now stops when the model starts answering, but the answer text itself still needs the final rendering fix in the app.
-- **Fix: cmark-gfm is now compiled and linked from the vendored source tree**: the build now brings in the parser implementation directly, so the markdown parsing path is part of the executable again.
-- **Fix: the answer pane now forces visible default text colour**: the RichEdit prose blocks are no longer allowed to inherit invisible white-on-white formatting from the control default.
-- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.22.12`.
+- **Status: the AI answer pane now shows the rendered reply again**: the answer host no longer draws its own scrollbar, the live elapsed timer is right-aligned on the status line, and Scintilla code blocks keep their own sideways scrollbar.
+- **Fix: the answer pane now uses the split prose/code renderer again**: cmark-gfm stays linked in, prose still routes through RichEdit, and fenced code blocks continue to render in Scintilla.
+- **Status: the first code block still needs the final viewport/space-reservation pass**: replies that begin with code still need one more layout tweak so the first visible block is chosen correctly without bringing back a scrollbar on the answer host.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.23.10`.
 
 ## v2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff) - 22.06.2026 10:40
 

@@ -43,6 +43,7 @@ MENU_ABOUT      = &About NSBEdit
 BTN_AI          = AI
 TIP_AI          = Ask Ollama A.I.
 AI_WAKING_OLLAMA = Asking Ollama, please wait!
+AI_THINKING_STATUS = AI is thinking... Time used: %s
 MENU_AI_CHECK_MODELS = Check local models
 AI_MODEL_CHECK_TITLE = Check local models
 AI_MODEL_CHECK_START = Checking local models...

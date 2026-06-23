@@ -90,6 +90,7 @@ AI_LOG_CLOUD_NEEDS_SIGNIN = Cloud mode is selected, but you are not signed in ye
 AI_LOG_OPENED_SIGNUP = Opened Ollama sign-in / subscription page.
 AI_LOG_CLOUD_NOT_USED_YET = Cloud mode is selected; local Ollama is not used in this path yet.
 AI_LOG_WINDOW_OPENED = AI window opened.
+AI_THINKING_STATUS = AI is thinking... Time used: %s
 AI_LOG_CLOUD_SUGGEST_SELECTED = Cloud suggestion mode selected.
 AI_LOG_CLOUD_AGENT_SELECTED = Cloud agent mode selected.
 AI_LOG_MODEL_SWITCHED_SUGGESTION = Model switched to suggestion mode.

@@ -58,6 +58,10 @@
     - Live chunk appends still keep the answer incremental, and the renderer
       now owns the visible code/header styling again instead of flattening the
       output to plain text.
+    - The answer host itself does not draw a vertical scrollbar; Scintilla
+      keeps the sideways scrollbar for code blocks.
+    - The timer/status line is split so the live elapsed timer stays on the
+      right while the cloud / sign-in / model summary stays on the left.
     - Fenced code blocks keep a visible Copy code header and tracked copy
       span; richer header styling, exact copy-link hit testing, and focus
       handoff after closing the window are still later follow-ups.
