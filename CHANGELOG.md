@@ -1,11 +1,11 @@
 # Changelog
 
-## v2026.06.23.10 (Status: AI pane layout now shows the answer again, but the first code block still needs the final viewport pass) - 23.06.2026 10:47
+## v2026.06.24.09 (Status: AI pane now tails live text and hides scroll chrome while typing) - 24.06.2026 09:35
 
-- **Status: the AI answer pane now shows the rendered reply again**: the answer host no longer draws its own scrollbar, the live elapsed timer is right-aligned on the status line, and Scintilla code blocks keep their own sideways scrollbar.
-- **Fix: the answer pane now uses the split prose/code renderer again**: cmark-gfm stays linked in, prose still routes through RichEdit, and fenced code blocks continue to render in Scintilla.
-- **Status: the first code block still needs the final viewport/space-reservation pass**: replies that begin with code still need one more layout tweak so the first visible block is chosen correctly without bringing back a scrollbar on the answer host.
-- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.23.10`.
+- **Status: the AI answer pane now stays locked to the live tail while typing**: while the reply is streaming, the host ignores wheel/thumb scrolling, keeps the view pinned to the latest text, and hides its scrollbar chrome until the answer is complete.
+- **Fix: the raw AI output is now dumped for testing**: the streaming text is copied into `ai.txt` in the current working directory so the unrendered markup can be inspected before the markdown pass.
+- **Fix: the split prose/code renderer is still active**: cmark-gfm stays linked in, prose still routes through RichEdit, and fenced code blocks continue to render in Scintilla.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.24.09`.
 
 ## v2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff) - 22.06.2026 10:40
 

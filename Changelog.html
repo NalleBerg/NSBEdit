@@ -1,15 +1,14 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 23 June 2026 &mdash; v2026.06.23.10 (10:47)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 24 June 2026 &mdash; v2026.06.24.09 (09:35)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
-<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.23.10 (Status: AI pane layout now shows the answer again, but the first code block still needs the final viewport pass)</span></h3>
-<p><strong>Status: AI pane layout now shows the answer again, but the first code block still needs the final viewport pass (23.06.2026, 10:47):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.24.09 (Status: AI pane now tails live text and hides scroll chrome while typing)</span></h3>
+<p><strong>Status: AI pane now tails live text and hides scroll chrome while typing (24.06.2026, 09:35):</strong></p>
 <ul>
-<li><strong>Status: the answer host no longer draws its own scrollbar:</strong> the answer pane uses the internal layout/offset logic without showing a vertical scrollbar, while Scintilla still keeps its own sideways scrollbar for code blocks.</li>
-<li><strong>Fix: the status line now splits the running timer from the left-side info:</strong> the live elapsed clock is right-aligned, and the frozen result still shows the last completed duration after a request finishes.</li>
+<li><strong>Status: the answer pane now locks to the live tail while typing:</strong> while the reply is streaming, the host ignores wheel/thumb scrolling, keeps the view pinned to the latest text, and hides its scrollbar chrome until the answer is complete.</li>
+<li><strong>Fix: the raw AI output is now dumped for testing:</strong> the streaming text is copied into <code>ai.txt</code> in the current working directory so the unrendered markup can be inspected before the markdown pass.</li>
 <li><strong>Fix: cmark-gfm remains linked and the split renderer is still active:</strong> prose continues through RichEdit and fenced code blocks continue through Scintilla.</li>
-<li><strong>Status: the first code block still needs the final viewport/space-reservation pass:</strong> replies that begin with code still need one more layout tweak so the first visible block is chosen correctly without bringing back a scrollbar on the answer host.</li>
-<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.23.10</code>.</li>
+<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.24.09</code>.</li>
 </ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff)</span></h3>

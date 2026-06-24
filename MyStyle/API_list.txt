@@ -679,14 +679,16 @@
                                                 tokens, and now routes prose through
                                                 RichEdit while fenced code blocks are parsed
                                                 with cmark-gfm and displayed in Scintilla.
-                                                The answer host no longer draws its own
-                                                scrollbar; the live timer is right-aligned on
-                                                the status line and Scintilla keeps the code
-                                                block's sideways scrollbar. The remaining
-                                                follow-up is to make the first visible block
-                                                choose the right code/prose start when a reply
-                                                begins with code, then verify the code-block
-                                                styling and copy handling. The
+                                                The answer host now locks to the live tail while
+                                                typing and keeps scrollbar chrome out of view
+                                                until the response is finished; the live timer
+                                                is right-aligned on the status line and Scintilla
+                                                keeps the code block's sideways scrollbar.
+                                                The page follows the live tail only while it is already
+                                                at the bottom, so manual wheel scrolling still
+                                                works during streaming. The remaining follow-up
+                                                is to verify the code-block styling and copy
+                                                handling. The
                                                 visible Copy code header still lives in
                                                 copy_ai_code.cpp/h, and the close-window
                                                 focus handoff back to the main editor still

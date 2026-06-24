@@ -109,6 +109,7 @@ struct AiWindowState {
     std::wstring historyDraft;
     int replyBaseStart = 0;
     std::wstring liveReply;
+    std::wstring liveRawReply;
     std::wstring liveTypingQueue;
     bool liveTypingStartReady = false;
     bool liveTypingStartTimerRunning = false;
@@ -759,7 +760,7 @@ static HWND Ai_CreateAnswerRichEdit(HWND hwndParent, int x, int y, int w, int h)
     }
 
     HWND hEdit = CreateWindowExW(0, reClass, L"",
-            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY | ES_NOHIDESEL | WS_VSCROLL,
+            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | ES_NOHIDESEL,
         x, y, std::max(1, w), std::max(1, h), hwndParent, (HMENU)(UINT_PTR)IDC_AI_ANSWER_TEXT, GetModuleHandleW(NULL), NULL);
     if (hEdit) {
         SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
@@ -842,6 +843,7 @@ static void Ai_LayoutAnswerHost(HWND hwndHost)
 {
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwndHost), GWLP_USERDATA);
     if (!st) return;
+    bool streaming = st->liveTypingStartTimerRunning || st->liveTypingTimerRunning || (!st->liveTypingDone && (!st->liveTypingQueue.empty() || !st->liveReply.empty()));
 
     RECT rc = {};
     GetClientRect(hwndHost, &rc);
@@ -849,7 +851,7 @@ static void Ai_LayoutAnswerHost(HWND hwndHost)
     int maxScroll = 0;
     if (!st->answerBlocks.empty()) {
         maxScroll = std::max(0, st->answerContentHeight - (int)rc.bottom);
-        st->answerScrollY = std::min(maxScroll, std::max(0, st->answerScrollY));
+        st->answerScrollY = streaming ? maxScroll : std::min(maxScroll, std::max(0, st->answerScrollY));
     }
     int y = S(8) - st->answerScrollY;
 
@@ -880,24 +882,52 @@ static void Ai_LayoutAnswerHost(HWND hwndHost)
     }
 
     if (st->answerBlocks.empty() && st->hLog && IsWindow(st->hLog)) {
-        if (st->hLogSb) msb_notify_content_changed(st->hLogSb);
-        return;
-    }
-
-    for (HWND child : st->answerBlocks) {
-        if (!IsWindow(child)) continue;
         RECT cr = {};
-        GetWindowRect(child, &cr);
+        GetWindowRect(st->hLog, &cr);
         int height = cr.bottom - cr.top;
-        SetWindowPos(child, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+        SetWindowPos(st->hLog, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
         y += height + S(8);
+    } else {
+        for (HWND child : st->answerBlocks) {
+            if (!IsWindow(child)) continue;
+            RECT cr = {};
+            GetWindowRect(child, &cr);
+            int height = cr.bottom - cr.top;
+            SetWindowPos(child, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+            y += height + S(8);
+        }
     }
 
     st->answerContentHeight = std::max(0, y + st->answerScrollY);
     maxScroll = std::max(0, st->answerContentHeight - (int)rc.bottom);
     st->answerScrollY = std::min(maxScroll, std::max(0, st->answerScrollY));
     y = S(8) - st->answerScrollY;
-    if (st->hLogSb) msb_notify_content_changed(st->hLogSb);
+    {
+        SCROLLINFO si = {};
+        si.cbSize = sizeof(si);
+        si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS | SIF_DISABLENOSCROLL;
+        si.nMin = 0;
+        si.nMax = std::max(0, st->answerContentHeight - 1);
+        si.nPage = std::max(1, (int)rc.bottom);
+        si.nPos = st->answerScrollY;
+        SetScrollInfo(hwndHost, SB_VERT, &si, FALSE);
+        if (streaming) {
+            if (st->hLogSb) {
+                msb_detach(st->hLogSb);
+                st->hLogSb = NULL;
+            }
+            ShowScrollBar(hwndHost, SB_VERT, FALSE);
+        } else {
+            if (!st->hLogSb) {
+                st->hLogSb = msb_attach(hwndHost, MSB_VERTICAL);
+            }
+            if (st->hLogSb) {
+                msb_sync(st->hLogSb);
+            }
+            ShowScrollBar(hwndHost, SB_VERT, FALSE);
+        }
+    }
+    if (st->hLogSb && !streaming) msb_notify_content_changed(st->hLogSb);
 }
 
 static int Ai_AnswerHostPageSize(HWND hwndHost)
@@ -912,9 +942,17 @@ static void Ai_AnswerHostScrollTo(HWND hwndHost, int scrollY)
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwndHost), GWLP_USERDATA);
     if (!st) return;
 
+    bool streaming = st->liveTypingStartTimerRunning || st->liveTypingTimerRunning || (!st->liveTypingDone && (!st->liveTypingQueue.empty() || !st->liveReply.empty()));
+
     RECT rc = {};
     GetClientRect(hwndHost, &rc);
     int maxScroll = std::max(0, st->answerContentHeight - (int)rc.bottom);
+    if (streaming) {
+        st->answerScrollY = maxScroll;
+        Ai_LayoutAnswerHost(hwndHost);
+        InvalidateRect(hwndHost, NULL, TRUE);
+        return;
+    }
     int clamped = std::min(maxScroll, std::max(0, scrollY));
     if (clamped == st->answerScrollY) return;
 
@@ -923,11 +961,30 @@ static void Ai_AnswerHostScrollTo(HWND hwndHost, int scrollY)
     InvalidateRect(hwndHost, NULL, TRUE);
 }
 
+static void Ai_WriteRawReplyFile(const std::wstring& rawReply)
+{
+    std::wstring path = L".\\ai.txt";
+
+    HANDLE hFile = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL,
+        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) return;
+
+    std::string utf8 = Ai_WideToUtf8(rawReply);
+    DWORD written = 0;
+    WriteFile(hFile, utf8.data(), (DWORD)utf8.size(), &written, NULL);
+    CloseHandle(hFile);
+}
+
 static LRESULT CALLBACK Ai_AnswerHostSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR)
 {
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwnd), GWLP_USERDATA);
+    bool streaming = st && (st->liveTypingStartTimerRunning || st->liveTypingTimerRunning);
     switch (msg) {
     case WM_MOUSEWHEEL: {
+        if (streaming) {
+            return 0;
+        }
         short delta = GET_WHEEL_DELTA_WPARAM(wParam);
         if (delta == 0) return 0;
 
@@ -938,15 +995,13 @@ static LRESULT CALLBACK Ai_AnswerHostSubclassProc(HWND hwnd, UINT msg, WPARAM wP
             step = std::max(S(18), (int)wheelLines * S(24));
         }
 
-        AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwnd), GWLP_USERDATA);
         if (st) {
             Ai_AnswerHostScrollTo(hwnd, st->answerScrollY - MulDiv((int)delta, step, WHEEL_DELTA));
         }
         return 0;
     }
     case WM_VSCROLL: {
-        AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwnd), GWLP_USERDATA);
-        if (!st) return 0;
+        if (!st || streaming) return 0;
 
         int page = Ai_AnswerHostPageSize(hwnd);
         int newPos = st->answerScrollY;
@@ -1105,10 +1160,10 @@ static void Ai_RenderAnswerBlocks(HWND hwnd)
             HDC hdc = GetDC(st->hAnswerHost);
             HFONT hf = st->hPaneFont;
             HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
-            DrawTextW(hdc, text.c_str(), -1, &measure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+            DrawTextW(hdc, text.c_str(), -1, &measure, DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
             if (old) SelectObject(hdc, old);
             ReleaseDC(st->hAnswerHost, hdc);
-            int h = std::max((int)S(32), (int)(measure.bottom - measure.top) + (int)S(10));
+            int h = std::max((int)S(40), (int)(measure.bottom - measure.top) + (int)S(18));
             HWND hText = Ai_CreateAnswerRichEdit(st->hAnswerHost, S(8), y, width, h);
             if (hText) {
                 if (st->hPaneFont) SendMessageW(hText, WM_SETFONT, (WPARAM)st->hPaneFont, TRUE);
@@ -1140,7 +1195,7 @@ static void Ai_RenderAnswerBlocks(HWND hwnd)
 static HWND Ai_CreateAnswerHost(HWND hwndParent, int x, int y, int w, int h)
 {
     HWND hHost = CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", L"",
-        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
+        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_VSCROLL,
         x, y, std::max(1, w), std::max(1, h), hwndParent, (HMENU)(UINT_PTR)IDC_AI_LOG, GetModuleHandleW(NULL), NULL);
     if (hHost) {
         SetWindowSubclass(hHost, Ai_AnswerHostSubclassProc, 1, (DWORD_PTR)hwndParent);
@@ -1414,13 +1469,18 @@ static void Ai_AppendLiveTypingText(HWND hwnd, const std::wstring& text)
     int len = GetWindowTextLengthW(hLog);
     SendMessageW(hLog, EM_SETSEL, (WPARAM)len, (LPARAM)len);
     SendMessageW(hLog, EM_REPLACESEL, FALSE, (LPARAM)text.c_str());
-    SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
     if (st->hLogSb) {
         msb_notify_content_changed(st->hLogSb);
     }
 
     st->liveReply += text;
     s_aiAnswerCopyRanges[hLog] = CHARRANGE{ st->replyBaseStart, GetWindowTextLengthW(hLog) };
+    st->liveRawReply += text;
+    Ai_WriteRawReplyFile(st->liveRawReply);
+    if (st->hAnswerHost && IsWindow(st->hAnswerHost)) {
+        Ai_LayoutAnswerHost(st->hAnswerHost);
+        Ai_AnswerHostScrollTo(st->hAnswerHost, 0x7fffffff);
+    }
 }
 
 static void Ai_RestoreOwnerOnClose(HWND hwnd)
@@ -2142,11 +2202,13 @@ static void Ai_DoSend(HWND hwnd)
         st->replyBaseStart = GetWindowTextLengthW(hLog);
         st->historyDraft = L"";
         st->liveReply.clear();
+        st->liveRawReply.clear();
         st->liveTypingQueue.clear();
         st->liveTypingStartReady = true;
         st->liveTypingStartTimerRunning = false;
         st->liveTypingDone = false;
         st->liveTypingFinalRendered = false;
+        Ai_WriteRawReplyFile(L"");
         Ai_StopLiveTypingTimer(hwnd);
         Ai_StopLiveTypingStartDelayTimer(hwnd);
         AiSendWorkItem work;
@@ -2155,11 +2217,13 @@ static void Ai_DoSend(HWND hwnd)
     } else {
         st->replyBaseStart = 0;
         st->liveReply.clear();
+        st->liveRawReply.clear();
         st->liveTypingQueue.clear();
         st->liveTypingStartReady = true;
         st->liveTypingStartTimerRunning = false;
         st->liveTypingDone = false;
         st->liveTypingFinalRendered = false;
+        Ai_WriteRawReplyFile(L"");
         Ai_StopLiveTypingTimer(hwnd);
         Ai_StopLiveTypingStartDelayTimer(hwnd);
         Ai_StartSendWorker(hwnd, prompt, selectedModel, fallbackModel, 0);
@@ -2480,6 +2544,9 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             std::wstring liveText = chunk->chunk;
             Ai_UnescapeModelText(liveText);
             if (!liveText.empty()) {
+                st->liveRawReply += liveText;
+                Ai_WriteRawReplyFile(st->liveRawReply);
+                Ai_UnescapeModelText(liveText);
                 st->liveTypingQueue += liveText;
                 Ai_StartLiveTypingTimer(hwnd);
             }
@@ -2504,6 +2571,8 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (result->ok) {
                 if (st && !result->streamed && st->liveReply.empty() && !result->reply.empty() && !st->liveTypingFinalRendered) {
                     st->liveReply = result->reply;
+                    st->liveRawReply = result->reply;
+                    Ai_WriteRawReplyFile(st->liveRawReply);
                     Ai_RenderMarkdownReply(hwnd, st->liveReply);
                     st->liveTypingFinalRendered = true;
                 } else {
