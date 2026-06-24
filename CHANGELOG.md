@@ -1,11 +1,11 @@
 # Changelog
 
-## v2026.06.24.09 (Status: AI pane now tails live text and hides scroll chrome while typing) - 24.06.2026 09:35
+## v2026.06.24.16 (Status: AI pane now autoscrolls while streaming without flicker) - 24.06.2026 16:51
 
-- **Status: the AI answer pane now stays locked to the live tail while typing**: while the reply is streaming, the host ignores wheel/thumb scrolling, keeps the view pinned to the latest text, and hides its scrollbar chrome until the answer is complete.
-- **Fix: the raw AI output is now dumped for testing**: the streaming text is copied into `ai.txt` in the current working directory so the unrendered markup can be inspected before the markdown pass.
-- **Fix: the split prose/code renderer is still active**: cmark-gfm stays linked in, prose still routes through RichEdit, and fenced code blocks continue to render in Scintilla.
-- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.24.09`.
+- **Status: the AI answer pane now follows streamed text while it is typing**: the live transcript keeps the page pinned to the newest chunks, and the scrolling stays in one continuous page instead of repainting the viewport on every word.
+- **Fix: the final render keeps the prompt at the top and the answer below it**: the current query stays visible before the code/prose blocks, and the rendered answer blocks continue after it in sequence.
+- **Fix: the raw AI output is still dumped for testing**: the streaming text is copied into `ai.txt` in the current working directory so the unrendered markup can be inspected before the markdown pass.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.24.16`.
 
 ## v2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff) - 22.06.2026 10:40
 

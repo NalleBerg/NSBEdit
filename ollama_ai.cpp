@@ -122,6 +122,7 @@ struct AiWindowState {
     SpinnerDialog* spinner = NULL;
     std::wstring answerCopyText;
     std::vector<HWND> answerBlocks;
+    std::wstring answerIntroText;
     std::wstring answerRawMarkdown;
     int answerScrollY = 0;
     int answerContentHeight = 0;
@@ -210,6 +211,7 @@ static void Ai_NormalizeModelNameLocal(std::wstring& model);
 static void Ai_AddUniqueModel(std::vector<std::wstring>& models, const std::wstring& model);
 static void Ai_SetWrapToWindow(HWND hwndEdit);
 static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply);
+static void Ai_TrimTrailingFenceOpeners(std::wstring& text);
 static void Ai_FinalizeLiveReply(HWND hwnd);
 static void Ai_SetThinkingStatusText(HWND hwnd);
 static void Ai_ClearRenderedAnswer(HWND hwnd);
@@ -788,6 +790,30 @@ static HWND Ai_CreateAnswerScintilla(HWND hwndParent, int x, int y, int w, int h
     return hSci;
 }
 
+static void Ai_TrimTrailingFenceOpeners(std::wstring& text)
+{
+    while (!text.empty()) {
+        size_t lineStart = text.find_last_of(L'\n');
+        std::wstring line = (lineStart == std::wstring::npos) ? text : text.substr(lineStart + 1);
+        std::wstring trimmed = line;
+        while (!trimmed.empty() && iswspace(trimmed.front())) {
+            trimmed.erase(trimmed.begin());
+        }
+        if (trimmed.rfind(L"```", 0) == 0) {
+            if (lineStart == std::wstring::npos) {
+                text.clear();
+            } else {
+                text.erase(lineStart);
+            }
+            while (!text.empty() && (text.back() == L'\r' || text.back() == L'\n')) {
+                text.pop_back();
+            }
+            continue;
+        }
+        break;
+    }
+}
+
 static void Ai_ApplyAnswerScintillaTheme(HWND hSci)
 {
     if (!hSci || !IsWindow(hSci)) return;
@@ -849,11 +875,48 @@ static void Ai_LayoutAnswerHost(HWND hwndHost)
     GetClientRect(hwndHost, &rc);
     int width = std::max(0, (int)rc.right - S(16));
     int maxScroll = 0;
-    if (!st->answerBlocks.empty()) {
-        maxScroll = std::max(0, st->answerContentHeight - (int)rc.bottom);
-        st->answerScrollY = streaming ? maxScroll : std::min(maxScroll, std::max(0, st->answerScrollY));
+    int y = S(8);
+
+    if (st->hLog && IsWindow(st->hLog)) {
+        ShowWindow(st->hLog, SW_SHOW);
+        RECT measure = { 0, 0, std::max(1, width), 0 };
+        HDC hdc = GetDC(st->hAnswerHost);
+        HFONT hf = st->hPaneFont;
+        HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
+        std::wstring logText;
+        int logLen = GetWindowTextLengthW(st->hLog);
+        if (logLen > 0) {
+            logText.resize((size_t)logLen);
+            GetWindowTextW(st->hLog, logText.data(), logLen + 1);
+            DrawTextW(hdc, logText.c_str(), -1, &measure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+        }
+        if (old) SelectObject(hdc, old);
+        ReleaseDC(st->hAnswerHost, hdc);
+
+        int logHeight = std::max((int)S(32), (int)(measure.bottom - measure.top) + (int)S(10));
+        if (st->answerBlocks.empty() && !streaming) {
+            logHeight = std::max(logHeight, std::max(1, (int)rc.bottom - S(16)));
+        }
+        SetWindowPos(st->hLog, NULL, S(8), y, width, logHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (streaming && st->answerBlocks.empty()) {
+            st->answerScrollY = std::max(0, (S(8) + logHeight + S(8)) - (int)rc.bottom);
+        }
+        y += logHeight + S(8);
     }
-    int y = S(8) - st->answerScrollY;
+
+    for (HWND child : st->answerBlocks) {
+        if (!IsWindow(child)) continue;
+        RECT cr = {};
+        GetWindowRect(child, &cr);
+        int height = cr.bottom - cr.top;
+        SetWindowPos(child, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+        y += height + S(8);
+    }
+
+    st->answerContentHeight = std::max(0, y + st->answerScrollY);
+    maxScroll = std::max(0, st->answerContentHeight - (int)rc.bottom);
+    st->answerScrollY = std::min(maxScroll, std::max(0, st->answerScrollY));
+    y = S(8) - st->answerScrollY;
 
     if (st->hLog && IsWindow(st->hLog)) {
         RECT measure = { 0, 0, std::max(1, width), 0 };
@@ -871,37 +934,22 @@ static void Ai_LayoutAnswerHost(HWND hwndHost)
         ReleaseDC(st->hAnswerHost, hdc);
 
         int logHeight = std::max((int)S(32), (int)(measure.bottom - measure.top) + (int)S(10));
-        int maxPromptHeight = S(48);
-        if (!st->answerBlocks.empty()) {
-            logHeight = std::min(logHeight, maxPromptHeight);
-        } else {
+        if (st->answerBlocks.empty() && !streaming) {
             logHeight = std::max(logHeight, std::max(1, (int)rc.bottom - S(16)));
         }
         SetWindowPos(st->hLog, NULL, S(8), y, width, logHeight, SWP_NOZORDER | SWP_NOACTIVATE);
         y += logHeight + S(8);
     }
 
-    if (st->answerBlocks.empty() && st->hLog && IsWindow(st->hLog)) {
+    for (HWND child : st->answerBlocks) {
+        if (!IsWindow(child)) continue;
         RECT cr = {};
-        GetWindowRect(st->hLog, &cr);
+        GetWindowRect(child, &cr);
         int height = cr.bottom - cr.top;
-        SetWindowPos(st->hLog, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
+        SetWindowPos(child, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
         y += height + S(8);
-    } else {
-        for (HWND child : st->answerBlocks) {
-            if (!IsWindow(child)) continue;
-            RECT cr = {};
-            GetWindowRect(child, &cr);
-            int height = cr.bottom - cr.top;
-            SetWindowPos(child, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
-            y += height + S(8);
-        }
     }
 
-    st->answerContentHeight = std::max(0, y + st->answerScrollY);
-    maxScroll = std::max(0, st->answerContentHeight - (int)rc.bottom);
-    st->answerScrollY = std::min(maxScroll, std::max(0, st->answerScrollY));
-    y = S(8) - st->answerScrollY;
     {
         SCROLLINFO si = {};
         si.cbSize = sizeof(si);
@@ -1110,6 +1158,7 @@ static void Ai_RenderAnswerBlocks(HWND hwnd)
     GetClientRect(st->hAnswerHost, &rc);
     int width = std::max(0, (int)rc.right - S(16));
     int y = S(8);
+
     std::vector<AiAnswerBlockDesc> blocks = Ai_ParseAnswerBlocks(st->answerRawMarkdown);
     if (blocks.empty() && !st->answerRawMarkdown.empty()) {
         blocks.push_back(AiAnswerBlockDesc{ false, st->answerRawMarkdown, L"" });
@@ -1244,6 +1293,10 @@ static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply)
         SendMessageW(hOldLog, EM_EXSETSEL, 0, (LPARAM)&caret);
     }
     if (st->hLogSb) msb_notify_content_changed(st->hLogSb);
+    if (st->hAnswerHost && IsWindow(st->hAnswerHost)) {
+        Ai_LayoutAnswerHost(st->hAnswerHost);
+        Ai_AnswerHostScrollTo(st->hAnswerHost, 0x7fffffff);
+    }
     return true;
 }
 
@@ -1478,7 +1531,6 @@ static void Ai_AppendLiveTypingText(HWND hwnd, const std::wstring& text)
     st->liveRawReply += text;
     Ai_WriteRawReplyFile(st->liveRawReply);
     if (st->hAnswerHost && IsWindow(st->hAnswerHost)) {
-        Ai_LayoutAnswerHost(st->hAnswerHost);
         Ai_AnswerHostScrollTo(st->hAnswerHost, 0x7fffffff);
     }
 }
@@ -2157,6 +2209,7 @@ static void Ai_DoSend(HWND hwnd)
 
     std::wstring userLine = Ne_Ls(L"AI_LOG_USER_PREFIX");
     userLine += prompt;
+    st->answerIntroText = userLine;
     Ai_AppendLog(hwnd, userLine);
     if (st->cloudMode) {
         if (!st->signedIn) {
@@ -2204,6 +2257,7 @@ static void Ai_DoSend(HWND hwnd)
         st->liveReply.clear();
         st->liveRawReply.clear();
         st->liveTypingQueue.clear();
+        st->answerIntroText.clear();
         st->liveTypingStartReady = true;
         st->liveTypingStartTimerRunning = false;
         st->liveTypingDone = false;
@@ -2219,6 +2273,7 @@ static void Ai_DoSend(HWND hwnd)
         st->liveReply.clear();
         st->liveRawReply.clear();
         st->liveTypingQueue.clear();
+        st->answerIntroText.clear();
         st->liveTypingStartReady = true;
         st->liveTypingStartTimerRunning = false;
         st->liveTypingDone = false;

@@ -679,14 +679,16 @@
                                                 tokens, and now routes prose through
                                                 RichEdit while fenced code blocks are parsed
                                                 with cmark-gfm and displayed in Scintilla.
-                                                The answer host now locks to the live tail while
-                                                typing and keeps scrollbar chrome out of view
-                                                until the response is finished; the live timer
-                                                is right-aligned on the status line and Scintilla
-                                                keeps the code block's sideways scrollbar.
-                                                The page follows the live tail only while it is already
-                                                at the bottom, so manual wheel scrolling still
-                                                works during streaming. The remaining follow-up
+                                                The answer host now autoscrolls the live stream
+                                                without flicker, keeping the current query above
+                                                the rendered answer blocks in one continuous page.
+                                                The live timer is right-aligned on the status line
+                                                and Scintilla keeps the code block's sideways
+                                                scrollbar. The final markdown render keeps the
+                                                prompt at the top and the answer blocks after it,
+                                                and the page scrolls straight to the newest
+                                                content instead of repainting the viewport on each
+                                                chunk. The remaining follow-up
                                                 is to verify the code-block styling and copy
                                                 handling. The
                                                 visible Copy code header still lives in

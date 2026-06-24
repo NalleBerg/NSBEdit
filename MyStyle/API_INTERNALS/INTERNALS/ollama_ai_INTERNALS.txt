@@ -38,8 +38,11 @@ FILES:
       readable incrementally instead of waiting for the final pass.
     - Keep the copy-code affordance and reply formatting separate so the live
       stream can stay incremental while the renderer still owns the final look.
-    - Keep the answer host locked to the live tail while streaming and hide
-      scrollbar chrome until the response finishes.
+    - Keep the answer host autoscrolling the live stream without flicker while
+      the chunks arrive, so the current query stays above the rendered answer
+      blocks in one continuous page.
+    - After the final markdown render, keep the prompt at the top and the
+      answer blocks directly after it, then jump to the newest content.
     - Scintilla keeps the code block's own sideways scrollbar.
     - Keep the timer/status line split so the live elapsed timer stays on the
       right and the cloud / sign-in / model info stays on the left.
