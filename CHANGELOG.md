@@ -1,11 +1,11 @@
 # Changelog
 
-## v2026.06.24.16 (Status: AI pane now autoscrolls while streaming without flicker) - 24.06.2026 16:51
+## v2026.06.25.09 (Status: AI pane keeps streaming live and scrolls back to the top after render) - 25.06.2026 09:48
 
-- **Status: the AI answer pane now follows streamed text while it is typing**: the live transcript keeps the page pinned to the newest chunks, and the scrolling stays in one continuous page instead of repainting the viewport on every word.
-- **Fix: the final render keeps the prompt at the top and the answer below it**: the current query stays visible before the code/prose blocks, and the rendered answer blocks continue after it in sequence.
+- **Status: the AI answer pane still follows streamed text while it is typing**: the live transcript keeps the page pinned to the newest chunks, and the scrolling stays in one continuous page instead of repainting the viewport on every word.
+- **Fix: the final render now scrolls the answer pane back to the top**: after the markdown pass finishes, the visible page returns to the start of the rendered answer instead of staying parked at the bottom.
 - **Fix: the raw AI output is still dumped for testing**: the streaming text is copied into `ai.txt` in the current working directory so the unrendered markup can be inspected before the markdown pass.
-- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.24.16`.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.25.09`.
 
 ## v2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff) - 22.06.2026 10:40
 

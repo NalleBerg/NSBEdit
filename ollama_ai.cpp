@@ -1284,18 +1284,32 @@ static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply)
     Ai_RenderAnswerBlocks(hwnd);
     if (hOldLog && IsWindow(hOldLog) && st->replyBaseStart >= 0) {
         int end = GetWindowTextLengthW(hOldLog);
-        if (end > st->replyBaseStart) {
-            CHARRANGE range = { st->replyBaseStart, end };
-            SendMessageW(hOldLog, EM_EXSETSEL, 0, (LPARAM)&range);
-            SendMessageW(hOldLog, EM_REPLACESEL, FALSE, (LPARAM)L"");
+        if (end > 0) {
+            std::wstring logText;
+            logText.resize((size_t)end + 1);
+            GetWindowTextW(hOldLog, logText.data(), end + 1);
+            logText.resize((size_t)end);
+
+            int keepEnd = st->replyBaseStart < end ? st->replyBaseStart : end;
+            std::wstring keepText = logText.substr(0, (size_t)keepEnd);
+            SetWindowTextW(hOldLog, keepText.c_str());
+            if (!keepText.empty()) {
+                CHARFORMAT2W cf = {};
+                cf.cbSize = sizeof(cf);
+                cf.dwMask = CFM_COLOR;
+                cf.crTextColor = RGB(20, 20, 20);
+                CHARRANGE range = { 0, (LONG)keepText.size() };
+                SendMessageW(hOldLog, EM_EXSETSEL, 0, (LPARAM)&range);
+                SendMessageW(hOldLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+                range.cpMin = range.cpMax = (LONG)keepText.size();
+                SendMessageW(hOldLog, EM_EXSETSEL, 0, (LPARAM)&range);
+            }
         }
-        CHARRANGE caret = { GetWindowTextLengthW(hOldLog), GetWindowTextLengthW(hOldLog) };
-        SendMessageW(hOldLog, EM_EXSETSEL, 0, (LPARAM)&caret);
     }
     if (st->hLogSb) msb_notify_content_changed(st->hLogSb);
     if (st->hAnswerHost && IsWindow(st->hAnswerHost)) {
         Ai_LayoutAnswerHost(st->hAnswerHost);
-        Ai_AnswerHostScrollTo(st->hAnswerHost, 0x7fffffff);
+        Ai_AnswerHostScrollTo(st->hAnswerHost, 0);
     }
     return true;
 }

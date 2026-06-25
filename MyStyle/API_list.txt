@@ -684,13 +684,12 @@
                                                 the rendered answer blocks in one continuous page.
                                                 The live timer is right-aligned on the status line
                                                 and Scintilla keeps the code block's sideways
-                                                scrollbar. The final markdown render keeps the
-                                                prompt at the top and the answer blocks after it,
-                                                and the page scrolls straight to the newest
-                                                content instead of repainting the viewport on each
-                                                chunk. The remaining follow-up
-                                                is to verify the code-block styling and copy
-                                                handling. The
+                                                scrollbar. The final markdown render now scrolls
+                                                the answer pane back to the top after layout so
+                                                the rendered response starts at its first line
+                                                instead of staying parked at the bottom. The
+                                                remaining follow-up is to verify the code-block
+                                                styling and copy handling. The
                                                 visible Copy code header still lives in
                                                 copy_ai_code.cpp/h, and the close-window
                                                 focus handoff back to the main editor still

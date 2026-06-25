@@ -41,8 +41,9 @@ FILES:
     - Keep the answer host autoscrolling the live stream without flicker while
       the chunks arrive, so the current query stays above the rendered answer
       blocks in one continuous page.
-    - After the final markdown render, keep the prompt at the top and the
-      answer blocks directly after it, then jump to the newest content.
+    - After the final markdown render, scroll the answer pane back to the top
+      so the rendered response starts at its first line instead of staying at
+      the bottom.
     - Scintilla keeps the code block's own sideways scrollbar.
     - Keep the timer/status line split so the live elapsed timer stays on the
       right and the cloud / sign-in / model info stays on the left.

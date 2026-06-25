@@ -65,6 +65,9 @@
     - Fenced code blocks keep a visible Copy code header and tracked copy
       span; richer header styling, exact copy-link hit testing, and focus
       handoff after closing the window are still later follow-ups.
+    - After the final markdown render, the answer pane scrolls back to the top
+      so the rendered response starts at its first line instead of staying at
+      the bottom.
 
   Ownership and lifetime:
     - The caller passes the parent HWND for centering and ownership.
