@@ -1,14 +1,14 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 25 June 2026 &mdash; v2026.06.25.09 (09:48)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 25 June 2026 &mdash; v2026.06.25.11 (11:00)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
-<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.25.09 (Status: AI pane keeps streaming live and scrolls back to the top after render)</span></h3>
-<p><strong>Status: AI pane keeps streaming live and scrolls back to the top after render (25.06.2026, 09:48):</strong></p>
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.25.11 (Status: AI scroll path is stable, but the code block still needs its viewport pass)</span></h3>
+<p><strong>Status: AI scroll path is stable, but the code block still needs its viewport pass (25.06.2026, 11:00):</strong></p>
 <ul>
-<li><strong>Status: the answer pane now follows streamed text while it is typing:</strong> the live transcript keeps the page pinned to the newest chunks, and the scrolling stays in one continuous page instead of repainting the viewport on every word.</li>
-<li><strong>Fix: the final render now scrolls the answer pane back to the top:</strong> after the markdown pass finishes, the visible page returns to the start of the rendered answer instead of staying parked at the bottom.</li>
+<li><strong>Status: the AI answer pane still scrolls cleanly, but the first code block is not reliably visible yet:</strong> the host scroll path is working, but the answer viewport still needs a safer pass so fenced code stays visible at the top of the rendered response.</li>
+<li><strong>Status: the current renderer path is still being reworked:</strong> the remaining job is to keep the visible answer text, the code styling, and the Copy code affordance together without losing the scroll anchor again.</li>
 <li><strong>Fix: the raw AI output is still dumped for testing:</strong> the streaming text is copied into <code>ai.txt</code> in the current working directory so the unrendered markup can be inspected before the markdown pass.</li>
-<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.25.09</code>.</li>
+<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.06.25.11</code>.</li>
 </ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff)</span></h3>

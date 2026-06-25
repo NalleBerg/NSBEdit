@@ -45,6 +45,9 @@ FILES:
       so the rendered response starts at its first line instead of staying at
       the bottom.
     - Scintilla keeps the code block's own sideways scrollbar.
+    - Current status: the scroll host path is stable, but the fenced code block
+      viewport still needs another pass so the first block stays visible without
+      sacrificing the working scroll/layout behavior.
     - Keep the timer/status line split so the live elapsed timer stays on the
       right and the cloud / sign-in / model info stays on the left.
     - Restore the owner/main window to the foreground on close with the brief

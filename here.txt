@@ -2,30 +2,26 @@ NSBEdit handover notes
 Written: 2026-06-23
 
 Current status
-- The AI shell is now split into three visible zones again: the model/status summary at the top, the prompt editor and action row in the middle, and the answer pane at the bottom.
-- The running timer now shows on the right side of the status line as a live clock, and the frozen result still changes to the last completed duration after the request finishes.
-- The answer window scrollbar chrome was removed, so the answer pane itself no longer shows a vertical scrollbar.
-- Scintilla code blocks still keep their own sideways scrollbar inside the code block, which is the correct place for horizontal scrolling.
-- The current remaining UI problem is that the answer pane still does not consistently present the first code block at the start of the visible region when a reply begins with code and prose follows.
-- The first prose block is currently visible again after the last layout pass, but the code block visibility and the initial viewport choice are still the active bug.
-- cmark-gfm is linked and the markdown split renderer is still in place; the remaining issue is now layout/viewport selection, not parsing.
+- The current answer rendering is still wrong for the code path: prose shows, but the code block is missing from the top of the answer viewport.
+- The scrollbar is still present even when the content does not overflow, which means the host/layout logic still needs another pass.
+- The last attempt proved the scroll plumbing can work, but the renderer and viewport anchor are not yet stable together.
+- The visible code block needs to come back with syntax colouring and the visible Copy code affordance at the same time as the scrolling/layout.
+- The next fix should reintroduce the code-aware rendering in a controlled way: keep the RichEdit answer text visible, keep the host scroll container, and add the Scintilla code block back without making the viewport jump or hide the first block.
 
 What was fixed in this session
-- The answer pane no longer draws its own vertical scrollbar.
-- The Scintilla code block still keeps its own internal scrollbar.
-- The running timer/status text now shows a live elapsed clock.
-- The frozen timer text still shows the last completed duration.
-- The answer-pane startup scroll no longer jumps to the prose block.
+- The build still succeeds with the current changes.
+- The answer host scroll behavior is still wired up and the wheel/host handling remains intact.
+- The current renderer experiment confirmed that the problem is in the answer formatting/viewport interaction, not in the Ollama request path.
 
 What needs fixing next
-- Measure the first rendered answer block and use that measurement to reserve the correct visible space before laying out later content.
-- Make the initial viewport choose the code block first when the answer begins with code, without reintroducing a visible scrollbar on the answer window itself.
-- Keep the prompt log / opening query visible at the top of the answer pane whenever possible.
-- Verify that Scintilla code blocks still render with the correct lexer and copy-header behavior after the layout change.
+- Restore the code block as a visible Scintilla child in the answer pane while keeping the answer text visible.
+- Keep the Copy code header working for fenced blocks.
+- Prevent the viewport from starting at the wrong anchor when a response begins with code.
+- Remove the extra scrollbar when the answer content fits inside the pane.
 
 Suggested continuance
-- Resume in ollama_ai.cpp from Ai_RenderAnswerBlocks and Ai_LayoutAnswerHost.
-- The next change should be strictly layout-driven: measure the first block, reserve space for it, and then let the answer pane show the correct top block without a vertical scrollbar on the host window.
+- Resume in ollama_ai.cpp from Ai_RenderMarkdownReply and the answer-host layout helpers.
+- The next change should be a smaller, safer rendering slice: preserve the visible RichEdit text, add back the Scintilla code block for fenced sections, then verify the copy-header and scroll anchor together.
 - After that, refresh the release docs, API notes, and README together before the next commit.
 
 Release notes

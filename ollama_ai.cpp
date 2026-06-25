@@ -124,6 +124,7 @@ struct AiWindowState {
     std::vector<HWND> answerBlocks;
     std::wstring answerIntroText;
     std::wstring answerRawMarkdown;
+    int answerWheelAccum = 0;
     int answerScrollY = 0;
     int answerContentHeight = 0;
 };
@@ -228,6 +229,10 @@ static void Ai_LayoutAnswerHost(HWND hwndHost);
 static void Ai_RenderAnswerBlocks(HWND hwnd);
 static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR dwRefData);
+static std::wstring Ai_TrimCopy(const std::wstring& text);
+static void Ai_ApplyRichFormatRange(HWND hLog, int start, int end, const CHARFORMAT2W* format);
+static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt);
+static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply);
 static void Ai_ApplyButtons(AiWindowState* st);
 static void Ai_ShowModelCheckDialog(HWND parent);
 
@@ -762,7 +767,7 @@ static HWND Ai_CreateAnswerRichEdit(HWND hwndParent, int x, int y, int w, int h)
     }
 
     HWND hEdit = CreateWindowExW(0, reClass, L"",
-            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY | ES_NOHIDESEL,
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_NOHIDESEL | ES_AUTOVSCROLL,
         x, y, std::max(1, w), std::max(1, h), hwndParent, (HMENU)(UINT_PTR)IDC_AI_ANSWER_TEXT, GetModuleHandleW(NULL), NULL);
     if (hEdit) {
         SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(255, 255, 255));
@@ -771,7 +776,7 @@ static HWND Ai_CreateAnswerRichEdit(HWND hwndParent, int x, int y, int w, int h)
         cf.dwMask = CFM_COLOR;
         cf.crTextColor = RGB(20, 20, 20);
         SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_DEFAULT, (LPARAM)&cf);
-        SetWindowSubclass(hEdit, Ai_AnswerChildSubclassProc, 1, 0);
+        SetWindowSubclass(hEdit, Ai_AnswerHostSubclassProc, 1, 0);
     }
     return hEdit;
 }
@@ -788,6 +793,172 @@ static HWND Ai_CreateAnswerScintilla(HWND hwndParent, int x, int y, int w, int h
     SendMessageW(hSci, SCI_SETTABWIDTH, 4, 0);
     SetWindowSubclass(hSci, Ai_AnswerChildSubclassProc, 1, 0);
     return hSci;
+}
+static void Ai_DestroyWindowVector(std::vector<HWND>& windows)
+{
+    for (HWND hwnd : windows) {
+        if (hwnd && IsWindow(hwnd)) {
+            DestroyWindow(hwnd);
+        }
+    }
+    windows.clear();
+}
+
+static void Ai_ClearRenderedAnswer(HWND hwnd)
+{
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (!st) return;
+
+    if (st->hLog) {
+        AiCopyCode_Clear(st->hLog);
+        s_aiAnswerCopyRanges.erase(st->hLog);
+    }
+
+    Ai_DestroyWindowVector(st->answerBlocks);
+    st->answerContentHeight = 0;
+    st->answerScrollY = 0;
+    st->answerWheelAccum = 0;
+}
+
+static int Ai_AnswerHostPageHeight(HWND hwndHost)
+{
+    RECT rc = {};
+    GetClientRect(hwndHost, &rc);
+    return std::max(1, (int)rc.bottom - (int)rc.top);
+}
+
+static void Ai_LayoutAnswerHost(HWND hwndHost)
+{
+    if (!hwndHost || !IsWindow(hwndHost)) return;
+
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwndHost), GWLP_USERDATA);
+    if (!st) return;
+
+    RECT rc = {};
+    GetClientRect(hwndHost, &rc);
+    int pageWidth = std::max(1, (int)rc.right - (int)rc.left);
+    int pageHeight = std::max(1, (int)rc.bottom - (int)rc.top);
+    int innerWidth = std::max(1, pageWidth - S(16));
+
+    std::vector<AiAnswerBlockDesc> blocks = Ai_ParseAnswerBlocks(st->answerRawMarkdown);
+    if (blocks.empty() && !st->answerRawMarkdown.empty()) {
+        blocks.push_back(AiAnswerBlockDesc{ false, st->answerRawMarkdown, L"" });
+    }
+
+    int measuredHeight = S(16);
+    HDC hdc = GetDC(hwndHost);
+    HFONT oldFont = NULL;
+    if (hdc && st->hPaneFont) {
+        oldFont = (HFONT)SelectObject(hdc, st->hPaneFont);
+    }
+
+    for (const AiAnswerBlockDesc& desc : blocks) {
+        if (desc.isCode) {
+            int codeLines = 1;
+            for (wchar_t ch : desc.text) {
+                if (ch == L'\n') ++codeLines;
+            }
+            int codeHeight = std::max((int)S(80), codeLines * (int)S(18));
+            measuredHeight += S(32) + codeHeight + S(8);
+        } else if (!desc.text.empty() && hdc) {
+            RECT measure = { 0, 0, std::max(1, innerWidth), 0 };
+            DrawTextW(hdc, desc.text.c_str(), -1, &measure, DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
+            int blockHeight = std::max((int)S(40), (int)(measure.bottom - measure.top) + (int)S(18));
+            measuredHeight += blockHeight + S(8);
+        }
+    }
+
+    if (hdc && oldFont) {
+        SelectObject(hdc, oldFont);
+    }
+    if (hdc) {
+        ReleaseDC(hwndHost, hdc);
+    }
+
+    st->answerContentHeight = measuredHeight + S(8);
+    int maxScroll = std::max(0, st->answerContentHeight - pageHeight);
+    if (st->answerScrollY < 0) st->answerScrollY = 0;
+    if (st->answerScrollY > maxScroll) st->answerScrollY = maxScroll;
+
+    int y = S(8) - st->answerScrollY;
+    size_t childIndex = 0;
+    hdc = GetDC(hwndHost);
+    oldFont = NULL;
+    if (hdc && st->hPaneFont) {
+        oldFont = (HFONT)SelectObject(hdc, st->hPaneFont);
+    }
+
+    for (const AiAnswerBlockDesc& desc : blocks) {
+        if (desc.isCode) {
+            HWND hHeader = childIndex < st->answerBlocks.size() ? st->answerBlocks[childIndex] : NULL;
+            HWND hSci = (childIndex + 1) < st->answerBlocks.size() ? st->answerBlocks[childIndex + 1] : NULL;
+
+            int codeLines = 1;
+            for (wchar_t ch : desc.text) {
+                if (ch == L'\n') ++codeLines;
+            }
+            int codeHeight = std::max((int)S(80), codeLines * (int)S(18));
+
+            if (hHeader && IsWindow(hHeader)) {
+                SetWindowPos(hHeader, NULL, S(8), y, S(140), S(28), SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+            if (hSci && IsWindow(hSci)) {
+                SetWindowPos(hSci, NULL, S(8), y + S(32), innerWidth, codeHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+
+            y += S(32) + codeHeight + S(8);
+            childIndex += 2;
+        } else {
+            HWND hText = childIndex < st->answerBlocks.size() ? st->answerBlocks[childIndex] : NULL;
+            int blockHeight = S(40);
+            if (hdc && !desc.text.empty()) {
+                RECT measure = { 0, 0, std::max(1, innerWidth), 0 };
+                DrawTextW(hdc, desc.text.c_str(), -1, &measure, DT_CALCRECT | DT_WORDBREAK | DT_EDITCONTROL | DT_NOPREFIX);
+                blockHeight = std::max((int)S(40), (int)(measure.bottom - measure.top) + (int)S(18));
+            }
+
+            if (hText && IsWindow(hText)) {
+                SetWindowPos(hText, NULL, S(8), y, innerWidth, blockHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+            }
+
+            y += blockHeight + S(8);
+            ++childIndex;
+        }
+    }
+
+    if (hdc && oldFont) {
+        SelectObject(hdc, oldFont);
+    }
+    if (hdc) {
+        ReleaseDC(hwndHost, hdc);
+    }
+
+    if (st->hLogSb) {
+        msb_notify_content_changed(st->hLogSb);
+        msb_sync(st->hLogSb);
+    }
+}
+
+static void Ai_AnswerHostScrollTo(HWND hwndHost, int scrollY)
+{
+    if (!hwndHost || !IsWindow(hwndHost)) return;
+
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwndHost), GWLP_USERDATA);
+    if (!st) return;
+
+    int pageHeight = Ai_AnswerHostPageHeight(hwndHost);
+    int maxScroll = std::max(0, st->answerContentHeight - pageHeight);
+    int clamped = scrollY;
+    if (clamped < 0) clamped = 0;
+    if (clamped > maxScroll) clamped = maxScroll;
+
+    if (clamped == st->answerScrollY) {
+        if (st->hLogSb) msb_sync(st->hLogSb);
+        return;
+    }
+
+    st->answerScrollY = clamped;
+    Ai_LayoutAnswerHost(hwndHost);
 }
 
 static void Ai_TrimTrailingFenceOpeners(std::wstring& text)
@@ -814,199 +985,221 @@ static void Ai_TrimTrailingFenceOpeners(std::wstring& text)
     }
 }
 
-static void Ai_ApplyAnswerScintillaTheme(HWND hSci)
+static std::wstring Ai_TrimCopy(const std::wstring& text)
 {
-    if (!hSci || !IsWindow(hSci)) return;
-    SendMessageW(hSci, SCI_STYLESETFONT, STYLE_DEFAULT, (LPARAM)L"Consolas");
-    SendMessageW(hSci, SCI_STYLESETSIZE, STYLE_DEFAULT, 11);
-    SendMessageW(hSci, SCI_STYLESETFORE, STYLE_DEFAULT, RGB(20, 20, 20));
-    SendMessageW(hSci, SCI_STYLESETBACK, STYLE_DEFAULT, RGB(246, 246, 246));
-    SendMessageW(hSci, SCI_STYLECLEARALL, 0, 0);
-    for (int style = 0; style < 256; ++style) {
-        SendMessageW(hSci, SCI_STYLESETFONT, style, (LPARAM)L"Consolas");
-        SendMessageW(hSci, SCI_STYLESETSIZE, style, 11);
-        SendMessageW(hSci, SCI_STYLESETFORE, style, RGB(20, 20, 20));
-        SendMessageW(hSci, SCI_STYLESETBACK, style, RGB(246, 246, 246));
+    size_t start = 0;
+    while (start < text.size() && iswspace(text[start])) {
+        ++start;
     }
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_COMMENT, RGB(0, 128, 0));
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_COMMENTLINE, RGB(0, 128, 0));
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_COMMENTDOC, RGB(0, 128, 0));
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_NUMBER, RGB(0, 102, 204));
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_WORD, RGB(0, 0, 180));
-    SendMessageW(hSci, SCI_STYLESETBOLD, SCE_C_WORD, TRUE);
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_WORD2, RGB(128, 0, 128));
-    SendMessageW(hSci, SCI_STYLESETBOLD, SCE_C_WORD2, TRUE);
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_STRING, RGB(163, 21, 21));
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_CHARACTER, RGB(163, 21, 21));
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_PREPROCESSOR, RGB(128, 0, 128));
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_OPERATOR, RGB(0, 0, 0));
-    SendMessageW(hSci, SCI_STYLESETFORE, SCE_C_IDENTIFIER, RGB(20, 20, 20));
+    size_t end = text.size();
+    while (end > start && iswspace(text[end - 1])) {
+        --end;
+    }
+    return text.substr(start, end - start);
 }
 
-static void Ai_DestroyWindowVector(std::vector<HWND>& windows)
+static void Ai_ApplyRichFormatRange(HWND hLog, int start, int end, const CHARFORMAT2W* format)
 {
-    for (HWND hwnd : windows) {
-        if (IsWindow(hwnd)) DestroyWindow(hwnd);
-    }
-    windows.clear();
+    if (!hLog || !format || start >= end) return;
+    CHARRANGE range = { start, end };
+    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
+    SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)format);
 }
 
-static void Ai_ClearRenderedAnswer(HWND hwnd)
+static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt)
 {
-    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st) return;
-    Ai_DestroyWindowVector(st->answerBlocks);
-    st->answerCopyText.clear();
-    st->answerScrollY = 0;
-    st->answerContentHeight = 0;
-    HWND hHost = st->hAnswerHost;
-    if (hHost && IsWindow(hHost)) {
-        SendMessageW(hHost, WM_ERASEBKGND, 0, 0);
-    }
-}
+    if (!hLog) return;
 
-static void Ai_LayoutAnswerHost(HWND hwndHost)
-{
-    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwndHost), GWLP_USERDATA);
-    if (!st) return;
-    bool streaming = st->liveTypingStartTimerRunning || st->liveTypingTimerRunning || (!st->liveTypingDone && (!st->liveTypingQueue.empty() || !st->liveReply.empty()));
+    size_t pos = 0;
+    while (pos < line.size()) {
+        size_t boldStart = line.find(L"**", pos);
+        size_t italicStart = line.find(L"*", pos);
+        size_t next = std::wstring::npos;
+        bool useBold = false;
 
-    RECT rc = {};
-    GetClientRect(hwndHost, &rc);
-    int width = std::max(0, (int)rc.right - S(16));
-    int maxScroll = 0;
-    int y = S(8);
-
-    if (st->hLog && IsWindow(st->hLog)) {
-        ShowWindow(st->hLog, SW_SHOW);
-        RECT measure = { 0, 0, std::max(1, width), 0 };
-        HDC hdc = GetDC(st->hAnswerHost);
-        HFONT hf = st->hPaneFont;
-        HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
-        std::wstring logText;
-        int logLen = GetWindowTextLengthW(st->hLog);
-        if (logLen > 0) {
-            logText.resize((size_t)logLen);
-            GetWindowTextW(st->hLog, logText.data(), logLen + 1);
-            DrawTextW(hdc, logText.c_str(), -1, &measure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+        if (boldStart != std::wstring::npos && (italicStart == std::wstring::npos || boldStart <= italicStart)) {
+            next = boldStart;
+            useBold = true;
+        } else if (italicStart != std::wstring::npos) {
+            next = italicStart;
         }
-        if (old) SelectObject(hdc, old);
-        ReleaseDC(st->hAnswerHost, hdc);
 
-        int logHeight = std::max((int)S(32), (int)(measure.bottom - measure.top) + (int)S(10));
-        if (st->answerBlocks.empty() && !streaming) {
-            logHeight = std::max(logHeight, std::max(1, (int)rc.bottom - S(16)));
+        if (next == std::wstring::npos) {
+            Ai_AppendRichRun(hLog, line.substr(pos), normalFmt);
+            break;
         }
-        SetWindowPos(st->hLog, NULL, S(8), y, width, logHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (streaming && st->answerBlocks.empty()) {
-            st->answerScrollY = std::max(0, (S(8) + logHeight + S(8)) - (int)rc.bottom);
+
+        if (next > pos) {
+            Ai_AppendRichRun(hLog, line.substr(pos, next - pos), normalFmt);
         }
-        y += logHeight + S(8);
-    }
 
-    for (HWND child : st->answerBlocks) {
-        if (!IsWindow(child)) continue;
-        RECT cr = {};
-        GetWindowRect(child, &cr);
-        int height = cr.bottom - cr.top;
-        SetWindowPos(child, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
-        y += height + S(8);
-    }
-
-    st->answerContentHeight = std::max(0, y + st->answerScrollY);
-    maxScroll = std::max(0, st->answerContentHeight - (int)rc.bottom);
-    st->answerScrollY = std::min(maxScroll, std::max(0, st->answerScrollY));
-    y = S(8) - st->answerScrollY;
-
-    if (st->hLog && IsWindow(st->hLog)) {
-        RECT measure = { 0, 0, std::max(1, width), 0 };
-        HDC hdc = GetDC(st->hAnswerHost);
-        HFONT hf = st->hPaneFont;
-        HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
-        std::wstring logText;
-        int logLen = GetWindowTextLengthW(st->hLog);
-        if (logLen > 0) {
-            logText.resize((size_t)logLen);
-            GetWindowTextW(st->hLog, logText.data(), logLen + 1);
-            DrawTextW(hdc, logText.c_str(), -1, &measure, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
-        }
-        if (old) SelectObject(hdc, old);
-        ReleaseDC(st->hAnswerHost, hdc);
-
-        int logHeight = std::max((int)S(32), (int)(measure.bottom - measure.top) + (int)S(10));
-        if (st->answerBlocks.empty() && !streaming) {
-            logHeight = std::max(logHeight, std::max(1, (int)rc.bottom - S(16)));
-        }
-        SetWindowPos(st->hLog, NULL, S(8), y, width, logHeight, SWP_NOZORDER | SWP_NOACTIVATE);
-        y += logHeight + S(8);
-    }
-
-    for (HWND child : st->answerBlocks) {
-        if (!IsWindow(child)) continue;
-        RECT cr = {};
-        GetWindowRect(child, &cr);
-        int height = cr.bottom - cr.top;
-        SetWindowPos(child, NULL, S(8), y, width, height, SWP_NOZORDER | SWP_NOACTIVATE);
-        y += height + S(8);
-    }
-
-    {
-        SCROLLINFO si = {};
-        si.cbSize = sizeof(si);
-        si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS | SIF_DISABLENOSCROLL;
-        si.nMin = 0;
-        si.nMax = std::max(0, st->answerContentHeight - 1);
-        si.nPage = std::max(1, (int)rc.bottom);
-        si.nPos = st->answerScrollY;
-        SetScrollInfo(hwndHost, SB_VERT, &si, FALSE);
-        if (streaming) {
-            if (st->hLogSb) {
-                msb_detach(st->hLogSb);
-                st->hLogSb = NULL;
+        if (useBold) {
+            size_t end = line.find(L"**", next + 2);
+            if (end == std::wstring::npos) {
+                Ai_AppendRichRun(hLog, line.substr(next), normalFmt);
+                break;
             }
-            ShowScrollBar(hwndHost, SB_VERT, FALSE);
+            Ai_AppendRichRun(hLog, line.substr(next + 2, end - (next + 2)), boldFmt ? boldFmt : normalFmt);
+            pos = end + 2;
         } else {
-            if (!st->hLogSb) {
-                st->hLogSb = msb_attach(hwndHost, MSB_VERTICAL);
+            size_t end = line.find(L"*", next + 1);
+            if (end == std::wstring::npos) {
+                Ai_AppendRichRun(hLog, line.substr(next), normalFmt);
+                break;
             }
-            if (st->hLogSb) {
-                msb_sync(st->hLogSb);
-            }
-            ShowScrollBar(hwndHost, SB_VERT, FALSE);
+            Ai_AppendRichRun(hLog, line.substr(next + 1, end - (next + 1)), italicFmt ? italicFmt : normalFmt);
+            pos = end + 1;
         }
     }
-    if (st->hLogSb && !streaming) msb_notify_content_changed(st->hLogSb);
 }
 
-static int Ai_AnswerHostPageSize(HWND hwndHost)
+static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
 {
-    RECT rc = {};
-    GetClientRect(hwndHost, &rc);
-    return std::max(0, (int)rc.bottom);
-}
+    if (!hLog) return;
 
-static void Ai_AnswerHostScrollTo(HWND hwndHost, int scrollY)
-{
-    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwndHost), GWLP_USERDATA);
-    if (!st) return;
+    static const CHARFORMAT2W kHeaderFmt = []() {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_BOLD | CFM_COLOR;
+        cf.dwEffects = CFE_BOLD;
+        cf.crTextColor = RGB(0, 120, 215);
+        return cf;
+    }();
 
-    bool streaming = st->liveTypingStartTimerRunning || st->liveTypingTimerRunning || (!st->liveTypingDone && (!st->liveTypingQueue.empty() || !st->liveReply.empty()));
+    static const CHARFORMAT2W kInlineNormalFmt = []() {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR;
+        cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(0, 0, 0);
+        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
+        return cf;
+    }();
 
-    RECT rc = {};
-    GetClientRect(hwndHost, &rc);
-    int maxScroll = std::max(0, st->answerContentHeight - (int)rc.bottom);
-    if (streaming) {
-        st->answerScrollY = maxScroll;
-        Ai_LayoutAnswerHost(hwndHost);
-        InvalidateRect(hwndHost, NULL, TRUE);
-        return;
+    static const CHARFORMAT2W kInlineBoldFmt = []() {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BOLD;
+        cf.dwEffects = CFE_BOLD;
+        cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(0, 0, 0);
+        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
+        return cf;
+    }();
+
+    static const CHARFORMAT2W kInlineItalicFmt = []() {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_ITALIC;
+        cf.dwEffects = CFE_ITALIC;
+        cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(0, 0, 0);
+        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
+        return cf;
+    }();
+
+    static const CHARFORMAT2W kCodeFmt = []() {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR;
+        cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(30, 30, 30);
+        cf.crBackColor = RGB(245, 245, 245);
+        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
+        return cf;
+    }();
+
+    static const CHARFORMAT2W kCopyLinkFmt = []() {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_BOLD | CFM_COLOR | CFM_UNDERLINE | CFM_LINK;
+        cf.dwEffects = CFE_BOLD | CFE_UNDERLINE | CFE_LINK;
+        cf.crTextColor = RGB(0, 120, 215);
+        return cf;
+    }();
+
+    std::wstring text = reply;
+    Ai_ReplaceAll(text, L"\r\n", L"\n");
+    Ai_ReplaceAll(text, L"\r", L"\n");
+    Ai_UnescapeModelText(text);
+
+    AiCopyCode_Clear(hLog);
+    SetWindowTextW(hLog, L"");
+
+    if (GetWindowTextLengthW(hLog) > 0) {
+        Ai_AppendRichRun(hLog, L"\r\n", nullptr);
     }
-    int clamped = std::min(maxScroll, std::max(0, scrollY));
-    if (clamped == st->answerScrollY) return;
 
-    st->answerScrollY = clamped;
-    Ai_LayoutAnswerHost(hwndHost);
-    InvalidateRect(hwndHost, NULL, TRUE);
+    Ai_AppendRichRun(hLog, L"Ollama:\r\n", &kHeaderFmt);
+    Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+
+    bool inCode = false;
+    bool codeHasContent = false;
+    std::wstring codeLang;
+    bool outerMarkdownFence = false;
+
+    size_t lineStart = 0;
+    while (lineStart <= text.size()) {
+        size_t lineEnd = text.find(L'\n', lineStart);
+        std::wstring line = (lineEnd == std::wstring::npos) ? text.substr(lineStart) : text.substr(lineStart, lineEnd - lineStart);
+        std::wstring trimmed = Ai_TrimCopy(line);
+
+        if (!inCode && trimmed.rfind(L"```", 0) == 0) {
+            codeLang = Ai_TrimCopy(trimmed.substr(3));
+            if (codeLang == L"markdown" || codeLang == L"md") {
+                outerMarkdownFence = true;
+            } else if (codeLang.empty() && outerMarkdownFence) {
+                // Closing wrapper fence for a top-level markdown response.
+            } else {
+                inCode = true;
+                codeHasContent = false;
+                std::wstring copyLabel = L"Copy code";
+                Ai_AppendRichRun(hLog, L"📋 ", nullptr);
+                int labelStart = GetWindowTextLengthW(hLog);
+                Ai_AppendRichRun(hLog, copyLabel, nullptr);
+                int currentHeaderEnd = GetWindowTextLengthW(hLog);
+                Ai_ApplyRichFormatRange(hLog, labelStart, currentHeaderEnd, &kCopyLinkFmt);
+                AiCopyCode_BeginBlock(hLog, labelStart, copyLabel, currentHeaderEnd);
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            }
+        } else if (inCode && trimmed.rfind(L"```", 0) == 0) {
+            if (codeHasContent) {
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            }
+            AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
+            inCode = false;
+            codeLang.clear();
+        } else if (inCode) {
+            codeHasContent = true;
+            AiCopyCode_AppendCodeLine(hLog, line + L"\r\n");
+            Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt);
+        } else if (!trimmed.empty()) {
+            std::wstring normal = line;
+            if (normal.rfind(L"- ", 0) == 0 || normal.rfind(L"* ", 0) == 0 || normal.rfind(L"+ ", 0) == 0) {
+                normal.replace(0, 2, L"• ");
+            } else if (normal.rfind(L"> ", 0) == 0) {
+                normal.replace(0, 2, L"› ");
+            }
+            Ai_AppendMarkupLine(hLog, normal, &kInlineNormalFmt, &kInlineBoldFmt, &kInlineItalicFmt);
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+        } else {
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+        }
+
+        if (lineEnd == std::wstring::npos) {
+            break;
+        }
+        lineStart = lineEnd + 1;
+    }
+
+    if (inCode) {
+        Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+        AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
+    }
+
+    CHARRANGE endRange = { GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog) };
+    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&endRange);
+    SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
 }
 
 static void Ai_WriteRawReplyFile(const std::wstring& rawReply)
@@ -1027,66 +1220,78 @@ static LRESULT CALLBACK Ai_AnswerHostSubclassProc(HWND hwnd, UINT msg, WPARAM wP
     UINT_PTR, DWORD_PTR)
 {
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(GetParent(hwnd), GWLP_USERDATA);
-    bool streaming = st && (st->liveTypingStartTimerRunning || st->liveTypingTimerRunning);
     switch (msg) {
-    case WM_MOUSEWHEEL: {
-        if (streaming) {
-            return 0;
-        }
-        short delta = GET_WHEEL_DELTA_WPARAM(wParam);
-        if (delta == 0) return 0;
-
-        UINT wheelLines = 0;
-        SystemParametersInfoW(SPI_GETWHEELSCROLLLINES, 0, &wheelLines, 0);
-        int step = Ai_AnswerHostPageSize(hwnd);
-        if (wheelLines != WHEEL_PAGESCROLL) {
-            step = std::max(S(18), (int)wheelLines * S(24));
-        }
-
+    case WM_SIZE: {
         if (st) {
-            Ai_AnswerHostScrollTo(hwnd, st->answerScrollY - MulDiv((int)delta, step, WHEEL_DELTA));
-        }
-        return 0;
-    }
-    case WM_VSCROLL: {
-        if (!st || streaming) return 0;
-
-        int page = Ai_AnswerHostPageSize(hwnd);
-        int newPos = st->answerScrollY;
-        switch (LOWORD(wParam)) {
-        case SB_LINEUP:
-            newPos -= S(24);
-            break;
-        case SB_LINEDOWN:
-            newPos += S(24);
-            break;
-        case SB_PAGEUP:
-            newPos -= page;
-            break;
-        case SB_PAGEDOWN:
-            newPos += page;
-            break;
-        case SB_THUMBPOSITION:
-        case SB_THUMBTRACK: {
-            SCROLLINFO si = {};
-            si.cbSize = sizeof(si);
-            si.fMask = SIF_TRACKPOS;
-            GetScrollInfo(hwnd, SB_VERT, &si);
-            newPos = (int)si.nTrackPos;
-            break;
-        }
-        case SB_TOP:
-            newPos = 0;
-            break;
-        case SB_BOTTOM:
-            newPos = st->answerContentHeight;
-            break;
-        default:
+            Ai_SetWrapToWindow(hwnd);
+            if (st->hLogSb) {
+                msb_reposition(st->hLogSb);
+            }
+            Ai_LayoutAnswerHost(hwnd);
+            if (st->hLogSb) {
+                msb_sync(st->hLogSb);
+            }
             return 0;
         }
-
-        Ai_AnswerHostScrollTo(hwnd, newPos);
-        return 0;
+        break;
+    }
+    case WM_MOUSEWHEEL:
+        if (st) {
+            int delta = (short)GET_WHEEL_DELTA_WPARAM(wParam);
+            if (delta != 0) {
+                int step = std::max((int)S(32), Ai_AnswerHostPageHeight(hwnd) / 4);
+                Ai_AnswerHostScrollTo(hwnd, st->answerScrollY - ((delta > 0) ? step : -step));
+                return 0;
+            }
+        }
+        break;
+    case WM_VSCROLL:
+        if (st) {
+            int pageHeight = Ai_AnswerHostPageHeight(hwnd);
+            int step = std::max((int)S(24), pageHeight / 8);
+            int target = st->answerScrollY;
+            switch (LOWORD(wParam)) {
+            case SB_LINEUP:
+                target -= step;
+                break;
+            case SB_LINEDOWN:
+                target += step;
+                break;
+            case SB_PAGEUP:
+                target -= pageHeight;
+                break;
+            case SB_PAGEDOWN:
+                target += pageHeight;
+                break;
+            case SB_TOP:
+                target = 0;
+                break;
+            case SB_BOTTOM:
+                target = st->answerContentHeight;
+                break;
+            case SB_THUMBTRACK:
+            case SB_THUMBPOSITION: {
+                SCROLLINFO si = {};
+                si.cbSize = sizeof(si);
+                si.fMask = SIF_TRACKPOS;
+                if (GetScrollInfo(hwnd, SB_VERT, &si)) {
+                    target = si.nTrackPos;
+                }
+                break;
+            }
+            default:
+                break;
+            }
+            Ai_AnswerHostScrollTo(hwnd, target);
+            return 0;
+        }
+        break;
+    case WM_LBUTTONUP: {
+        POINT pt = { (LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam) };
+        if (AiCopyCode_HandleClick(hwnd, pt)) {
+            return 0;
+        }
+        break;
     }
     }
 
@@ -1186,7 +1391,6 @@ static void Ai_RenderAnswerBlocks(HWND hwnd)
                 if (pLex) {
                     SendMessageW(hSci, SCI_SETILEXER, 0, (LPARAM)pLex);
                 }
-                Ai_ApplyAnswerScintillaTheme(hSci);
                 std::string utf8 = Ai_WideToUtf8(codeText);
                 SendMessageA(hSci, SCI_SETTEXT, 0, (LPARAM)utf8.c_str());
                 SendMessageW(hSci, SCI_GOTOPOS, 0, 0);
@@ -1237,6 +1441,7 @@ static void Ai_RenderAnswerBlocks(HWND hwnd)
     }
 
     st->answerContentHeight = y + S(8);
+    st->answerWheelAccum = 0;
     st->answerScrollY = 0;
     Ai_LayoutAnswerHost(st->hAnswerHost);
 }
@@ -1275,42 +1480,47 @@ static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply)
 
     st->answerRawMarkdown = text;
     st->answerCopyText = text;
-    HWND hOldLog = st->hLog;
+    HWND hLog = st->hLog;
     Ai_ClearRenderedAnswer(hwnd);
-    if (!st->hAnswerHost || !IsWindow(st->hAnswerHost)) {
+    if (!hLog || !IsWindow(hLog)) {
         return false;
     }
 
-    Ai_RenderAnswerBlocks(hwnd);
-    if (hOldLog && IsWindow(hOldLog) && st->replyBaseStart >= 0) {
-        int end = GetWindowTextLengthW(hOldLog);
-        if (end > 0) {
-            std::wstring logText;
-            logText.resize((size_t)end + 1);
-            GetWindowTextW(hOldLog, logText.data(), end + 1);
-            logText.resize((size_t)end);
+    std::wstring keepText;
+    int end = GetWindowTextLengthW(hLog);
+    if (end > 0 && st->replyBaseStart >= 0) {
+        std::wstring logText;
+        logText.resize((size_t)end + 1);
+        GetWindowTextW(hLog, logText.data(), end + 1);
+        logText.resize((size_t)end);
 
-            int keepEnd = st->replyBaseStart < end ? st->replyBaseStart : end;
-            std::wstring keepText = logText.substr(0, (size_t)keepEnd);
-            SetWindowTextW(hOldLog, keepText.c_str());
-            if (!keepText.empty()) {
-                CHARFORMAT2W cf = {};
-                cf.cbSize = sizeof(cf);
-                cf.dwMask = CFM_COLOR;
-                cf.crTextColor = RGB(20, 20, 20);
-                CHARRANGE range = { 0, (LONG)keepText.size() };
-                SendMessageW(hOldLog, EM_EXSETSEL, 0, (LPARAM)&range);
-                SendMessageW(hOldLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-                range.cpMin = range.cpMax = (LONG)keepText.size();
-                SendMessageW(hOldLog, EM_EXSETSEL, 0, (LPARAM)&range);
-            }
-        }
+        int keepEnd = st->replyBaseStart < end ? st->replyBaseStart : end;
+        keepText = logText.substr(0, (size_t)keepEnd);
     }
+
+    SetWindowTextW(hLog, keepText.c_str());
+    if (!keepText.empty()) {
+        CHARFORMAT2W cf = {};
+        cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_COLOR;
+        cf.crTextColor = RGB(20, 20, 20);
+        CHARRANGE range = { 0, (LONG)keepText.size() };
+        SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
+        SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+        range.cpMin = range.cpMax = (LONG)keepText.size();
+        SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
+    }
+
+    Ai_AppendMarkdownReply(hLog, st->answerRawMarkdown);
+    LONG answerStart = (LONG)keepText.size();
+    CHARRANGE viewRange = { answerStart, answerStart };
+    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&viewRange);
+    SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
+
+    CHARRANGE answerRange = { answerStart, GetWindowTextLengthW(hLog) };
+    s_aiAnswerCopyRanges[hLog] = answerRange;
     if (st->hLogSb) msb_notify_content_changed(st->hLogSb);
-    if (st->hAnswerHost && IsWindow(st->hAnswerHost)) {
-        Ai_LayoutAnswerHost(st->hAnswerHost);
-        Ai_AnswerHostScrollTo(st->hAnswerHost, 0);
-    }
+    Ai_AnswerHostScrollTo(st->hAnswerHost, 0);
     return true;
 }
 

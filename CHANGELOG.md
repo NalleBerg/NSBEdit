@@ -1,11 +1,11 @@
 # Changelog
 
-## v2026.06.25.09 (Status: AI pane keeps streaming live and scrolls back to the top after render) - 25.06.2026 09:48
+## v2026.06.25.11 (Status: AI scroll path is stable, but the code block still needs its viewport pass) - 25.06.2026 11:00
 
-- **Status: the AI answer pane still follows streamed text while it is typing**: the live transcript keeps the page pinned to the newest chunks, and the scrolling stays in one continuous page instead of repainting the viewport on every word.
-- **Fix: the final render now scrolls the answer pane back to the top**: after the markdown pass finishes, the visible page returns to the start of the rendered answer instead of staying parked at the bottom.
+- **Status: the AI answer pane still scrolls cleanly, but the first code block is not reliably visible yet**: the host scroll path is working, but the answer viewport still needs a safer pass so fenced code stays visible at the top of the rendered response.
+- **Status: the current renderer path is still being reworked**: the remaining job is to keep the visible answer text, the code styling, and the Copy code affordance together without losing the scroll anchor again.
 - **Fix: the raw AI output is still dumped for testing**: the streaming text is copied into `ai.txt` in the current working directory so the unrendered markup can be inspected before the markdown pass.
-- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.25.09`.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.25.11`.
 
 ## v2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff) - 22.06.2026 10:40
 

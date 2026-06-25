@@ -698,6 +698,11 @@
                                                 staying pinned.
                                                 Full layout and control-flow notes live in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
+                                                Current status note: the scroll host path is
+                                                stable, but the code-block viewport still
+                                                needs another pass so the first fenced block
+                                                stays visible again without losing the working
+                                                scroll/layout behavior.
 
   locale\en_GB.txt                              Embedded locale (RCDATA 10). All user-
                                                 visible strings. Format: KEY = value,
