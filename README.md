@@ -1,12 +1,14 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.06.25.11**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.06.26.09**
 
 ## Download
 
 Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no dependencies. Drop it anywhere and run it.
 
 ## Features
+
+- **AI rendering note** — the current milestone is a query-only final render; the next blocks will be added one by one until the full answer stays stable.
 
 - Full RTF formatting toolbar: Bold, Italic, Underline, Strikethrough, Subscript, Superscript
 - Font face, size, text colour, highlight colour

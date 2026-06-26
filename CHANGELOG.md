@@ -1,11 +1,10 @@
 # Changelog
 
-## v2026.06.25.11 (Status: AI scroll path is stable, but the code block still needs its viewport pass) - 25.06.2026 11:00
+## v2026.06.26.09 (Status: query-only final render is working; next step is adding blocks one by one) - 26.06.2026 09:36
 
-- **Status: the AI answer pane still scrolls cleanly, but the first code block is not reliably visible yet**: the host scroll path is working, but the answer viewport still needs a safer pass so fenced code stays visible at the top of the rendered response.
-- **Status: the current renderer path is still being reworked**: the remaining job is to keep the visible answer text, the code styling, and the Copy code affordance together without losing the scroll anchor again.
-- **Fix: the raw AI output is still dumped for testing**: the streaming text is copied into `ai.txt` in the current working directory so the unrendered markup can be inspected before the markdown pass.
-- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.25.11`.
+- **Status: the final AI render now shows only the query block**: the rendered RichEdit page is now anchored on the first part again, which is the correct stepping stone before adding the rest of the answer.
+- **Status: the renderer is now being built in small ordered pieces**: the current process is to make one block perfect, then add the next block, then keep going until the whole page renders cleanly.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.26.09`.
 
 ## v2026.06.22.10 (Fix: curl-shipped AI transport and close-focus handoff) - 22.06.2026 10:40
 

@@ -53,7 +53,7 @@ std::wstring Ai_Utf8ToWide(const std::string& s)
     return result;
 }
 
-void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format, const CHARFORMAT2W* resetFormat)
+void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format, const CHARFORMAT2W* resetFormat, bool scrollCaret)
 {
     if (!hLog || text.empty()) return;
 
@@ -78,5 +78,7 @@ void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* f
     range.cpMin = end;
     range.cpMax = end;
     SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
-    SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
+    if (scrollCaret) {
+        SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
+    }
 }

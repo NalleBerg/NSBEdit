@@ -48,6 +48,8 @@ FILES:
     - Current status: the scroll host path is stable, but the fenced code block
       viewport still needs another pass so the first block stays visible without
       sacrificing the working scroll/layout behavior.
+    - Current milestone: the final render is now query-first, and the next
+      blocks will be added sequentially until the page stays perfect.
     - Keep the timer/status line split so the live elapsed timer stays on the
       right and the cloud / sign-in / model info stays on the left.
     - Restore the owner/main window to the foreground on close with the brief

@@ -231,7 +231,7 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
     UINT_PTR, DWORD_PTR dwRefData);
 static std::wstring Ai_TrimCopy(const std::wstring& text);
 static void Ai_ApplyRichFormatRange(HWND hLog, int start, int end, const CHARFORMAT2W* format);
-static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt);
+static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt, const CHARFORMAT2W* resetFmt);
 static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply);
 static void Ai_ApplyButtons(AiWindowState* st);
 static void Ai_ShowModelCheckDialog(HWND parent);
@@ -1006,7 +1006,7 @@ static void Ai_ApplyRichFormatRange(HWND hLog, int start, int end, const CHARFOR
     SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)format);
 }
 
-static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt)
+static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt, const CHARFORMAT2W* resetFmt)
 {
     if (!hLog) return;
 
@@ -1025,29 +1025,29 @@ static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARF
         }
 
         if (next == std::wstring::npos) {
-            Ai_AppendRichRun(hLog, line.substr(pos), normalFmt);
+            Ai_AppendRichRun(hLog, line.substr(pos), normalFmt, resetFmt);
             break;
         }
 
         if (next > pos) {
-            Ai_AppendRichRun(hLog, line.substr(pos, next - pos), normalFmt);
+            Ai_AppendRichRun(hLog, line.substr(pos, next - pos), normalFmt, resetFmt);
         }
 
         if (useBold) {
             size_t end = line.find(L"**", next + 2);
             if (end == std::wstring::npos) {
-                Ai_AppendRichRun(hLog, line.substr(next), normalFmt);
+                Ai_AppendRichRun(hLog, line.substr(next), normalFmt, resetFmt);
                 break;
             }
-            Ai_AppendRichRun(hLog, line.substr(next + 2, end - (next + 2)), boldFmt ? boldFmt : normalFmt);
+            Ai_AppendRichRun(hLog, line.substr(next + 2, end - (next + 2)), boldFmt ? boldFmt : normalFmt, resetFmt);
             pos = end + 2;
         } else {
             size_t end = line.find(L"*", next + 1);
             if (end == std::wstring::npos) {
-                Ai_AppendRichRun(hLog, line.substr(next), normalFmt);
+                Ai_AppendRichRun(hLog, line.substr(next), normalFmt, resetFmt);
                 break;
             }
-            Ai_AppendRichRun(hLog, line.substr(next + 1, end - (next + 1)), italicFmt ? italicFmt : normalFmt);
+            Ai_AppendRichRun(hLog, line.substr(next + 1, end - (next + 1)), italicFmt ? italicFmt : normalFmt, resetFmt);
             pos = end + 1;
         }
     }
@@ -1060,18 +1060,20 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
     static const CHARFORMAT2W kHeaderFmt = []() {
         CHARFORMAT2W cf = {};
         cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_BOLD | CFM_COLOR;
+        cf.dwMask = CFM_BOLD | CFM_COLOR | CFM_BACKCOLOR;
         cf.dwEffects = CFE_BOLD;
         cf.crTextColor = RGB(0, 120, 215);
+        cf.crBackColor = RGB(255, 255, 255);
         return cf;
     }();
 
     static const CHARFORMAT2W kInlineNormalFmt = []() {
         CHARFORMAT2W cf = {};
         cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR;
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR;
         cf.yHeight = MulDiv(12, 20, 1);
         cf.crTextColor = RGB(0, 0, 0);
+        cf.crBackColor = RGB(255, 255, 255);
         lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
         return cf;
     }();
@@ -1079,10 +1081,11 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
     static const CHARFORMAT2W kInlineBoldFmt = []() {
         CHARFORMAT2W cf = {};
         cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BOLD;
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR | CFM_BOLD;
         cf.dwEffects = CFE_BOLD;
         cf.yHeight = MulDiv(12, 20, 1);
         cf.crTextColor = RGB(0, 0, 0);
+        cf.crBackColor = RGB(255, 255, 255);
         lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
         return cf;
     }();
@@ -1090,10 +1093,11 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
     static const CHARFORMAT2W kInlineItalicFmt = []() {
         CHARFORMAT2W cf = {};
         cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_ITALIC;
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR | CFM_ITALIC;
         cf.dwEffects = CFE_ITALIC;
         cf.yHeight = MulDiv(12, 20, 1);
         cf.crTextColor = RGB(0, 0, 0);
+        cf.crBackColor = RGB(255, 255, 255);
         lstrcpyW(cf.szFaceName, L"Segoe UI Emoji");
         return cf;
     }();
@@ -1112,9 +1116,10 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
     static const CHARFORMAT2W kCopyLinkFmt = []() {
         CHARFORMAT2W cf = {};
         cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_BOLD | CFM_COLOR | CFM_UNDERLINE | CFM_LINK;
+        cf.dwMask = CFM_BOLD | CFM_COLOR | CFM_BACKCOLOR | CFM_UNDERLINE | CFM_LINK;
         cf.dwEffects = CFE_BOLD | CFE_UNDERLINE | CFE_LINK;
         cf.crTextColor = RGB(0, 120, 215);
+        cf.crBackColor = RGB(255, 255, 255);
         return cf;
     }();
 
@@ -1130,8 +1135,8 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
         Ai_AppendRichRun(hLog, L"\r\n", nullptr);
     }
 
-    Ai_AppendRichRun(hLog, L"Ollama:\r\n", &kHeaderFmt);
-    Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+    Ai_AppendRichRun(hLog, L"Ollama:\r\n", &kHeaderFmt, &kInlineNormalFmt, false);
+    Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kInlineNormalFmt, false);
 
     bool inCode = false;
     bool codeHasContent = false;
@@ -1154,17 +1159,17 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
                 inCode = true;
                 codeHasContent = false;
                 std::wstring copyLabel = L"Copy code";
-                Ai_AppendRichRun(hLog, L"📋 ", nullptr);
+                Ai_AppendRichRun(hLog, L"📋 ", nullptr, &kInlineNormalFmt, false);
                 int labelStart = GetWindowTextLengthW(hLog);
-                Ai_AppendRichRun(hLog, copyLabel, nullptr);
+                Ai_AppendRichRun(hLog, copyLabel, nullptr, &kInlineNormalFmt, false);
                 int currentHeaderEnd = GetWindowTextLengthW(hLog);
                 Ai_ApplyRichFormatRange(hLog, labelStart, currentHeaderEnd, &kCopyLinkFmt);
                 AiCopyCode_BeginBlock(hLog, labelStart, copyLabel, currentHeaderEnd);
-                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kInlineNormalFmt, false);
             }
         } else if (inCode && trimmed.rfind(L"```", 0) == 0) {
             if (codeHasContent) {
-                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kInlineNormalFmt, false);
             }
             AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
             inCode = false;
@@ -1172,7 +1177,7 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
         } else if (inCode) {
             codeHasContent = true;
             AiCopyCode_AppendCodeLine(hLog, line + L"\r\n");
-            Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt);
+            Ai_AppendRichRun(hLog, line + L"\r\n", &kCodeFmt, &kInlineNormalFmt, false);
         } else if (!trimmed.empty()) {
             std::wstring normal = line;
             if (normal.rfind(L"- ", 0) == 0 || normal.rfind(L"* ", 0) == 0 || normal.rfind(L"+ ", 0) == 0) {
@@ -1180,10 +1185,10 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
             } else if (normal.rfind(L"> ", 0) == 0) {
                 normal.replace(0, 2, L"› ");
             }
-            Ai_AppendMarkupLine(hLog, normal, &kInlineNormalFmt, &kInlineBoldFmt, &kInlineItalicFmt);
-            Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            Ai_AppendMarkupLine(hLog, normal, &kInlineNormalFmt, &kInlineBoldFmt, &kInlineItalicFmt, &kInlineNormalFmt);
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kInlineNormalFmt, false);
         } else {
-            Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kInlineNormalFmt, false);
         }
 
         if (lineEnd == std::wstring::npos) {
@@ -1193,7 +1198,7 @@ static void Ai_AppendMarkdownReply(HWND hLog, const std::wstring& reply)
     }
 
     if (inCode) {
-        Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+        Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kInlineNormalFmt, false);
         AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
     }
 
@@ -1486,16 +1491,18 @@ static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply)
         return false;
     }
 
-    std::wstring keepText;
-    int end = GetWindowTextLengthW(hLog);
-    if (end > 0 && st->replyBaseStart >= 0) {
-        std::wstring logText;
-        logText.resize((size_t)end + 1);
-        GetWindowTextW(hLog, logText.data(), end + 1);
-        logText.resize((size_t)end);
+    std::wstring keepText = st->answerIntroText;
+    if (keepText.empty()) {
+        int end = GetWindowTextLengthW(hLog);
+        if (end > 0 && st->replyBaseStart >= 0) {
+            std::wstring logText;
+            logText.resize((size_t)end + 1);
+            GetWindowTextW(hLog, logText.data(), end + 1);
+            logText.resize((size_t)end);
 
-        int keepEnd = st->replyBaseStart < end ? st->replyBaseStart : end;
-        keepText = logText.substr(0, (size_t)keepEnd);
+            int keepEnd = st->replyBaseStart < end ? st->replyBaseStart : end;
+            keepText = logText.substr(0, (size_t)keepEnd);
+        }
     }
 
     SetWindowTextW(hLog, keepText.c_str());
@@ -1511,10 +1518,10 @@ static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply)
         SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
     }
 
-    Ai_AppendMarkdownReply(hLog, st->answerRawMarkdown);
-    LONG answerStart = (LONG)keepText.size();
-    CHARRANGE viewRange = { answerStart, answerStart };
+    LONG answerStart = 0;
+    CHARRANGE viewRange = { 0, 0 };
     SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&viewRange);
+    SendMessageW(hLog, WM_VSCROLL, SB_TOP, 0);
     SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
 
     CHARRANGE answerRange = { answerStart, GetWindowTextLengthW(hLog) };
@@ -2481,7 +2488,6 @@ static void Ai_DoSend(HWND hwnd)
         st->liveReply.clear();
         st->liveRawReply.clear();
         st->liveTypingQueue.clear();
-        st->answerIntroText.clear();
         st->liveTypingStartReady = true;
         st->liveTypingStartTimerRunning = false;
         st->liveTypingDone = false;
@@ -2497,7 +2503,6 @@ static void Ai_DoSend(HWND hwnd)
         st->liveReply.clear();
         st->liveRawReply.clear();
         st->liveTypingQueue.clear();
-        st->answerIntroText.clear();
         st->liveTypingStartReady = true;
         st->liveTypingStartTimerRunning = false;
         st->liveTypingDone = false;
@@ -2825,9 +2830,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (!liveText.empty()) {
                 st->liveRawReply += liveText;
                 Ai_WriteRawReplyFile(st->liveRawReply);
-                Ai_UnescapeModelText(liveText);
-                st->liveTypingQueue += liveText;
-                Ai_StartLiveTypingTimer(hwnd);
+                st->liveReply += liveText;
             }
         }
         if (chunk) {
@@ -2848,14 +2851,12 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_RETRY_FALLBACK"));
             }
             if (result->ok) {
-                if (st && !result->streamed && st->liveReply.empty() && !result->reply.empty() && !st->liveTypingFinalRendered) {
+                if (st && st->liveReply.empty() && !result->reply.empty()) {
                     st->liveReply = result->reply;
-                    st->liveRawReply = result->reply;
-                    Ai_WriteRawReplyFile(st->liveRawReply);
+                }
+                if (st && !st->liveReply.empty() && !st->liveTypingFinalRendered) {
                     Ai_RenderMarkdownReply(hwnd, st->liveReply);
                     st->liveTypingFinalRendered = true;
-                } else {
-                    Ai_FinalizeLiveReply(hwnd);
                 }
             }
             if (!result->ok && result->reply.empty()) {

@@ -703,6 +703,9 @@
                                                 needs another pass so the first fenced block
                                                 stays visible again without losing the working
                                                 scroll/layout behavior.
+                                                Current milestone: the final RichEdit render
+                                                is query-first, and the next blocks will be
+                                                added one by one before code styling returns.
 
   locale\en_GB.txt                              Embedded locale (RCDATA 10). All user-
                                                 visible strings. Format: KEY = value,

@@ -1,27 +1,27 @@
 NSBEdit handover notes
-Written: 2026-06-23
+Written: 2026-06-26
 
 Current status
-- The current answer rendering is still wrong for the code path: prose shows, but the code block is missing from the top of the answer viewport.
-- The scrollbar is still present even when the content does not overflow, which means the host/layout logic still needs another pass.
-- The last attempt proved the scroll plumbing can work, but the renderer and viewport anchor are not yet stable together.
-- The visible code block needs to come back with syntax colouring and the visible Copy code affordance at the same time as the scrolling/layout.
-- The next fix should reintroduce the code-aware rendering in a controlled way: keep the RichEdit answer text visible, keep the host scroll container, and add the Scintilla code block back without making the viewport jump or hide the first block.
+- The AI answer now renders as a single RichEdit page and the final output is query-only for now.
+- The query text is visible in the rendered page, and the next step is to add the answer content one part at a time without losing the first block again.
+- The renderer process is intentionally being built in small ordered pieces: make one part perfect, then add the next part, then repeat until the page stays stable.
+- The visible Copy code affordance still exists for the later code step, but the current focus is getting the page order right before bringing back the next block.
+- Rendering correctness is the priority for Suggest mode; more advanced mixed pages only come after the basic sequential page render is solid.
 
 What was fixed in this session
 - The build still succeeds with the current changes.
-- The answer host scroll behavior is still wired up and the wheel/host handling remains intact.
-- The current renderer experiment confirmed that the problem is in the answer formatting/viewport interaction, not in the Ollama request path.
+- The query-only final render is working and the first visible block is now the query.
+- The answer host scroll behavior and the RichEdit render path remain intact.
 
 What needs fixing next
-- Restore the code block as a visible Scintilla child in the answer pane while keeping the answer text visible.
-- Keep the Copy code header working for fenced blocks.
-- Prevent the viewport from starting at the wrong anchor when a response begins with code.
-- Remove the extra scrollbar when the answer content fits inside the pane.
+- Add the next answer block after the query while keeping the first block visible.
+- Keep the Copy code header and later Scintilla syntax coloring working when code blocks are reintroduced.
+- Prevent the viewport from jumping away from the first block when more content is appended.
+- Remove any extra scrollbar when the content fits inside the pane.
 
 Suggested continuance
-- Resume in ollama_ai.cpp from Ai_RenderMarkdownReply and the answer-host layout helpers.
-- The next change should be a smaller, safer rendering slice: preserve the visible RichEdit text, add back the Scintilla code block for fenced sections, then verify the copy-header and scroll anchor together.
+- Resume in ollama_ai.cpp from Ai_RenderMarkdownReply and the answer append helpers.
+- Build the page incrementally: first block perfect, then next block, then code, then more advanced mixed pages.
 - After that, refresh the release docs, API notes, and README together before the next commit.
 
 Release notes
