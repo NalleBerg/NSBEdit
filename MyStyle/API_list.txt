@@ -678,31 +678,29 @@
                                                 streamed text live, unescapes model HTML
                                                 tokens, and now routes prose through
                                                 RichEdit while fenced code blocks are parsed
-                                                with cmark-gfm and displayed in Scintilla.
-                                                The answer host now autoscrolls the live stream
-                                                without flicker, keeping the current query above
-                                                the rendered answer blocks in one continuous page.
-                                                The live timer is right-aligned on the status line
-                                                and Scintilla keeps the code block's sideways
-                                                scrollbar. The final markdown render now scrolls
-                                                the answer pane back to the top after layout so
-                                                the rendered response starts at its first line
-                                                instead of staying parked at the bottom. The
-                                                remaining follow-up is to verify the code-block
-                                                styling and copy handling. The
-                                                visible Copy code header still lives in
-                                                copy_ai_code.cpp/h, and the close-window
+                                                with cmark-gfm and displayed in the first
+                                                visible rendered block sequence. The answer
+                                                pane now keeps the query, the prose before
+                                                the first code block, and the first code block
+                                                together in one RichEdit page. The live stream
+                                                still needs its scrolling disabled so the
+                                                dormant bar does not show while streaming,
+                                                and the rendered-page scrollbar still needs one
+                                                more pass to track the full content height
+                                                cleanly. The visible Copy code header still
+                                                lives in copy_ai_code.cpp/h, and the close-window
                                                 focus handoff back to the main editor still
                                                 uses the brief TOPMOST trick on close so the
-                                                editor comes back to the front without
-                                                staying pinned.
+                                                editor comes back to the front without staying
+                                                pinned.
                                                 Full layout and control-flow notes live in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
-                                                Current status note: the scroll host path is
-                                                stable, but the code-block viewport still
-                                                needs another pass so the first fenced block
-                                                stays visible again without losing the working
-                                                scroll/layout behavior.
+                                                Current status note: render ordering is now
+                                                correct through the first code block, but the
+                                                scroll behavior still needs one dedicated pass
+                                                so the live stream hides scrolling and the
+                                                rendered view's scrollbar follows content
+                                                height.
                                                 Current milestone: the final RichEdit render
                                                 is query-first, and the next blocks will be
                                                 added one by one before code styling returns.

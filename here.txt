@@ -1,28 +1,29 @@
 NSBEdit handover notes
-Written: 2026-06-26
+Written: 2026-06-28
 
 Current status
-- The AI answer now renders as a single RichEdit page and the final output is query-only for now.
-- The query text is visible in the rendered page, and the next step is to add the answer content one part at a time without losing the first block again.
-- The renderer process is intentionally being built in small ordered pieces: make one part perfect, then add the next part, then repeat until the page stays stable.
-- The visible Copy code affordance still exists for the later code step, but the current focus is getting the page order right before bringing back the next block.
-- Rendering correctness is the priority for Suggest mode; more advanced mixed pages only come after the basic sequential page render is solid.
+- The AI answer now renders in a single RichEdit page and the visible layout is close to the target.
+- The query, the prose before the first code block, the first code block, and the Copy code header are all rendering again.
+- The code block spacing was just tuned with extra blank lines before the code preamble, and that change is stable.
+- The remaining visible problem is scrolling: the rendered page still does not properly track content height with the scrollbar, and the live streaming surface should not show scrolling at all.
+- The next safe step is to finish the scroll behavior separately from the render ordering so the page can be checked all the way to the bottom without disturbing the achieved layout.
 
 What was fixed in this session
 - The build still succeeds with the current changes.
-- The query-only final render is working and the first visible block is now the query.
-- The answer host scroll behavior and the RichEdit render path remain intact.
+- The render path now shows the query, the text before the first code block, and the first code block in the final page.
+- The Copy code affordance remains visible on the code block.
+- The code spacing and the small blank-line separation before the code preamble are working.
 
 What needs fixing next
-- Add the next answer block after the query while keeping the first block visible.
-- Keep the Copy code header and later Scintilla syntax coloring working when code blocks are reintroduced.
-- Prevent the viewport from jumping away from the first block when more content is appended.
-- Remove any extra scrollbar when the content fits inside the pane.
+- Disable scrolling during streaming and remove the dormant scrollbar from the live streaming pane.
+- Make the rendered RichEdit scrollbar actually track the document height so the bottom of the answer can be reached.
+- Keep the current render order intact while fixing scrolling; do not reintroduce the earlier child-box layout.
+- After the scroll behavior is corrected, then refresh the release notes, version stamp, README, and API list together.
 
 Suggested continuance
-- Resume in ollama_ai.cpp from Ai_RenderMarkdownReply and the answer append helpers.
-- Build the page incrementally: first block perfect, then next block, then code, then more advanced mixed pages.
-- After that, refresh the release docs, API notes, and README together before the next commit.
+- Resume in ollama_ai.cpp from the answer-host scroll handling and the RichEdit attachment points.
+- Keep the renderer itself stable; only touch the scroll behavior needed to make the bottom reachable.
+- After that, do the release/version/documentation refresh in one pass.
 
 Release notes
 - MyStyle remains the main documentation tree for API_INTERNALS/API work.

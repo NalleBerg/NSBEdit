@@ -2,6 +2,35 @@
 
 #include <richedit.h>
 #include <string>
+#include <cstring>
+#include <vector>
+
+namespace {
+
+struct AiStreamBuf {
+    const std::string* src = nullptr;
+    size_t pos = 0;
+};
+
+static DWORD CALLBACK Ai_ReadStreamCb(DWORD_PTR cookie, LPBYTE buf, LONG cb, LONG* pcb)
+{
+    AiStreamBuf* state = (AiStreamBuf*)cookie;
+    if (!state || !state->src) {
+        *pcb = 0;
+        return 0;
+    }
+
+    size_t remaining = state->src->size() - state->pos;
+    LONG count = (LONG)(remaining < (size_t)cb ? remaining : (size_t)cb);
+    if (count > 0) {
+        memcpy(buf, state->src->data() + state->pos, (size_t)count);
+        state->pos += (size_t)count;
+    }
+    *pcb = count;
+    return 0;
+}
+
+} // namespace
 
 std::map<HWND, CHARRANGE> s_aiAnswerCopyRanges;
 
@@ -51,6 +80,15 @@ std::wstring Ai_Utf8ToWide(const std::string& s)
     std::wstring result((size_t)needed, L'\0');
     MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), result.data(), needed);
     return result;
+}
+
+void Ai_StreamRtfIntoSelection(HWND hEdit, const std::string& rtf)
+{
+    if (!hEdit || rtf.empty()) return;
+
+    AiStreamBuf state = { &rtf, 0 };
+    EDITSTREAM es = { (DWORD_PTR)&state, 0, Ai_ReadStreamCb };
+    SendMessageW(hEdit, EM_STREAMIN, SF_RTF | SFF_SELECTION, (LPARAM)&es);
 }
 
 void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format, const CHARFORMAT2W* resetFormat, bool scrollCaret)

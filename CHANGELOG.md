@@ -1,5 +1,12 @@
 # Changelog
 
+## v2026.06.28.11 (Status: single RichEdit AI render now shows query, prose, and the first code block) - 28.06.2026 11:04
+
+- **Status: the AI answer now keeps the first render blocks together**: the final RichEdit page shows the query, the text before the first code block, and the first code block in one continuous view.
+- **Status: the visible code box and copy label stay intact**: the first code block still renders with its bordered box and Copy code header while the prose around it stays in the same answer surface.
+- **Status: the remaining work is scroll polish**: streaming should not show a dormant scrollbar, and the rendered RichEdit scrollbar still needs one more pass to track the full content height cleanly.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.06.28.11`.
+
 ## v2026.06.26.09 (Status: query-only final render is working; next step is adding blocks one by one) - 26.06.2026 09:36
 
 - **Status: the final AI render now shows only the query block**: the rendered RichEdit page is now anchored on the first part again, which is the correct stepping stone before adding the rest of the answer.

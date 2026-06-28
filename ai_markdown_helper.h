@@ -21,4 +21,5 @@ void Ai_ReplaceAll(std::wstring& text, const std::wstring& from, const std::wstr
 void Ai_UnescapeModelText(std::wstring& text);
 std::string Ai_WideToUtf8(const std::wstring& w);
 std::wstring Ai_Utf8ToWide(const std::string& s);
+void Ai_StreamRtfIntoSelection(HWND hEdit, const std::string& rtf);
 void Ai_AppendRichRun(HWND hLog, const std::wstring& text, const CHARFORMAT2W* format, const CHARFORMAT2W* resetFormat = nullptr, bool scrollCaret = true);
