@@ -1,5 +1,5 @@
-﻿================================================================================
-  NSBEdit — Documentation Index
+================================================================================
+  <Project> — Documentation Index
 ================================================================================
 
   IMPORTANT — AI / AGENT NOTE:
@@ -11,7 +11,7 @@
     placeholders from older projects.  The PATTERNS they describe — measure-
     then-create dialogs, owner-draw buttons, DPI-aware S() sizing, i18n via
     Ls(), AdjustWindowRectEx sizing, modal pump with EnableWindow — are the
-    canonical approach to use in THIS project too, adapted to NSBEdit's own
+    canonical approach to use in THIS project too, adapted to the current project's own
     helper names (CreateCustomButton, MeasureButtonWidth, ButtonColor::Blue,
     DrawCustomButton, etc.).
     When the shared docs say "Ne_DrawDialogButton" read "DrawCustomButton";
@@ -37,11 +37,11 @@
     _INTERNALS.txt  Architectural / flow reference — how a subsystem works
                     internally, bug history, and fix guidance.
 
-  ── NSBEdit core modules ─────────────────────────────────────────────────────
+  ── Core application modules ──────────────────────────────────────────────────
 
   File                                          Description
   ──────────────────────────────────────────────────────────────────────────────
-  NSBEdit.cpp                                   Main application — single-file Win32 app.
+  <AppName>.cpp                                  Main application — single-file Win32 app.
                                                 WinMain, Ne_WndProc, File menu (New/Open/
                                                 Save/SaveAs/Print/Export as PDF/Exit),
                                                 Edit menu (Undo/Redo/Cut/Copy/Paste/
@@ -590,7 +590,7 @@
                                                 green checkmark) or Unsaved (index 131,
                                                 red X). Updates via NeStatusBar_Update().
                                                 Height: S(22). Registered as window class
-                                                "NSBEditStatusBar". Labels fully localized
+                                                "<AppName>StatusBar". Labels fully localized
                                                 via NeStatusBar_SetLabels().
                                                 NeStatusBar_SetDarkMode(hBar, bool dark)
                                                 — switches status bar between light
@@ -634,7 +634,7 @@
 
   ne_ai_bootstrap.h / ne_ai_bootstrap.cpp       AI bootstrap config loader — reads the
                                                 startup model/provider settings from
-                                                %APPDATA%\NSBEdit\ai-settings.json and
+                                                %APPDATA%\<AppName>\ai-settings.json and
                                                 exposes NeAiBootstrap_Load/Get().
                                                 Old `*-instruct` model names are
                                                 normalised to the current valid tags.
@@ -775,11 +775,11 @@
 
   ne_profiles.h / ne_profiles.cpp               FTP/SFTP connection profile persistence via
                                                 SQLite3 (statically linked). DB lookup order
-                                                at init: prefer %APPDATA%\NSBEdit\nsbedit.db
+                                                at init: prefer %APPDATA%\<AppName>\<appname>.db
                                                 for both installed and portable launches;
-                                                if portable .\nsbedit.db exists but AppData
+                                                if portable .\<appname>.db exists but AppData
                                                 does not yet, migrate it upward; otherwise
-                                                fall back to .\nsbedit.db only when AppData
+                                                fall back to .\<appname>.db only when AppData
                                                 cannot be used; final fallback is :memory: —
                                                 with MessageBoxW warning, all data lost on exit.
                                                 NeProfiles_Init() / NeProfiles_Close().
@@ -812,7 +812,7 @@
                                                 Passwords encrypted at rest via NeCrypto
                                                 (ne_crypto.h); remember_pwd flag controls
                                                 whether password is persisted.
-                                                nsbedit.db: not shipped in the ZIP. The app
+                                                <appname>.db: not shipped in the ZIP. The app
                                                 prefers AppData for both installed and portable
                                                 launches, migrating a portable db upward when
                                                 AppData is missing so the shared user data
@@ -1348,8 +1348,8 @@
                                                 EM_GETCHARFORMAT, sets IDC_HAND when CFE_LINK
                                                 is present.
                                                 Center image: GDI+ Image::FromFile loads
-                                                NSBEdit.png (256×256, generated from
-                                                SCLogo.svg) from the exe directory;
+                                                <AppName>.png (256×256, generated from
+                                                <AppName>Logo.svg) from the exe directory;
                                                 EditSubclassProc draws it at 75% native size,
                                                 horizontally centred, EM_GETSCROLLPOS-aware.
                                                 Blank lines for logo reserved after msb_attach:
@@ -1374,25 +1374,23 @@
                                                 SS_NOTIFY required — without it the STATIC
                                                 eats mouse messages. Subclass handles:
                                                 WM_MOUSEMOVE → ShowMultilingualTooltip
-                                                ("About NSBEdit") + TrackMouseEvent(TME_LEAVE);
+                                                ("About <AppName>") + TrackMouseEvent(TME_LEAVE);
                                                 WM_MOUSELEAVE → HideTooltip();
                                                 WM_LBUTTONDOWN → HideTooltip() then
                                                 ShowAboutDialog (tooltip hidden before
                                                 EnableWindow(parent,FALSE) — §9 of tooltip API);
                                                 WM_NCDESTROY → restore WNDPROC.
 
-  SCLogo.svg                                    Master app icon source — balloon-letter SC
-                                                monogram (pure SVG, viewBox 200×200, no
-                                                external deps). Red S + blue C, braided,
-                                                specular balloon shines, gradient border.
-                                                Source for both NSBEdit.ico (multi-frame,
-                                                via ImageMagick) and NSBEdit.png (256×256,
+  <AppName>Logo.svg                              Master app icon source (pure SVG, no
+                                                external deps).
+                                                Source for both <AppName>.ico (multi-frame,
+                                                via ImageMagick) and <AppName>.png (256×256,
                                                 About dialog center image). See
                                                 icon_INTERNALS.txt for full design notes and
                                                 update checklist.
 
-  NSBEdit.rc                                 Win32 resource script.
-                                                1 ICON "NSBEdit.ico"  (resource ID 1 = app)
+  <AppName>.rc                                   Win32 resource script.
+                                                1 ICON "<AppName>.ico"  (resource ID 1 = app)
                                                 2 ICON "icons/trashcan_empty.ico"  (IDI_TRASHCAN)
                                                 Compiled by windres; linked into the exe.
                                                 All LoadIconW/LoadImageW calls reference
@@ -1433,20 +1431,19 @@
 
   ── INTERNALS (project-internal architecture) ────────────────────────────────
 
-  API_INTERNALS\INTERNALS\icon_INTERNALS.txt    App icon system — SCLogo.svg design (balloon SC
-                                                monogram, braided S+C, specular shines, gradient
-                                                border), ICO generation via ImageMagick
-                                                (magick SCLogo.svg → 16/32/48/64/128/256 px
+  API_INTERNALS\INTERNALS\icon_INTERNALS.txt    App icon system — <AppName>Logo.svg design,
+                                                ICO generation via ImageMagick
+                                                (magick <AppName>Logo.svg → 16/32/48/64/128/256 px
                                                 frames; make_ico.ps1 repacks any .ico),
-                                                resource script (NSBEdit.rc: 1 ICON
-                                                "NSBEdit.ico"; 2 ICON trashcan_empty.ico),
+                                                resource script (<AppName>.rc: 1 ICON
+                                                "<AppName>.ico"; 2 ICON trashcan_empty.ico),
                                                 window-class icon wiring (LoadIconW +
                                                 LoadImageW 16px + WM_SETICON in WM_CREATE),
                                                 modal dialog icons (About/License/Credits —
                                                 LoadIconW(GetModuleHandleW(NULL),
                                                 MAKEINTRESOURCEW(1)); both ICON_SMALL and
                                                 ICON_BIG set), About dialog center image
-                                                (GDI+ Image::FromFile("NSBEdit.png") from
+                                                (GDI+ Image::FromFile("<AppName>.png") from
                                                 exe directory; EditSubclassProc draws at 75%
                                                 native size, scroll-offset-aware, blank-lines
                                                 reserved for logo space), entry-screen About
@@ -1723,7 +1720,7 @@
                                                 Step-by-step checklist for adding a new GUI
                                                 language (locale file) to the Language menu.
                                                 Covers all 8 touch-points: locale/xx_YY.txt,
-                                                NSBEdit.rc RCDATA entry, IDR_LOCALE_* define,
+                                                <AppName>.rc RCDATA entry, IDR_LOCALE_* define,
                                                 Ne_LoadLocale case, Ne_RebuildLocaleMenu entry,
                                                 and LANG_UI_* keys in every existing locale.
                                                 Includes RCDATA resource ID layout table (IDs
