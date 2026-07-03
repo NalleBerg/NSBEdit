@@ -1,5 +1,5 @@
 ﻿================================================================================
-  SetupCraft — Documentation Index
+  NSBEdit — Documentation Index
 ================================================================================
 
   IMPORTANT — AI / AGENT NOTE:
@@ -11,7 +11,7 @@
     placeholders from older projects.  The PATTERNS they describe — measure-
     then-create dialogs, owner-draw buttons, DPI-aware S() sizing, i18n via
     Ls(), AdjustWindowRectEx sizing, modal pump with EnableWindow — are the
-    canonical approach to use in THIS project too, adapted to SetupCraft's own
+    canonical approach to use in THIS project too, adapted to NSBEdit's own
     helper names (CreateCustomButton, MeasureButtonWidth, ButtonColor::Blue,
     DrawCustomButton, etc.).
     When the shared docs say "Ne_DrawDialogButton" read "DrawCustomButton";
@@ -1348,7 +1348,7 @@
                                                 EM_GETCHARFORMAT, sets IDC_HAND when CFE_LINK
                                                 is present.
                                                 Center image: GDI+ Image::FromFile loads
-                                                SetupCraft.png (256×256, generated from
+                                                NSBEdit.png (256×256, generated from
                                                 SCLogo.svg) from the exe directory;
                                                 EditSubclassProc draws it at 75% native size,
                                                 horizontally centred, EM_GETSCROLLPOS-aware.
@@ -1374,7 +1374,7 @@
                                                 SS_NOTIFY required — without it the STATIC
                                                 eats mouse messages. Subclass handles:
                                                 WM_MOUSEMOVE → ShowMultilingualTooltip
-                                                ("About SetupCraft") + TrackMouseEvent(TME_LEAVE);
+                                                ("About NSBEdit") + TrackMouseEvent(TME_LEAVE);
                                                 WM_MOUSELEAVE → HideTooltip();
                                                 WM_LBUTTONDOWN → HideTooltip() then
                                                 ShowAboutDialog (tooltip hidden before
@@ -1385,14 +1385,14 @@
                                                 monogram (pure SVG, viewBox 200×200, no
                                                 external deps). Red S + blue C, braided,
                                                 specular balloon shines, gradient border.
-                                                Source for both SetupCraft.ico (multi-frame,
-                                                via ImageMagick) and SetupCraft.png (256×256,
+                                                Source for both NSBEdit.ico (multi-frame,
+                                                via ImageMagick) and NSBEdit.png (256×256,
                                                 About dialog center image). See
                                                 icon_INTERNALS.txt for full design notes and
                                                 update checklist.
 
-  SetupCraft.rc                                 Win32 resource script.
-                                                1 ICON "SetupCraft.ico"  (resource ID 1 = app)
+  NSBEdit.rc                                 Win32 resource script.
+                                                1 ICON "NSBEdit.ico"  (resource ID 1 = app)
                                                 2 ICON "icons/trashcan_empty.ico"  (IDI_TRASHCAN)
                                                 Compiled by windres; linked into the exe.
                                                 All LoadIconW/LoadImageW calls reference
@@ -1438,15 +1438,15 @@
                                                 border), ICO generation via ImageMagick
                                                 (magick SCLogo.svg → 16/32/48/64/128/256 px
                                                 frames; make_ico.ps1 repacks any .ico),
-                                                resource script (SetupCraft.rc: 1 ICON
-                                                "SetupCraft.ico"; 2 ICON trashcan_empty.ico),
+                                                resource script (NSBEdit.rc: 1 ICON
+                                                "NSBEdit.ico"; 2 ICON trashcan_empty.ico),
                                                 window-class icon wiring (LoadIconW +
                                                 LoadImageW 16px + WM_SETICON in WM_CREATE),
                                                 modal dialog icons (About/License/Credits —
                                                 LoadIconW(GetModuleHandleW(NULL),
                                                 MAKEINTRESOURCEW(1)); both ICON_SMALL and
                                                 ICON_BIG set), About dialog center image
-                                                (GDI+ Image::FromFile("SetupCraft.png") from
+                                                (GDI+ Image::FromFile("NSBEdit.png") from
                                                 exe directory; EditSubclassProc draws at 75%
                                                 native size, scroll-offset-aware, blank-lines
                                                 reserved for logo space), entry-screen About
