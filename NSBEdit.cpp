@@ -1154,6 +1154,132 @@ static void Ne_ApplyLang(HWND hSci, int langIdx)
     sp("fold.html",          "1"); // enables folding for hypertext (HTML/PHP) lexer
 }
 
+// ── AI code-block syntax highlighting ─────────────────────────────────────────
+// Map a markdown fence token (e.g. "cpp", "python", "c++") to an s_langs[] index.
+// Recognised word-form aliases are normalised to an extension that
+// Ne_LangFromExt() understands; unknown tokens fall back to that lookup.
+static int NsbAi_LangFromFence(const std::wstring& fenceLang)
+{
+    std::wstring t = fenceLang;
+    // Keep only the first whitespace-delimited token, lower-cased.
+    size_t sp = t.find_first_of(L" \t");
+    if (sp != std::wstring::npos) t.erase(sp);
+    for (auto& c : t) c = (wchar_t)towlower(c);
+    if (t.empty()) return 0;
+
+    struct Alias { const wchar_t* from; const wchar_t* ext; };
+    static const Alias aliases[] = {
+        { L"c++",        L"cpp" }, { L"cplusplus", L"cpp" },
+        { L"cxx",        L"cpp" }, { L"cc",        L"cpp" },
+        { L"hpp",        L"cpp" }, { L"objc",      L"cpp" },
+        { L"csharp",     L"cs"  }, { L"c#",        L"cs"  },
+        { L"javascript", L"js"  }, { L"node",      L"js"  },
+        { L"jsx",        L"js"  }, { L"typescript",L"ts"  },
+        { L"tsx",        L"ts"  }, { L"python",    L"py"  },
+        { L"python3",    L"py"  }, { L"py3",       L"py"  },
+        { L"ruby",       L"rb"  }, { L"rust",      L"rs"  },
+        { L"shell",      L"sh"  }, { L"bash",      L"sh"  },
+        { L"zsh",        L"sh"  }, { L"console",   L"sh"  },
+        { L"powershell", L"ps1" }, { L"pwsh",      L"ps1" },
+        { L"batch",      L"bat" }, { L"cmd",       L"bat" },
+        { L"dosbatch",   L"bat" }, { L"markdown",  L"md"  },
+        { L"perl",       L"pl"  }, { L"pascal",    L"pas" },
+        { L"delphi",     L"pas" }, { L"vbscript",  L"vbs" },
+        { L"vb",         L"vbs" }, { L"make",      L"makefile" },
+        { L"cmake",      L"makefile" }, { L"yml",   L"yaml" },
+        { L"htm",        L"html" }, { L"xhtml",    L"html" },
+    };
+    std::wstring ext = t;
+    for (const Alias& a : aliases) {
+        if (t == a.from) { ext = a.ext; break; }
+    }
+    // Ne_LangFromExt matches on the extension after the last dot.
+    return Ne_LangFromExt(L"x." + ext);
+}
+
+// Hidden, reused Scintilla control used purely as a Lexilla tokeniser for the
+// AI answer code blocks. Never shown; only its style data is read back.
+static HWND NsbAi_LexScintilla()
+{
+    static HWND s_hLex = NULL;
+    if (!s_hLex) {
+        s_hLex = CreateWindowExW(0, L"Scintilla", L"",
+            WS_CHILD, 0, 0, 16, 16,
+            HWND_MESSAGE, NULL, GetModuleHandleW(NULL), NULL);
+    }
+    return s_hLex;
+}
+
+std::vector<NsbCodeStyleRun> NsbAi_HighlightCode(const std::wstring& code,
+                                                 const std::wstring& fenceLang)
+{
+    const COLORREF kDefaultFg = RGB(30, 30, 30);
+    std::vector<NsbCodeStyleRun> runs;
+    if (code.empty()) return runs;
+
+    int lang = NsbAi_LangFromFence(fenceLang);
+    HWND hSci = NsbAi_LexScintilla();
+    if (lang <= 0 || !hSci) {
+        runs.push_back({ code, kDefaultFg });
+        return runs;
+    }
+
+    // Configure lexer + light palette, then feed the code and lex it.
+    Ne_SetupScintillaStyle(hSci, /*forceLight=*/true);
+    Ne_ApplyLang(hSci, lang);
+
+    int u8len = WideCharToMultiByte(CP_UTF8, 0, code.c_str(), (int)code.size(),
+                                    NULL, 0, NULL, NULL);
+    std::string utf8((size_t)std::max(0, u8len), '\0');
+    if (u8len > 0) {
+        WideCharToMultiByte(CP_UTF8, 0, code.c_str(), (int)code.size(),
+                            utf8.data(), u8len, NULL, NULL);
+    }
+    SendMessageA(hSci, SCI_SETTEXT, 0, (LPARAM)utf8.c_str());
+    SendMessageW(hSci, SCI_COLOURISE, 0, (LPARAM)-1);
+
+    int len = (int)SendMessageW(hSci, SCI_GETLENGTH, 0, 0);
+    std::map<int, COLORREF> styleColor;
+    auto colorFor = [&](int style) -> COLORREF {
+        auto it = styleColor.find(style);
+        if (it != styleColor.end()) return it->second;
+        COLORREF c = (COLORREF)SendMessageW(hSci, SCI_STYLEGETFORE, (WPARAM)style, 0);
+        styleColor[style] = c;
+        return c;
+    };
+
+    // Walk the styled bytes, decode UTF-8 into wide chars and group runs that
+    // share a foreground colour.
+    for (int p = 0; p < len; ) {
+        unsigned char b0 = (unsigned char)SendMessageW(hSci, SCI_GETCHARAT, (WPARAM)p, 0);
+        int nbytes = 1;
+        if      (b0 >= 0xF0) nbytes = 4;
+        else if (b0 >= 0xE0) nbytes = 3;
+        else if (b0 >= 0xC0) nbytes = 2;
+        if (p + nbytes > len) nbytes = 1;
+
+        int style = (int)SendMessageW(hSci, SCI_GETSTYLEAT, (WPARAM)p, 0);
+        COLORREF col = colorFor(style);
+
+        char raw[4] = {};
+        for (int k = 0; k < nbytes; ++k) {
+            raw[k] = (char)(unsigned char)SendMessageW(hSci, SCI_GETCHARAT, (WPARAM)(p + k), 0);
+        }
+        wchar_t wbuf[4] = {};
+        int wn = MultiByteToWideChar(CP_UTF8, 0, raw, nbytes, wbuf, 4);
+        if (wn <= 0) { wbuf[0] = (wchar_t)b0; wn = 1; }
+
+        if (runs.empty() || runs.back().color != col) {
+            runs.push_back({ std::wstring(), col });
+        }
+        runs.back().text.append(wbuf, (size_t)wn);
+        p += nbytes;
+    }
+
+    if (runs.empty()) runs.push_back({ code, kDefaultFg });
+    return runs;
+}
+
 // Show Scintilla autocomplete — phrase completion from document + keyword fallback.
 // Phase 1: if the typed text from the start of the line contains a space (multi-token),
 //          scan all document lines for those starting with that phrase prefix.

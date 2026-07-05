@@ -171,6 +171,22 @@ void AiCopyCode_EndBlock(HWND hwndLog, int codeEndChar)
     it->second.blocks.back().codeEndChar = codeEndChar;
 }
 
+bool AiCopyCode_GetCodeRangeAt(HWND hwndLog, int charIndex, int* outStart, int* outEnd)
+{
+    auto it = s_states.find(hwndLog);
+    if (it == s_states.end()) return false;
+
+    for (const AiCodeBlockCopyInfo& block : it->second.blocks) {
+        if (block.codeStartChar >= 0 && block.codeEndChar > block.codeStartChar &&
+            charIndex >= block.codeStartChar && charIndex <= block.codeEndChar) {
+            if (outStart) *outStart = block.codeStartChar;
+            if (outEnd) *outEnd = block.codeEndChar;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool AiCopyCode_IsHot(HWND hwndLog, POINT ptClient)
 {
     auto it = s_states.find(hwndLog);

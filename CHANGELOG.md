@@ -1,5 +1,14 @@
 # Changelog
 
+## v2026.07.05.22 (Feature: syntax-highlighted AI code blocks, code-cell copy UX, and custom answer scrollbar) - 05.07.2026 22:16
+
+- **Feature: AI code blocks are now syntax highlighted**: fenced code in the rendered answer is coloured with the same Scintilla/Lexilla lexers the editor uses, mapped from the fence language, so keywords, strings, and comments show in colour inside the bordered code box.
+- **Feature: double-click selects only the code in a cell**: double-clicking inside a rendered code box now selects just that block's code text, no longer spilling into the padding lines or the prose around the box.
+- **Feature: Ctrl+A and Ctrl+C are scoped to the code cell**: pressing Ctrl+A while inside a code box selects only that cell's code, and Ctrl+C copies the selection without the empty buffer lines above and below, so the snippet pastes straight into existing code.
+- **Feature: right-click Copy on code boxes**: a right-click inside a rendered code cell now shows an owner-drawn Copy menu that copies the current selection, or the whole cell's code when nothing is selected.
+- **Fix: the answer pane now uses the custom scrollbar**: the non-working native scrollbar was removed from the answer host and the rendered answer now fills it, so the custom MSB scrollbar on the right is the only vertical bar.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.07.05.22`.
+
 ## v2026.06.28.11 (Status: single RichEdit AI render now shows query, prose, and the first code block) - 28.06.2026 11:04
 
 - **Status: the AI answer now keeps the first render blocks together**: the final RichEdit page shows the query, the text before the first code block, and the first code block in one continuous view.

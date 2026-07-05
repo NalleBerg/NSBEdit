@@ -49,6 +49,7 @@
 #define IDM_AI_LOG_COPY           1931
 #define IDM_AI_SEND               1932
 #define IDM_AI_ABOUT              1933
+#define IDM_AI_CODE_COPY          1934
 #define WM_AI_SEND_COMPLETE       (WM_APP + 71)
 #define WM_AI_MODELCHECK_APPEND   (WM_APP + 72)
 #define WM_AI_MODELCHECK_DONE     (WM_APP + 73)
@@ -242,7 +243,6 @@ static Gdiplus::Image* Ai_GetOllamaButtonImage();
 static void Ai_OpenOllamaSignUp(HWND hwnd);
 static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR dwRefData);
-static void Ai_ApplyRichFormatRange(HWND hLog, int start, int end, const CHARFORMAT2W* format);
 static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt, const CHARFORMAT2W* resetFmt);
 static void Ai_AppendFirstCodeBlockReply(HWND hLog, const std::wstring& reply);
 static void Ai_ApplyButtons(AiWindowState* st);
@@ -923,14 +923,6 @@ static void Ai_AnswerHostScrollTo(HWND hwndHost, int scrollY)
     Ai_LayoutAnswerHost(hwndHost);
 }
 
-static void Ai_ApplyRichFormatRange(HWND hLog, int start, int end, const CHARFORMAT2W* format)
-{
-    if (!hLog || !format || start >= end) return;
-    CHARRANGE range = { start, end };
-    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
-    SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)format);
-}
-
 static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt, const CHARFORMAT2W* resetFmt)
 {
     if (!hLog) return;
@@ -1006,7 +998,8 @@ static std::string Ai_RtfEscapeCellText(const std::wstring& text)
     return out;
 }
 
-static std::string Ai_BuildCodeTableRtf(const std::wstring& codeText, int availablePx, HWND hLog)
+static std::string Ai_BuildCodeTableRtf(const std::wstring& codeText, int availablePx, HWND hLog,
+                                        const std::wstring& language)
 {
     RECT rc = {};
     GetClientRect(hLog, &rc);
@@ -1057,9 +1050,41 @@ static std::string Ai_BuildCodeTableRtf(const std::wstring& codeText, int availa
     int cellTwips = MulDiv(contentPx, 1440, dpi);
     if (cellTwips < 1440) cellTwips = 1440;
 
+    // Syntax-highlight the code (Scintilla/Lexilla) into colored runs. Fixed
+    // colors: 1 = border, 2 = cell background, 3 = default text; syntax colors
+    // are appended to the table and referenced per run.
+    std::wstring codeForHi = codeText;
+    while (!codeForHi.empty() && (codeForHi.back() == L'\n' || codeForHi.back() == L'\r')) {
+        codeForHi.pop_back();
+    }
+    std::vector<NsbCodeStyleRun> hiRuns = NsbAi_HighlightCode(codeForHi, language);
+
+    std::string colorTable =
+        "{\\colortbl;\\red96\\green120\\blue160;\\red245\\green247\\blue250;\\red30\\green30\\blue30;";
+    std::map<COLORREF, int> colorIndex;
+    int nextColor = 4; // first three are the fixed entries above
+    auto rtfColorIndex = [&](COLORREF c) -> int {
+        if (c == RGB(30, 30, 30)) return 3; // default text reuses fixed slot
+        auto it = colorIndex.find(c);
+        if (it != colorIndex.end()) return it->second;
+        int idx = nextColor++;
+        colorIndex[c] = idx;
+        colorTable += "\\red" + std::to_string(GetRValue(c)) +
+                      "\\green" + std::to_string(GetGValue(c)) +
+                      "\\blue" + std::to_string(GetBValue(c)) + ";";
+        return idx;
+    };
+    // Pre-assign indices in run order so the color table lists them all.
+    std::vector<int> runColorIdx;
+    runColorIdx.reserve(hiRuns.size());
+    for (const NsbCodeStyleRun& r : hiRuns) {
+        runColorIdx.push_back(rtfColorIndex(r.color));
+    }
+    colorTable += "}";
+
     std::string rtf;
     rtf += "{\\rtf1\\ansi\\deff0\\uc1{\\fonttbl{\\f0 Consolas;}}";
-    rtf += "{\\colortbl;\\red96\\green120\\blue160;\\red245\\green247\\blue250;\\red30\\green30\\blue30;}";
+    rtf += colorTable;
     rtf += "\\viewkind4\\pard\\sa0\\sb0\\sl0\\slmult1";
     rtf += "\\trowd\\trgaph0\\trleft0\\trpaddl75\\trpaddr120\\trpaddt90\\trpaddb90";
     rtf += "\\clbrdrt\\brdrs\\brdrw18\\brdrcf1";
@@ -1067,13 +1092,28 @@ static std::string Ai_BuildCodeTableRtf(const std::wstring& codeText, int availa
     rtf += "\\clbrdrb\\brdrs\\brdrw18\\brdrcf1";
     rtf += "\\clbrdrr\\brdrs\\brdrw18\\brdrcf1";
     rtf += "\\clcbpat2\\cellx" + std::to_string(cellTwips);
-    rtf += "\\pard\\intbl\\li75\\fi0\\f0\\fs20\\cf3\\highlight2 ";
-    for (const std::wstring& l : lines) {
-        rtf += Ai_RtfEscapeCellText(l);
-        rtf += "\\line ";
+    rtf += "\\pard\\intbl\\li75\\fi0\\f0\\fs20\\highlight2 ";
+    rtf += "\\cf3\\line "; // top padding line
+    for (size_t i = 0; i < hiRuns.size(); ++i) {
+        rtf += "\\cf" + std::to_string(runColorIdx[i]) + " ";
+        rtf += Ai_RtfEscapeCellText(hiRuns[i].text);
     }
+    rtf += "\\cf3\\line "; // bottom padding line
     rtf += "\\cell\\row\\pard\\par}";
     return rtf;
+}
+
+// Returns the caret position at the very end of the control in the same
+// character-index space used by EM_EXSETSEL/EM_EXGETSEL. GetWindowTextLengthW
+// counts line breaks as CRLF (2 chars) which drifts away from the RichEdit
+// internal position space (CR only), so it must not be used to record ranges.
+static int Ai_GetTextEndPos(HWND hLog)
+{
+    CHARRANGE cr = { 0x7FFFFFFF, 0x7FFFFFFF };
+    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&cr);
+    CHARRANGE got = {};
+    SendMessageW(hLog, EM_EXGETSEL, 0, (LPARAM)&got);
+    return got.cpMax;
 }
 
 static void Ai_AppendFirstCodeBlockReply(HWND hLog, const std::wstring& reply)
@@ -1125,17 +1165,8 @@ static void Ai_AppendFirstCodeBlockReply(HWND hLog, const std::wstring& reply)
         return cf;
     }();
 
-    static const CHARFORMAT2W kCopyLinkFmt = []() {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_BOLD | CFM_COLOR | CFM_BACKCOLOR;
-        cf.dwEffects = CFE_BOLD;
-        cf.crTextColor = RGB(0, 120, 215);
-        cf.crBackColor = RGB(255, 255, 255);
-        return cf;
-    }();
-
     std::vector<AiAnswerBlockDesc> blocks = Ai_ParseAnswerBlocks(reply);
+    AiCopyCode_Clear(hLog);
     for (const AiAnswerBlockDesc& block : blocks) {
         if (!block.isCode) {
             std::wstring line = block.text;
@@ -1157,27 +1188,21 @@ static void Ai_AppendFirstCodeBlockReply(HWND hLog, const std::wstring& reply)
             continue;
         }
 
-    Ai_AppendRichRun(hLog, L"\r\n\r\n", nullptr, &kInlineNormalFmt, false);
-        std::wstring copyLabel = L"Copy code";
-        Ai_AppendRichRun(hLog, L"📋 ", nullptr, &kInlineNormalFmt, false);
-        int labelStart = GetWindowTextLengthW(hLog);
-        Ai_AppendRichRun(hLog, copyLabel, nullptr, &kInlineNormalFmt, false);
-        int currentHeaderEnd = GetWindowTextLengthW(hLog);
-        Ai_ApplyRichFormatRange(hLog, labelStart, currentHeaderEnd, &kCopyLinkFmt);
-        AiCopyCode_BeginBlock(hLog, labelStart, copyLabel, currentHeaderEnd);
+        Ai_AppendRichRun(hLog, L"\r\n\r\n", nullptr, &kInlineNormalFmt, false);
 
         std::wstring codeText = block.text;
         if (!codeText.empty()) {
             Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kInlineNormalFmt, false);
-            int codeStart = GetWindowTextLengthW(hLog);
+            int codeStart = Ai_GetTextEndPos(hLog);
+            AiCopyCode_BeginBlock(hLog, -1, L"", codeStart);
             CHARRANGE insertRange = { codeStart, codeStart };
             SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&insertRange);
-            std::string rtf = Ai_BuildCodeTableRtf(codeText, 0, hLog);
+            std::string rtf = Ai_BuildCodeTableRtf(codeText, 0, hLog, block.language);
             Ai_StreamRtfIntoSelection(hLog, rtf);
+            AiCopyCode_EndBlock(hLog, Ai_GetTextEndPos(hLog));
         }
 
-        AiCopyCode_EndBlock(hLog, GetWindowTextLengthW(hLog));
-        break;
+        Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kInlineNormalFmt, false);
     }
 
     CHARRANGE endRange = { GetWindowTextLengthW(hLog), GetWindowTextLengthW(hLog) };
@@ -1281,16 +1306,172 @@ static LRESULT CALLBACK Ai_AnswerHostSubclassProc(HWND hwnd, UINT msg, WPARAM wP
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
+static void Ai_CopyRichRangeText(HWND hLog, int start, int end)
+{
+    if (!hLog || end <= start) return;
+    std::wstring text((size_t)(end - start) + 1, L'\0');
+    TEXTRANGEW tr = {};
+    tr.chrg.cpMin = start;
+    tr.chrg.cpMax = end;
+    tr.lpstrText = text.data();
+    LRESULT copied = SendMessageW(hLog, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
+    if (copied > 0) {
+        text.resize((size_t)copied);
+        // Strip the empty buffer lines rendered before/after the code so the
+        // dev can paste the snippet straight into existing code.
+        while (!text.empty() && (text.back() == L'\r' || text.back() == L'\n')) {
+            text.pop_back();
+        }
+        while (!text.empty() && (text.front() == L'\r' || text.front() == L'\n')) {
+            text.erase(text.begin());
+        }
+        if (!text.empty()) {
+            Ai_CopyTextToClipboard(hLog, text);
+        }
+    }
+}
+
+// Given a raw code-cell range, tighten it so only the code text is covered,
+// trimming the padding newlines added around the RTF table.
+static void Ai_TrimCodeRange(HWND hLog, int* start, int* end)
+{
+    if (!start || !end || *end <= *start) return;
+    int len = *end - *start;
+    std::wstring buf((size_t)len + 1, L'\0');
+    TEXTRANGEW tr = {};
+    tr.chrg.cpMin = *start;
+    tr.chrg.cpMax = *end;
+    tr.lpstrText = buf.data();
+    LRESULT got = SendMessageW(hLog, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
+    if (got <= 0) return;
+    buf.resize((size_t)got);
+    while (!buf.empty() && (buf.back() == L'\r' || buf.back() == L'\n')) {
+        buf.pop_back();
+        --(*end);
+    }
+    while (*end > *start && (buf.front() == L'\r' || buf.front() == L'\n')) {
+        buf.erase(buf.begin());
+        ++(*start);
+    }
+}
+
+// If charIndex lands inside a rendered code cell, select just its code text
+// (as double-click does) and return true.
+static bool Ai_SelectCodeCellAt(HWND hLog, int charIndex)
+{
+    int cellStart = 0, cellEnd = 0;
+    if (!AiCopyCode_GetCodeRangeAt(hLog, charIndex, &cellStart, &cellEnd)) {
+        return false;
+    }
+    Ai_TrimCodeRange(hLog, &cellStart, &cellEnd);
+    CHARRANGE crg = { cellStart, cellEnd };
+    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&crg);
+    return true;
+}
+
+static int Ai_CharIndexFromClientPoint(HWND hLog, POINT ptClient)
+{
+    POINTL pl = { ptClient.x, ptClient.y };
+    return (int)SendMessageW(hLog, EM_CHARFROMPOS, 0, (LPARAM)&pl);
+}
+
+static void Ai_ShowCodeCellMenu(HWND hLog, int screenX, int screenY, int cellStart, int cellEnd)
+{
+    HMENU hMenu = CreatePopupMenu();
+    if (!hMenu) return;
+    Ai_AppendMenuOD(hMenu, MF_STRING, IDM_AI_CODE_COPY, Ne_Ls(L"BTN_COPY"), false);
+
+    HWND hOwner = GetParent(GetParent(hLog));
+    if (!hOwner) hOwner = GetParent(hLog);
+
+    int cmd = (int)TrackPopupMenu(hMenu, TPM_RIGHTBUTTON | TPM_RETURNCMD,
+        screenX, screenY, 0, hOwner, NULL);
+    DestroyMenu(hMenu);
+
+    if (cmd == IDM_AI_CODE_COPY) {
+        CHARRANGE sel = {};
+        SendMessageW(hLog, EM_EXGETSEL, 0, (LPARAM)&sel);
+        if (sel.cpMax > sel.cpMin) {
+            Ai_CopyRichRangeText(hLog, sel.cpMin, sel.cpMax);
+        } else {
+            Ai_CopyRichRangeText(hLog, cellStart, cellEnd);
+        }
+    }
+}
+
 static LRESULT CALLBACK Ai_AnswerChildSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR)
 {
+    switch (msg) {
+    case WM_KEYDOWN: {
+        bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+        if (ctrl && wParam == 'A') {
+            // Ctrl+A inside a code cell selects that cell's code (like
+            // double-click); elsewhere it falls back to the default select-all.
+            CHARRANGE sel = {};
+            SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&sel);
+            if (Ai_SelectCodeCellAt(hwnd, sel.cpMin)) {
+                return 0;
+            }
+        } else if (ctrl && wParam == 'C') {
+            // Ctrl+C copies the selection without the surrounding buffer lines.
+            CHARRANGE sel = {};
+            SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&sel);
+            if (sel.cpMax > sel.cpMin) {
+                Ai_CopyRichRangeText(hwnd, sel.cpMin, sel.cpMax);
+                return 0;
+            }
+        }
+        break;
+    }
+    case WM_LBUTTONDBLCLK: {
+        POINT pt = { (LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam) };
+        int ch = Ai_CharIndexFromClientPoint(hwnd, pt);
+        if (Ai_SelectCodeCellAt(hwnd, ch)) {
+            return 0;
+        }
+        break;
+    }
+    case WM_CONTEXTMENU: {
+        int screenX = (int)(short)LOWORD(lParam);
+        int screenY = (int)(short)HIWORD(lParam);
+        POINT ptClient;
+        int ch;
+        if (screenX == -1 && screenY == -1) {
+            CHARRANGE sel = {};
+            SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&sel);
+            ch = sel.cpMin;
+            POINTL pl = {};
+            SendMessageW(hwnd, EM_POSFROMCHAR, (WPARAM)&pl, (LPARAM)ch);
+            ptClient.x = pl.x;
+            ptClient.y = pl.y;
+            POINT ptScreen = ptClient;
+            ClientToScreen(hwnd, &ptScreen);
+            screenX = ptScreen.x;
+            screenY = ptScreen.y;
+        } else {
+            ptClient.x = screenX;
+            ptClient.y = screenY;
+            ScreenToClient(hwnd, &ptClient);
+            ch = Ai_CharIndexFromClientPoint(hwnd, ptClient);
+        }
+        int cellStart = 0, cellEnd = 0;
+        if (AiCopyCode_GetCodeRangeAt(hwnd, ch, &cellStart, &cellEnd)) {
+            Ai_ShowCodeCellMenu(hwnd, screenX, screenY, cellStart, cellEnd);
+            return 0;
+        }
+        break;
+    }
+    }
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
 static HWND Ai_CreateAnswerHost(HWND hwndParent, int x, int y, int w, int h)
 {
+    // No WS_VSCROLL here: the answer RichEdit inside fills this host and its
+    // custom MSB scrollbar (attached to st->hLog) is the only vertical bar.
     HWND hHost = CreateWindowExW(WS_EX_CLIENTEDGE, L"STATIC", L"",
-        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_VSCROLL,
+        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN,
         x, y, std::max(1, w), std::max(1, h), hwndParent, (HMENU)(UINT_PTR)IDC_AI_LOG, GetModuleHandleW(NULL), NULL);
     if (hHost) {
         SetWindowSubclass(hHost, Ai_AnswerHostSubclassProc, 1, (DWORD_PTR)hwndParent);
@@ -2497,8 +2678,12 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (hClear) SetWindowPos(hClear, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10), btnY, st->dd->buttons[2].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hClose) SetWindowPos(hClose, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10), btnY, st->dd->buttons[3].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hLog) SetWindowPos(hLog, NULL, pad, logY, rc.right - 2 * pad, logH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (st->hLog && IsWindow(st->hLog)) {
-            SetWindowPos(st->hLog, NULL, S(8), S(8), std::max(1, (int)rc.right - S(16)), std::max(1, logH - S(16)), SWP_NOZORDER | SWP_NOACTIVATE);
+        if (st->hLog && IsWindow(st->hLog) && st->hAnswerHost) {
+            // Fill the host client area so the custom MSB scrollbar sits flush
+            // against the host's right (client-edge) border.
+            RECT hrc = {};
+            GetClientRect(st->hAnswerHost, &hrc);
+            SetWindowPos(st->hLog, NULL, 0, 0, std::max(1, (int)hrc.right), std::max(1, (int)hrc.bottom), SWP_NOZORDER | SWP_NOACTIVATE);
         }
         if (st->hLogSb) msb_reposition(st->hLogSb);
         if (hStatus) SetWindowPos(hStatus, NULL, pad, rc.bottom - pad - statusH, std::max(0, (int)rc.right - 2 * pad - S(250)), statusH, SWP_NOZORDER | SWP_NOACTIVATE);

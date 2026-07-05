@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.06.28.11**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.07.05.22**
 
 ## Download
 
@@ -8,7 +8,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 
 ## Features
 
-- **AI rendering note** — the current milestone is a single RichEdit answer page that shows the query, the prose before the first code block, and the first code block together; the remaining work is scroll polish and then the later blocks.
+- **AI rendering note** — the AI answer now renders the full reply in one page: the query, the prose, and every code block. Fenced code blocks are drawn in a bordered box with Scintilla/Lexilla syntax highlighting mapped from the fence language. Double-click, Ctrl+A, and Ctrl+C are scoped to a single code cell so you copy just the snippet, and a right-click Copy menu is available on each box. The answer pane uses the custom MSB scrollbar on the right instead of the native one.
 
 - Full RTF formatting toolbar: Bold, Italic, Underline, Strikethrough, Subscript, Superscript
 - Font face, size, text colour, highlight colour

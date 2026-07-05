@@ -31,25 +31,27 @@ FILES:
     - Keep the prompt box multiline so Shift+Enter can insert a newline.
     - Clear the prompt immediately when Send is pressed.
     - Persist the AI preferences through the existing profile store.
-    - Provide a visible Copy code header for fenced blocks and a right-click
-      Copy answer command for the whole rendered response.
+    - Provide bordered, syntax-highlighted code boxes for fenced blocks and a
+      right-click Copy answer command for the whole rendered response.
     - Keep the rendered answer streaming live through the markdown renderer
       while reply chunks arrive, so special characters and code blocks remain
       readable incrementally instead of waiting for the final pass.
-    - Keep the copy-code affordance and reply formatting separate so the live
-      stream can stay incremental while the renderer still owns the final look.
+    - Keep the code-cell selection/copy affordance and reply formatting
+      separate so the live stream can stay incremental while the renderer still
+      owns the final look.
     - Keep the answer host autoscrolling the live stream without flicker while
       the chunks arrive, so the current query stays above the rendered answer
       blocks in one continuous page.
     - After the final markdown render, scroll the answer pane back to the top
       so the rendered response starts at its first line instead of staying at
       the bottom.
-    - Scintilla keeps the code block's own sideways scrollbar.
-    - Current status: the scroll host path is stable, but the fenced code block
-      viewport still needs another pass so the first block stays visible without
-      sacrificing the working scroll/layout behavior.
-    - Current milestone: the final render is now query-first, and the next
-      blocks will be added sequentially until the page stays perfect.
+    - The answer host no longer creates a native WS_VSCROLL bar. The inner
+      answer RichEdit fills the host and carries the custom MSB scrollbar
+      (msb_attach) on its right edge, so the custom bar is the only vertical
+      scrollbar on the pane.
+    - Current status: the full answer now renders (query, prose, and every
+      code block); each code box is syntax highlighted and copyable on its own,
+      and the pane scrolls with the custom MSB bar.
     - Keep the timer/status line split so the live elapsed timer stays on the
       right and the cloud / sign-in / model info stays on the left.
     - Restore the owner/main window to the foreground on close with the brief
@@ -68,9 +70,12 @@ FILES:
       Ollama stream is still arriving.
     - Incoming chunks also feed the incremental live formatter so styled code
       blocks can appear before completion.
-    - Fenced code blocks get a visible Copy code label and tracked copy
-      range; richer header styling, exact copy-link hit testing, and focus
-      handoff after closing the AI window are still later passes.
+    - Fenced code blocks render in a bordered box with Scintilla/Lexilla
+      syntax highlighting (NsbAi_HighlightCode, mapped from the fence
+      language) and are tracked by character range. Double-click or Ctrl+A
+      selects just that block's code, Ctrl+C copies it without the empty
+      padding lines, and a right-click Copy menu copies the selection (or the
+      whole cell when nothing is selected).
 
 ================================================================================
 2. ENTRY POINT

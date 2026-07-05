@@ -628,9 +628,12 @@
                                                 editor. See API_INTERNALS\API\ollama_ai_API.txt.
 
   copy_ai_code.cpp / copy_ai_code.h             AI reply copy-boundary helper. Owns the
-                                                visible Copy code label, block tracking,
-                                                clipboard copy, and the transient Copied
-                                                tooltip used by the standalone AI window.
+                                                per-block code ranges, clipboard copy, and
+                                                the transient Copied tooltip used by the
+                                                standalone AI window. Blocks are tracked by
+                                                character range so a double-click, Ctrl+A,
+                                                Ctrl+C, or right-click Copy can be scoped to
+                                                a single rendered code cell.
 
   ne_ai_bootstrap.h / ne_ai_bootstrap.cpp       AI bootstrap config loader — reads the
                                                 startup model/provider settings from
@@ -680,30 +683,33 @@
                                                 RichEdit while fenced code blocks are parsed
                                                 with cmark-gfm and displayed in the first
                                                 visible rendered block sequence. The answer
-                                                pane now keeps the query, the prose before
-                                                the first code block, and the first code block
-                                                together in one RichEdit page. The live stream
-                                                still needs its scrolling disabled so the
-                                                dormant bar does not show while streaming,
-                                                and the rendered-page scrollbar still needs one
-                                                more pass to track the full content height
-                                                cleanly. The visible Copy code header still
-                                                lives in copy_ai_code.cpp/h, and the close-window
+                                                pane now renders the whole reply in one
+                                                RichEdit page: the query, the prose, and every
+                                                fenced code block. Each code block is drawn in
+                                                a bordered box with Scintilla/Lexilla syntax
+                                                highlighting (via NsbAi_HighlightCode in
+                                                NSBEdit.cpp, mapped from the fence language).
+                                                Selection and copy are scoped to a single code
+                                                cell: double-click or Ctrl+A selects just that
+                                                block's code, Ctrl+C copies it without the empty
+                                                padding lines, and a right-click Copy menu is
+                                                available on each box. The answer host no longer
+                                                draws a native scrollbar; the inner answer
+                                                RichEdit fills the host and carries the custom
+                                                MSB scrollbar on its right edge. The visible
+                                                Copy tracking still lives in copy_ai_code.cpp/h,
+                                                and the close-window
                                                 focus handoff back to the main editor still
                                                 uses the brief TOPMOST trick on close so the
                                                 editor comes back to the front without staying
                                                 pinned.
                                                 Full layout and control-flow notes live in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt.
-                                                Current status note: render ordering is now
-                                                correct through the first code block, but the
-                                                scroll behavior still needs one dedicated pass
-                                                so the live stream hides scrolling and the
-                                                rendered view's scrollbar follows content
-                                                height.
-                                                Current milestone: the final RichEdit render
-                                                is query-first, and the next blocks will be
-                                                added one by one before code styling returns.
+                                                Current status note: the full answer now
+                                                renders (query, prose, and every code block),
+                                                code boxes are syntax highlighted and copyable
+                                                on their own, and the answer pane uses the
+                                                custom MSB scrollbar instead of the native one.
 
   locale\en_GB.txt                              Embedded locale (RCDATA 10). All user-
                                                 visible strings. Format: KEY = value,

@@ -47,7 +47,9 @@
     - send a single prompt to Ollama and show the reply in the log
     - stream the reply into the output pane as chunks arrive
     - allow copying the rendered answer or clearing the current log
-    - keep a visible copy affordance for fenced code blocks inside the answer pane
+    - render the full answer (query, prose, and every fenced code block) into
+      one RichEdit page, drawing each code block in a bordered, syntax-
+      highlighted box that can be copied on its own
 
   Text handling:
     - Both RichEdit panes wrap to the control width with no sideways scroll.
@@ -58,13 +60,17 @@
     - Live chunk appends still keep the answer incremental, and the renderer
       now owns the visible code/header styling again instead of flattening the
       output to plain text.
-    - The answer host itself does not draw a vertical scrollbar; Scintilla
-      keeps the sideways scrollbar for code blocks.
+    - The answer host no longer shows a native vertical scrollbar. The inner
+      answer RichEdit fills the host and carries the custom MSB scrollbar on
+      its right edge, so the custom bar is the only vertical scrollbar.
     - The timer/status line is split so the live elapsed timer stays on the
       right while the cloud / sign-in / model summary stays on the left.
-    - Fenced code blocks keep a visible Copy code header and tracked copy
-      span; richer header styling, exact copy-link hit testing, and focus
-      handoff after closing the window are still later follow-ups.
+    - Fenced code blocks render inside a bordered box with syntax highlighting
+      driven by the editor's Scintilla/Lexilla lexers (mapped from the fence
+      language). Selection and copy are scoped to a single code cell: double-
+      click or Ctrl+A selects just that block's code, Ctrl+C copies it without
+      the empty padding lines above and below, and a right-click Copy menu
+      copies the selection (or the whole cell when nothing is selected).
     - After the final markdown render, the answer pane scrolls back to the top
       so the rendered response starts at its first line instead of staying at
       the bottom.
@@ -81,11 +87,9 @@
       posts a completion message back to the window after the Ollama request
       finishes.
     - The output pane offers a right-click Copy action for the rendered
-      answer, and fenced code blocks add a visible Copy code header that
-      copies only the text inside the fenced block.
-    - The remaining follow-up is richer copy-header styling, exact hit
-      testing for the code-copy span, and a better focus handoff back to the
-      main editor when the AI window closes.
+      answer, and fenced code blocks render in a bordered, syntax-highlighted
+      box whose code can be copied on its own (double-click / Ctrl+A select,
+      Ctrl+C or the right-click Copy menu copy just the snippet).
     - Closing the AI window now restores the owner/main window to the front
       with the brief TOPMOST nudge, then clears the pin immediately.
 

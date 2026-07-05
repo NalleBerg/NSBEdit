@@ -1,6 +1,17 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 28 June 2026 &mdash; v2026.06.28.11 (11:04)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 5 July 2026 &mdash; v2026.07.05.22 (22:16)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.07.05.22 (Feature: syntax-highlighted AI code blocks, code-cell copy UX, and custom answer scrollbar)</span></h3>
+<p><strong>Feature: syntax-highlighted AI code blocks, code-cell copy UX, and custom answer scrollbar (05.07.2026, 22:16):</strong></p>
+<ul>
+<li><strong>Feature: AI code blocks are now syntax highlighted:</strong> fenced code in the rendered answer is coloured with the same Scintilla/Lexilla lexers the editor uses, mapped from the fence language, so keywords, strings, and comments show in colour inside the bordered code box.</li>
+<li><strong>Feature: double-click selects only the code in a cell:</strong> double-clicking inside a rendered code box now selects just that block's code text, no longer spilling into the padding lines or the prose around the box.</li>
+<li><strong>Feature: Ctrl+A and Ctrl+C are scoped to the code cell:</strong> pressing Ctrl+A while inside a code box selects only that cell's code, and Ctrl+C copies the selection without the empty buffer lines above and below, so the snippet pastes straight into existing code.</li>
+<li><strong>Feature: right-click Copy on code boxes:</strong> a right-click inside a rendered code cell now shows an owner-drawn Copy menu that copies the current selection, or the whole cell's code when nothing is selected.</li>
+<li><strong>Fix: the answer pane now uses the custom scrollbar:</strong> the non-working native scrollbar was removed from the answer host and the rendered answer now fills it, so the custom MSB scrollbar on the right is the only vertical bar.</li>
+<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.07.05.22</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.06.28.11 (Status: single RichEdit AI render now shows query, prose, and the first code block)</span></h3>
 <p><strong>Status: single RichEdit AI render now shows query, prose, and the first code block (28.06.2026, 11:04):</strong></p>
