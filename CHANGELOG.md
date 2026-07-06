@@ -1,5 +1,20 @@
 # Changelog
 
+## v2026.07.06.11 (Feature: AI project control — suggestion-mode workspace, code search, and big-file batch reading) - 06.07.2026 11:30
+
+- **Feature: Project menu and workspace**: a new **Project** top-level menu (built like the FTP menu) lets you point the AI at a project root folder. The active project is marked with a check-tick (like the GUI-language menu), stored in the shared SQLite database, and the selection survives closing and re-opening the app. Add a project via a standard folder picker; remove the current one from the menu.
+- **Feature: AI suggestion mode reads your project**: when a project is active, the AI receives the project structure and relevant files and is told to answer directly and point you at the exact file and location for any suggested code. Linked folders (OS symlinks / junctions such as `MyStyle`) inside the root are followed as if they were part of the workspace.
+- **Feature: filename typo auto-correction against disk**: a file the AI is asked to read is matched against what is actually on disk, segment by segment, so a mistyped path like `.\;yStyle\API_list.txt` is understood as `MyStyle/API_list.txt`, resolving straight through junctions.
+- **Feature: code search**: the AI greps the project for a named symbol or function (anything you put in `` `backticks` `` plus identifier-like words) and receives just the matching snippet with surrounding context, so it can analyse or rewrite a function without ingesting the whole file.
+- **Feature: large files read in batches**: a big referenced file that has no matching symbol is split into batches; each batch is analysed and a final answer is synthesised (map-reduce), so files with thousands of lines can be handled without exceeding the model context.
+- **Feature: spinner progress**: the wait spinner now shows a rising best-guess percentage while the model is queried, and real `Reading batch i/N (nn%)` → `Synthesising answer` progress during batch reading, so it never looks frozen.
+- **Fix: responsiveness and context window**: the Ollama request now sets `num_ctx` and the project context is bounded, so answers start quickly instead of stalling for minutes when a large file is involved.
+- **Fix: answer rendering**: bold/italic no longer leak through the rest of the answer, inline `` `code` `` renders in a monospace box, and headings, block quotes, and bullet lists render correctly — with a single renderer used for every answer.
+- **Change: Agent mode removed from the Model menu**: this is a suggest-mode-only build for the public release; the Model menu lists only the Suggest entries.
+- **Change: stale build logs cleaned up**: `makeit.bat` now deletes stale `build*` / `output.txt` logs on each build, and the AI project scan skips build logs and scratch files so outdated errors can no longer mislead the model.
+- **i18n: Project-menu and progress strings added to all 15 locales.**
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.07.06.11`.
+
 ## v2026.07.05.22 (Feature: syntax-highlighted AI code blocks, code-cell copy UX, and custom answer scrollbar) - 05.07.2026 22:16
 
 - **Feature: AI code blocks are now syntax highlighted**: fenced code in the rendered answer is coloured with the same Scintilla/Lexilla lexers the editor uses, mapped from the fence language, so keywords, strings, and comments show in colour inside the bordered code box.

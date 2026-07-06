@@ -13,6 +13,7 @@
 #include <gdiplus.h>
 #include <commctrl.h>
 #include <shellapi.h>
+#include <shlobj.h>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -35,6 +36,7 @@
 #include "regex_guide/regex_guide.h"
 #include "ne_crypto.h"
 #include "ne_profiles.h"
+#include "ne_projects.h"
 #include "ne_ai_bootstrap.h"
 #include "ne_ai_client.h"
 #include "ollama_ai.h"
@@ -157,6 +159,10 @@ enum class NeEncoding {
 #define IDM_LANG_BASE        600  // Language menu: 600..600+NE_LANG_COUNT-1
 #define IDM_FTP_CONNECT_BASE 700  // FTP menu: profile entries 700..799
 #define IDM_LOCALE_BASE      800  // GUI language menu: locale entries 800..899
+#define IDM_PROJECT_ADD      142  // Project menu: "Add project..."
+#define IDM_PROJECT_REMOVE   143  // Project menu: "Remove current project"
+#define IDM_PROJECT_NONE     144  // Project menu: "(No project)"
+#define IDM_PROJECT_BASE    1200  // Project menu: project entries 1200..1299
 #define IDC_NE_CLEARFMT     227
 #define IDC_NE_PRINT_BTN    228
 #define IDC_NE_ZOOM         229
@@ -436,6 +442,7 @@ static const int NE_LANG_COUNT = (int)(sizeof(s_langs) / sizeof(s_langs[0]));
 // Menu handle for the Language popup (so we can update checkmarks).
 static HMENU s_hLangMenu   = NULL;
 static HMENU s_hFtpMenu    = NULL;
+static HMENU s_hProjectMenu = NULL;
 static HMENU s_hLocaleMenu = NULL;
 static HMENU s_hRecentMenu = NULL;
 
@@ -10157,6 +10164,9 @@ static void Ne_BuildMainMenu(HWND hwnd)
     // ── FTP menu ──────────────────────────────────────────────────────────
     s_hFtpMenu = CreatePopupMenu();
     Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hFtpMenu, Ls(L"MENU_FTP"), true);
+    // ── Project menu ──────────────────────────────────────────────────────
+    s_hProjectMenu = CreatePopupMenu();
+    Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hProjectMenu, Ls(L"MENU_PROJECT"), true);
     // ── GUI language menu ─────────────────────────────────────────────────
     s_hLocaleMenu = CreatePopupMenu();
     Ne_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)s_hLocaleMenu, Ls(L"MENU_GUI_LANG"), true);
@@ -10283,6 +10293,47 @@ static void Ne_RebuildFtpMenu(HWND hwnd)
         HICON hIcon = NeFtp_IsConnected(ftpProfiles[pi].id) ? g_hFtpConnIcon : NULL;
         Ne_AppendMenuOD(s_hFtpMenu, MF_STRING,
                         IDM_FTP_CONNECT_BASE + pi, label.c_str(),
+                        false, hIcon);
+    }
+}
+
+// Prompt the user to pick a folder.  Returns true and fills outPath on success.
+static bool Ne_PickFolder(HWND owner, const wchar_t* title, std::wstring& outPath)
+{
+    BROWSEINFOW bi = {};
+    bi.hwndOwner = owner;
+    bi.lpszTitle = title;
+    bi.ulFlags   = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE | BIF_EDITBOX;
+    LPITEMIDLIST pidl = SHBrowseForFolderW(&bi);
+    if (!pidl) return false;
+    wchar_t path[MAX_PATH] = {};
+    bool ok = SHGetPathFromIDListW(pidl, path) != FALSE;
+    CoTaskMemFree(pidl);
+    if (ok) outPath = path;
+    return ok && outPath[0];
+}
+
+// Rebuild the Project popup from scratch (called in WM_INITMENUPOPUP for s_hProjectMenu).
+// The active project is marked with the same tick icon used by the GUI-language menu.
+static void Ne_RebuildProjectMenu(HWND hwnd)
+{
+    while (GetMenuItemCount(s_hProjectMenu) > 0)
+        RemoveMenu(s_hProjectMenu, 0, MF_BYPOSITION);
+    int64_t activeId = NeProjects_GetActiveId();
+    Ne_AppendMenuOD(s_hProjectMenu, MF_STRING, IDM_PROJECT_ADD, Ls(L"PROJECT_ADD"));
+    Ne_AppendMenuOD(s_hProjectMenu,
+        MF_STRING | (activeId ? 0 : MF_GRAYED),
+        IDM_PROJECT_REMOVE, Ls(L"PROJECT_REMOVE"));
+    Ne_AppendMenuOD(s_hProjectMenu, MF_SEPARATOR, 0, NULL);
+    // "(No project)" — ticked when nothing is active.
+    Ne_AppendMenuOD(s_hProjectMenu, MF_STRING, IDM_PROJECT_NONE, Ls(L"PROJECT_NONE"),
+                    false, activeId == 0 ? g_hLocaleMenuIcon : NULL);
+    std::vector<NeProject> projects;
+    NeProjects_List(projects);
+    for (int pi = 0; pi < (int)projects.size() && pi < 100; ++pi) {
+        HICON hIcon = (projects[pi].id == activeId) ? g_hLocaleMenuIcon : NULL;
+        Ne_AppendMenuOD(s_hProjectMenu, MF_STRING,
+                        IDM_PROJECT_BASE + pi, projects[pi].name.c_str(),
                         false, hIcon);
     }
 }
@@ -14158,6 +14209,49 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                          Ls(L"REGEX_GUIDE_CLEAR"),
                          Ls(L"BTN_CLOSE")); return 0; }
         if (wmId == IDM_ABOUT)       { ShowNsbAboutDialog(hwnd); return 0; }
+        // ── Project menu ──────────────────────────────────────────────────────
+        if (wmId == IDM_PROJECT_ADD) {
+            std::wstring folder;
+            if (Ne_PickFolder(hwnd, Ls(L"PROJECT_PICK_TITLE"), folder)) {
+                // Derive a display name from the last path component.
+                std::wstring name = folder;
+                size_t slash = name.find_last_of(L"\\/");
+                if (slash != std::wstring::npos && slash + 1 < name.size())
+                    name = name.substr(slash + 1);
+                NeProject p;
+                p.name     = name.empty() ? folder : name;
+                p.rootPath = folder;
+                if (NeProjects_Add(p))
+                    NeProjects_SetActiveId(p.id);   // auto-select the new project
+            }
+            return 0;
+        }
+        if (wmId == IDM_PROJECT_NONE) {
+            NeProjects_SetActiveId(0);
+            return 0;
+        }
+        if (wmId == IDM_PROJECT_REMOVE) {
+            int64_t activeId = NeProjects_GetActiveId();
+            if (activeId) {
+                NeProject cur;
+                std::wstring nm = NeProjects_GetById(activeId, cur) ? cur.name : L"";
+                std::wstring msg = Ls(L"PROJECT_REMOVE_CONFIRM");
+                if (!nm.empty()) msg += L"\n\n" + nm;
+                if (MessageBoxW(hwnd, msg.c_str(), Ls(L"PROJECT_REMOVE_TITLE"),
+                                MB_YESNO | MB_ICONQUESTION) == IDYES) {
+                    NeProjects_Delete(activeId);    // clears active id automatically
+                }
+            }
+            return 0;
+        }
+        if (wmId >= IDM_PROJECT_BASE && wmId < IDM_PROJECT_BASE + 100) {
+            std::vector<NeProject> projects;
+            NeProjects_List(projects);
+            int idx = wmId - IDM_PROJECT_BASE;
+            if (idx >= 0 && idx < (int)projects.size())
+                NeProjects_SetActiveId(projects[idx].id);
+            return 0;
+        }
         // ── FTP menu ──────────────────────────────────────────────────────────
         if (wmId == IDM_FTP_ADD_SITE) {
             Ne_ShowFtpSiteDialog(hwnd, nullptr);
@@ -15084,6 +15178,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             Ne_RebuildFtpMenu(hwnd);
             return 0;
         }
+        // ── Project popup — rebuild from DB each time it opens ────────────────
+        if (hPop == s_hProjectMenu) {
+            Ne_RebuildProjectMenu(hwnd);
+            return 0;
+        }
         // ── GUI locale popup ──────────────────────────────────────────────────
         if (hPop == s_hLocaleMenu) {
             Ne_RebuildLocaleMenu(hwnd);
@@ -15369,6 +15468,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     // so locale and dark mode are correct at window-creation time.
     NeCrypto_Init();
     NeProfiles_Init();
+    NeProjects_Init();
     {
         int locVal = 0;
         NeProfiles_GetIntSetting("locale_id",  0, locVal);  g_localeId   = locVal;

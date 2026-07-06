@@ -1,6 +1,23 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 5 July 2026 &mdash; v2026.07.05.22 (22:16)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 6 July 2026 &mdash; v2026.07.06.11 (11:30)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.07.06.11 (Feature: AI project control &mdash; suggestion-mode workspace, code search, and big-file batch reading)</span></h3>
+<p><strong>Feature: AI project control &mdash; suggestion-mode workspace, code search, and big-file batch reading (06.07.2026, 11:30):</strong></p>
+<ul>
+<li><strong>Feature: Project menu and workspace:</strong> a new Project top-level menu (built like the FTP menu) lets you point the AI at a project root folder. The active project is marked with a check-tick, stored in the shared SQLite database, and the selection survives closing and re-opening the app. Add a project via a standard folder picker; remove the current one from the menu.</li>
+<li><strong>Feature: AI suggestion mode reads your project:</strong> when a project is active, the AI receives the project structure and relevant files and is told to answer directly and point you at the exact file and location for any suggested code. Linked folders (OS symlinks / junctions such as <code>MyStyle</code>) inside the root are followed as if they were part of the workspace.</li>
+<li><strong>Feature: filename typo auto-correction against disk:</strong> a file the AI is asked to read is matched against what is actually on disk, segment by segment, so a mistyped path like <code>.\;yStyle\API_list.txt</code> is understood as <code>MyStyle/API_list.txt</code>, resolving straight through junctions.</li>
+<li><strong>Feature: code search:</strong> the AI greps the project for a named symbol or function and receives just the matching snippet with surrounding context, so it can analyse or rewrite a function without ingesting the whole file.</li>
+<li><strong>Feature: large files read in batches:</strong> a big referenced file that has no matching symbol is split into batches; each batch is analysed and a final answer is synthesised (map-reduce), so files with thousands of lines can be handled without exceeding the model context.</li>
+<li><strong>Feature: spinner progress:</strong> the wait spinner now shows a rising best-guess percentage while the model is queried, and real <code>Reading batch i/N</code> &rarr; <code>Synthesising answer</code> progress during batch reading.</li>
+<li><strong>Fix: responsiveness and context window:</strong> the Ollama request now sets <code>num_ctx</code> and the project context is bounded, so answers start quickly instead of stalling for minutes when a large file is involved.</li>
+<li><strong>Fix: answer rendering:</strong> bold/italic no longer leak through the rest of the answer, inline <code>code</code> renders in a monospace box, and headings, block quotes, and bullet lists render correctly &mdash; with a single renderer used for every answer.</li>
+<li><strong>Change: Agent mode removed from the Model menu:</strong> this is a suggest-mode-only build for the public release; the Model menu lists only the Suggest entries.</li>
+<li><strong>Change: stale build logs cleaned up:</strong> <code>makeit.bat</code> now deletes stale build logs on each build, and the AI project scan skips build logs and scratch files so outdated errors can no longer mislead the model.</li>
+<li><strong>i18n: Project-menu and progress strings added to all 15 locales.</strong></li>
+<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.07.06.11</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.07.05.22 (Feature: syntax-highlighted AI code blocks, code-cell copy UX, and custom answer scrollbar)</span></h3>
 <p><strong>Feature: syntax-highlighted AI code blocks, code-cell copy UX, and custom answer scrollbar (05.07.2026, 22:16):</strong></p>

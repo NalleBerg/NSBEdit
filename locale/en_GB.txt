@@ -476,6 +476,18 @@ CREDITS_RTF2HTML   = rtf2html is an open-source RTF to HTML converter library by
 CREDITS_CMARK_GFM  = cmark-gfm is an extended CommonMark parser with GitHub Flavored Markdown support. NSBEdit is moving the AI view Markdown renderer to cmark-gfm so the reply view can stop inventing markdown rules in RichEdit. Licensed under the BSD 2-Clause License.\n\n
 CREDITS_OLLAMA     = Ollama is an open-source local AI runtime. NSBEdit uses it for optional local AI suggestions and agent mode.\n\n
 
+# ── Project (AI workspace) ────────────────────────────────────────────────────
+MENU_PROJECT         = Project
+PROJECT_ADD          = Add project...
+PROJECT_REMOVE       = Remove current project
+PROJECT_NONE         = (No project)
+PROJECT_PICK_TITLE   = Select the project root folder
+PROJECT_REMOVE_TITLE = Remove project
+PROJECT_REMOVE_CONFIRM = Remove this project from the list?
+
+AI_PROGRESS_READING  = Reading batch
+AI_PROGRESS_SYNTH    = Synthesising answer
+
 # ── FTP / SFTP ────────────────────────────────────────────────────────────────
 MENU_FTP             = FTP
 FTP_ADD_SITE         = Add site...

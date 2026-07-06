@@ -295,3 +295,47 @@ FILES:
   - Keep the prompt/log UI simple until the layout bug is fully fixed.
   - Update this file whenever the AI shell gains real chat wiring or new menu
     actions.
+
+Project suggestion mode (v2026.07.06.11)
+----------------------------------------
+  - Project store: ne_projects.h/.cpp. Reuses the ne_profiles SQLite handle;
+    `projects` table (id/name/root_path) + settings key `active_project`
+    (0 = none, survives restart). NeProjects_CollectFiles walks the root and
+    FOLLOWS symlinks/junctions (reparse points), cycle-guarded by canonical
+    paths (GetFinalPathNameByHandleW); Prj_SkipDir skips heavy dirs and
+    Prj_SkipFile skips *.log / build*.txt / makeit*.log / output.txt / ai*.txt
+    so stale build logs never enter AI context.
+  - Context build runs on the UI THREAD before the send worker, because the
+    SQLite handle is single-threaded (THREADSAFE=0). Ai_BuildProjectContext
+    prepends a bounded "[PROJECT CONTEXT - SUGGESTION MODE]" block: rules
+    (answer directly, ignore logs, name exact file+location), a small file
+    listing (80), grep snippets, then the exact named files LAST (llama.cpp
+    keeps the tail on truncation).
+  - Named-file resolution: Ai_ExtractFileRefs pulls path/ext-looking tokens;
+    Ai_ResolveRef resolves exact then fuzzy. Path-qualified names go through
+    Ai_ResolveOnDisk (segment-by-segment edit-distance match against real
+    directory entries, so ".\;yStyle\API_list.txt" -> MyStyle/API_list.txt and
+    junctions are traversed); bare names match collected files by base name.
+    Corrections are reported to the model.
+  - Code search: Ai_ExtractSearchTerms (backtick spans + identifier/camelCase),
+    Ai_SearchSnippets greps files and emits matching lines with context (6
+    before / 34 after) so a function is captured without the whole file. When
+    snippets are found they REPLACE the broad whole-file dump.
+  - Big files: Ai_PlanBigFileChunks - a named file > 12000 wchars with NO
+    matching search term is split into 8000-wchar batches. Ai_StartSendWorker
+    gained mapChunks/reduceHeader: each batch is analysed via non-streamed
+    NeAiClient_AskOllama, notes collected, then the reduce prompt is streamed as
+    the answer. Progress via WM_AI_PROGRESS (WM_APP+75) -> spinner->SetText.
+  - Responsiveness: ne_ai_client sets options.num_ctx=12288; prompt budgets are
+    small (listing 80, content total 12000 wchars). Prompt size drives local
+    prefill time - a 188KB file (~47k tokens) stalled for minutes before this.
+  - Spinner progress: kAiThinkingTimerId (1s) calls Ai_UpdateSpinnerProgress ->
+    best-guess pct = 95*e/(e+25); gated by st->chunkedActive so it does not
+    fight real batch progress. Spinner hides on the first streamed chunk.
+  - Rendering: Ai_ParseAnswerBlocks always keeps raw markdown now; the fixed
+    inline renderer (Ai_AppendMarkupLine) handles **bold**, *italic*, `code`
+    (Consolas box), #..###### headings, "> " quotes and "- "/"+ " bullets. All
+    inline CHARFORMAT masks include CFM_BOLD|CFM_ITALIC so effects never leak.
+  - Model menu: Agent entries removed (Suggest-only public build); the
+    AiMenuRole enum/infra stays for a future Agent return.
+

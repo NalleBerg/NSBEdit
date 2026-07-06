@@ -505,7 +505,8 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
         Ai_EscapeJson(Ai_WideToUtf8(model.empty() ? L"qwen3-coder" : model)) +
         "\",\"prompt\":\"" +
         Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
-        "\",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\"}";
+        "\",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\""
+        ",\"options\":{\"num_ctx\":12288}}";
 
     std::string responseBody;
     char errbuf[CURL_ERROR_SIZE] = {};

@@ -469,6 +469,18 @@ CREDITS_CURL       = libcurl est une bibliothèque de transfert d'URL gratuite e
 CREDITS_RTF2HTML   = rtf2html est une bibliothèque open source de conversion RTF vers HTML créée par Valentyn Lavrynenko. NSBEdit l'utilise pour exporter des documents RTF en HTML5. Sous licence GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
 CREDITS_OLLAMA     = Ollama est un moteur d'IA local open source. NSBEdit l'utilise pour des suggestions d'IA locales optionnelles et le mode agent.\n\n
 
+# ── Projet (espace de travail IA) ─────────────────────────────────────────────
+MENU_PROJECT         = Projet
+PROJECT_ADD          = Ajouter un projet...
+PROJECT_REMOVE       = Supprimer le projet actuel
+PROJECT_NONE         = (Aucun projet)
+PROJECT_PICK_TITLE   = Sélectionnez le dossier racine du projet
+PROJECT_REMOVE_TITLE = Supprimer le projet
+PROJECT_REMOVE_CONFIRM = Supprimer ce projet de la liste ?
+
+AI_PROGRESS_READING  = Lecture du bloc
+AI_PROGRESS_SYNTH    = Synthèse de la réponse
+
 # ── FTP / SFTP ────────────────────────────────────────────────────────────────
 MENU_FTP             = FTP
 FTP_ADD_SITE         = Ajouter un site...

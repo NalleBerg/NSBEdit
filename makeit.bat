@@ -19,6 +19,9 @@ echo.
 
 :: ─────────────────────────────────────────────────────────────────────────────
 echo [STEP 1/6] Prepare  --  version header  +  kill running instance
+:: Clean stale build logs so they don't pile up or mislead the AI's project scan
+:: (makeit.log is preserved -- it is the current run's log).
+del /q build*.txt build*.log output.txt makeit_fresh.log 2>nul
 powershell -NoProfile -Command "& { $l = gc 'curver.txt'; $p = ($l -match '^Published: ')[0] -replace '^Published: ',''; $v = ($l -match '^Version: ')[0] -replace '^Version: ',''; $q = [char]34; [IO.File]::WriteAllText([IO.Path]::GetFullPath('ne_version.h'), '#pragma once' + [char]10 + '#define NE_PUBLISHED L' + $q + $p + $q + [char]10 + '#define NE_VERSION   L' + $q + $v + $q, [Text.Encoding]::UTF8) }"
 @if !ERRORLEVEL! neq 0 ( echo [ERROR] ne_version.h generation FAILED & exit /b 1 )
 echo   ne_version.h  OK
@@ -121,6 +124,7 @@ g++ -v -std=c++17 -O2 -Wall -mwindows -municode ^
     NSBEdit.cpp ne_tabs.cpp ne_statusbar.cpp dpi.cpp tooltip\tooltip.cpp scroll\my_scrollbar_vscroll.cpp ^
     highlight\highlight.cpp checkbox.cpp regex_guide\regex_guide.cpp ^
     ne_crypto.cpp ne_profiles.cpp ne_ai_bootstrap.cpp ne_ai_client.cpp ne_session.cpp ne_ftp.cpp ne_autocomplete\ne_autocomplete.cpp ^
+    ne_projects.cpp ^
     spinner\spinner_dialog.cpp ^
     ai_markdown_helper.cpp ^
     copy_ai_code.cpp ^

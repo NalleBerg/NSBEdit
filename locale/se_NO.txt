@@ -470,6 +470,18 @@ CREDITS_CURL       = libcurl lea njibilaš URL-sirdinbibliotehka Daniel Stenberg
 CREDITS_RTF2HTML   = rtf2html lea rievttes RTF-HTML-nuppástuhttin-bibliotehka Valentyn Lavrinenkos. NSBEdit geavaha dan hápmostuvvon dokumeanttat HTML5-hámis exporterejeapmái. Mearriduvvon GNU Lesser General Public License v2.1 (LGPLv2.1) vuolde.\n\n
 CREDITS_OLLAMA     = Ollama lea rievttes bohtte AI-ráigid. NSBEdit geavaha dan eaktodáhtolaš bohtte AI-evttohusain ja agentamodus.\n\n
 
+# ── Prošeakta (AI-bargosadji) ─────────────────────────────────────────────────
+MENU_PROJECT         = Prošeakta
+PROJECT_ADD          = Lasit prošeavtta...
+PROJECT_REMOVE       = Váldit eret dálá prošeavtta
+PROJECT_NONE         = (Ii prošeakta)
+PROJECT_PICK_TITLE   = Vállje prošeavtta ruohtasmáhpa
+PROJECT_REMOVE_TITLE = Váldit eret prošeavtta
+PROJECT_REMOVE_CONFIRM = Váldit eret dán prošeavtta listtus?
+
+AI_PROGRESS_READING  = Loga oasi
+AI_PROGRESS_SYNTH    = Čoahkkida vástádusa
+
 # ── FTP / SFTP ────────────────────────────────────────────────────────────────
 MENU_FTP             = FTP
 FTP_ADD_SITE         = Siidu lasihit...

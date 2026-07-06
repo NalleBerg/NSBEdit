@@ -647,6 +647,26 @@
                                                 Ollama request path used by the AI shell
                                                 to decide whether local Ollama is
                                                 responsive and to stream reply chunks.
+                                                The /api/generate request sets
+                                                options.num_ctx (12288) so a project
+                                                context prompt is not silently truncated
+                                                to Ollama's small default window.
+
+  ne_projects.h / ne_projects.cpp               AI project (workspace) store and scanner.
+                                                Reuses the shared SQLite handle from
+                                                ne_profiles.cpp; a `projects` table holds
+                                                id/name/root_path and the active project id
+                                                lives in the settings table (survives
+                                                restart). NeProjects_CollectFiles walks the
+                                                root following OS symlinks/junctions (cycle-
+                                                guarded via GetFinalPathNameByHandleW),
+                                                skipping heavy dirs and build-log/scratch
+                                                files; NeProjects_ReadTextFile does a best-
+                                                effort UTF-16/UTF-8/ANSI read. The Project
+                                                menu in NSBEdit.cpp adds/removes/selects
+                                                projects (check-tick on the active one).
+                                                See API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt
+                                                for how the AI consumes a project.
 
   API_INTERNALS\API\system_API.txt             Public MyStyle system overview — install and
                                                 runtime database rules, portable vs installed
@@ -710,6 +730,23 @@
                                                 code boxes are syntax highlighted and copyable
                                                 on their own, and the answer pane uses the
                                                 custom MSB scrollbar instead of the native one.
+                                                Project suggestion mode: when a project
+                                                (ne_projects) is active, Ai_BuildProjectContext
+                                                prepends a bounded suggestion-mode context —
+                                                file listing, prompt-relevant grep snippets
+                                                (Ai_SearchSnippets, so a function is found
+                                                without reading whole files), and the exact
+                                                files the user named (Ai_ResolveRef fuzzy-
+                                                matches typos against disk, through junctions).
+                                                A large named file with no matching symbol is
+                                                read in batches (Ai_PlanBigFileChunks) and
+                                                answered map-reduce style; the spinner shows a
+                                                best-guess % (normal) or real batch progress
+                                                (WM_AI_PROGRESS). Answer markdown now uses one
+                                                renderer with fixed bold/italic masks (no leak),
+                                                inline `code`, headings, quotes and bullets.
+                                                Agent mode is removed from the Model menu
+                                                (Suggest-only build).
 
   locale\en_GB.txt                              Embedded locale (RCDATA 10). All user-
                                                 visible strings. Format: KEY = value,
