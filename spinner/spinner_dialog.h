@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <string>
+#include <functional>
 
 // SpinnerDialog - Reusable animated loading spinner dialog
 // Displays a blue spinning circle with customizable text message
@@ -33,7 +34,17 @@ public:
     // Update the displayed text without hiding/showing
     // text: New message to display
     void SetText(const std::wstring& text);
-    
+
+    // Set the title-bar caption (defaults to "Please Wait"). Call before Show()
+    // to localise the caption.
+    void SetTitle(const std::wstring& title);
+
+    // Enable an optional owner-drawn Stop button below the spinner. When the
+    // user clicks it (or presses Esc) onStop is invoked on the UI thread. Call
+    // before Show(), or while visible to add it on the fly. Only spinners that
+    // set this get a button; all other callers keep the plain spinner.
+    void SetStopButton(const std::wstring& label, std::function<void()> onStop);
+
     // Check if dialog is currently visible
     bool IsVisible() const;
     
@@ -45,12 +56,20 @@ private:
     HWND m_hDialog;
     HWND m_hSpinnerCtrl;
     HWND m_hTextCtrl;
+    HWND m_hStopBtn = NULL;
+    HFONT m_hStopFont = NULL;
+    std::wstring m_stopLabel;
+    std::wstring m_title = L"Please Wait";
+    std::function<void()> m_onStop;
     int m_spinnerFrame;
     bool m_visible;
     
     // Window procedure
     static LRESULT CALLBACK DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
     
+    // Create the optional Stop button when a handler is set and the dialog exists.
+    void EnsureStopButton();
+
     // Helper to create and center dialog
     void CreateDialogWindow();
     void LayoutForText(const std::wstring& text);

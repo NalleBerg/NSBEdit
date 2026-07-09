@@ -3,9 +3,19 @@
 #include <winhttp.h>
 #include "curl/include/curl/curl.h"
 
+#include <atomic>
 #include <regex>
 #include <string>
 #include <vector>
+
+// Set when the user presses Stop; the streaming write callback aborts the
+// transfer and the worker skips any retry.  Lives at file scope so both the
+// callback and the public cancel API can reach it.
+static std::atomic<bool> g_aiCancelRequested{false};
+
+void NeAiClient_RequestCancel()   { g_aiCancelRequested.store(true); }
+void NeAiClient_ResetCancel()     { g_aiCancelRequested.store(false); }
+bool NeAiClient_IsCancelRequested() { return g_aiCancelRequested.load(); }
 
 namespace {
 
@@ -84,6 +94,10 @@ static size_t Ai_OllamaWriteCallback(char* ptr, size_t size, size_t nmemb, void*
 {
     auto* state = (OllamaStreamState*)userdata;
     if (!state || !ptr) return 0;
+
+    // Cooperative cancel: returning less than the received byte count makes curl
+    // abort the transfer with CURLE_WRITE_ERROR, unblocking curl_easy_perform.
+    if (g_aiCancelRequested.load()) return 0;
 
     size_t total = size * nmemb;
     if (total == 0) return 0;
@@ -485,7 +499,8 @@ bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
 }
 
 bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& prompt,
-    void* context, NeAiOllamaChunkFn onChunk, std::wstring& outReply, std::wstring& outError)
+    void* context, NeAiOllamaChunkFn onChunk, std::wstring& outReply, std::wstring& outError,
+    int numCtx)
 {
     outReply.clear();
     outError.clear();
@@ -501,12 +516,13 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
     state.context = context;
     state.onChunk = onChunk;
 
+    int ctx = numCtx > 0 ? numCtx : 12288;
     std::string body = std::string("{\"model\":\"") +
         Ai_EscapeJson(Ai_WideToUtf8(model.empty() ? L"qwen3-coder" : model)) +
         "\",\"prompt\":\"" +
         Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
         "\",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\""
-        ",\"options\":{\"num_ctx\":12288}}";
+        ",\"options\":{\"num_ctx\":" + std::to_string(ctx) + "}}";
 
     std::string responseBody;
     char errbuf[CURL_ERROR_SIZE] = {};
@@ -584,7 +600,7 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
 }
 
 bool NeAiClient_AskOllama(const std::wstring& model, const std::wstring& prompt,
-    std::wstring& outReply, std::wstring& outError)
+    std::wstring& outReply, std::wstring& outError, int numCtx)
 {
-    return NeAiClient_AskOllamaStream(model, prompt, NULL, NULL, outReply, outError);
+    return NeAiClient_AskOllamaStream(model, prompt, NULL, NULL, outReply, outError, numCtx);
 }

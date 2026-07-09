@@ -111,14 +111,32 @@ static bool AiCopyCode_BlockHitTest(HWND hwndLog, const AiCodeBlockCopyInfo& blo
 void Ai_CopyTextToClipboard(HWND hwnd, const std::wstring& text)
 {
     if (text.empty()) return;
+    // Normalise line breaks to CRLF.  Text pulled out of the answer RichEdit (and
+    // especially the RTF code-cell tables) uses vertical-tab (0x0B) as a soft line
+    // break; pasted verbatim that shows up as a literal "VT" glyph in the editor.
+    // Convert 0x0B and any lone CR / LF into proper CRLF so code pastes cleanly.
+    std::wstring norm;
+    norm.reserve(text.size() + 16);
+    for (size_t i = 0; i < text.size(); ++i) {
+        wchar_t c = text[i];
+        if (c == L'\r') {
+            norm += L"\r\n";
+            if (i + 1 < text.size() && text[i + 1] == L'\n') ++i;   // skip the paired LF
+        } else if (c == L'\n' || c == 0x0B /*VT*/ || c == 0x0C /*FF*/) {
+            norm += L"\r\n";
+        } else {
+            norm += c;
+        }
+    }
+
     if (!OpenClipboard(hwnd)) return;
     EmptyClipboard();
-    SIZE_T bytes = (text.size() + 1) * sizeof(wchar_t);
+    SIZE_T bytes = (norm.size() + 1) * sizeof(wchar_t);
     HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, bytes);
     if (hMem) {
         wchar_t* dst = (wchar_t*)GlobalLock(hMem);
         if (dst) {
-            memcpy(dst, text.c_str(), bytes);
+            memcpy(dst, norm.c_str(), bytes);
             GlobalUnlock(hMem);
             SetClipboardData(CF_UNICODETEXT, hMem);
         } else {

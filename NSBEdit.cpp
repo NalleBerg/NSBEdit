@@ -1930,10 +1930,43 @@ static bool  s_suppressDiskCheck = false;              // suppresses external-fi
 static bool  s_appIsActive      = true;                // false while another application is in the foreground
 static DWORD s_deactivatedAt    = 0;                   // GetTickCount() when app last went to background (debounce)
 
+static bool Ne_DocIsRtf(NeTabDoc* doc);                // defined later; used by the paste guard below
+
 // ── Soft-wrap indicator: draw dark-green ↲ at the end of each visually-wrapped line ──
 static LRESULT CALLBACK Ne_RichWrapSubclassProc(
     HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uid, DWORD_PTR /*data*/)
 {
+    // Plain-text and code documents must stay plain all the way through: when
+    // pasting into a non-RTF document, take only the Unicode text off the
+    // clipboard and drop any RTF (colours, fonts) that rich sources such as the
+    // AI answer window put alongside it.  Without this, rich content pasted into
+    // a .h/.cpp/.txt tab would carry formatting and later be written out with
+    // \rtf1 control words.
+    if (msg == WM_PASTE) {
+        NeTabDoc* doc = NeTabs_GetDocByEdit(GetParent(hwnd), hwnd);
+        if (doc && !Ne_DocIsRtf(doc) && IsClipboardFormatAvailable(CF_UNICODETEXT)) {
+            CHARRANGE before = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&before);
+            SendMessageW(hwnd, EM_PASTESPECIAL, CF_UNICODETEXT, 0);
+            // Re-colour the pasted run to the plain-text theme colour. Text
+            // copied from a differently-themed source (e.g. the AI window)
+            // otherwise keeps its original colour and can arrive black-on-dark
+            // — invisible in a dark plain-text tab.
+            CHARRANGE after = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&after);
+            if (after.cpMax > before.cpMin) {
+                bool darkEd = g_darkMode || g_darkEditor;
+                CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
+                cf.dwMask     = CFM_COLOR;
+                cf.dwEffects  = darkEd ? 0 : CFE_AUTOCOLOR;
+                cf.crTextColor = darkEd ? RGB(220, 220, 220) : 0;
+                CHARRANGE sel = { before.cpMin, after.cpMax };
+                SendMessageW(hwnd, EM_EXSETSEL, 0, (LPARAM)&sel);
+                SendMessageW(hwnd, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+                CHARRANGE caret = { after.cpMax, after.cpMax };
+                SendMessageW(hwnd, EM_EXSETSEL, 0, (LPARAM)&caret);
+            }
+            return 0;
+        }
+    }
     if (msg == WM_PAINT && s_wordWrapOn) {
         LRESULT r = DefSubclassProc(hwnd, msg, wParam, lParam);
         int lineCount = (int)SendMessageW(hwnd, EM_GETLINECOUNT, 0, 0);
@@ -1988,6 +2021,23 @@ static LRESULT CALLBACK Ne_SciWrapSubclassProc(
 {
     if (msg == WM_NCDESTROY)
         RemoveWindowSubclass(hwnd, Ne_SciWrapSubclassProc, uid);
+    // Right-click while text is selected must keep that selection so the
+    // context-menu Cut/Copy stay enabled. Scintilla otherwise clears the
+    // selection on right-button-down whenever the click lands outside it
+    // (for example the empty area below the last line), which greys out
+    // Cut/Copy even though the user just selected everything. Intercept the
+    // button-down and raise the context menu ourselves with the selection
+    // still intact.
+    if (msg == WM_RBUTTONDOWN) {
+        Sci_Position ss = (Sci_Position)SendMessageW(hwnd, SCI_GETSELECTIONSTART, 0, 0);
+        Sci_Position se = (Sci_Position)SendMessageW(hwnd, SCI_GETSELECTIONEND,   0, 0);
+        if (ss != se) {
+            POINT pt; GetCursorPos(&pt);
+            SendMessageW(GetParent(hwnd), WM_CONTEXTMENU, (WPARAM)hwnd,
+                         MAKELPARAM((WORD)pt.x, (WORD)pt.y));
+            return 0;
+        }
+    }
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
@@ -8565,13 +8615,17 @@ static bool Ne_SaveToPath(HWND hwnd, const std::wstring& path)
     HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (!hEdit) return false;
 
-    bool asRtf = true;
+    // Only genuine .rtf targets are written as RTF.  Every other extension
+    // (code files such as .h/.cpp/.py, plus .txt/.md and extensionless files)
+    // is saved as plain text so source and text files stay plain all the way
+    // through — never littered with \rtf1 control words.
     std::wstring savePath = path;
     size_t dot = savePath.rfind(L'.');
+    bool asRtf = false;
     if (dot != std::wstring::npos) {
         std::wstring ext = savePath.substr(dot + 1);
         for (auto& c : ext) c = (wchar_t)towlower(c);
-        if (ext == L"txt" || ext == L"md") asRtf = false;
+        if (ext == L"rtf") asRtf = true;
     }
 
     // ── Formatting-in-plain-text guard ────────────────────────────────────────
@@ -8993,6 +9047,17 @@ static void Ne_SessionSave(HWND hwnd)
 
     const int count     = NeTabs_GetCount(hwnd);
     const int activeIdx = NeTabs_GetActiveIndex(hwnd);
+
+    // Never overwrite a saved session with a single pristine (never-touched)
+    // untitled tab.  Otherwise, if a restore is skipped or fails even once, the
+    // 10-second autosave would immediately clobber the user's real session with
+    // one empty tab.  A lone empty tab is treated as "nothing to save".
+    if (count == 1) {
+        NeTabDoc* d0 = NeTabs_GetDocByIndex(hwnd, 0);
+        if (d0 && d0->path.empty() && !d0->modified)
+            return;
+    }
+
     std::vector<NeSessionTab> tabs;
     tabs.reserve(count);
 
@@ -13371,6 +13436,52 @@ static void Ne_FillMenuBarGap(HWND hwnd)
     ReleaseDC(hwnd, hdc);
 }
 
+// ── Window geometry persistence ───────────────────────────────────────────────
+// Saved to the settings table on every size/move change (WAL makes writes cheap),
+// so the last geometry survives even a crash or power loss.  Minimized state is
+// never saved — a window closed while minimized reopens at its default size.
+static bool s_mainClosing = false;   // set during teardown so a late WM_SIZE can't overwrite
+static bool s_mainGeometryReady = false;  // false until startup restore is done, so the
+                                          // creation WM_SIZE can't clobber the saved geometry
+static void Ne_SaveWindowPlacement(HWND hwnd, const char* prefix)
+{
+    if (!hwnd || !IsWindow(hwnd)) return;
+    if (IsIconic(hwnd)) return;                   // minimized -> keep last real geometry
+    WINDOWPLACEMENT wp = {}; wp.length = sizeof(wp);
+    if (!GetWindowPlacement(hwnd, &wp)) return;
+    std::string p = prefix;
+    bool maximized = (IsZoomed(hwnd) != FALSE) ||
+                     (wp.showCmd == SW_SHOWMAXIMIZED) || (wp.flags & WPF_RESTORETOMAXIMIZED);
+    RECT r = wp.rcNormalPosition;                 // restore (non-maximized) rect
+    NeProfiles_SetIntSetting((p + "_valid").c_str(), 1);
+    NeProfiles_SetIntSetting((p + "_max").c_str(),   maximized ? 1 : 0);
+    NeProfiles_SetIntSetting((p + "_x").c_str(),     r.left);
+    NeProfiles_SetIntSetting((p + "_y").c_str(),     r.top);
+    NeProfiles_SetIntSetting((p + "_w").c_str(),     r.right - r.left);
+    NeProfiles_SetIntSetting((p + "_h").c_str(),     r.bottom - r.top);
+}
+
+static bool Ne_RestoreWindowPlacement(HWND hwnd, const char* prefix)
+{
+    if (!hwnd || !IsWindow(hwnd)) return false;
+    std::string p = prefix;
+    int valid = 0;
+    if (!NeProfiles_GetIntSetting((p + "_valid").c_str(), 0, valid) || !valid) return false;
+    int x = 0, y = 0, w = 0, h = 0, mx = 0;
+    NeProfiles_GetIntSetting((p + "_x").c_str(),   0, x);
+    NeProfiles_GetIntSetting((p + "_y").c_str(),   0, y);
+    NeProfiles_GetIntSetting((p + "_w").c_str(),   0, w);
+    NeProfiles_GetIntSetting((p + "_h").c_str(),   0, h);
+    NeProfiles_GetIntSetting((p + "_max").c_str(), 0, mx);
+    if (w < 200 || h < 150) return false;                       // sanity
+    RECT rc = { x, y, x + w, y + h };
+    if (!MonitorFromRect(&rc, MONITOR_DEFAULTTONULL)) return false;  // off all monitors
+    // Apply the saved normal rect explicitly, then show (maximized if it was).
+    SetWindowPos(hwnd, NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    ShowWindow(hwnd, mx ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
+    return true;
+}
+
 // ── Window procedure ───────────────────────────────────────────────────────────
 static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -13679,15 +13790,16 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         HWND hEdit = NeTabs_GetActiveEdit(hwnd);
         if (hEdit) {
             // Default font: Segoe UI 12pt, auto colour.
+            bool darkEd = g_darkMode || g_darkEditor;   // dark editor viewport in a light UI too
             CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
             cfD.dwMask    = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
-            cfD.dwEffects = g_darkMode ? 0 : CFE_AUTOCOLOR;
-            cfD.crTextColor = g_darkMode ? RGB(220, 220, 220) : 0;
+            cfD.dwEffects = darkEd ? 0 : CFE_AUTOCOLOR;
+            cfD.crTextColor = darkEd ? RGB(220, 220, 220) : 0;
             cfD.yHeight   = s_neFontSizes[s_neFontDefault] * 20;
             cfD.bCharSet  = DEFAULT_CHARSET;
             wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
             SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
-            SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, g_darkMode ? RGB(25, 26, 27) : RGB(255, 255, 255));
+            SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
             SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
             Ne_SubclassEditForCaret(hEdit);
             SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_SELCHANGE);  // suppress EN_CHANGE during attach
@@ -13824,8 +13936,16 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             Ne_SyncRichGutters(hwnd);
             Ne_SyncScrollbarVisibility(hwnd);
         }
+        // Persist geometry immediately on maximize/restore (survives a crash).
+        if ((wParam == SIZE_MAXIMIZED || wParam == SIZE_RESTORED) && s_mainGeometryReady && !s_mainClosing)
+            Ne_SaveWindowPlacement(hwnd, "main_win");
         return 0;
     }
+
+    // Persist geometry after the user finishes dragging/resizing the window.
+    case WM_EXITSIZEMOVE:
+        if (s_mainGeometryReady && !s_mainClosing) Ne_SaveWindowPlacement(hwnd, "main_win");
+        return 0;
 
     // ── WM_COMMAND ────────────────────────────────────────────────────────────
     case WM_COMMAND: {
@@ -15400,8 +15520,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
     // ── WM_CLOSE — prompt if modified ────────────────────────────────────────
     case WM_CLOSE:
+        Ne_SaveWindowPlacement(hwnd, "main_win");  // capture final geometry (incl. maximized)
         Ne_SessionSave(hwnd);  // snapshot before any tab is destroyed
         if (!Ne_CloseAllTabsForExit(hwnd)) return 0;
+        s_mainClosing = true;  // block late teardown WM_SIZE from overwriting geometry
         DestroyWindow(hwnd);
         return 0;
 
@@ -15542,7 +15664,11 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     // as a safety pass for any controls that don't check g_darkMode at creation.
     if (g_darkMode) Ne_RethemeAll(s_hwndMain);
 
-    ShowWindow(s_hwndMain, nCmdShow);
+    // Restore last window geometry (size/position/maximized) from the DB; if none
+    // saved or off-screen, fall back to the requested show state.
+    if (!Ne_RestoreWindowPlacement(s_hwndMain, "main_win"))
+        ShowWindow(s_hwndMain, nCmdShow);
+    s_mainGeometryReady = true;   // from now on, size/move changes are persisted
     Ne_ApplyDarkFrame(s_hwndMain);
     UpdateWindow(s_hwndMain);
 

@@ -160,6 +160,38 @@ Example:
   spinner->SetText(L"Step 2 of 3: Processing data...");
 
 
+METHOD: SetTitle()
+------------------
+void SetTitle(const std::wstring& title)
+
+Sets the title-bar caption (defaults to L"Please Wait"). Call before Show()
+to localise the caption; if the dialog already exists the caption updates live.
+
+Parameters:
+  title - New window caption text
+
+Example:
+  spinner->SetTitle(L"Vent litt");   // localised caption
+
+
+METHOD: SetStopButton()
+-----------------------
+void SetStopButton(const std::wstring& label, std::function<void()> onStop)
+
+Enables an optional owner-drawn Stop button below the spinner animation.
+Only spinners that call this get a button; every other caller keeps the plain
+spinner. When the user clicks the button (or presses Esc) the onStop handler
+is invoked on the UI thread. Safe to call before Show() or while visible (the
+button is added on the fly and the layout re-measures to make room for it).
+
+Parameters:
+  label  - Button caption (e.g. L"Stop", localised)
+  onStop - std::function<void()> invoked on click / Esc
+
+Example:
+  spinner->SetStopButton(L"Stop", [] { Ai_StopSend(); });
+
+
 METHOD: IsVisible()
 -------------------
 bool IsVisible() const

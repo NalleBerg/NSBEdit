@@ -44,3 +44,23 @@ bool NeProjects_CollectFiles(const std::wstring& rootPath,
 // truncated to at most maxBytes bytes of source.
 bool NeProjects_ReadTextFile(const std::wstring& fullPath, std::wstring& out, size_t maxBytes);
 
+// ── Project knowledge store (evolving) ────────────────────────────────────────
+// A free-form text record that belongs to a project but lives in the database
+// rather than on disk (notes, saved answers, design info, …).  The schema is
+// intentionally generic (kind/title/body) so the store can grow over time; the
+// AI reads these records in batch mode alongside on-disk files.
+struct NeProjectDoc {
+    int64_t      id = 0;
+    std::wstring kind;    // free-form category, e.g. "note", "info", "answer"
+    std::wstring title;   // short label
+    std::wstring body;    // the text content the AI can read/search
+};
+
+// Add a knowledge record to a project.  Sets doc.id on success.
+bool NeProjects_AddDoc(int64_t projectId, NeProjectDoc& doc);
+
+// Collect all knowledge records for a project (newest first).  Bounded by maxDocs.
+bool NeProjects_CollectDocs(int64_t projectId, std::vector<NeProjectDoc>& out,
+                            int maxDocs = 100000);
+
+

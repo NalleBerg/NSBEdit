@@ -168,8 +168,14 @@
                                                 or doc->wordWrap for RichEdit), t.caretPos
                                                 (SCI_GETCURRENTPOS / EM_EXGETSEL cpMin),
                                                 t.scrollLine (SCI_GETFIRSTVISIBLELINE /
-                                                EM_GETFIRSTVISIBLELINE). Empty untitled tabs
-                                                are saved (no skip) so blank separators survive.
+                                                EM_GETFIRSTVISIBLELINE). Ne_SessionSave has a
+                                                self-heal guard: if the ONLY tab is a single
+                                                pristine untitled tab (count==1, path empty,
+                                                !modified) it returns WITHOUT writing, so a
+                                                skipped/failed restore can't be clobbered by the
+                                                10 s autosave wiping the saved session to one
+                                                empty tab. Multi-tab sessions (incl. blank
+                                                separators) still save normally.
                                                 Ne_SessionRestore(HWND) reads session_tabs on
                                                 startup (installed, no cmd-line file) and reopens
                                                 every tab silently: FTP unreachable → load from
@@ -207,6 +213,31 @@
                                                 wWinMain calls Ne_SessionRestore after
                                                 UpdateWindow when installed + no cmd-line arg +
                                                 NeSession_HasData().
+                                                Window geometry persistence: Ne_SaveWindowPlacement
+                                                (HWND,prefix) / Ne_RestoreWindowPlacement(HWND,
+                                                prefix) store size/pos/maximized in settings keys
+                                                <prefix>_valid/_max/_x/_y/_w/_h via NeProfiles_
+                                                Set/GetIntSetting. Save uses IsIconic (skip when
+                                                minimized -> default next launch) + IsZoomed for
+                                                the max flag + rcNormalPosition for the restore
+                                                rect. Restore guards w>=200/h>=150 and
+                                                MonitorFromRect(MONITOR_DEFAULTTONULL); applies via
+                                                SetWindowPos + ShowWindow(max?MAXIMIZED:NORMAL).
+                                                CRITICAL: a s_mainGeometryReady flag (false until
+                                                AFTER restore runs) gates the WM_SIZE/WM_EXITSIZEMOVE
+                                                saves, else the creation WM_SIZE(SIZE_RESTORED)
+                                                overwrites the saved geometry with the default
+                                                create size before restore reads it (self-defeating
+                                                loop). s_mainClosing gates late teardown WM_SIZE.
+                                                Wired: main WM_SIZE (SIZE_MAXIMIZED/RESTORED),
+                                                WM_EXITSIZEMOVE, WM_CLOSE (save before teardown).
+                                                AI window mirrors this (ollama_ai.cpp
+                                                Ai_Save/RestoreWinPlacement, keys ai_win_*,
+                                                s_aiGeometryReady/s_aiClosing reset per open).
+                                                Fresh-tab dark editor: main WM_CREATE initial-tab
+                                                RichEdit colours use darkEd = g_darkMode ||
+                                                g_darkEditor (NOT g_darkMode alone) so a new
+                                                untitled tab in light-UI + dark-editor is not white.
                                                 Ne_ApplyLang(hSci, langIdx) — sends
                                                 SCI_SETKEYWORDS from s_langKws[] and
                                                 applies per-lexer style overrides.
@@ -633,7 +664,14 @@
                                                 standalone AI window. Blocks are tracked by
                                                 character range so a double-click, Ctrl+A,
                                                 Ctrl+C, or right-click Copy can be scoped to
-                                                a single rendered code cell.
+                                                a single rendered code cell. Ai_CopyTextToClipboard
+                                                normalises line breaks to CRLF (vertical-tab
+                                                0x0B soft breaks from RTF code cells, form-feed,
+                                                and lone CR/LF) so pasted code has real newlines
+                                                instead of literal "VT" glyphs. Right-click Copy
+                                                also works on any answer text selection, not just
+                                                inside a code cell (WM_CONTEXTMENU falls back to
+                                                the current selection).
 
   ne_ai_bootstrap.h / ne_ai_bootstrap.cpp       AI bootstrap config loader — reads the
                                                 startup model/provider settings from
@@ -648,9 +686,16 @@
                                                 to decide whether local Ollama is
                                                 responsive and to stream reply chunks.
                                                 The /api/generate request sets
-                                                options.num_ctx (12288) so a project
+                                                options.num_ctx so a project
                                                 context prompt is not silently truncated
-                                                to Ollama's small default window.
+                                                to Ollama's small default window. num_ctx is
+                                                now a trailing parameter on NeAiClient_AskOllama
+                                                / AskOllamaStream (default 12288); the batch
+                                                map-reduce path passes 32768 so a whole ~35 KB
+                                                file fits one request. Cooperative cancel:
+                                                NeAiClient_RequestCancel/ResetCancel/
+                                                IsCancelRequested (atomic) make the curl write
+                                                callback abort the stream for the Stop button.
 
   ne_projects.h / ne_projects.cpp               AI project (workspace) store and scanner.
                                                 Reuses the shared SQLite handle from
@@ -665,6 +710,10 @@
                                                 effort UTF-16/UTF-8/ANSI read. The Project
                                                 menu in NSBEdit.cpp adds/removes/selects
                                                 projects (check-tick on the active one).
+                                                A generic `project_docs` table (id/project_id/
+                                                kind/title/body) + NeProjects_AddDoc/CollectDocs
+                                                is the evolving DB knowledge store the AI can
+                                                read as db:// records alongside files.
                                                 See API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt
                                                 for how the AI consumes a project.
 

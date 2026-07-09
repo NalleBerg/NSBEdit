@@ -1,6 +1,23 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 6 July 2026 &mdash; v2026.07.06.11 (11:30)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 9 July 2026 &mdash; v2026.07.09.13 (13:44)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.07.09.13 (Feature: AI Stop control, full-project file access, and window geometry persistence)</span></h3>
+<p><strong>Feature: AI Stop control, full-project file access, and window geometry persistence (09.07.2026, 13:44):</strong></p>
+<ul>
+<li><strong>Feature: Stop the AI mid-request:</strong> a red Stop button (and the Esc key) in the AI window interrupts an in-progress request so you can add more detail and resend. The streaming transfer is cancelled cooperatively, the busy spinner is dismissed, and your prompt is restored for editing. A matching Stop button also appears below the animation in the &ldquo;Please Wait&rdquo; spinner.</li>
+<li><strong>Feature: AI reads the whole project:</strong> file references now expand directories, glob wildcards (<code>locale/*</code>, <code>*.txt</code>, <code>**/*.cpp</code>), and explicit regex (<code>regex:&hellip;</code>, <code>/&hellip;/</code>). A regex content search greps every file line-by-line and returns matching lines with context. The full project file list is sent (no small cap) and sorted shallow-first, so your own files &mdash; such as all <code>locale/*.txt</code> &mdash; are always visible instead of being crowded out by vendored libraries.</li>
+<li><strong>Feature: batch reading is fast and parallel:</strong> anything belonging to the project (files and a new DB knowledge store) can be read in batch mode. Each normal file is one whole request; only genuinely huge files are chunked. The batch requests run in parallel across CPU cores with a larger context window, and a simple question is answered in one fast request instead of grinding through every file.</li>
+<li><strong>Feature: the AI window is its own app:</strong> the AI window now has its own taskbar button and app icon and can be Alt+Tab&rsquo;d to independently of the editor.</li>
+<li><strong>Feature: windows reopen as you left them:</strong> the editor and the AI window remember their size, position, and maximized state, saved continuously to the database so the geometry survives a crash. A window closed while minimized reopens at its default size.</li>
+<li><strong>Fix: session restore no longer self-destructs:</strong> a single pristine untitled tab can no longer overwrite a saved multi-file session, so a one-off restore hiccup can&rsquo;t wipe your open files.</li>
+<li><strong>Fix: dark editor on a fresh tab:</strong> a new untitled tab in a light UI with the dark-editor option no longer flashes up with a white background.</li>
+<li><strong>Fix: pasted AI code keeps real newlines:</strong> copying from an answer (a code block, Ctrl+C, or right-click Copy) now normalises line breaks to CRLF, so code no longer pastes with stray <code>VT</code> characters where the newlines should be.</li>
+<li><strong>Fix: right-click Copy anywhere in an answer:</strong> the answer area&rsquo;s context menu now offers Copy for any text selection, not only inside a code block.</li>
+<li><strong>Fix: the wait spinner behaves:</strong> the &ldquo;Please Wait&rdquo; spinner is now owned by the AI window instead of floating on top of every application, and it no longer steals focus &mdash; so you can keep editing in the main window (or any other app) while Ollama is working in the background.</li>
+<li><strong>i18n: Stop button and log strings added to all 15 locales,</strong> and the AI button labels (Send/Copy/Clear/Stop) are now properly translated per language instead of always English.</li>
+<li><strong>Fix: version metadata refreshed for the new release:</strong> <code>curver.txt</code>, the build-time version header, and the docs now point at <code>2026.07.09.13</code>.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.07.06.11 (Feature: AI project control &mdash; suggestion-mode workspace, code search, and big-file batch reading)</span></h3>
 <p><strong>Feature: AI project control &mdash; suggestion-mode workspace, code search, and big-file batch reading (06.07.2026, 11:30):</strong></p>

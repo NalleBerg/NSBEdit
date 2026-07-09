@@ -1,5 +1,20 @@
 # Changelog
 
+## v2026.07.09.13 (Feature: AI Stop control, full-project file access, and window geometry persistence) - 09.07.2026 13:44
+
+- **Feature: Stop the AI mid-request**: a red **Stop** button (and the **Esc** key) in the AI window interrupts an in-progress request so you can add more detail and resend. The streaming transfer is cancelled cooperatively, the busy spinner is dismissed, and your prompt is restored for editing. A matching **Stop** button also appears below the animation in the "Please Wait" spinner.
+- **Feature: AI reads the whole project**: file references now expand **directories**, **glob wildcards** (`locale/*`, `*.txt`, `**/*.cpp`), and explicit **regex** (`regex:…`, `/…/`). A **regex content search** greps every file line-by-line and returns matching lines with context. The full project file list is sent (no small cap) and sorted shallow-first, so your own files — such as all `locale/*.txt` — are always visible instead of being crowded out by vendored libraries.
+- **Feature: batch reading is fast and parallel**: anything belonging to the project (files and a new DB knowledge store) can be read in batch mode. Each normal file is one whole request (no needless splitting); only genuinely huge files are chunked. The batch requests run in parallel across CPU cores with a larger context window, and a simple question is answered in one fast request instead of grinding through every file.
+- **Feature: the AI window is its own app**: the AI window now has its own taskbar button and app icon and can be **Alt+Tab**'d to independently of the editor.
+- **Feature: windows reopen as you left them**: the editor and the AI window remember their size, position, and maximized state, saved continuously to the database so the geometry survives a crash. A window closed while minimized reopens at its default size.
+- **Fix: session restore no longer self-destructs**: a single pristine (never-touched) untitled tab can no longer overwrite a saved multi-file session, so a one-off restore hiccup can't wipe your open files — the session self-heals on the next open.
+- **Fix: dark editor on a fresh tab**: a new untitled tab in a light UI with the dark-editor option no longer flashes up with a white background.
+- **Fix: pasted AI code keeps real newlines**: copying from an answer (a code block, `Ctrl+C`, or right-click Copy) now normalises line breaks to CRLF, so code no longer pastes with stray `VT` characters where the newlines should be.
+- **Fix: right-click Copy anywhere in an answer**: the answer area's context menu now offers **Copy** for any text selection, not only inside a code block.
+- **Fix: the wait spinner behaves**: the "Please Wait" spinner is now owned by the AI window instead of floating on top of every application, and it no longer steals focus — so you can keep editing in the main window (or any other app) while Ollama is working in the background.
+- **i18n: Stop button and log strings added to all 15 locales**, and the AI button labels (Send/Copy/Clear/Stop) are now properly translated per language instead of always English.
+- **Fix: version metadata refreshed for the new release**: `curver.txt`, the build-time version header, and the docs now point at `2026.07.09.13`.
+
 ## v2026.07.06.11 (Feature: AI project control — suggestion-mode workspace, code search, and big-file batch reading) - 06.07.2026 11:30
 
 - **Feature: Project menu and workspace**: a new **Project** top-level menu (built like the FTP menu) lets you point the AI at a project root folder. The active project is marked with a check-tick (like the GUI-language menu), stored in the shared SQLite database, and the selection survives closing and re-opening the app. Add a project via a standard folder picker; remove the current one from the menu.

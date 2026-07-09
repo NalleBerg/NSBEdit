@@ -339,3 +339,33 @@ Project suggestion mode (v2026.07.06.11)
   - Model menu: Agent entries removed (Suggest-only public build); the
     AiMenuRole enum/infra stays for a future Agent return.
 
+
+v2026.07.09.13 - Stop control, full-project file access, batch parallelism, spinner
+  - Stop button: AI window has Send/Stop/Copy/Clear/Close (buttons[5]). Stop id
+    IDC_AI_STOP_BTN, red, enabled only while busy (toggled in Ai_Begin/EndBusyState
+    with hSendBtn). Ai_StopSend sets st->sendCanceled + NeAiClient_RequestCancel(),
+    kills timers, Ai_EndBusyState, restores st->lastPrompt into the input. Esc in
+    Ai_InputSubclassProc also calls Ai_StopSend (Enter still sends). WM_AI_SEND_COMPLETE
+    discards the worker result when st->sendCanceled. A matching owner-draw Stop button
+    lives in the spinner (SpinnerDialog::SetStopButton(label,onStop); Ai_BeginBusyState
+    wires it to Ai_StopSend).
+  - Cancel transport: ne_ai_client atomic g_aiCancelRequested + RequestCancel/ResetCancel/
+    IsCancelRequested; Ai_OllamaWriteCallback returns 0 to abort curl. Ai_DoSend resets it.
+  - File access (Ai_ExpandFileRefs): expands plain names (typo-corrected), directories,
+    globs (Ai_GlobToRegex, * ? **), and explicit regex (regex:/re://.../). Plus DB docs
+    (project_docs) as db:// records. Ai_RegexSearchSnippets greps every file line-by-line
+    for regex patterns (Ai_ExtractContentRegexes). Project file listing is full (cap 32000)
+    and sorted SHALLOW-FIRST so locale/root files always appear before vendored trees
+    (was: 600 cap + collection order buried locale behind curl/scintilla/third_party).
+  - Batch (Ai_PlanBigFileChunks): LAST RESORT - only when a single source > kWholeMax
+    (80000 wchars). Otherwise the fast single streamed request handles it (a plain question
+    is NOT turned into per-file regeneration). Each file is ONE whole request (kWholeMax);
+    only genuinely huge files split (kSplitChars 60000). Map phase runs PARALLEL:
+    Ai_StartSendWorker uses a thread pool (nThreads=3; higher starved the single GPU so
+    none finished) with atomic nextIdx/completed; kBatchCtx=32768; progress posted
+    immediately (0/total) then per completion; cancel checked in loop + after join.
+  - Spinner ownership/focus: SpinnerDialog is OWNED by the AI window (no WS_EX_TOPMOST),
+    ShowWindow SW_SHOWNA (no activate), and LayoutForText SetWindowPos uses SWP_NOZORDER
+    (do NOT re-raise on every SetText - the 1s thinking timer relayout was pulling the AI
+    window in front of the editor = focus theft). Editor stays usable while Ollama runs
+    (worker is a background std::thread).

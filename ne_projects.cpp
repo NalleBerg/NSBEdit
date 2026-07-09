@@ -43,6 +43,23 @@ bool NeProjects_Init()
         if (err) sqlite3_free(err);
         return false;
     }
+    // Generic, evolving project knowledge store (notes/info/answers the AI can
+    // read in batch mode).  Kept separate from `projects` so it can grow freely.
+    const char* docsSchema =
+        "CREATE TABLE IF NOT EXISTS project_docs ("
+        "  id         INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  project_id INTEGER NOT NULL,"
+        "  kind       TEXT    NOT NULL DEFAULT 'note',"
+        "  title      TEXT    NOT NULL DEFAULT '',"
+        "  body       TEXT    NOT NULL DEFAULT '',"
+        "  created    INTEGER NOT NULL DEFAULT 0,"
+        "  modified   INTEGER NOT NULL DEFAULT 0"
+        ");"
+        "CREATE INDEX IF NOT EXISTS idx_project_docs_pid ON project_docs(project_id);";
+    if (sqlite3_exec(db, docsSchema, NULL, NULL, &err) != SQLITE_OK) {
+        if (err) sqlite3_free(err);
+        return false;
+    }
     return true;
 }
 
@@ -134,6 +151,55 @@ void NeProjects_SetActiveId(int64_t id)
 {
     NeProfiles_SetIntSetting("active_project", (int)id);
 }
+
+// ── Project knowledge store (evolving) ────────────────────────────────────────
+bool NeProjects_AddDoc(int64_t projectId, NeProjectDoc& doc)
+{
+    sqlite3* db = NeProfiles_GetDb();
+    if (!db || projectId <= 0) return false;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(db,
+        "INSERT INTO project_docs (project_id,kind,title,body,created,modified) "
+        "VALUES (?,?,?,?,?,?);", -1, &st, NULL) != SQLITE_OK)
+        return false;
+    int64_t now = (int64_t)time(NULL);
+    std::wstring kind = doc.kind.empty() ? L"note" : doc.kind;
+    sqlite3_bind_int64(st, 1, projectId);
+    sqlite3_bind_text (st, 2, Prj_W2U(kind).c_str(),      -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text (st, 3, Prj_W2U(doc.title).c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text (st, 4, Prj_W2U(doc.body).c_str(),  -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(st, 5, now);
+    sqlite3_bind_int64(st, 6, now);
+    bool ok = (sqlite3_step(st) == SQLITE_DONE);
+    sqlite3_finalize(st);
+    if (ok) doc.id = sqlite3_last_insert_rowid(db);
+    return ok;
+}
+
+bool NeProjects_CollectDocs(int64_t projectId, std::vector<NeProjectDoc>& out, int maxDocs)
+{
+    out.clear();
+    sqlite3* db = NeProfiles_GetDb();
+    if (!db || projectId <= 0) return false;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(db,
+        "SELECT id,kind,title,body FROM project_docs WHERE project_id=? "
+        "ORDER BY modified DESC, id DESC LIMIT ?;", -1, &st, NULL) != SQLITE_OK)
+        return false;
+    sqlite3_bind_int64(st, 1, projectId);
+    sqlite3_bind_int  (st, 2, maxDocs > 0 ? maxDocs : 100000);
+    while (sqlite3_step(st) == SQLITE_ROW) {
+        NeProjectDoc d;
+        d.id    = sqlite3_column_int64(st, 0);
+        d.kind  = Prj_U2W((const char*)sqlite3_column_text(st, 1));
+        d.title = Prj_U2W((const char*)sqlite3_column_text(st, 2));
+        d.body  = Prj_U2W((const char*)sqlite3_column_text(st, 3));
+        out.push_back(std::move(d));
+    }
+    sqlite3_finalize(st);
+    return true;
+}
+
 
 // ── File collection (AI workspace scan) ───────────────────────────────────────
 static std::wstring Prj_Lower(std::wstring s)

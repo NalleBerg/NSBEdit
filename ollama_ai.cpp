@@ -25,8 +25,10 @@
 #include <map>
 #include <set>
 #include <thread>
+#include <atomic>
 #include <algorithm>
 #include <cwctype>
+#include <regex>
 
 #include "spinner/spinner_dialog.h"
 
@@ -40,6 +42,7 @@
 #define IDC_AI_CLOSE_BTN          1958
 #define IDC_AI_ANSWER_TEXT        1959
 #define IDC_AI_STATUS_TIMER       1960
+#define IDC_AI_STOP_BTN           1961
 
 #define IDM_AI_MODEL_DEFAULT      1901
 #define IDM_AI_MODEL_FALLBACK     1902
@@ -87,7 +90,7 @@ struct AiButtonSpec {
 
 struct AiDialogData {
     int buttonCount = 0;
-    AiButtonSpec buttons[4];
+    AiButtonSpec buttons[5];
 };
 
 struct AiWindowState {
@@ -98,6 +101,7 @@ struct AiWindowState {
     HWND hStatus = NULL;
     HWND hStatusTimer = NULL;
     HWND hSendBtn = NULL;
+    HWND hStopBtn = NULL;
     HWND hCopyBtn = NULL;
     HWND hClearBtn = NULL;
     HWND hCloseBtn = NULL;
@@ -126,6 +130,8 @@ struct AiWindowState {
     ULONGLONG thinkingStartMs = 0;
     std::wstring lastThinkingElapsedText;
     bool chunkedActive = false;   // batch map-reduce running: spinner shows real batch %
+    bool sendCanceled = false;    // Stop pressed: ignore the worker's completion post
+    std::wstring lastPrompt;      // raw prompt of the in-flight send, restored on Stop
     SpinnerDialog* spinner = NULL;
     std::wstring answerCopyText;
     std::vector<HWND> answerBlocks;
@@ -219,6 +225,7 @@ static bool Ai_CopyAnswerText(HWND hwndLog);
 static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& prompt);
 static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int delta);
 static void Ai_DoSend(HWND hwnd);
+static void Ai_StopSend(HWND hwnd);
 static void Ai_AppendMenuOD(HMENU hMenu, UINT flags, UINT_PTR id, const wchar_t* text, bool isBar);
 static std::wstring Ai_CurrentModeLabel(const AiWindowState* st);
 static std::wstring Ai_FormatLocaleText(const wchar_t* fmt, const std::wstring& value);
@@ -316,14 +323,21 @@ static void Ai_LoadPrefs(AiWindowState* st)
 static std::wstring Ai_BuildSummary(const AiWindowState* st)
 {
     std::wstring summary;
-    summary += L"Ollama on localhost | Current: ";
+    summary += Ne_Ls(L"AI_SUMMARY_LOCALHOST");
+    summary += L" | ";
+    summary += Ne_Ls(L"AI_SUMMARY_CURRENT");
+    summary += L" ";
     summary += ((st && !st->model.empty()) ? st->model : Ai_DefaultModelName());
     summary += L" ";
-    summary += (st && st->role == AiMenuRole::Agent) ? L"Agent" : L"Suggest";
-    summary += L" | Cloud: ";
-    summary += ((st && st->cloudMode) ? L"Cloud subscription" : L"Local only");
-    summary += L" | Account: ";
-    summary += ((st && st->signedIn) ? L"signed in" : L"not signed in");
+    summary += (st && st->role == AiMenuRole::Agent) ? Ne_Ls(L"AI_ROLE_AGENT") : Ne_Ls(L"AI_ROLE_SUGGEST");
+    summary += L" | ";
+    summary += Ne_Ls(L"AI_SUMMARY_CLOUD");
+    summary += L" ";
+    summary += ((st && st->cloudMode) ? Ne_Ls(L"AI_MODE_CLOUD_SUBSCRIPTION") : Ne_Ls(L"AI_MODE_LOCAL_ONLY"));
+    summary += L" | ";
+    summary += Ne_Ls(L"AI_SUMMARY_ACCOUNT");
+    summary += L" ";
+    summary += ((st && st->signedIn) ? Ne_Ls(L"AI_SIGNED_IN") : Ne_Ls(L"AI_NOT_SIGNED_IN"));
     return summary;
 }
 
@@ -419,8 +433,15 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
 
     if (st->historyIndex < 0) {
         HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
-        wchar_t current[2048] = {};
-        if (hInput) GetWindowTextW(hInput, current, 2048);
+        std::wstring current;
+        if (hInput) {
+            int inLen = GetWindowTextLengthW(hInput);
+            if (inLen > 0) {
+                current.resize((size_t)inLen);
+                int copied = GetWindowTextW(hInput, &current[0], inLen + 1);
+                current.resize((size_t)copied);
+            }
+        }
         st->historyDraft = current;
         st->historyIndex = (int)s_aiInputHistory.size() - 1;
     } else if (direction < 0) {
@@ -507,7 +528,7 @@ static void Ai_DrawButton(const DRAWITEMSTRUCT* dis, const AiDialogData* dd)
         DeleteObject(hFill);
         DeleteObject(hPen);
     } else {
-        HICON hIcon = LoadIconW(NULL, MAKEINTRESOURCEW(b.id == IDC_AI_CLEAR_BTN ? kSystemIconError : kSystemIconInfo));
+        HICON hIcon = LoadIconW(NULL, MAKEINTRESOURCEW((b.id == IDC_AI_CLEAR_BTN || b.id == IDC_AI_STOP_BTN) ? kSystemIconError : kSystemIconInfo));
         if (hIcon) DrawIconEx(hdc, startX, iconY, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
     }
 
@@ -1510,6 +1531,16 @@ static LRESULT CALLBACK Ai_AnswerChildSubclassProc(HWND hwnd, UINT msg, WPARAM w
             Ai_ShowCodeCellMenu(hwnd, screenX, screenY, cellStart, cellEnd);
             return 0;
         }
+        // Not inside a code cell: still offer a Copy menu when text is selected,
+        // so right-click Copy works on the prose/intro just like in code blocks.
+        {
+            CHARRANGE sel = {};
+            SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&sel);
+            if (sel.cpMax > sel.cpMin) {
+                Ai_ShowCodeCellMenu(hwnd, screenX, screenY, sel.cpMin, sel.cpMax);
+                return 0;
+            }
+        }
         break;
     }
     }
@@ -1573,6 +1604,13 @@ static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply)
         }
     }
 
+    // Two blank lines between the echoed prompt and the model's answer.
+    if (!keepText.empty()) {
+        while (!keepText.empty() && (keepText.back() == L'\n' || keepText.back() == L'\r'))
+            keepText.pop_back();
+        keepText += L"\r\n\r\n\r\n";
+    }
+
     SetWindowTextW(hLog, keepText.c_str());
     if (!keepText.empty()) {
         CHARFORMAT2W cf = {};
@@ -1619,7 +1657,8 @@ static void Ai_RefreshUi(HWND hwnd)
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (!st) return;
 
-    std::wstring title = L"NSBEdit AI - ";
+    std::wstring title = Ne_Ls(L"AI_WINDOW_TITLE_PREFIX");
+    title += L" ";
     title += Ai_CurrentModeLabel(st);
     SetWindowTextW(hwnd, title.c_str());
 
@@ -1629,11 +1668,16 @@ static void Ai_RefreshUi(HWND hwnd)
     HWND hStatus = GetDlgItem(hwnd, IDC_AI_STATUS);
     HWND hStatusTimer = st->hStatusTimer ? st->hStatusTimer : GetDlgItem(hwnd, IDC_AI_STATUS_TIMER);
     if (hStatus) {
-        std::wstring status = L"Cloud: ";
-        status += (st->cloudMode ? L"Cloud subscription" : L"Local only");
-        status += L" | Sign-in: ";
-        status += (st->signedIn ? L"yes" : L"no");
-        status += L" | Current: ";
+        std::wstring status = Ne_Ls(L"AI_STATUS_CLOUD");
+        status += L" ";
+        status += (st->cloudMode ? Ne_Ls(L"AI_MODE_CLOUD_SUBSCRIPTION") : Ne_Ls(L"AI_MODE_LOCAL_ONLY"));
+        status += L" | ";
+        status += Ne_Ls(L"AI_STATUS_SIGNIN");
+        status += L" ";
+        status += (st->signedIn ? Ne_Ls(L"BTN_YES") : Ne_Ls(L"BTN_NO"));
+        status += L" | ";
+        status += Ne_Ls(L"AI_STATUS_CURRENT");
+        status += L" ";
         status += Ai_CurrentModeLabel(st);
         SetWindowTextW(hStatus, status.c_str());
     }
@@ -1669,18 +1713,18 @@ static std::wstring Ai_FormatElapsedTimeText(ULONGLONG elapsedMs)
 static std::wstring Ai_FormatThinkingStatusText(const AiWindowState* st)
 {
     if (!st) {
-        return L"Last query used: 00:00:00";
+        return std::wstring(Ne_Ls(L"AI_LAST_QUERY_USED")) + L" 00:00:00";
     }
 
     if (st->thinkingTimerRunning && st->thinkingStartMs != 0) {
-        return L"Time used: " + Ai_FormatElapsedTimeText(GetTickCount64() - st->thinkingStartMs);
+        return std::wstring(Ne_Ls(L"AI_TIME_USED")) + L" " + Ai_FormatElapsedTimeText(GetTickCount64() - st->thinkingStartMs);
     }
 
     if (!st->lastThinkingElapsedText.empty()) {
-        return L"Last query used: " + st->lastThinkingElapsedText;
+        return std::wstring(Ne_Ls(L"AI_LAST_QUERY_USED")) + L" " + st->lastThinkingElapsedText;
     }
 
-    return L"Last query used: 00:00:00";
+    return std::wstring(Ne_Ls(L"AI_LAST_QUERY_USED")) + L" 00:00:00";
 }
 
 static void Ai_SetThinkingStatusText(HWND hwnd)
@@ -1705,7 +1749,7 @@ static void Ai_UpdateSpinnerProgress(HWND hwnd)
     int pct = (int)((95ULL * e) / (e + 25ULL));
     if (pct < 1)  pct = 1;
     if (pct > 95) pct = 95;
-    std::wstring t = std::wstring(Ne_Ls(L"AI_WAKING_OLLAMA")) + L"  (" + std::to_wstring(pct) + L"%)";
+    std::wstring t = std::wstring(Ne_Ls(L"AI_WAKING_OLLAMA")) + L"\r\n(" + std::to_wstring(pct) + L"%)";
     st->spinner->SetText(t);
 }
 
@@ -1781,10 +1825,16 @@ static void Ai_BeginBusyState(HWND hwnd)
         st->spinner = new SpinnerDialog(hwnd);
     }
     if (st->spinner) {
+        // Mirror the window's Stop button inside the spinner, below the animation.
+        st->spinner->SetTitle(Ne_Ls(L"AI_WAIT_TITLE"));
+        st->spinner->SetStopButton(Ne_Ls(L"BTN_STOP"), [hwnd]() { Ai_StopSend(hwnd); });
         st->spinner->Show(Ne_Ls(L"AI_WAKING_OLLAMA"));
     }
     if (st->hSendBtn) {
         EnableWindow(st->hSendBtn, FALSE);
+    }
+    if (st->hStopBtn) {
+        EnableWindow(st->hStopBtn, TRUE);
     }
 }
 
@@ -1798,6 +1848,9 @@ static void Ai_EndBusyState(HWND hwnd)
     }
     if (st->hSendBtn) {
         EnableWindow(st->hSendBtn, TRUE);
+    }
+    if (st->hStopBtn) {
+        EnableWindow(st->hStopBtn, FALSE);
     }
 }
 
@@ -2154,25 +2207,69 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
                 if (IsWindow(work.hwnd))
                     PostMessageW(work.hwnd, WM_AI_PROGRESS, 0, (LPARAM)new std::wstring(text));
             };
-            std::wstring notes;
-            int total = (int)work.mapChunks.size();
-            for (int i = 0; i < total; ++i) {
-                int pct = (int)((double)i / (double)(total + 1) * 100.0);
-                postProgress(std::wstring(Ne_Ls(L"AI_PROGRESS_READING")) + L"  "
-                    + std::to_wstring(i + 1) + L"/" + std::to_wstring(total)
-                    + L"  (" + std::to_wstring(pct) + L"%)");
-                std::wstring partReply, partErr;
-                if (NeAiClient_AskOllama(work.model, work.mapChunks[i], partReply, partErr)) {
-                    while (!partReply.empty() && (partReply.back() == L'\n'
-                        || partReply.back() == L'\r' || partReply.back() == L' '))
-                        partReply.pop_back();
-                    if (!partReply.empty() &&
-                        partReply.find(L"nothing relevant") == std::wstring::npos) {
-                        notes += L"\r\n[Part " + std::to_wstring(i + 1) + L"]\r\n" + partReply + L"\r\n";
+
+            // Run the per-file/part requests with a SMALL amount of parallelism.
+            // A local model shares one GPU/CPU, so flooding it with many big
+            // requests just splits the compute — each one then finishes far later
+            // (why 14-way stalled at 0/15).  A few in flight overlaps I/O without
+            // starving prefill, and progress advances steadily.  True N-way speed
+            // also needs the Ollama server's OLLAMA_NUM_PARALLEL raised.
+            const int total = (int)work.mapChunks.size();
+            const int kBatchCtx = 16384;                 // enough for a whole ~35 KB file
+            int nThreads = 3;
+            if (nThreads > total) nThreads = total;
+            if (nThreads < 1) nThreads = 1;
+
+            const std::wstring readingLabel = Ne_Ls(L"AI_PROGRESS_READING");
+            std::vector<std::wstring> partResults(total);
+            std::atomic<int> nextIdx{ 0 };
+            std::atomic<int> completed{ 0 };
+
+            auto mapWorker = [&]() {
+                for (;;) {
+                    if (NeAiClient_IsCancelRequested()) break;
+                    int i = nextIdx.fetch_add(1);
+                    if (i >= total) break;
+                    std::wstring partReply, partErr;
+                    if (NeAiClient_AskOllama(work.model, work.mapChunks[i], partReply, partErr, kBatchCtx)) {
+                        while (!partReply.empty() && (partReply.back() == L'\n'
+                            || partReply.back() == L'\r' || partReply.back() == L' '))
+                            partReply.pop_back();
+                        if (!partReply.empty() &&
+                            partReply.find(L"nothing relevant") == std::wstring::npos) {
+                            partResults[i] = std::move(partReply);
+                        }
                     }
+                    int done = completed.fetch_add(1) + 1;
+                    int pct = (int)((double)done / (double)(total + 1) * 100.0);
+                    postProgress(readingLabel + L"\r\n" + std::to_wstring(done)
+                        + L"/" + std::to_wstring(total) + L"  (" + std::to_wstring(pct) + L"%)");
                 }
+            };
+
+            std::vector<std::thread> pool;
+            pool.reserve(nThreads);
+            // Show progress immediately (0/total) — the first request can take a
+            // while, and we only post again on each completion.
+            postProgress(readingLabel + L"\r\n0/" + std::to_wstring(total) + L"  (0%)");
+            for (int t = 0; t < nThreads; ++t) pool.emplace_back(mapWorker);
+            for (auto& th : pool) th.join();
+
+            // If the user hit Stop during the map phase, don't waste time on reduce.
+            if (NeAiClient_IsCancelRequested()) {
+                if (IsWindow(work.hwnd))
+                    PostMessageW(work.hwnd, WM_AI_SEND_COMPLETE, 0, (LPARAM)result);
+                else
+                    delete result;
+                return;
             }
-            postProgress(std::wstring(Ne_Ls(L"AI_PROGRESS_SYNTH")) + L"  (95%)");
+
+            std::wstring notes;
+            for (int i = 0; i < total; ++i)
+                if (!partResults[i].empty())
+                    notes += L"\r\n[Part " + std::to_wstring(i + 1) + L"]\r\n" + partResults[i] + L"\r\n";
+
+            postProgress(std::wstring(Ne_Ls(L"AI_PROGRESS_SYNTH")) + L"\r\n(95%)");
 
             std::wstring reducePrompt = work.reduceHeader;
             reducePrompt += L"Notes extracted from the file batches:\r\n";
@@ -2183,13 +2280,13 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
             chunkInfo.hwnd = work.hwnd;
             chunkInfo.answerStart = work.answerStart;
             if (NeAiClient_AskOllamaStream(work.model, reducePrompt, &chunkInfo,
-                    Ai_StreamChunkCallback, result->reply, result->error)) {
+                    Ai_StreamChunkCallback, result->reply, result->error, kBatchCtx)) {
                 result->ok = true;
             }
             result->streamed = result->streamed || chunkInfo.streamed;
             if (result->reply.empty() && !chunkInfo.streamed) {
                 std::wstring rr, re;
-                if (NeAiClient_AskOllama(work.model, reducePrompt, rr, re) && !rr.empty()) {
+                if (NeAiClient_AskOllama(work.model, reducePrompt, rr, re, kBatchCtx) && !rr.empty()) {
                     result->ok = true; result->reply = rr; result->error.clear();
                 }
             }
@@ -2497,7 +2594,81 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
             return 0;
         }
     }
-    if (msg == WM_CHAR && wParam == L'\r' && plainEnter) {
+    if (msg == WM_KEYDOWN && wParam == VK_ESCAPE && st) {
+        HWND hParent = (HWND)dwRefData;
+        // Esc mirrors the Stop button: interrupt an in-progress request so the
+        // user can add more info before it runs again. Only acts while busy.
+        if (hParent && st->hStopBtn && IsWindowEnabled(st->hStopBtn)) {
+            Ai_StopSend(hParent);
+            return 0;
+        }
+    }
+    if (msg == WM_CHAR && (wParam == L'\r') && plainEnter) {
+        return 0;
+    }
+    if (msg == WM_CHAR && wParam == VK_ESCAPE) {
+        // Swallow the Esc WM_CHAR so the RichEdit doesn't beep after we handle it.
+        return 0;
+    }
+    if (msg == WM_PASTE) {
+        // Strip incoming colours/formatting so pasted text always uses the input
+        // box's own readable formatting. Rich sources such as a dark editor tab
+        // otherwise paste light-coloured text that is invisible on the white
+        // input box.
+        UINT fmt = 0;
+        if (IsClipboardFormatAvailable(CF_UNICODETEXT)) fmt = CF_UNICODETEXT;
+        else if (IsClipboardFormatAvailable(CF_TEXT))   fmt = CF_TEXT;
+        if (fmt) {
+            CHARRANGE before = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&before);
+            SendMessageW(hwnd, EM_PASTESPECIAL, fmt, 0);
+            // Force the pasted run to solid black. EM_PASTESPECIAL keeps whatever
+            // colour the insertion point carried, which for text copied from an
+            // untitled/dark editor window can be light and therefore invisible
+            // on the white input box.
+            CHARRANGE after = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&after);
+            if (after.cpMax > before.cpMin) {
+                CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
+                cf.dwMask      = CFM_COLOR;
+                cf.dwEffects   = 0;
+                cf.crTextColor = RGB(0, 0, 0);
+                CHARRANGE sel = { before.cpMin, after.cpMax };
+                SendMessageW(hwnd, EM_EXSETSEL, 0, (LPARAM)&sel);
+                SendMessageW(hwnd, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+                CHARRANGE caret = { after.cpMax, after.cpMax };
+                SendMessageW(hwnd, EM_EXSETSEL, 0, (LPARAM)&caret);
+            }
+            return 0;
+        }
+    }
+    if (msg == WM_CONTEXTMENU) {
+        // RichEdit suppresses its own popup here; provide our own Cut/Copy/
+        // Paste/Select All menu so the query box has a working right-click menu.
+        DWORD selStart = 0, selEnd = 0;
+        SendMessageW(hwnd, EM_GETSEL, (WPARAM)&selStart, (LPARAM)&selEnd);
+        bool hasSel = (selStart != selEnd);
+        bool canPaste = IsClipboardFormatAvailable(CF_UNICODETEXT) ||
+                        IsClipboardFormatAvailable(CF_TEXT);
+        int  len = GetWindowTextLengthW(hwnd);
+        HMENU hMenu = CreatePopupMenu();
+        AppendMenuW(hMenu, MF_STRING | (hasSel ? 0 : MF_GRAYED),   1, Ne_Ls(L"MENU_CUT"));
+        AppendMenuW(hMenu, MF_STRING | (hasSel ? 0 : MF_GRAYED),   2, Ne_Ls(L"MENU_COPY"));
+        AppendMenuW(hMenu, MF_STRING | (canPaste ? 0 : MF_GRAYED), 3, Ne_Ls(L"MENU_PASTE"));
+        AppendMenuW(hMenu, MF_SEPARATOR, 0, NULL);
+        AppendMenuW(hMenu, MF_STRING | (len > 0 ? 0 : MF_GRAYED),  4, Ne_Ls(L"MENU_SELECTALL"));
+        int x = (int)(short)LOWORD(lParam);
+        int y = (int)(short)HIWORD(lParam);
+        if (x == -1 && y == -1) {
+            RECT rc = {}; GetWindowRect(hwnd, &rc);
+            x = rc.left + 12; y = rc.top + 12;
+        }
+        int cmd = TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON, x, y, 0, hwnd, NULL);
+        DestroyMenu(hMenu);
+        switch (cmd) {
+            case 1: SendMessageW(hwnd, WM_CUT,    0, 0);          break;
+            case 2: SendMessageW(hwnd, WM_COPY,   0, 0);          break;
+            case 3: SendMessageW(hwnd, WM_PASTE,  0, 0);          break;  // routed through the plain-text handler above
+            case 4: SendMessageW(hwnd, EM_SETSEL, 0, (LPARAM)-1); break;
+        }
         return 0;
     }
     return DefSubclassProc(hwnd, msg, wParam, lParam);
@@ -2506,11 +2677,12 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
 static void Ai_ApplyButtons(AiWindowState* st)
 {
     if (!st || !st->dd) return;
-    st->dd->buttonCount = 4;
+    st->dd->buttonCount = 5;
     st->dd->buttons[0] = AiButtonSpec{ IDC_AI_SEND_BTN,  Ne_Ls(L"BTN_SEND"),  AiBtnTone::Green, Ai_MeasureButtonWidth(Ne_Ls(L"BTN_SEND")),  true };
-    st->dd->buttons[1] = AiButtonSpec{ IDC_AI_COPY_BTN,  Ne_Ls(L"BTN_COPY"),  AiBtnTone::Blue,  Ai_MeasureButtonWidth(Ne_Ls(L"BTN_COPY")),  false, true };
-    st->dd->buttons[2] = AiButtonSpec{ IDC_AI_CLEAR_BTN, Ne_Ls(L"BTN_CLEAR"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLEAR")), true };
-    st->dd->buttons[3] = AiButtonSpec{ IDC_AI_CLOSE_BTN, Ne_Ls(L"BTN_CLOSE"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLOSE")), true };
+    st->dd->buttons[1] = AiButtonSpec{ IDC_AI_STOP_BTN,  Ne_Ls(L"BTN_STOP"),  AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_STOP")),  false };
+    st->dd->buttons[2] = AiButtonSpec{ IDC_AI_COPY_BTN,  Ne_Ls(L"BTN_COPY"),  AiBtnTone::Blue,  Ai_MeasureButtonWidth(Ne_Ls(L"BTN_COPY")),  false, true };
+    st->dd->buttons[3] = AiButtonSpec{ IDC_AI_CLEAR_BTN, Ne_Ls(L"BTN_CLEAR"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLEAR")), true };
+    st->dd->buttons[4] = AiButtonSpec{ IDC_AI_CLOSE_BTN, Ne_Ls(L"BTN_CLOSE"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLOSE")), true };
 }
 
 static HMENU Ai_BuildMenu(const AiWindowState* st)
@@ -2756,7 +2928,211 @@ static bool Ai_ResolveRef(const std::wstring& root, const std::wstring& ref,
     return false;
 }
 
-// Extract search terms from the prompt: anything the user put in `backticks`,
+// A file (on disk or a DB knowledge record) the user asked the AI to work on.
+struct AiRequestedItem {
+    std::wstring rel;      // display path: relative file path, or "db://kind/title"
+    std::wstring full;     // absolute path on disk, empty for DB docs
+    std::wstring body;     // preloaded content for DB docs, empty for on-disk files
+    bool         isDoc = false;
+};
+
+// Translate a glob (with * ? and ** ) into an ECMAScript regex string, anchored,
+// matched case-insensitively against a relative path that uses '/' separators.
+static std::wstring Ai_GlobToRegex(const std::wstring& glob)
+{
+    std::wstring re = L"^";
+    for (size_t i = 0; i < glob.size(); ++i) {
+        wchar_t c = glob[i];
+        if (c == L'*') {
+            if (i + 1 < glob.size() && glob[i + 1] == L'*') {   // ** = any depth
+                re += L".*";
+                ++i;
+                if (i + 1 < glob.size() && glob[i + 1] == L'/') ++i;  // swallow **/ 
+            } else {
+                re += L"[^/]*";                                   // * = within a segment
+            }
+        } else if (c == L'?') {
+            re += L"[^/]";
+        } else if (wcschr(L".^$+(){}[]|\\", c)) {
+            re += L'\\'; re += c;                                 // escape regex metachars
+        } else {
+            re += c;
+        }
+    }
+    re += L"$";
+    return re;
+}
+
+// Is this token a pattern (glob wildcard or an explicit regex: / re: form)?
+static bool Ai_TokenLooksLikePattern(const std::wstring& t)
+{
+    if (t.find(L'*') != std::wstring::npos || t.find(L'?') != std::wstring::npos) return true;
+    if (t.size() > 6 && Ai_LowerW(t.substr(0, 6)) == L"regex:") return true;
+    if (t.size() > 3 && Ai_LowerW(t.substr(0, 3)) == L"re:") return true;
+    if (t.size() >= 2 && t.front() == L'/' && t.back() == L'/') return true;
+    return false;
+}
+
+// Match one relative path against a compiled matcher (case-insensitive).
+static bool Ai_PathMatchesRegex(const std::wstring& relPath, const std::wregex& re)
+{
+    try { return std::regex_match(relPath, re); }
+    catch (...) { return false; }
+}
+
+// Tokenise the prompt preserving path/pattern characters ( * ? / \ . : ), so
+// globs and regex survive (Ai_ExtractFileRefs strips wildcards and can't).
+static std::vector<std::wstring> Ai_ExtractPatternTokens(const std::wstring& prompt)
+{
+    std::vector<std::wstring> toks;
+    std::wstring cur;
+    auto flush = [&]() {
+        // Trim surrounding quotes/brackets but KEEP wildcards and separators.
+        const std::wstring junk = L"`'\"()[]{}<>,;!?";
+        size_t b = 0, e = cur.size();
+        while (b < e && junk.find(cur[b]) != std::wstring::npos) ++b;
+        while (e > b && junk.find(cur[e - 1]) != std::wstring::npos) --e;
+        std::wstring t = cur.substr(b, e - b);
+        cur.clear();
+        if (t.size() >= 2) toks.push_back(t);
+    };
+    for (wchar_t ch : prompt) {
+        if (ch == L' ' || ch == L'\t' || ch == L'\r' || ch == L'\n') flush();
+        else cur += ch;
+    }
+    flush();
+    return toks;
+}
+
+// Normalise a directory-ish reference to a relative, '/'-separated prefix.
+// Returns empty if it does not correspond to a directory inside the project.
+static std::wstring Ai_NormalizeDirPrefix(const std::wstring& root, const std::wstring& tokenIn)
+{
+    std::wstring t = tokenIn;
+    for (auto& c : t) if (c == L'\\') c = L'/';
+    while (t.size() >= 2 && t[0] == L'.' && t[1] == L'/') t.erase(0, 2);
+    while (!t.empty() && t.front() == L'/') t.erase(0, 1);
+    while (!t.empty() && t.back() == L'/') t.pop_back();
+    if (t.empty()) return L"";
+    // Must exist on disk as a directory under the root.
+    std::wstring full = root;
+    if (!full.empty() && full.back() != L'\\') full += L'\\';
+    std::wstring win = t;
+    for (auto& c : win) if (c == L'/') c = L'\\';
+    full += win;
+    DWORD attr = GetFileAttributesW(full.c_str());
+    if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY)) return L"";
+    return Ai_LowerW(t);
+}
+
+// Expand every file reference in the prompt into concrete project items.
+// Handles: plain names/paths (with typo correction), directory references
+// (locale, .\locale\, locale/ → all files under it), glob wildcards
+// (locale/*, *.txt, **/*.cpp) and explicit regex (regex:PATTERN, /PATTERN/).
+// Also pulls in the project's DB knowledge records (project_docs) when the
+// prompt refers to notes/db, or always as low-cost extra context.
+static std::vector<AiRequestedItem> Ai_ExpandFileRefs(
+    const std::wstring& root, const std::vector<NeProjectFile>& files,
+    const std::wstring& prompt, bool& outBulk)
+{
+    outBulk = false;
+    std::vector<AiRequestedItem> out;
+    std::set<std::wstring> seen;
+    auto add = [&](const std::wstring& rel, const std::wstring& full) {
+        std::wstring key = Ai_LowerW(full.empty() ? rel : full);
+        if (seen.count(key)) return;
+        seen.insert(key);
+        AiRequestedItem it; it.rel = rel; it.full = full; out.push_back(std::move(it));
+    };
+
+    // 1) Explicit patterns (globs / regex) and directory references.
+    for (const auto& tok : Ai_ExtractPatternTokens(prompt)) {
+        std::wstring patternRel;   // '/'-separated, lower-cased, for matching
+        bool isRegex = false;
+
+        std::wstring low = Ai_LowerW(tok);
+        if (low.compare(0, 6, L"regex:") == 0) { patternRel = tok.substr(6); isRegex = true; }
+        else if (low.compare(0, 3, L"re:") == 0) { patternRel = tok.substr(3); isRegex = true; }
+        else if (tok.size() >= 2 && tok.front() == L'/' && tok.back() == L'/') {
+            patternRel = tok.substr(1, tok.size() - 2); isRegex = true;
+        } else if (Ai_TokenLooksLikePattern(tok)) {
+            // Glob: normalise separators and strip leading ./ and root.
+            std::wstring g = tok;
+            for (auto& c : g) if (c == L'\\') c = L'/';
+            while (g.size() >= 2 && g[0] == L'.' && g[1] == L'/') g.erase(0, 2);
+            while (!g.empty() && g.front() == L'/') g.erase(0, 1);
+            patternRel = Ai_GlobToRegex(Ai_LowerW(g));
+            isRegex = true;   // now a regex string
+        } else {
+            // Maybe a bare/qualified directory → include everything beneath it.
+            std::wstring dir = Ai_NormalizeDirPrefix(root, tok);
+            if (!dir.empty()) {
+                std::wstring pre = dir + L"/";
+                int before = (int)out.size();
+                for (const auto& f : files) {
+                    std::wstring rl = Ai_LowerW(f.relPath);
+                    if (rl == dir || rl.compare(0, pre.size(), pre) == 0)
+                        add(f.relPath, f.fullPath);
+                }
+                if ((int)out.size() - before > 1) outBulk = true;
+            }
+            continue;
+        }
+
+        if (isRegex && !patternRel.empty()) {
+            std::wregex re;
+            bool ok = true;
+            try { re.assign(patternRel, std::regex::ECMAScript | std::regex::icase); }
+            catch (...) { ok = false; }
+            if (ok) {
+                int before = (int)out.size();
+                for (const auto& f : files)
+                    if (Ai_PathMatchesRegex(f.relPath, re)) add(f.relPath, f.fullPath);
+                if ((int)out.size() - before > 1) outBulk = true;
+            }
+        }
+    }
+
+    // 2) Plain named files (existing resolver, with typo auto-correction).
+    for (const auto& ref : Ai_ExtractFileRefs(prompt)) {
+        std::wstring rel, full; bool corrected = false;
+        if (Ai_ResolveRef(root, ref, files, rel, full, corrected))
+            add(rel, full);
+    }
+
+    // 3) DB knowledge records.  Included when the user refers to notes/db, or
+    //    when a bulk request is under way (so "everything in the project" truly
+    //    means files + DB).  Kept generic so the store can evolve.
+    {
+        std::wstring pl = Ai_LowerW(prompt);
+        bool wantsDb = pl.find(L"note") != std::wstring::npos ||
+                       pl.find(L"db") != std::wstring::npos ||
+                       pl.find(L"database") != std::wstring::npos ||
+                       pl.find(L"everything") != std::wstring::npos ||
+                       pl.find(L"all files") != std::wstring::npos ||
+                       outBulk;
+        if (wantsDb) {
+            int64_t pid = NeProjects_GetActiveId();
+            std::vector<NeProjectDoc> docs;
+            if (pid && NeProjects_CollectDocs(pid, docs) && !docs.empty()) {
+                for (const auto& d : docs) {
+                    std::wstring rel = L"db://" + (d.kind.empty() ? L"note" : d.kind)
+                                     + L"/" + (d.title.empty() ? std::to_wstring(d.id) : d.title);
+                    std::wstring key = Ai_LowerW(rel);
+                    if (seen.count(key)) continue;
+                    seen.insert(key);
+                    AiRequestedItem it; it.rel = rel; it.isDoc = true; it.body = d.body;
+                    out.push_back(std::move(it));
+                }
+                if (docs.size() > 1) outBulk = true;
+            }
+        }
+    }
+
+    return out;
+}
+
+
 // plus identifier-like tokens (containing '_' or camelCase) so the AI can find a
 // symbol/function by name without reading whole files.
 static std::vector<std::wstring> Ai_ExtractSearchTerms(const std::wstring& prompt)
@@ -2878,6 +3254,111 @@ static bool Ai_SearchSnippets(const std::vector<NeProjectFile>& files,
     return true;
 }
 
+// Extract explicit regex patterns the user wants to search file CONTENTS for:
+//   regex:PATTERN   re:PATTERN   /PATTERN/
+// (The same tokens also select file paths in Ai_ExpandFileRefs; here they drive a
+// content grep so "search all files for <pattern>" works regardless of path.)
+static std::vector<std::wstring> Ai_ExtractContentRegexes(const std::wstring& prompt)
+{
+    std::vector<std::wstring> pats;
+    for (const auto& tok : Ai_ExtractPatternTokens(prompt)) {
+        std::wstring low = Ai_LowerW(tok);
+        std::wstring pat;
+        if (low.compare(0, 6, L"regex:") == 0)      pat = tok.substr(6);
+        else if (low.compare(0, 3, L"re:") == 0)    pat = tok.substr(3);
+        else if (tok.size() >= 2 && tok.front() == L'/' && tok.back() == L'/')
+            pat = tok.substr(1, tok.size() - 2);
+        if (pat.size() >= 2) {
+            bool dup = false;
+            for (const auto& e : pats) if (e == pat) { dup = true; break; }
+            if (!dup) pats.push_back(pat);
+        }
+    }
+    return pats;
+}
+
+// Grep EVERY project file line-by-line for one or more regexes and emit matching
+// snippets with surrounding context.  Reads are capped per file so huge files
+// (20000+ lines) stay bounded; the scan is bounded by a total budget and a file
+// cap.  Returns false when nothing matched.
+static bool Ai_RegexSearchSnippets(const std::vector<NeProjectFile>& files,
+                                   const std::vector<std::wstring>& patterns,
+                                   std::wstring& outBlock)
+{
+    if (patterns.empty() || files.empty()) return false;
+
+    std::vector<std::wregex> res;
+    std::vector<std::wstring> reText;
+    for (const auto& p : patterns) {
+        try {
+            res.emplace_back(p, std::regex::ECMAScript | std::regex::icase | std::regex::optimize);
+            reText.push_back(p);
+        } catch (...) { /* skip invalid regex */ }
+    }
+    if (res.empty()) return false;
+
+    const size_t kBudget      = 16000;    // wide chars of snippets total
+    const size_t kMaxSnippets = 20;
+    const int    kBefore      = 3;
+    const int    kAfter       = 12;
+    const int    kFileScanCap = 5000;
+    const size_t kFileReadCap = 2u * 1024 * 1024;   // 2 MB head per file
+    const size_t kPerSnippet  = 2400;
+
+    std::wstring block;
+    size_t used = 0, snippets = 0; int scanned = 0; int filesMatched = 0;
+    for (size_t fi = 0; fi < files.size() && used < kBudget
+                     && snippets < kMaxSnippets && scanned < kFileScanCap; ++fi) {
+        std::wstring content;
+        if (!NeProjects_ReadTextFile(files[fi].fullPath, content, kFileReadCap)) continue;
+        ++scanned;
+        if (content.empty()) continue;
+
+        // Split into lines.
+        std::vector<std::wstring> lines;
+        size_t s = 0;
+        while (s <= content.size()) {
+            size_t nl = content.find(L'\n', s);
+            std::wstring ln = (nl == std::wstring::npos) ? content.substr(s) : content.substr(s, nl - s);
+            if (!ln.empty() && ln.back() == L'\r') ln.pop_back();
+            lines.push_back(std::move(ln));
+            if (nl == std::wstring::npos) break;
+            s = nl + 1;
+        }
+
+        int lastEmittedEnd = -1000;
+        bool fileHeaderNeeded = true;
+        for (int li = 0; li < (int)lines.size() && used < kBudget && snippets < kMaxSnippets; ++li) {
+            bool match = false;
+            for (const auto& re : res) {
+                try { if (std::regex_search(lines[li], re)) { match = true; break; } }
+                catch (...) {}
+            }
+            if (!match) continue;
+            int start = std::max(0, li - kBefore);
+            int end   = std::min((int)lines.size() - 1, li + kAfter);
+            if (start <= lastEmittedEnd) continue;   // skip overlapping match
+            std::wstring snip;
+            for (int k = start; k <= end; ++k) {
+                snip += std::to_wstring(k + 1); snip += L": "; snip += lines[k]; snip += L"\r\n";
+            }
+            if (snip.size() > kPerSnippet) { snip.resize(kPerSnippet); snip += L"\r\n... (snippet truncated)\r\n"; }
+            if (used + snip.size() > kBudget) break;
+            if (fileHeaderNeeded) { filesMatched++; fileHeaderNeeded = false; }
+            block += L"=== " + files[fi].relPath + L"  (line "
+                   + std::to_wstring(li + 1) + L") ===\r\n" + snip + L"\r\n";
+            used += snip.size();
+            ++snippets;
+            lastEmittedEnd = end;
+        }
+    }
+    if (block.empty()) return false;
+    outBlock = L"Regex search matches (patterns: ";
+    for (size_t i = 0; i < reText.size(); ++i) { if (i) outBlock += L", "; outBlock += reText[i]; }
+    outBlock += L") across " + std::to_wstring(filesMatched) + L" file(s):\r\n" + block + L"\r\n";
+    return true;
+}
+
 // Build a "suggestion mode" project-context block for the active project, if any.
 // Runs on the UI thread (SQLite handle is single-threaded) before the send worker
 // is spawned.  Returns an empty string when no project is active.
@@ -2891,21 +3372,16 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
     std::vector<NeProjectFile> files;
     NeProjects_CollectFiles(proj.rootPath, files);
 
-    // Resolve any files the user named in the prompt (with typo auto-correction
-    // against what is actually on disk).  These are always included in full.
-    struct Requested { std::wstring rel; std::wstring full; std::wstring original; bool corrected; };
+    // Expand every reference the user made — plain names (with typo correction),
+    // directories, glob wildcards, explicit regex — plus any DB knowledge records,
+    // into concrete items.  These are always included in full (budget permitting).
+    struct Requested { std::wstring rel; std::wstring full; std::wstring body; bool isDoc; };
     std::vector<Requested> requested;
+    bool bulk = false;
     {
-        auto refs = Ai_ExtractFileRefs(userPrompt);
-        for (const auto& ref : refs) {
-            std::wstring rel, full; bool corrected = false;
-            if (Ai_ResolveRef(proj.rootPath, ref, files, rel, full, corrected)) {
-                bool dup = false;
-                for (const auto& r : requested)
-                    if (Ai_LowerW(r.full) == Ai_LowerW(full)) { dup = true; break; }
-                if (!dup) requested.push_back({ rel, full, ref, corrected });
-            }
-        }
+        auto items = Ai_ExpandFileRefs(proj.rootPath, files, userPrompt, bulk);
+        for (const auto& it : items)
+            requested.push_back({ it.rel, it.full, it.body, it.isDoc });
     }
 
     // Tokenize the prompt into lowercase words (>= 3 chars) for relevance ranking.
@@ -2956,30 +3432,37 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
     ctx += L"- Only reference files that exist in this project. Do not invent file paths.\r\n";
     ctx += L"- If a change belongs in a new file, say so and give a suggested relative path.\r\n\r\n";
 
-    // Report any filename auto-corrections so the model uses the real names.
-    bool anyCorrection = false;
-    for (const auto& r : requested) if (r.corrected) anyCorrection = true;
-    if (anyCorrection) {
-        ctx += L"Filename auto-corrections (matched against files on disk):\r\n";
-        for (const auto& r : requested)
-            if (r.corrected)
-                ctx += L"  \"" + r.original + L"\" -> " + r.rel + L"\r\n";
-        ctx += L"\r\n";
-    }
-
-    // Compact file listing so the model knows the project structure.  Kept small
-    // and near the top so that, if the model truncates the prompt to its context
-    // window (llama.cpp keeps the tail), the least important part is dropped first.
+    // Full file listing so the model knows the whole project structure.  Sorted
+    // SHALLOW-FIRST (fewest path separators, then alphabetical) so the developer's
+    // own files — root files and things like locale/*.txt — always appear before
+    // deep vendored trees (curl/, scintilla_src/, third_party/…).  Previously the
+    // collection order walked those big libraries first, so with a small cap the
+    // real project files (e.g. all 15 locale files) never got listed at all.
     ctx += L"Project files (relative to root):\r\n";
-    const int kMaxListed = 80;
-    int listed = 0;
-    for (const auto& f : files) {
-        if (listed >= kMaxListed) break;
-        ctx += L"  " + f.relPath + L"\r\n";
-        ++listed;
+    {
+        std::vector<const std::wstring*> listing;
+        listing.reserve(files.size());
+        for (const auto& f : files) listing.push_back(&f.relPath);
+        auto depthOf = [](const std::wstring& p) {
+            int d = 0; for (wchar_t c : p) if (c == L'/') ++d; return d;
+        };
+        std::stable_sort(listing.begin(), listing.end(),
+            [&](const std::wstring* a, const std::wstring* b) {
+                int da = depthOf(*a), db = depthOf(*b);
+                if (da != db) return da < db;
+                return Ai_LowerW(*a) < Ai_LowerW(*b);
+            });
+        // Cap only as a hard safety limit (~32k entries) — effectively "all files".
+        const int kMaxListed = 32000;
+        int listed = 0;
+        for (const std::wstring* p : listing) {
+            if (listed >= kMaxListed) break;
+            ctx += L"  " + *p + L"\r\n";
+            ++listed;
+        }
+        if ((int)listing.size() > kMaxListed)
+            ctx += L"  ... (" + std::to_wstring((int)listing.size() - kMaxListed) + L" more)\r\n";
     }
-    if ((int)files.size() > kMaxListed)
-        ctx += L"  ... (" + std::to_wstring((int)files.size() - kMaxListed) + L" more)\r\n";
     ctx += L"\r\n";
 
     // File contents.  Local models prefill the ENTIRE prompt before emitting the
@@ -3010,8 +3493,31 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
         ++included;
     };
 
-    // Referenced files first (consume budget with priority), rendered last.
-    for (const auto& r : requested) emitInto(refStr, r.rel, r.full);
+    // Emit a preloaded DB knowledge record (no disk read).
+    auto emitDoc = [&](std::wstring& dst, const std::wstring& rel, const std::wstring& body) {
+        std::wstring key = Ai_LowerW(rel);
+        if (includedPaths.count(key)) return;
+        if (used >= kTotalBudget || included >= kMaxFiles) return;
+        std::wstring content = body;
+        size_t room = kTotalBudget - used;
+        size_t cap = std::min(kPerFile, room);
+        if (content.size() > cap) { content.resize(cap); content += L"\r\n... (truncated)"; }
+        includedPaths.insert(key);
+        dst += L"=== DB RECORD: " + rel + L" ===\r\n" + content + L"\r\n\r\n";
+        used += content.size();
+        ++included;
+    };
+
+    // Referenced items first (consume budget with priority), rendered last.
+    for (const auto& r : requested) {
+        if (r.isDoc) emitDoc(refStr, r.rel, r.body);
+        else         emitInto(refStr, r.rel, r.full);
+    }
+
+    // Regex content search: grep EVERY file for any explicit regex the user gave
+    // (regex:… / re:… / /…/) and include the matching lines with context.
+    std::wstring regexBlock;
+    bool haveRegex = Ai_RegexSearchSnippets(files, Ai_ExtractContentRegexes(userPrompt), regexBlock);
 
     // Code search: grep the project for symbols/terms in the prompt and include
     // matching snippets (a function can be captured without reading whole files).
@@ -3022,7 +3528,7 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
     bool haveSnippets = Ai_SearchSnippets(files, Ai_ExtractSearchTerms(userPrompt),
                                           refLower, snippetBlock);
 
-    if (!haveSnippets) {
+    if (!haveSnippets && !haveRegex) {
         // Relevant files fill whatever budget remains.
         for (const auto& s : scored) {
             if (s.score <= 0 || included >= kMaxFiles || used >= kTotalBudget) break;
@@ -3030,9 +3536,11 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
         }
     }
 
+    if (haveRegex)
+        ctx += regexBlock;
     if (haveSnippets)
         ctx += snippetBlock;
-    else if (!relStr.empty())
+    else if (!haveRegex && !relStr.empty())
         ctx += L"Other relevant file contents:\r\n" + relStr;
     if (!refStr.empty())
         ctx += L"Referenced file contents (the exact files you named, read from disk):\r\n" + refStr;
@@ -3041,17 +3549,19 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
     return ctx;
 }
 
-// Plan for reading a large referenced file in batches (map-reduce).
+// Plan for reading project content in batches (map-reduce).
 struct AiChunkPlan {
     bool chunked = false;
-    std::vector<std::wstring> mapChunks;   // one analysis prompt per file chunk
+    std::vector<std::wstring> mapChunks;   // one analysis prompt per content chunk
     std::wstring reduceHeader;             // preamble for the final synthesis prompt
 };
 
-// If the user named a file that is too large to fit the model context in one
-// shot, build a batched plan: split each big file into chunks (on line
-// boundaries) and produce a per-chunk analysis prompt plus a reduce header.
-// Returns plan.chunked == false when no big file is involved (normal path).
+// Build a batched plan when the request touches more content than fits the model
+// context in one shot: a single big file (20000+ lines), OR a bulk selection
+// (directory / glob / regex matching many files), OR DB knowledge records.  Each
+// source is split into line-bounded chunks; every chunk becomes one map prompt,
+// and the reduce step combines the per-chunk results.  Returns chunked == false
+// when everything fits inline (the normal single-call path then handles it).
 static AiChunkPlan Ai_PlanBigFileChunks(const std::wstring& userPrompt)
 {
     AiChunkPlan plan;
@@ -3063,71 +3573,99 @@ static AiChunkPlan Ai_PlanBigFileChunks(const std::wstring& userPrompt)
     std::vector<NeProjectFile> files;
     NeProjects_CollectFiles(proj.rootPath, files);
 
-    // Resolve the files the user named (with typo auto-correction).
-    struct Req { std::wstring rel, full; };
-    std::vector<Req> refs;
-    for (const auto& ref : Ai_ExtractFileRefs(userPrompt)) {
-        std::wstring rel, full; bool corrected = false;
-        if (Ai_ResolveRef(proj.rootPath, ref, files, rel, full, corrected)) {
-            bool dup = false;
-            for (const auto& r : refs) if (Ai_LowerW(r.full) == Ai_LowerW(full)) dup = true;
-            if (!dup) refs.push_back({ rel, full });
-        }
-    }
-    if (refs.empty()) return plan;
+    // Expand all references (plain/dir/glob/regex) + DB docs into concrete items.
+    bool bulk = false;
+    std::vector<AiRequestedItem> items = Ai_ExpandFileRefs(proj.rootPath, files, userPrompt, bulk);
+    if (items.empty()) return plan;
 
-    const size_t kInlineMax  = 12000;   // <= this fits inline (normal path handles it)
-    const size_t kChunkChars = 8000;    // ~2k tokens per batch
-    const int    kMaxChunks  = 60;      // safety cap across all big files
+    // A whole file/record is processed as ONE request (no splitting) as long as it
+    // fits the batch context window (num_ctx 32768 ≈ this many wide chars).  Only
+    // genuinely huge files are split, into kSplitChars line-bounded pieces.
+    const size_t kWholeMax    = 80000;
+    const size_t kSplitChars  = 60000;
+    const int    kMaxChunks   = 400;     // safety cap across all sources
+    const size_t kFileReadCap = 8ull * 1024 * 1024;   // 8 MB head per file
 
-    struct Big { std::wstring rel; std::wstring content; };
-    std::vector<Big> bigFiles;
     std::vector<std::wstring> searchTerms = Ai_ExtractSearchTerms(userPrompt);
-    for (const auto& r : refs) {
-        std::wstring content;
-        if (!NeProjects_ReadTextFile(r.full, content, 32ull * 1024 * 1024)) continue;
-        if (content.size() <= kInlineMax) continue;
-        // If the user named a symbol found inside this big file, code search will
-        // extract just the relevant snippet — no need to read the whole file.
-        bool symbolHere = false;
-        if (!searchTerms.empty()) {
-            std::wstring low = Ai_LowerW(content);
-            for (const auto& t : searchTerms)
-                if (low.find(Ai_LowerW(t)) != std::wstring::npos) { symbolHere = true; break; }
-        }
-        if (symbolHere) continue;
-        bigFiles.push_back({ r.rel, std::move(content) });
-    }
-    if (bigFiles.empty()) return plan;   // no big file to batch — let the normal path run
 
-    for (const auto& bf : bigFiles) {
-        // Split into chunks, preferring line boundaries near kChunkChars.
-        std::vector<std::wstring> pieces;
-        size_t pos = 0;
-        while (pos < bf.content.size()) {
-            size_t end = std::min(bf.content.size(), pos + kChunkChars);
-            if (end < bf.content.size()) {
-                size_t nl = bf.content.rfind(L'\n', end);
-                if (nl != std::wstring::npos && nl > pos + kChunkChars / 2) end = nl + 1;
+    // Gather the content of each source (files from disk, docs from memory).
+    struct Src { std::wstring rel; std::wstring content; };
+    std::vector<Src> sources;
+    size_t totalSize = 0;
+    for (const auto& it : items) {
+        std::wstring content;
+        if (it.isDoc) {
+            content = it.body;
+        } else {
+            if (!NeProjects_ReadTextFile(it.full, content, kFileReadCap)) continue;
+            // For a targeted (non-bulk) symbol lookup, let the snippet search pull
+            // just the relevant lines instead of ingesting the whole file.
+            if (!bulk && !searchTerms.empty()) {
+                std::wstring low = Ai_LowerW(content);
+                bool symbolHere = false;
+                for (const auto& t : searchTerms)
+                    if (low.find(Ai_LowerW(t)) != std::wstring::npos) { symbolHere = true; break; }
+                if (symbolHere) continue;
             }
-            pieces.push_back(bf.content.substr(pos, end - pos));
-            pos = end;
+        }
+        if (content.empty()) continue;
+        totalSize += content.size();
+        sources.push_back({ it.rel, std::move(content) });
+    }
+    if (sources.empty()) return plan;
+
+    // Slow batch map-reduce is a LAST RESORT: it re-runs the model over every
+    // source, so for many normal files it is unusably slow (and pointless for an
+    // ordinary question).  Only use it when a SINGLE file is so large it cannot
+    // fit one request.  Everything else — even 15 files totalling hundreds of KB —
+    // goes through the fast single streamed request (file list + budgeted content),
+    // which answers questions in seconds.
+    bool anyHuge = false;
+    for (const auto& s : sources) if (s.content.size() > kWholeMax) { anyHuge = true; break; }
+    if (!anyHuge) return plan;
+
+    for (const auto& sc : sources) {
+        // Keep each file/record whole (one request) unless it is too big for the
+        // batch context; only then split it into line-bounded pieces.
+        std::vector<std::wstring> pieces;
+        if (sc.content.size() <= kWholeMax) {
+            pieces.push_back(sc.content);
+        } else {
+            size_t pos = 0;
+            while (pos < sc.content.size()) {
+                size_t end = std::min(sc.content.size(), pos + kSplitChars);
+                if (end < sc.content.size()) {
+                    size_t nl = sc.content.rfind(L'\n', end);
+                    if (nl != std::wstring::npos && nl > pos + kSplitChars / 2) end = nl + 1;
+                }
+                pieces.push_back(sc.content.substr(pos, end - pos));
+                pos = end;
+            }
         }
         int total = (int)pieces.size();
         for (int i = 0; i < total && (int)plan.mapChunks.size() < kMaxChunks; ++i) {
             std::wstring p;
-            p += L"You are analysing a large file in parts. This is part "
-               + std::to_wstring(i + 1) + L" of " + std::to_wstring(total)
-               + L" of the file \"" + bf.rel + L"\".\r\n";
-            p += L"List ONLY the facts from THIS part that are relevant to the user's "
-                 L"question. Be concise. If nothing here is relevant, reply exactly "
-                 L"\"nothing relevant\".\r\n\r\n";
-            p += L"User question: " + userPrompt + L"\r\n\r\n";
-            p += L"=== PART " + std::to_wstring(i + 1) + L"/" + std::to_wstring(total)
-               + L" OF " + bf.rel + L" ===\r\n";
+            if (total == 1) {
+                p += L"Apply the user's request to the file \"" + sc.rel + L"\" below and "
+                     L"report the full result. Preserve formatting. If it is not relevant, "
+                     L"reply exactly \"nothing relevant\".\r\n\r\n";
+                p += L"User request: " + userPrompt + L"\r\n\r\n";
+                p += L"=== FILE: " + sc.rel + L" ===\r\n";
+            } else {
+                p += L"You are reading a large file in parts. This is part "
+                   + std::to_wstring(i + 1) + L" of " + std::to_wstring(total)
+                   + L" of \"" + sc.rel + L"\".\r\n";
+                p += L"Apply the user's request to THIS part only and report the result "
+                     L"for this part. Preserve formatting. If nothing here is relevant, "
+                     L"reply exactly \"nothing relevant\".\r\n\r\n";
+                p += L"User request: " + userPrompt + L"\r\n\r\n";
+                p += L"=== PART " + std::to_wstring(i + 1) + L"/" + std::to_wstring(total)
+                   + L" OF " + sc.rel + L" ===\r\n";
+            }
             p += pieces[i];
             plan.mapChunks.push_back(std::move(p));
         }
+        if ((int)plan.mapChunks.size() >= kMaxChunks) break;
     }
     if (plan.mapChunks.empty()) return plan;
 
@@ -3135,11 +3673,10 @@ static AiChunkPlan Ai_PlanBigFileChunks(const std::wstring& userPrompt)
     plan.reduceHeader  = L"[PROJECT CONTEXT \u2014 SUGGESTION MODE]\r\n";
     plan.reduceHeader += L"Active project: " + proj.name + L"\r\n";
     plan.reduceHeader += L"Project root: " + proj.rootPath + L"\r\n\r\n";
-    plan.reduceHeader += L"One or more large project files were read in batches. Below are "
-                         L"the notes extracted from each batch. First, directly and specifically "
-                         L"answer the user's question using these notes; then add supporting detail "
-                         L"if useful. When you propose code, name the exact file and where in it the "
-                         L"developer should place the change.\r\n\r\n";
+    plan.reduceHeader += L"The project was read in batches (files and/or DB records). Below are "
+                         L"the per-part results. Combine them into a single, complete answer to "
+                         L"the user's request, preserving formatting. When you propose code, name "
+                         L"the exact file and where in it the developer should place the change.\r\n\r\n";
     return plan;
 }
 
@@ -3149,9 +3686,20 @@ static void Ai_DoSend(HWND hwnd)
     if (!st) return;
 
     HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
-    wchar_t prompt[2048] = {};
-    if (hInput) GetWindowTextW(hInput, prompt, 2048);
-    if (!prompt[0]) return;
+    std::wstring prompt;
+    if (hInput) {
+        int inLen = GetWindowTextLengthW(hInput);
+        if (inLen > 0) {
+            prompt.resize((size_t)inLen);
+            int copied = GetWindowTextW(hInput, &prompt[0], inLen + 1);
+            prompt.resize((size_t)copied);
+        }
+    }
+    if (prompt.empty()) return;
+
+    st->lastPrompt = prompt;
+    st->sendCanceled = false;
+    NeAiClient_ResetCancel();
 
     Ai_HistoryRemember(st, prompt);
     Ai_SavePrefs(st);
@@ -3212,10 +3760,10 @@ static void Ai_DoSend(HWND hwnd)
     st->chunkedActive = chunkPlan.chunked;
     std::wstring promptForModel;
     if (chunkPlan.chunked) {
-        promptForModel = std::wstring(prompt);   // raw question; file context via batches
+        promptForModel = prompt;   // raw question; file context via batches
     } else {
         std::wstring projectCtx = Ai_BuildProjectContext(prompt);
-        promptForModel = projectCtx.empty() ? std::wstring(prompt) : (projectCtx + prompt);
+        promptForModel = projectCtx.empty() ? prompt : (projectCtx + prompt);
     }
     if (hLog) {
         st->replyBaseStart = GetWindowTextLengthW(hLog);
@@ -3249,6 +3797,80 @@ static void Ai_DoSend(HWND hwnd)
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, 0,
                            chunkPlan.mapChunks, chunkPlan.reduceHeader);
     }
+}
+
+// Stop an in-progress request so the developer can add more information and
+// resend.  Aborts the streaming transfer (cooperative cancel in the curl write
+// callback), stops the busy UI, and restores the prompt text for editing.  The
+// worker thread still posts WM_AI_SEND_COMPLETE later; sendCanceled makes that
+// handler discard the partial result.
+static void Ai_StopSend(HWND hwnd)
+{
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (!st) return;
+    if (!st->hStopBtn || !IsWindowEnabled(st->hStopBtn)) return;   // nothing running
+
+    st->sendCanceled = true;
+    NeAiClient_RequestCancel();
+
+    Ai_StopThinkingTimer(hwnd);
+    Ai_StopLiveTypingTimer(hwnd);
+    Ai_StopLiveTypingStartDelayTimer(hwnd);
+    Ai_EndBusyState(hwnd);
+    Ai_SetThinkingStatusText(hwnd);
+
+    Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_STOPPED"));
+
+    // Put the prompt back so the developer can extend it and send again.
+    HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
+    if (hInput && !st->lastPrompt.empty()) {
+        SetWindowTextW(hInput, st->lastPrompt.c_str());
+        int len = GetWindowTextLengthW(hInput);
+        SendMessageW(hInput, EM_SETSEL, (WPARAM)len, (LPARAM)len);
+        SetFocus(hInput);
+    }
+}
+
+// ── Window geometry persistence (AI window) ───────────────────────────────────
+// Saved to the settings table on every size/move change so the AI window reopens
+// exactly as it was left (normal/maximized).  Minimized is never persisted.
+static bool s_aiClosing = false;   // teardown guard: block late WM_SIZE overwrite
+static bool s_aiGeometryReady = false;  // false until restore is done, so the creation
+                                        // WM_SIZE can't clobber the saved geometry
+static void Ai_SaveWinPlacement(HWND hwnd)
+{
+    if (!hwnd || !IsWindow(hwnd)) return;
+    if (IsIconic(hwnd)) return;
+    WINDOWPLACEMENT wp = {}; wp.length = sizeof(wp);
+    if (!GetWindowPlacement(hwnd, &wp)) return;
+    bool maximized = (IsZoomed(hwnd) != FALSE) ||
+                     (wp.showCmd == SW_SHOWMAXIMIZED) || (wp.flags & WPF_RESTORETOMAXIMIZED);
+    RECT r = wp.rcNormalPosition;
+    NeProfiles_SetIntSetting("ai_win_valid", 1);
+    NeProfiles_SetIntSetting("ai_win_max",   maximized ? 1 : 0);
+    NeProfiles_SetIntSetting("ai_win_x",     r.left);
+    NeProfiles_SetIntSetting("ai_win_y",     r.top);
+    NeProfiles_SetIntSetting("ai_win_w",     r.right - r.left);
+    NeProfiles_SetIntSetting("ai_win_h",     r.bottom - r.top);
+}
+
+static bool Ai_RestoreWinPlacement(HWND hwnd)
+{
+    if (!hwnd || !IsWindow(hwnd)) return false;
+    int valid = 0;
+    if (!NeProfiles_GetIntSetting("ai_win_valid", 0, valid) || !valid) return false;
+    int x = 0, y = 0, w = 0, h = 0, mx = 0;
+    NeProfiles_GetIntSetting("ai_win_x",   0, x);
+    NeProfiles_GetIntSetting("ai_win_y",   0, y);
+    NeProfiles_GetIntSetting("ai_win_w",   0, w);
+    NeProfiles_GetIntSetting("ai_win_h",   0, h);
+    NeProfiles_GetIntSetting("ai_win_max", 0, mx);
+    if (w < 200 || h < 150) return false;
+    RECT rc = { x, y, x + w, y + h };
+    if (!MonitorFromRect(&rc, MONITOR_DEFAULTTONULL)) return false;
+    SetWindowPos(hwnd, NULL, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    ShowWindow(hwnd, mx ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
+    return true;
 }
 
 static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -3304,31 +3926,38 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             S(10), S(438), S(640), S(24), hwnd, (HMENU)(UINT_PTR)IDC_AI_INPUT, GetModuleHandleW(NULL), NULL);
         if (hInput && st->hPaneFont) SendMessageW(hInput, WM_SETFONT, (WPARAM)st->hPaneFont, TRUE);
         if (hInput) Ai_SetWrapToWindow(hInput);
+        // Allow very large prompts (whole files pasted for translation etc.).
+        // RichEdit defaults to ~32K characters; raise it to the full 32-bit range
+        // (4294967295 chars) so even huge pastes are never truncated.
+        if (hInput) {
+            SendMessageW(hInput, EM_EXLIMITTEXT, 0, (LPARAM)0xFFFFFFFFu);
+            SendMessageW(hInput, EM_LIMITTEXT, (WPARAM)0xFFFFFFFFu, 0);
+        }
         if (hInput) st->hInputSb = msb_attach(hInput, MSB_VERTICAL);
         if (hInput) SetWindowSubclass(hInput, Ai_InputSubclassProc, 1, (DWORD_PTR)hwnd);
 
-        int totalBtnW = st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10) + st->dd->buttons[3].width;
+        int totalBtnW = 0;
+        for (int i = 0; i < st->dd->buttonCount; ++i) {
+            totalBtnW += st->dd->buttons[i].width;
+            if (i > 0) totalBtnW += S(10);
+        }
         int btnY = S(438);
         int btnX = S(10) + S(820) - totalBtnW;
-        HWND hSend = CreateWindowExW(0, L"BUTTON", st->dd->buttons[0].text.c_str(),
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            btnX, btnY, st->dd->buttons[0].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_SEND_BTN, GetModuleHandleW(NULL), NULL);
-        if (hSend && st->hFont) SendMessageW(hSend, WM_SETFONT, (WPARAM)st->hFont, TRUE);
-
-        HWND hCopy = CreateWindowExW(0, L"BUTTON", st->dd->buttons[1].text.c_str(),
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            btnX + st->dd->buttons[0].width + S(10), btnY, st->dd->buttons[1].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_COPY_BTN, GetModuleHandleW(NULL), NULL);
-        if (hCopy && st->hFont) SendMessageW(hCopy, WM_SETFONT, (WPARAM)st->hFont, TRUE);
-
-        HWND hClear = CreateWindowExW(0, L"BUTTON", st->dd->buttons[2].text.c_str(),
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10), btnY, st->dd->buttons[2].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_CLEAR_BTN, GetModuleHandleW(NULL), NULL);
-        if (hClear && st->hFont) SendMessageW(hClear, WM_SETFONT, (WPARAM)st->hFont, TRUE);
-
-        HWND hClose = CreateWindowExW(0, L"BUTTON", st->dd->buttons[3].text.c_str(),
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10), btnY, st->dd->buttons[3].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_CLOSE_BTN, GetModuleHandleW(NULL), NULL);
-        if (hClose && st->hFont) SendMessageW(hClose, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+        HWND btnHwnds[5] = {};
+        int bx = btnX;
+        for (int i = 0; i < st->dd->buttonCount; ++i) {
+            const AiButtonSpec& b = st->dd->buttons[i];
+            btnHwnds[i] = CreateWindowExW(0, L"BUTTON", b.text.c_str(),
+                WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
+                bx, btnY, b.width, S(34), hwnd, (HMENU)(UINT_PTR)b.id, GetModuleHandleW(NULL), NULL);
+            if (btnHwnds[i] && st->hFont) SendMessageW(btnHwnds[i], WM_SETFONT, (WPARAM)st->hFont, TRUE);
+            bx += b.width + S(10);
+        }
+        HWND hSend  = btnHwnds[0];
+        HWND hStop  = btnHwnds[1];
+        HWND hCopy  = btnHwnds[2];
+        HWND hClear = btnHwnds[3];
+        HWND hClose = btnHwnds[4];
 
         HWND hStatus = CreateWindowExW(0, L"STATIC", L"",
             WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP,
@@ -3345,9 +3974,11 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         st->hStatus = hStatus;
         st->hStatusTimer = hStatusTimer;
         st->hSendBtn = hSend;
+        st->hStopBtn = hStop;
         st->hCopyBtn = hCopy;
         st->hClearBtn = hClear;
         st->hCloseBtn = hClose;
+        if (st->hStopBtn) EnableWindow(st->hStopBtn, FALSE);
 
         Ai_RefreshUi(hwnd);
         Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_WINDOW_OPENED"));
@@ -3365,10 +3996,6 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         HWND hHdr = GetDlgItem(hwnd, IDC_AI_HEADER);
         HWND hLog = st->hAnswerHost;
         HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
-        HWND hSend = GetDlgItem(hwnd, IDC_AI_SEND_BTN);
-        HWND hCopy = GetDlgItem(hwnd, IDC_AI_COPY_BTN);
-        HWND hClear = GetDlgItem(hwnd, IDC_AI_CLEAR_BTN);
-        HWND hClose = GetDlgItem(hwnd, IDC_AI_CLOSE_BTN);
         HWND hStatus = GetDlgItem(hwnd, IDC_AI_STATUS);
         HWND hStatusTimer = st->hStatusTimer ? st->hStatusTimer : GetDlgItem(hwnd, IDC_AI_STATUS_TIMER);
         int contentTop = pad + hdrH + gap;
@@ -3380,16 +4007,24 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         int inputW = std::max(0, (int)rc.right - 2 * pad);
         int logY = contentTop + inputH + gap + buttonH + gap;
         int btnY = contentTop + inputH + gap;
-        int totalBtnW = st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10) + st->dd->buttons[3].width;
+        int totalBtnW = 0;
+        for (int i = 0; i < st->dd->buttonCount; ++i) {
+            totalBtnW += st->dd->buttons[i].width;
+            if (i > 0) totalBtnW += S(10);
+        }
         int btnX = pad + std::max(0, (inputW - totalBtnW) / 2);
         if (hHdr) SetWindowPos(hHdr, NULL, pad, pad, rc.right - 2 * pad, hdrH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hInput) SetWindowPos(hInput, NULL, pad, contentTop, inputW, inputH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hInput) Ai_SetWrapToWindow(hInput);
         if (st->hInputSb) msb_reposition(st->hInputSb);
-        if (hSend) SetWindowPos(hSend, NULL, btnX, btnY, st->dd->buttons[0].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hCopy) SetWindowPos(hCopy, NULL, btnX + st->dd->buttons[0].width + S(10), btnY, st->dd->buttons[1].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hClear) SetWindowPos(hClear, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10), btnY, st->dd->buttons[2].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
-        if (hClose) SetWindowPos(hClose, NULL, btnX + st->dd->buttons[0].width + S(10) + st->dd->buttons[1].width + S(10) + st->dd->buttons[2].width + S(10), btnY, st->dd->buttons[3].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
+        {
+            int bx = btnX;
+            for (int i = 0; i < st->dd->buttonCount; ++i) {
+                HWND hBtn = GetDlgItem(hwnd, st->dd->buttons[i].id);
+                if (hBtn) SetWindowPos(hBtn, NULL, bx, btnY, st->dd->buttons[i].width, buttonH, SWP_NOZORDER | SWP_NOACTIVATE);
+                bx += st->dd->buttons[i].width + S(10);
+            }
+        }
         if (hLog) SetWindowPos(hLog, NULL, pad, logY, rc.right - 2 * pad, logH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (st->hLog && IsWindow(st->hLog) && st->hAnswerHost) {
             // Fill the host client area so the custom MSB scrollbar sits flush
@@ -3401,8 +4036,13 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (st->hLogSb) msb_reposition(st->hLogSb);
         if (hStatus) SetWindowPos(hStatus, NULL, pad, rc.bottom - pad - statusH, std::max(0, (int)rc.right - 2 * pad - S(250)), statusH, SWP_NOZORDER | SWP_NOACTIVATE);
         if (hStatusTimer) SetWindowPos(hStatusTimer, NULL, std::max(pad, (int)rc.right - pad - S(240)), rc.bottom - pad - statusH, S(240), statusH, SWP_NOZORDER | SWP_NOACTIVATE);
+        if (wParam == SIZE_MAXIMIZED || wParam == SIZE_RESTORED)
+            if (s_aiGeometryReady && !s_aiClosing) Ai_SaveWinPlacement(hwnd);
         return 0;
     }
+    case WM_EXITSIZEMOVE:
+        if (s_aiGeometryReady && !s_aiClosing) Ai_SaveWinPlacement(hwnd);
+        return 0;
     case WM_COMMAND:
         if (st && HIWORD(wParam) == EN_CHANGE) {
             if (LOWORD(wParam) == IDC_AI_INPUT && st->hInputSb) {
@@ -3491,6 +4131,9 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDC_AI_SEND_BTN:
             Ai_DoSend(hwnd);
             return 0;
+        case IDC_AI_STOP_BTN:
+            Ai_StopSend(hwnd);
+            return 0;
         case IDC_AI_COPY_BTN:
             SendMessageW(hwnd, WM_COMMAND, IDM_AI_LOG_COPY, 0);
             return 0;
@@ -3506,6 +4149,8 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         break;
     case WM_CLOSE:
+        Ai_SaveWinPlacement(hwnd);   // capture final geometry (incl. maximized)
+        s_aiClosing = true;
         DestroyWindow(hwnd);
         return 0;
     case WM_SETFOCUS:
@@ -3590,8 +4235,15 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         return 0;
     }
     case WM_AI_SEND_COMPLETE: {
-        Ai_EndBusyState(hwnd);
         auto* result = (AiSendResult*)lParam;
+        if (st && st->sendCanceled) {
+            // The user pressed Stop (or Esc): discard whatever the worker
+            // produced and leave the restored prompt untouched.
+            st->sendCanceled = false;
+            delete result;
+            return 0;
+        }
+        Ai_EndBusyState(hwnd);
         if (result) {
             if (st) {
                 st->liveTypingDone = true;
@@ -3716,6 +4368,7 @@ void Ne_ShowAiWindow(HWND parent)
     WNDCLASSW wc = {};
     wc.lpfnWndProc = Ai_WndProc;
     wc.hInstance = hi;
+    wc.hIcon = LoadIconW(hi, MAKEINTRESOURCEW(1));   // app icon (NSBEdit.ico) for taskbar
     wc.hCursor = LoadCursorW(NULL, MAKEINTRESOURCEW(kSystemArrowCursor));
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = L"NSBEditAIWindow";
@@ -3735,18 +4388,30 @@ void Ne_ShowAiWindow(HWND parent)
 
     auto* st = new AiWindowState();
     Ai_LoadPrefs(st);
+    s_aiClosing = false;   // fresh window — allow geometry saves again
+    s_aiGeometryReady = false;  // block clobber until restore has run
 
-    HWND hwnd = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE,
+    // Independent top-level window (NO owner) + WS_EX_APPWINDOW so it gets its own
+    // taskbar button and Alt+Tab entry — the AI window and editor act as two apps.
+    HWND hwnd = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_APPWINDOW,
         wc.lpszClassName, Ne_Ls(L"AI_WINDOW_TITLE_PREFIX"),
         WS_OVERLAPPEDWINDOW,
-        x, y, W, H, parent, NULL, hi, st);
+        x, y, W, H, NULL, NULL, hi, st);
     if (!hwnd) {
         delete st;
         return;
     }
 
+    if (HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(1))) {
+        SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIco);
+        SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
+    }
+
     s_hwndAiWindow = hwnd;
-    ShowWindow(hwnd, SW_SHOW);
+    // Restore the last saved geometry (size/position/maximized); else show normally.
+    if (!Ai_RestoreWinPlacement(hwnd))
+        ShowWindow(hwnd, SW_SHOW);
+    s_aiGeometryReady = true;   // from now on, size/move changes are persisted
     UpdateWindow(hwnd);
     SetForegroundWindow(hwnd);
 }
