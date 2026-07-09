@@ -1,6 +1,6 @@
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.07.09.13**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.07.09.17**
 
 ## Download
 
@@ -29,7 +29,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - Export as PDF via *Microsoft Print to PDF* — no third-party libraries
 - **Go to Line** — Ctrl+G (or Edit → Go to Line…) opens a compact input dialog; jumps to any line number, clamped to the last line
 - **Bookmarks** — F2 toggles a bookmark on the current line (blue circle in the margin); Shift+F2 goes to the previous bookmark, Ctrl+F2 to the next. *Go to Bookmark* is greyed when no bookmarks exist
-- **Spell Check** — Windows built-in `ISpellChecker` COM API (Windows 8+); red squiggles under misspelled words in RTF documents stay aligned while zooming or changing font size; native spell-check dialog (F7) with suggestions listbox, Change / Change All / Ignore / Ignore All / Add to Dictionary; language submenu shows only installed spell checkers from the user's Windows language list
+- **Spell Check** — Windows built-in `ISpellChecker` COM API (Windows 8+); red squiggles under misspelled words in RTF documents stay aligned while zooming or changing font size; **right-click a squiggled word** for replacement suggestions plus Ignore / Add to Dictionary (click to fix in place); native spell-check dialog (F7) with suggestions listbox, Change / Change All / Ignore / Ignore All / Add to Dictionary; squiggles work identically on new, opened, and session-restored tabs; language submenu shows only installed spell checkers from the user's Windows language list
 - **Insert Date/Time** — F5 (or *Edit → Insert Date/Time*) inserts the current local date and time at the caret using the system locale format; works in both RTF and code tabs
 - **Find / Replace** — Ctrl+F opens the Find/Replace dialog; selected text in Scintilla/RichEdit pre-fills the search box; highlighted Scintilla text is treated like typed search text, with live hit count and first-match selection as you type; search across all open tabs simultaneously with the "All open tabs" checkbox; "Search backwards" checkbox; match counter (e.g. *16 / 3500*); Match case, Whole word, and Regex options; Replace and Replace All (disabled in multi-tab mode); dialog width adapts dynamically to any locale's text lengths
 - **Regex guide** — a floating Help window for regex syntax and examples, with live search-as-you-type, all-match highlighting, a clear button, and translated guide text

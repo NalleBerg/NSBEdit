@@ -66,6 +66,36 @@
                                                 the RichEdit selection/caret, so zoom and
                                                 font-size changes do not trigger blinking
                                                 or blue selection blocks during redraw.
+                                                CRITICAL: the squiggle painting lives in
+                                                the Ne_EditCaretProc WM_PAINT and requires
+                                                BOTH the caret subclass AND the ENM_CHANGE
+                                                event mask.  Both are installed on EVERY
+                                                RichEdit at creation via the pfnEditCreated
+                                                callback (Ne_InstallWrapSubclass) — NOT only
+                                                in Ne_New.  Otherwise opened / session-
+                                                restored tabs get neither the paint hook
+                                                (no squiggles at all) nor EN_CHANGE (doc
+                                                stays "Saved" on type, spell scan never
+                                                runs).  Ne_AttachScrollbars (msb_attach)
+                                                RESETS the event mask, so every load path
+                                                (Ne_LoadPathIntoEditor RTF branch, session
+                                                restore loadContent) re-asserts ENM_CHANGE|
+                                                ENM_SELCHANGE|ENM_LINK|ENM_SCROLL after the
+                                                attach and runs an initial Ne_RefreshSpellMarks.
+                                                Single-line docs have no adjacent line to
+                                                measure line height from, so the fallback
+                                                builds the caret's real font at current
+                                                EM_GETZOOM + DC DPI and measures tmHeight
+                                                (else the squiggle lands mid-word at large
+                                                font sizes).  Right-click on a squiggled
+                                                word (Ne_SpellContextPrepare in WM_CONTEXTMENU)
+                                                offers ISpellChecker suggestions plus Ignore /
+                                                Add to Dictionary; applied via Ne_SpellContextApply
+                                                (WM_COMMAND IDM_CTX_SPELL_BASE 1300..1315,
+                                                IGNORE 1316 / ADD 1317) using EM_EXSETSEL +
+                                                EM_REPLACESEL.  Ne_RefreshSpellMarks falls back
+                                                to the app locale when a per-doc spellLang has
+                                                no installed dictionary.
                                                 Owner-draw menus at 12pt Segoe UI via
                                                 Ne_AppendMenuOD / WM_MEASUREITEM /
                                                 WM_DRAWITEM — popup bg white, bar items

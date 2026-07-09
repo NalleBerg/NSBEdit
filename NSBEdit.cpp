@@ -147,6 +147,10 @@ enum class NeEncoding {
 #define IDM_TABLE_PROPS     127   // Table properties (menu/button)
 #define IDM_CTX_TABLE_PROPS 128   // Context-menu "Table properties"
 #define IDM_CTX_HRULE_PROPS 129   // Context-menu "Horizontal Rule Properties"
+#define IDM_CTX_SPELL_BASE 1300   // Context-menu spell suggestions: 1300..1315
+#define IDM_CTX_SPELL_MAX    16   // max suggestions shown in the context menu
+#define IDM_CTX_SPELL_IGNORE 1316 // Context-menu "Ignore" for the clicked word
+#define IDM_CTX_SPELL_ADD    1317 // Context-menu "Add to Dictionary"
 #define IDM_FTP_ADD_SITE    130   // FTP menu: "Add site..."
 #define IDM_FTP_DISCONNECT  131   // FTP menu: "Disconnect"
 #define IDM_FTP_BROWSE      132   // FTP menu: "Browse files..."
@@ -1925,6 +1929,7 @@ static bool Ne_CaretOnHRule(HWND hEdit)
 static void Ne_InsertHRule(HWND hwnd, HWND hEdit);    // defined after Ne_ShowHRulePropsDialog
 static void Ne_EditHRuleProps(HWND hwnd, HWND hEdit);  // defined after Ne_ShowHRulePropsDialog
 static void Ne_RebuildHRList(HWND hEdit);              // defined near Ne_PaintHRules
+static void Ne_SubclassEditForCaret(HWND hEdit);      // defined later; installs Ne_EditCaretProc (draws spell squiggles)
 static bool s_wordWrapOn = true;                       // forward-declared for Ne_RichWrapSubclassProc
 static bool  s_suppressDiskCheck = false;              // suppresses external-file-change check during any open operation
 static bool  s_appIsActive      = true;                // false while another application is in the foreground
@@ -2012,7 +2017,21 @@ static LRESULT CALLBACK Ne_RichWrapSubclassProc(
 }
 static void Ne_InstallWrapSubclass(HWND hEdit)
 {
-    if (hEdit) SetWindowSubclass(hEdit, Ne_RichWrapSubclassProc, 1, 0);
+    if (!hEdit) return;
+    SetWindowSubclass(hEdit, Ne_RichWrapSubclassProc, 1, 0);
+    // Install the caret/paint superclass too, so EVERY RichEdit — new, opened,
+    // or session-restored — draws spell squiggles.  Ne_EditCaretProc's WM_PAINT
+    // is what renders the red underlines; it was previously installed only by
+    // Ne_New, so loaded/restored tabs showed no squiggles at all.
+    Ne_SubclassEditForCaret(hEdit);
+    // Enable EN_CHANGE / EN_SELCHANGE / EN_LINK / EN_SCROLL for EVERY RichEdit
+    // from the moment it is created.  A RichEdit control defaults to ENM_NONE,
+    // so without this any tab whose edit was not routed through Ne_New (e.g.
+    // session-restored or loaded tabs) never receives EN_CHANGE — typing then
+    // fails to mark the document modified and never triggers the spell re-scan,
+    // leaving the doc showing "Saved" and no misspelling squiggles.
+    SendMessageW(hEdit, EM_SETEVENTMASK, 0,
+                 ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
 }
 
 // ── Scintilla wrap indicator: draw ↵ at the end of each wrapped visual line ──
@@ -6608,7 +6627,15 @@ static void Ne_RefreshSpellMarks(HWND hEdit, NeTabDoc* doc)
     if (!doc || !doc->hEdit) { InvalidateRect(hEdit, NULL, FALSE); return; }
 
     const wchar_t* lang = Ne_GetDocSpellLang(doc);
-    if (!Ne_GetSpellChecker(lang)) { InvalidateRect(hEdit, NULL, FALSE); return; }
+    if (!Ne_GetSpellChecker(lang)) {
+        // The per-document language may have no installed dictionary (e.g. a
+        // stale spellLang restored from a session).  Fall back to the app
+        // locale default so restored tabs still get squiggles.
+        const wchar_t* def = Ne_LocaleToBcp47();
+        if (wcscmp(lang, def) == 0 || !Ne_GetSpellChecker(def)) {
+            InvalidateRect(hEdit, NULL, FALSE); return;
+        }
+    }
 
     // Get plain text from RichEdit using GT_RAWTEXT so paragraph breaks are
     // single \r characters — matching the char positions EM_POSFROMCHAR uses.
@@ -6682,7 +6709,39 @@ static void Ne_DrawSpellSquiggles(HWND hEdit, HDC hdc)
                 SendMessageW(hEdit, EM_POSFROMCHAR, (WPARAM)&ptPrev, (LPARAM)prevIdx);
                 renderedLineH = std::max(1, (int)(ptStart.y - ptPrev.y));
             } else {
+                // Single-line document: no adjacent line to measure from, so the
+                // default-font tm.tmHeight is wrong for larger text (the squiggle
+                // would land in the middle of the word).  Build the caret's real
+                // font at the current zoom and measure its cell height.  Reading
+                // the caret char format is read-only (does not move selection).
                 renderedLineH = lineH;
+                CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
+                cf.dwMask = CFM_SIZE | CFM_FACE;
+                SendMessageW(hEdit, EM_GETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+                if (cf.yHeight > 0) {
+                    int nZoom = 0, dZoom = 0;
+                    SendMessageW(hEdit, EM_GETZOOM, (WPARAM)&nZoom, (LPARAM)&dZoom);
+                    int dpiY = GetDeviceCaps(hdc, LOGPIXELSY);
+                    if (dpiY <= 0) dpiY = 96;
+                    double emPx = (cf.yHeight / 20.0) * (double)dpiY / 72.0;
+                    if (nZoom > 0 && dZoom > 0) emPx = emPx * (double)nZoom / (double)dZoom;
+                    LOGFONTW lf = {};
+                    lf.lfHeight  = -(LONG)(emPx + 0.5);
+                    lf.lfCharSet = DEFAULT_CHARSET;
+                    if (cf.dwMask & CFM_FACE)
+                        lstrcpynW(lf.lfFaceName, cf.szFaceName, LF_FACESIZE);
+                    HFONT hMeas = CreateFontIndirectW(&lf);
+                    if (hMeas) {
+                        HFONT hPrev = (HFONT)SelectObject(hdc, hMeas);
+                        TEXTMETRICW tmM = {};
+                        GetTextMetricsW(hdc, &tmM);
+                        SelectObject(hdc, hPrev);
+                        DeleteObject(hMeas);
+                        renderedLineH = std::max(1, (int)tmM.tmHeight);
+                    } else {
+                        renderedLineH = std::max(1, (int)(emPx + 0.5));
+                    }
+                }
             }
         }
         // Place squiggle just below the bottom of the word box.
@@ -6697,6 +6756,104 @@ static void Ne_DrawSpellSquiggles(HWND hEdit, HDC hdc)
     }
     SelectObject(hdc, hOld);
     DeleteObject(hPen);
+}
+
+// ── Right-click spell suggestions ─────────────────────────────────────────────
+// State captured when the user right-clicks a misspelled word in a RichEdit, so
+// the WM_COMMAND handler can apply the chosen suggestion (or Ignore / Add).
+static HWND                      s_ctxSpellEdit  = NULL;
+static std::pair<int,int>        s_ctxSpellRange = { -1, -1 };  // char offsets (RichEdit \r=1)
+static std::wstring              s_ctxSpellWord;
+static std::vector<std::wstring> s_ctxSpellSugs;
+
+// If ptClient (client coords of hEdit) falls on a misspelled word, capture the
+// word, its char range and its spelling suggestions into the s_ctxSpell*
+// globals and return true.  Otherwise clears the globals and returns false.
+static bool Ne_SpellContextPrepare(HWND hEdit, POINT ptClient)
+{
+    s_ctxSpellEdit  = NULL;
+    s_ctxSpellRange = { -1, -1 };
+    s_ctxSpellWord.clear();
+    s_ctxSpellSugs.clear();
+
+    if (!s_spellMarkActive || !hEdit) return false;
+    auto it = s_spellErrors.find(hEdit);
+    if (it == s_spellErrors.end() || it->second.empty()) return false;
+
+    // Character index under the cursor (RichEdit: wParam 0, lParam = POINTL*).
+    POINTL pl = { ptClient.x, ptClient.y };
+    int idx = (int)SendMessageW(hEdit, EM_CHARFROMPOS, 0, (LPARAM)&pl);
+    if (idx < 0) return false;
+
+    // Locate the error range containing idx.
+    for (const auto& range : it->second) {
+        if (idx >= range.first && idx < range.second) {
+            s_ctxSpellRange = range;
+            break;
+        }
+    }
+    if (s_ctxSpellRange.first < 0) return false;
+
+    int wlen = s_ctxSpellRange.second - s_ctxSpellRange.first;
+    if (wlen <= 0 || wlen >= 256) { s_ctxSpellRange = { -1, -1 }; return false; }
+
+    // Extract the misspelled word text (same char convention as the range).
+    wchar_t buf[256] = {};
+    TEXTRANGEW tr = {};
+    tr.chrg.cpMin = s_ctxSpellRange.first;
+    tr.chrg.cpMax = s_ctxSpellRange.second;
+    tr.lpstrText  = buf;
+    SendMessageW(hEdit, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
+    s_ctxSpellWord = buf;
+    if (s_ctxSpellWord.empty()) { s_ctxSpellRange = { -1, -1 }; return false; }
+
+    // Fetch suggestions from the active spell checker.
+    if (s_spellChecker) {
+        IEnumString* pSug = NULL;
+        if (SUCCEEDED(s_spellChecker->Suggest(s_ctxSpellWord.c_str(), &pSug)) && pSug) {
+            LPOLESTR s = NULL;
+            while ((int)s_ctxSpellSugs.size() < IDM_CTX_SPELL_MAX &&
+                   pSug->Next(1, &s, NULL) == S_OK) {
+                if (s) { s_ctxSpellSugs.push_back(s); CoTaskMemFree(s); }
+            }
+            pSug->Release();
+        }
+    }
+
+    s_ctxSpellEdit = hEdit;
+    return true;
+}
+
+// Apply a chosen context-menu spelling suggestion (or Ignore/Add) to the word
+// captured by Ne_SpellContextPrepare.  cmd is the WM_COMMAND id that was chosen.
+static void Ne_SpellContextApply(HWND hwndMain, int cmd)
+{
+    if (!s_ctxSpellEdit || !IsWindow(s_ctxSpellEdit) || s_ctxSpellRange.first < 0)
+        return;
+    HWND hEdit = s_ctxSpellEdit;
+
+    if (cmd == IDM_CTX_SPELL_IGNORE) {
+        if (s_spellChecker) s_spellChecker->Ignore(s_ctxSpellWord.c_str());
+    } else if (cmd == IDM_CTX_SPELL_ADD) {
+        if (s_spellChecker) s_spellChecker->Add(s_ctxSpellWord.c_str());
+    } else {
+        int sugIdx = cmd - IDM_CTX_SPELL_BASE;
+        if (sugIdx < 0 || sugIdx >= (int)s_ctxSpellSugs.size()) return;
+        const std::wstring replacement = s_ctxSpellSugs[sugIdx];
+        CHARRANGE cr = { s_ctxSpellRange.first, s_ctxSpellRange.second };
+        SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
+        SendMessageW(hEdit, EM_REPLACESEL, TRUE, (LPARAM)replacement.c_str());
+    }
+
+    // Re-scan so squiggles update immediately (EM_REPLACESEL also restarts the
+    // debounce timer, but Ignore/Add change nothing in the text).
+    NeTabDoc* doc = NeTabs_GetDocByEdit(hwndMain, hEdit);
+    if (doc) Ne_RefreshSpellMarks(hEdit, doc);
+
+    s_ctxSpellEdit  = NULL;
+    s_ctxSpellRange = { -1, -1 };
+    s_ctxSpellWord.clear();
+    s_ctxSpellSugs.clear();
 }
 
 // Build (or rebuild) the Language sub-menu for spelling.
@@ -8531,6 +8688,11 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
     InvalidateRect(hEdit, NULL, FALSE);
     // Ensure gutter exists, is positioned, and repaints with the new content.
     Ne_SyncRichGutters(hwnd);
+    // Re-assert the notification mask: Ne_AttachScrollbars (msb_attach) resets
+    // it, so without this an opened RTF file never fires EN_CHANGE (no dirty
+    // marking, no spell re-scan / squiggles on type).
+    SendMessageW(hEdit, EM_SETEVENTMASK, 0,
+                 ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
     doc->path = path;
     doc->modified = false;
     Ne_DetectEncoding(doc, bytes);
@@ -8540,6 +8702,9 @@ static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path)
     Ne_UpdateTitle(hwnd);
     Ne_UpdateStatusText(hwnd);
     Ne_UpdateLangMenuCheck(-1);
+    // Scan the freshly-loaded RTF for spelling now so squiggles appear without
+    // needing the user to type first (the open path never scanned before).
+    if (s_spellMarkActive) Ne_RefreshSpellMarks(hEdit, doc);
     return true;
 }
 
@@ -9179,6 +9344,12 @@ static void Ne_SessionRestore(HWND hwnd)
             Ne_RebuildHRList(doc->hEdit);
             InvalidateRect(doc->hEdit, NULL, FALSE);
             Ne_SyncRichGutters(hwnd);
+            // Re-assert the notification mask: Ne_AttachScrollbars (msb_attach)
+            // resets it, so without this a restored RTF tab never fires
+            // EN_CHANGE — typing would not mark it modified nor trigger the
+            // spell re-scan (no squiggles).
+            SendMessageW(doc->hEdit, EM_SETEVENTMASK, 0,
+                         ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
             // Restore caret and first visible line.
             if (t.caretPos > 0 || t.scrollLine > 0) {
                 // Move to the first char of the saved scroll line so
@@ -14021,6 +14192,12 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             }
             return 0;
         }
+        // ── Context-menu spell suggestions (right-click a misspelled word) ────
+        if ((wmId >= IDM_CTX_SPELL_BASE && wmId < IDM_CTX_SPELL_BASE + IDM_CTX_SPELL_MAX) ||
+            wmId == IDM_CTX_SPELL_IGNORE || wmId == IDM_CTX_SPELL_ADD) {
+            Ne_SpellContextApply(hwnd, wmId);
+            return 0;
+        }
         if (wmId == IDM_NEW || wmId == IDC_NE_TABCTRL + 10) { Ne_New(hwnd); return 0; }
         if (wmId == IDM_OPEN)       { Ne_Open(hwnd);              return 0; }
         if (wmId == IDM_RELOAD_FILE){ Ne_ReloadActiveFile(hwnd);  return 0; }
@@ -14756,6 +14933,11 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 NeTabDoc* docA = NeTabs_GetActiveDoc(hwnd);
                 Ne_UpdateLangMenuCheck(docA ? docA->langId : -1);
                 Ne_UpdateToolbarMode(hwnd);
+                // Refresh spelling squiggles for the newly-activated RTF tab.
+                // Switching tabs otherwise never re-scans, so a restored tab
+                // could show no squiggles until the user typed in it.
+                if (s_spellMarkActive && docA && docA->hEdit && Ne_DocIsRtf(docA))
+                    Ne_RefreshSpellMarks(docA->hEdit, docA);
             }
             return 0;
         }
@@ -14971,6 +15153,26 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
             AppendMenuW(hCtx, MF_STRING, IDM_SELECTALL, Ls(L"MENU_SELECTALL"));
         } else {
+        // ── Spell suggestions — right-click on a misspelled word ─────────────
+        // When the click lands on a squiggled word, offer replacement
+        // suggestions plus Ignore / Add to Dictionary at the top of the menu.
+        int rcx = GET_X_LPARAM(lParam), rcy = GET_Y_LPARAM(lParam);
+        if (rcx != -1 || rcy != -1) {
+            POINT ptc = { rcx, rcy };
+            ScreenToClient(hEdit, &ptc);
+            if (Ne_SpellContextPrepare(hEdit, ptc)) {
+                for (int si = 0; si < (int)s_ctxSpellSugs.size(); ++si)
+                    AppendMenuW(hCtx, MF_STRING, IDM_CTX_SPELL_BASE + si,
+                                s_ctxSpellSugs[si].c_str());
+                if (!s_ctxSpellSugs.empty())
+                    AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
+                AppendMenuW(hCtx, MF_STRING, IDM_CTX_SPELL_IGNORE,
+                            Ls(L"BTN_SPELL_IGNORE"));
+                AppendMenuW(hCtx, MF_STRING, IDM_CTX_SPELL_ADD,
+                            Ls(L"BTN_SPELL_ADD"));
+                AppendMenuW(hCtx, MF_SEPARATOR, 0, NULL);
+            }
+        }
         DWORD canUndo = (DWORD)SendMessageW(hEdit, EM_CANUNDO, 0, 0);
         DWORD canRedo = (DWORD)SendMessageW(hEdit, EM_CANREDO, 0, 0);
         AppendMenuW(hCtx, MF_STRING | (canUndo ? 0 : MF_GRAYED), IDM_UNDO, Ls(L"MENU_UNDO"));

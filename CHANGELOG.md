@@ -1,5 +1,14 @@
 # Changelog
 
+## v2026.07.09.17 (Feature: right-click spelling suggestions; fix squiggles on loaded/restored RTF tabs) - 09.07.2026 17:23
+
+- **Feature: right-click spelling suggestions**: right-clicking a misspelled (squiggled) word in an RTF document now shows replacement suggestions at the top of the context menu, plus **Ignore** and **Add to Dictionary**. Clicking a suggestion replaces the word in place — no need to run the full `F7` spell-check dialog just to fix one word. Suggestions come from the live `ISpellChecker`; the change flows through the normal edit path so it marks the document modified and refreshes the squiggles.
+- **Fix: squiggles missing on loaded and session-restored RTF tabs**: the code that *paints* the red squiggles lives in the RichEdit caret/paint subclass, which was only installed on brand-new tabs (`Ne_New`). Opened and session-restored tabs never received that subclass, so they showed no squiggles at all even though the words were misspelled. The subclass — together with the `EN_CHANGE` notification mask — is now installed on **every** RichEdit at creation, so new, opened, and restored tabs all behave identically.
+- **Fix: typing in a loaded/restored tab did nothing**: the custom scrollbars (`msb_attach`) reset the RichEdit event mask during load, and only `Ne_New` re-asserted it. Opened/restored tabs were left with `ENM_NONE`, so `EN_CHANGE` never fired — the document stayed "Saved" after typing and the spell scan never ran. The mask is now re-asserted after every load.
+- **Fix: opened RTF files now scan immediately**: the file-open path never triggered a spell scan, so squiggles only appeared after the first keystroke. Opening an RTF file now scans it right away when *Mark Misspelled Words* is on.
+- **Fix: squiggle drawn through the middle of the word on single-line documents**: with no adjacent line to measure from, the underline fell back to the control's default-font height and landed mid-word for larger text. It now builds the caret's real font at the current zoom (DPI-aware) and measures its height, so the squiggle sits ~2 px below the text and recalculates on **Ctrl+ / Ctrl−** zoom.
+- **Fix: restored tab with an uninstalled per-document language**: if a session-restored tab carried a spell language whose dictionary is not installed, it now falls back to the app locale default instead of showing no squiggles.
+
 ## v2026.07.09.13 (Feature: AI Stop control, full-project file access, and window geometry persistence) - 09.07.2026 13:44
 
 - **Feature: Stop the AI mid-request**: a red **Stop** button (and the **Esc** key) in the AI window interrupts an in-progress request so you can add more detail and resend. The streaming transfer is cancelled cooperatively, the busy spinner is dismissed, and your prompt is restored for editing. A matching **Stop** button also appears below the animation in the "Please Wait" spinner.
