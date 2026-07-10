@@ -790,12 +790,22 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
                             if (!outError.empty()) break;
                         }
                         ok = outError.empty() && (done || !outReply.empty());
-                    } else if (status == 401 || status == 403) {
-                        outError = L"Ollama cloud rejected the API key (HTTP " +
-                            std::to_wstring(status) + L").  Check Cloud → Add API key.";
                     } else {
-                        outError = L"Ollama cloud returned HTTP status " +
-                            std::to_wstring(status) + L".";
+                        // Non-200: surface the daemon's real error message (e.g.
+                        // "this model requires a subscription, upgrade for
+                        // access: ...") rather than blaming the key.  Only a
+                        // genuine 401 means the key itself was rejected.
+                        std::string body, errUtf8;
+                        if (Ai_ReadBody(hRequest, body) &&
+                            Ai_FindJsonStringField(body, "error", errUtf8) && !errUtf8.empty()) {
+                            outError = Ai_Utf8ToWide(errUtf8);
+                        } else if (status == 401) {
+                            outError = L"Ollama cloud rejected the API key (HTTP 401).  "
+                                       L"Check Cloud → Add API key.";
+                        } else {
+                            outError = L"Ollama cloud returned HTTP status " +
+                                std::to_wstring(status) + L".";
+                        }
                     }
                 }
             } else {

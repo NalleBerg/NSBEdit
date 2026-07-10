@@ -739,6 +739,11 @@
                                                 has no CA bundle. NeAiClient_ValidateCloudApiKey =
                                                 GET ollama.com/api/tags; NeAiClient_OllamaSignout =
                                                 POST /api/signout.
+                                                On a non-200 cloud reply Ai_CloudAskStream reads the
+                                                body and surfaces the daemon's real "error" field
+                                                (e.g. "this model requires a subscription, upgrade
+                                                for access: ...") instead of blaming the key; only a
+                                                genuine 401 tells the user to re-enter the key.
 
   ne_projects.h / ne_projects.cpp               AI project (workspace) store and scanner.
                                                 Reuses the shared SQLite handle from

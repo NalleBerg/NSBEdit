@@ -1,6 +1,12 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 10 July 2026 &mdash; v2026.07.10.14 (14:09)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 10 July 2026 &mdash; v2026.07.10.15 (15:34)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.07.10.15 (Fix: show the real Ollama cloud error instead of blaming the API key)</span></h3>
+<p><strong>Fix: show the real Ollama cloud error instead of blaming the API key (10.07.2026, 15:34):</strong></p>
+<ul>
+<li><strong>Fix: honest cloud error messages:</strong> when a cloud request failed, the AI window always showed <em>&ldquo;Ollama cloud rejected the API key &mdash; check Cloud &rarr; Add API key&rdquo;</em>, even when the key was perfectly valid. It now reads the daemon&rsquo;s actual error from the response and shows it verbatim &mdash; for example, a premium-only model such as <code>deepseek-v3.1:671b-cloud</code> returns <em>&ldquo;this model requires a subscription, upgrade for access: https://ollama.com/upgrade&rdquo;</em>. Only a genuine <strong>HTTP 401</strong> (key actually rejected) still points you to re-enter the key via <strong>Cloud &rarr; Add API key</strong>. The other cloud models (<code>qwen3-coder:480b-cloud</code>, <code>gpt-oss:120b-cloud</code>, <code>gpt-oss:20b-cloud</code>) work on the free tier.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.07.10.14 (Feature: browser-free Ollama cloud sign-in with an encrypted API key; fix intermittent tiny AI menu font)</span></h3>
 <p><strong>Feature: browser-free Ollama cloud sign-in with an encrypted API key; fix intermittent tiny AI menu font (10.07.2026, 14:09):</strong></p>

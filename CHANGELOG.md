@@ -1,5 +1,9 @@
 # Changelog
 
+## v2026.07.10.15 (Fix: show the real Ollama cloud error instead of blaming the API key) - 10.07.2026 15:34
+
+- **Fix: honest cloud error messages**: when a cloud request failed, the AI window always showed *"Ollama cloud rejected the API key — check Cloud → Add API key"*, even when the key was perfectly valid. It now reads the daemon's actual error from the response and shows it verbatim — for example, a premium-only model such as `deepseek-v3.1:671b-cloud` returns *"this model requires a subscription, upgrade for access: https://ollama.com/upgrade"*. Only a genuine **HTTP 401** (key actually rejected) still points you to re-enter the key via **Cloud → Add API key**. The other cloud models (`qwen3-coder:480b-cloud`, `gpt-oss:120b-cloud`, `gpt-oss:20b-cloud`) work on the free tier.
+
 ## v2026.07.10.14 (Feature: browser-free Ollama cloud sign-in with an encrypted API key; fix intermittent tiny AI menu font) - 10.07.2026 14:09
 
 - **Feature: browser-free cloud sign-in with an API key**: a new **Cloud → Add API key…** entry opens a dialog where you paste your ollama.com API key. With a key you never need the browser `ollama.com/connect` authorization or `ollama signin` — the AI window shows **Account: signed in** as soon as the key validates. The menu item has a hover tooltip explaining what it is for.
