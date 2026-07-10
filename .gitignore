@@ -20,3 +20,21 @@ zip/
 *.key
 nsbedit.db
 *.db
+
+# Build artifacts — object files, executables, and the build log are produced
+# by makeit.bat and should never be committed.
+*.o
+*.exe
+makeit.log
+
+# Generated cmark-gfm headers (produced from the *.in templates at build time)
+third_party/cmark-gfm/src/config.h
+third_party/cmark-gfm/src/cmark-gfm_export.h
+third_party/cmark-gfm/src/cmark-gfm_version.h
+
+# Scratch / debug files
+ai.txt
+test.txt
+start.txt
+AI_attach.txt
+ToDo.render.AI
