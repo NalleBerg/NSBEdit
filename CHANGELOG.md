@@ -1,5 +1,16 @@
 # Changelog
 
+## v2026.07.10.12 (Feature: working Ollama cloud mode with cloud-model picker; Edition 3 final) - 10.07.2026 12:00
+
+- **Feature: Ollama cloud mode now actually works**: cloud mode was previously a stub that only logged a placeholder. It now streams real answers through the same path as local mode, so the **Stop** button and the **Please Wait** spinner work in cloud mode exactly like local. Cloud models are served through the signed-in local Ollama daemon (`ollama signin`), so no separate API key handling is needed.
+- **Feature: choose a cloud model**: the **Model** menu now lists real Ollama cloud models — `qwen3-coder:480b-cloud`, `gpt-oss:120b-cloud`, `gpt-oss:20b-cloud`, `deepseek-v3.1:671b-cloud` — plus any `-cloud` models your local Ollama already reports. Cloud entries are greyed until you sign in (Cloud → Sign in to Ollama). The selection is persisted (`ai.cloud_model`) and shown in the title, header and status bar.
+- **Feature: Model menu section labels**: the menu now shows greyed **"Local:"** and **"Cloud"** headers above the two model groups.
+- **Fix: doubled cloud answers**: cloud reasoning models (qwen3-coder, gpt-oss, deepseek) stream a `thinking` field alongside `response`, and the client appended both — duplicating every token and corrupting code fences. The client now uses `response` for the answer (with `thinking` only as a fallback when a line has no `response`), so the answer is clean and the chain-of-thought no longer leaks into it.
+- **Fix: code block split across the cell boundary**: on fast cloud responses the completion could render a *partially* pumped reply, cutting a code block mid-line and appending the tail as raw text below the code cell (so it was not copyable). Completion now adopts the worker's complete reply, clears the pending live-typing queue and stops the typing timer before the final render, so code always renders in a single clean, fully-copyable cell.
+- **Change: no debug logging in the release**: the raw-reply debug file (`ai.txt`) is no longer written.
+- **Change: Edition 3 is final**: the About dialog now shows **Edition: 3** (the "RC" suffix has been removed) in all 15 UI languages.
+- **i18n**: added a translated **AI cloud** section (`AI_LOG_CLOUD_MODEL_SELECTED`, `AI_LOG_CLOUD_SENDING`) and the Model-menu headers (`AI_MENU_LOCAL_HEADER`, `AI_MENU_CLOUD_HEADER`) to all 15 locale files; also added the missing `ABOUT_EDITION_VALUE` key to the French locale.
+
 ## v2026.07.09.17 (Feature: right-click spelling suggestions; fix squiggles on loaded/restored RTF tabs) - 09.07.2026 17:23
 
 - **Feature: right-click spelling suggestions**: right-clicking a misspelled (squiggled) word in an RTF document now shows replacement suggestions at the top of the context menu, plus **Ignore** and **Add to Dictionary**. Clicking a suggestion replaces the word in place — no need to run the full `F7` spell-check dialog just to fix one word. Suggestions come from the live `ISpellChecker`; the change flows through the normal edit path so it marks the document modified and refreshes the squiggles.

@@ -112,6 +112,7 @@ struct AiWindowState {
     AiDialogData* dd = NULL;
     std::wstring model;
     std::wstring fallback;
+    std::wstring cloudModel;   // selected Ollama cloud model (served via the signed-in local daemon)
     AiMenuRole role = AiMenuRole::Suggest;
     bool cloudMode = false;
     bool signedIn = false;
@@ -255,6 +256,7 @@ static void Ai_LayoutAnswerHost(HWND hwndHost);
 static void Ai_SaveHistory();
 static std::wstring Ai_DefaultModelName();
 static std::wstring Ai_FallbackModelName();
+static std::wstring Ai_DefaultCloudModelName();
 static void Ai_NormalizeModelName(std::wstring& model);
 static void Ai_LoadHistory();
 static Gdiplus::Image* Ai_GetOllamaButtonImage();
@@ -272,6 +274,7 @@ static void Ai_SavePrefs(const AiWindowState* st)
     if (!st) return;
     NeProfiles_SetStrSetting("ai.model", Ai_WideToUtf8(st->model));
     NeProfiles_SetStrSetting("ai.fallback", Ai_WideToUtf8(st->fallback));
+    NeProfiles_SetStrSetting("ai.cloud_model", Ai_WideToUtf8(st->cloudModel));
     NeProfiles_SetIntSetting("ai.role", (int)st->role);
     NeProfiles_SetIntSetting("ai.cloud_mode", st->cloudMode ? 1 : 0);
     NeProfiles_SetIntSetting("ai.signed_in", st->signedIn ? 1 : 0);
@@ -283,6 +286,7 @@ static void Ai_LoadPrefs(AiWindowState* st)
     if (!st) return;
     st->model = Ai_DefaultModelName();
     st->fallback = Ai_FallbackModelName();
+    st->cloudModel = Ai_DefaultCloudModelName();
 
     std::string saved;
     if (NeProfiles_GetStrSetting("ai.model", "", saved) && !saved.empty()) {
@@ -309,6 +313,18 @@ static void Ai_LoadPrefs(AiWindowState* st)
     Ai_NormalizeModelName(st->model);
     Ai_NormalizeModelName(st->fallback);
 
+    saved.clear();
+    if (NeProfiles_GetStrSetting("ai.cloud_model", "", saved) && !saved.empty()) {
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, saved.c_str(), -1, NULL, 0);
+        if (wlen > 1) {
+            std::wstring wide((size_t)wlen, L'\0');
+            MultiByteToWideChar(CP_UTF8, 0, saved.c_str(), -1, &wide[0], wlen);
+            wide.resize((size_t)wlen - 1);
+            st->cloudModel = std::move(wide);
+        }
+    }
+    if (st->cloudModel.empty()) st->cloudModel = Ai_DefaultCloudModelName();
+
     int mode = 0, signedIn = 0;
     NeProfiles_GetIntSetting("ai.cloud_mode", 0, mode);
     NeProfiles_GetIntSetting("ai.signed_in", 0, signedIn);
@@ -327,7 +343,10 @@ static std::wstring Ai_BuildSummary(const AiWindowState* st)
     summary += L" | ";
     summary += Ne_Ls(L"AI_SUMMARY_CURRENT");
     summary += L" ";
-    summary += ((st && !st->model.empty()) ? st->model : Ai_DefaultModelName());
+    if (st && st->cloudMode)
+        summary += (st->cloudModel.empty() ? Ai_DefaultCloudModelName() : st->cloudModel);
+    else
+        summary += ((st && !st->model.empty()) ? st->model : Ai_DefaultModelName());
     summary += L" ";
     summary += (st && st->role == AiMenuRole::Agent) ? Ne_Ls(L"AI_ROLE_AGENT") : Ne_Ls(L"AI_ROLE_SUGGEST");
     summary += L" | ";
@@ -585,6 +604,38 @@ static std::wstring Ai_FallbackModelName()
 {
     const NeAiBootstrapConfig& bootstrap = NeAiBootstrap_Get();
     return bootstrap.fallback.empty() ? L"qwen2.5-coder:3b" : bootstrap.fallback;
+}
+
+// Default Ollama cloud model.  Cloud models are served through the SAME local
+// endpoint once the user has run `ollama signin`; the daemon proxies the request
+// to Ollama's cloud.  Model names carry a "-cloud" suffix.
+static std::wstring Ai_DefaultCloudModelName()
+{
+    return L"qwen3-coder:480b-cloud";
+}
+
+// Curated list of well-known Ollama cloud models, merged with any "-cloud"
+// models the local daemon already reports.  Used to populate the Model menu so
+// the user can pick which cloud model to use.
+static std::vector<std::wstring> Ai_CloudModelCandidates()
+{
+    std::vector<std::wstring> models = {
+        L"qwen3-coder:480b-cloud",
+        L"gpt-oss:120b-cloud",
+        L"gpt-oss:20b-cloud",
+        L"deepseek-v3.1:671b-cloud",
+    };
+    // Merge in any cloud models the local Ollama already knows about.
+    std::vector<std::wstring> installed;
+    if (NeAiClient_ListOllamaModels(installed)) {
+        for (const std::wstring& m : installed) {
+            if (m.find(L"cloud") == std::wstring::npos) continue;
+            bool present = false;
+            for (const std::wstring& e : models) { if (e == m) { present = true; break; } }
+            if (!present) models.push_back(m);
+        }
+    }
+    return models;
 }
 
 static void Ai_NormalizeModelName(std::wstring& model)
@@ -1283,16 +1334,8 @@ static void Ai_AppendFirstCodeBlockReply(HWND hLog, const std::wstring& reply)
 
 static void Ai_WriteRawReplyFile(const std::wstring& rawReply)
 {
-    std::wstring path = L".\\ai.txt";
-
-    HANDLE hFile = CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL,
-        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) return;
-
-    std::string utf8 = Ai_WideToUtf8(rawReply);
-    DWORD written = 0;
-    WriteFile(hFile, utf8.data(), (DWORD)utf8.size(), &written, NULL);
-    CloseHandle(hFile);
+    // Release build: no raw-reply debug file is written.
+    (void)rawReply;
 }
 
 static LRESULT CALLBACK Ai_AnswerHostSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
@@ -2437,7 +2480,10 @@ static std::wstring Ai_CurrentModeLabel(const AiWindowState* st)
 {
     if (!st) return Ai_DefaultModelName() + L" " + Ne_Ls(L"AI_ROLE_SUGGEST");
     if (st->cloudMode) {
-        return std::wstring(Ne_Ls(L"AI_MENU_CLOUD")) + L" " + ((st->role == AiMenuRole::Suggest) ? Ne_Ls(L"AI_ROLE_SUGGEST") : Ne_Ls(L"AI_ROLE_AGENT"));
+        std::wstring label = st->cloudModel.empty() ? Ai_DefaultCloudModelName() : st->cloudModel;
+        label += L" ";
+        label += (st->role == AiMenuRole::Suggest) ? Ne_Ls(L"AI_ROLE_SUGGEST") : Ne_Ls(L"AI_ROLE_AGENT");
+        return label;
     }
     std::wstring label = st->model.empty() ? Ai_DefaultModelName() : st->model;
     label += L" ";
@@ -2695,12 +2741,23 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
     HMENU hHelp = CreatePopupMenu();
 
     std::vector<std::wstring> models = Ai_GetModelCandidates();
+    // "Local:" section header (greyed, non-selectable).
+    Ai_AppendMenuOD(hModel, MF_STRING | MF_GRAYED | MF_DISABLED, 0, Ne_Ls(L"AI_MENU_LOCAL_HEADER"), false);
     for (const std::wstring& model : models) {
         Ai_AddModelMenuItem(hModel, model, AiMenuRole::Suggest);
     }
 
     Ai_AppendMenuOD(hModel, MF_SEPARATOR, 0, NULL, false);
-    Ai_AddModelMenuItem(hModel, Ne_Ls(L"AI_MENU_CLOUD"), AiMenuRole::Suggest, true, st && st->signedIn);
+    // "Cloud" section header, then the cloud models — served through the
+    // signed-in local Ollama daemon.  Greyed until the user signs in
+    // (Cloud → Sign in to Ollama).
+    Ai_AppendMenuOD(hModel, MF_STRING | MF_GRAYED | MF_DISABLED, 0, Ne_Ls(L"AI_MENU_CLOUD_HEADER"), false);
+    {
+        bool cloudEnabled = st && st->signedIn;
+        for (const std::wstring& cm : Ai_CloudModelCandidates()) {
+            Ai_AddModelMenuItem(hModel, cm, AiMenuRole::Suggest, true, cloudEnabled);
+        }
+    }
 
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_LOCAL, Ne_Ls(L"AI_MENU_LOCAL_ONLY"), false);
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_CLOUD, Ne_Ls(L"AI_MENU_CLOUD_SUBSCRIPTION"), false);
@@ -2726,7 +2783,7 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
     if (st) {
         for (const AiModelMenuItem& item : s_aiModelMenuItems) {
             bool checked = item.isCloud
-                ? (st->cloudMode && st->role == item.role)
+                ? (st->cloudMode && st->cloudModel == item.model && st->role == item.role)
                 : (!st->cloudMode && st->model == item.model && st->role == item.role);
             if (checked) {
                 CheckMenuItem(hModel, item.id, MF_BYCOMMAND | MF_CHECKED);
@@ -3720,10 +3777,9 @@ static void Ai_DoSend(HWND hwnd)
             Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_CLOUD_NEEDS_SIGNIN"));
             Ai_OpenOllamaSignUp(hwnd);
             Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_OPENED_SIGNUP"));
-        } else {
-            Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_CLOUD_NOT_USED_YET"));
+            return;
         }
-        return;
+        Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_CLOUD_SENDING"));
     }
 
     Ai_BeginBusyState(hwnd);
@@ -3750,10 +3806,20 @@ static void Ai_DoSend(HWND hwnd)
         Ai_AppendRichRun(hLog, L"Ollama:\r\n", nullptr);
     }
 
-    std::wstring selectedModel = st->model.empty() ? Ai_DefaultModelName() : st->model;
-    std::wstring fallbackModel = st->fallback.empty() ? Ai_FallbackModelName() : st->fallback;
-    Ai_NormalizeModelNameLocal(selectedModel);
-    Ai_NormalizeModelNameLocal(fallbackModel);
+    std::wstring selectedModel;
+    std::wstring fallbackModel;
+    if (st->cloudMode) {
+        // Cloud model is served through the signed-in local Ollama daemon.  No
+        // silent fallback to a local model — if the cloud model is unavailable
+        // the error is surfaced instead of quietly answering from a small local one.
+        selectedModel = st->cloudModel.empty() ? Ai_DefaultCloudModelName() : st->cloudModel;
+        fallbackModel.clear();
+    } else {
+        selectedModel = st->model.empty() ? Ai_DefaultModelName() : st->model;
+        fallbackModel = st->fallback.empty() ? Ai_FallbackModelName() : st->fallback;
+        Ai_NormalizeModelNameLocal(selectedModel);
+        Ai_NormalizeModelNameLocal(fallbackModel);
+    }
     // Decide between the normal single call and a chunked map-reduce over a large
     // named file.  Both built here on the UI thread (SQLite handle is single-threaded).
     AiChunkPlan chunkPlan = Ai_PlanBigFileChunks(prompt);
@@ -4056,14 +4122,14 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (modelItem && st) {
                 st->role = modelItem->role;
                 st->cloudMode = modelItem->isCloud;
-                if (!modelItem->isCloud) {
+                if (modelItem->isCloud) {
+                    st->cloudModel = modelItem->model;
+                } else {
                     st->model = modelItem->model;
                     Ai_NormalizeModelNameLocal(st->model);
                 }
                 Ai_AppendLog(hwnd, modelItem->isCloud
-                    ? ((modelItem->role == AiMenuRole::Suggest)
-                        ? Ne_Ls(L"AI_LOG_CLOUD_SUGGEST_SELECTED")
-                        : Ne_Ls(L"AI_LOG_CLOUD_AGENT_SELECTED"))
+                    ? (Ne_Ls(L"AI_LOG_CLOUD_MODEL_SELECTED") + (std::wstring(L" ") + modelItem->model))
                     : ((modelItem->role == AiMenuRole::Suggest)
                         ? Ne_Ls(L"AI_LOG_MODEL_SWITCHED_SUGGESTION")
                         : Ne_Ls(L"AI_LOG_MODEL_SWITCHED_AGENT")));
@@ -4254,8 +4320,17 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_RETRY_FALLBACK"));
             }
             if (result->ok) {
-                if (st && st->liveReply.empty() && !result->reply.empty()) {
-                    st->liveReply = result->reply;
+                // Use the worker's complete reply as the authoritative text.
+                // The live-typing queue may not be fully pumped when this
+                // completion arrives (fast cloud responses especially), so
+                // st->liveReply can be partial — rendering it would cut the
+                // answer mid-line and the timer would then append the tail as
+                // raw text below the code cell.  Adopt the full reply, clear the
+                // pending queue and stop the typing timer before the final render.
+                if (st) {
+                    if (!result->reply.empty()) st->liveReply = result->reply;
+                    st->liveTypingQueue.clear();
+                    Ai_StopLiveTypingTimer(hwnd);
                 }
                 if (st && !st->liveReply.empty() && !st->liveTypingFinalRendered) {
                     Ai_RenderMarkdownReply(hwnd, st->liveReply);

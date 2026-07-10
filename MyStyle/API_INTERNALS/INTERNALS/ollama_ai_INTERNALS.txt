@@ -100,6 +100,7 @@ FILES:
     - hFont, hPaneFont
     - dd (owner-draw button spec block)
     - model, fallback
+    - cloudModel (selected Ollama cloud model, e.g. qwen3-coder:480b-cloud)
     - cloudMode, signedIn
 
   The state object is allocated before CreateWindowExW and attached through
@@ -123,8 +124,40 @@ FILES:
   Persisted keys:
     - ai.model
     - ai.fallback
+    - ai.cloud_model
     - ai.cloud_mode
     - ai.signed_in
+
+  CLOUD MODE (how it works)
+    Ollama cloud models are served through the SAME local endpoint
+    (localhost:11434 /api/generate) once the user has run `ollama signin`; the
+    local daemon proxies `-cloud` models to Ollama's cloud.  So cloud mode is
+    NOT a separate transport: Ai_DoSend routes cloud sends through the normal
+    Ai_BeginBusyState + Ai_StartSendWorker path using st->cloudModel, which is
+    why the Stop button and the spinner work identically to local.  No local
+    fallback model is used in cloud mode (a cloud error is surfaced instead).
+    The Model menu lists a curated set of cloud models plus any "cloud" models
+    the local daemon reports (Ai_CloudModelCandidates), greyed until signedIn,
+    under greyed "Local:" / "Cloud" section headers (AI_MENU_LOCAL_HEADER /
+    AI_MENU_CLOUD_HEADER).
+
+  REASONING MODELS / DOUBLING
+    Cloud reasoning models (qwen3-coder, gpt-oss, deepseek) stream a `thinking`
+    field alongside `response`.  Ai_OllamaWriteCallback (ne_ai_client.cpp) must
+    append the answer from `response` and use `thinking` ONLY as a fallback when
+    a line has no `response` — otherwise every token is emitted twice (both
+    fields fire onChunk), duplicating the answer and corrupting ``` code fences.
+
+  COMPLETION RACE
+    Live typing is pumped from st->liveTypingQueue on a timer.  On a fast reply
+    WM_AI_SEND_COMPLETE can arrive while the queue is only partially pumped, so
+    the final render must adopt the worker's COMPLETE result->reply, clear the
+    queue and stop the typing timer before Ai_RenderMarkdownReply — otherwise a
+    code block is cut mid-line and its tail is appended as raw text below the
+    code cell (and is not copyable).
+
+  No raw-reply debug file is written in release builds (Ai_WriteRawReplyFile is
+  a no-op).
 
   The bootstrap reader is intentionally separate so the AI shell can fall back
   to a safe default even if the profile store is empty.

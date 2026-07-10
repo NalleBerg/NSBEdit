@@ -119,13 +119,21 @@ static size_t Ai_OllamaWriteCallback(char* ptr, size_t size, size_t nmemb, void*
                 state->onChunk(state->context, wideChunk);
             }
         }
-
-        std::string thinkingUtf8;
-        if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8)) {
-            std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
-            state->outReply += wideChunk;
-            if (state->onChunk && !wideChunk.empty()) {
-                state->onChunk(state->context, wideChunk);
+        else {
+            // Reasoning ("thinking") models — e.g. Ollama cloud models such as
+            // qwen3-coder, gpt-oss, deepseek — stream their chain-of-thought in a
+            // separate "thinking" field.  Only fall back to it when there is no
+            // "response" token on this line, so the final answer is never
+            // duplicated (a line carrying both fields otherwise appended twice,
+            // corrupting code fences), and the raw reasoning is not mixed into
+            // the rendered answer during the answer phase.
+            std::string thinkingUtf8;
+            if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8)) {
+                std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
+                state->outReply += wideChunk;
+                if (state->onChunk && !wideChunk.empty()) {
+                    state->onChunk(state->context, wideChunk);
+                }
             }
         }
 
