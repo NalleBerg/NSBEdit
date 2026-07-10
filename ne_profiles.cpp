@@ -336,7 +336,64 @@ bool NeProfiles_SetStrSetting(const char* key, const std::string& value)
     return ok;
 }
 
-// ── Password helpers ──────────────────────────────────────────────────────────
+// ── Encrypted (secret) string settings ────────────────────────────────────────
+// The ciphertext bytes are stored as a lowercase hex string in the same
+// key/value settings table, so secrets never appear in plaintext in the DB.
+static std::string Np_BytesToHex(const std::vector<BYTE>& bytes)
+{
+    static const char* kHex = "0123456789abcdef";
+    std::string out;
+    out.reserve(bytes.size() * 2);
+    for (BYTE b : bytes) { out += kHex[b >> 4]; out += kHex[b & 0x0F]; }
+    return out;
+}
+
+static bool Np_HexToBytes(const std::string& hex, std::vector<BYTE>& out)
+{
+    out.clear();
+    if (hex.size() % 2 != 0) return false;
+    auto nib = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    out.reserve(hex.size() / 2);
+    for (size_t i = 0; i < hex.size(); i += 2) {
+        int hi = nib(hex[i]), lo = nib(hex[i + 1]);
+        if (hi < 0 || lo < 0) { out.clear(); return false; }
+        out.push_back((BYTE)((hi << 4) | lo));
+    }
+    return true;
+}
+
+bool NeProfiles_SetSecretSetting(const char* key, const std::wstring& value)
+{
+    if (!key) return false;
+    if (value.empty()) {
+        return NeProfiles_SetStrSetting(key, "");
+    }
+    std::string utf8 = Np_W2U(value);
+    std::vector<BYTE> cipher;
+    if (!NeCrypto_Encrypt(utf8.data(), utf8.size(), cipher) || cipher.empty()) {
+        return false;
+    }
+    return NeProfiles_SetStrSetting(key, Np_BytesToHex(cipher));
+}
+
+bool NeProfiles_GetSecretSetting(const char* key, std::wstring& out)
+{
+    out.clear();
+    std::string hex;
+    if (!NeProfiles_GetStrSetting(key, "", hex) || hex.empty()) return false;
+    std::vector<BYTE> cipher;
+    if (!Np_HexToBytes(hex, cipher) || cipher.empty()) return false;
+    std::vector<BYTE> plain;
+    if (!NeCrypto_Decrypt(cipher.data(), cipher.size(), plain)) return false;
+    plain.push_back(0);
+    out = Np_U2W((const char*)plain.data());
+    return true;
+}
 static void Np_EncryptPw(const std::wstring& pw, std::vector<BYTE>& out)
 {
     out.clear();

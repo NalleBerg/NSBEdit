@@ -52,6 +52,7 @@
 #define IDM_AI_SIGN_OUT           1921
 #define IDM_AI_OPEN_PROVIDER      1922
 #define IDM_AI_CHECK_MODELS       1923
+#define IDM_AI_SET_API_KEY        1924
 #define IDM_AI_LOG_CLEAR          1930
 #define IDM_AI_LOG_COPY           1931
 #define IDM_AI_SEND               1932
@@ -113,6 +114,7 @@ struct AiWindowState {
     std::wstring model;
     std::wstring fallback;
     std::wstring cloudModel;   // selected Ollama cloud model (served via the signed-in local daemon)
+    std::wstring cloudApiKey;  // ollama.com API key (browser-free cloud sign-in); stored only in the local profile
     AiMenuRole role = AiMenuRole::Suggest;
     bool cloudMode = false;
     bool signedIn = false;
@@ -240,6 +242,7 @@ static int Ai_MeasureButtonWidth(const std::wstring& text);
 static void Ai_StreamChunkCallback(void* context, const std::wstring& chunk);
 static void Ai_NormalizeModelNameLocal(std::wstring& model);
 static void Ai_AddUniqueModel(std::vector<std::wstring>& models, const std::wstring& model);
+static std::vector<std::wstring> Ai_GetModelCandidates();
 static void Ai_SetWrapToWindow(HWND hwndEdit);
 static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply);
 static void Ai_FinalizeLiveReply(HWND hwnd);
@@ -278,7 +281,70 @@ static void Ai_SavePrefs(const AiWindowState* st)
     NeProfiles_SetIntSetting("ai.role", (int)st->role);
     NeProfiles_SetIntSetting("ai.cloud_mode", st->cloudMode ? 1 : 0);
     NeProfiles_SetIntSetting("ai.signed_in", st->signedIn ? 1 : 0);
+    NeProfiles_SetSecretSetting("ai.cloud_api_key", st->cloudApiKey);
     Ai_SaveHistory();
+}
+
+// Reconcile the persisted sign-in flag with reality.  `ai.signed_in` is only a
+// cached hint that can go stale (e.g. `ollama signout` from a terminal while
+// NSBEdit was closed, or an API key revoked).
+//   * With an API key configured, sign-in state == key validity, and we never
+//     force a switch to a local model (the user explicitly opted into cloud).
+//   * Without a key, we ask the local daemon (/api/me); on signed-out we also
+//     drop out of cloud mode and fall back to the last-used local model (or the
+//     first local model if that is unavailable).
+// Returns true when any persisted state changed.
+static bool Ai_ReconcileSignInState(AiWindowState* st)
+{
+    if (!st) return false;
+
+    if (!st->cloudApiKey.empty()) {
+        bool valid = NeAiClient_ValidateCloudApiKey(st->cloudApiKey);
+        if (st->signedIn != valid) {
+            st->signedIn = valid;
+            NeProfiles_SetIntSetting("ai.signed_in", st->signedIn ? 1 : 0);
+            return true;
+        }
+        return false;
+    }
+
+    int live = NeAiClient_QueryOllamaSignIn();
+    if (live < 0) return false;   // unknown — leave the cached value untouched
+    bool real = (live == 1);
+    bool changed = false;
+
+    if (st->signedIn != real) {
+        st->signedIn = real;
+        NeProfiles_SetIntSetting("ai.signed_in", st->signedIn ? 1 : 0);
+        changed = true;
+    }
+
+    // Signed out: cloud models are unreachable, so fall back to a local model.
+    if (!st->signedIn && st->cloudMode) {
+        st->cloudMode = false;
+        NeProfiles_SetIntSetting("ai.cloud_mode", 0);
+
+        // Prefer the last-used local model (st->model).  If it is empty or no
+        // longer offered by the daemon, use the first model in the local list.
+        std::vector<std::wstring> locals = Ai_GetModelCandidates();
+        bool haveLast = false;
+        if (!st->model.empty()) {
+            if (locals.empty()) {
+                haveLast = true;   // daemon list unknown — keep remembered model
+            } else {
+                for (const std::wstring& m : locals) {
+                    if (m == st->model) { haveLast = true; break; }
+                }
+            }
+        }
+        if (!haveLast) {
+            st->model = locals.empty() ? Ai_DefaultModelName() : locals.front();
+        }
+        NeProfiles_SetStrSetting("ai.model", Ai_WideToUtf8(st->model));
+        changed = true;
+    }
+
+    return changed;
 }
 
 static void Ai_LoadPrefs(AiWindowState* st)
@@ -325,6 +391,12 @@ static void Ai_LoadPrefs(AiWindowState* st)
     }
     if (st->cloudModel.empty()) st->cloudModel = Ai_DefaultCloudModelName();
 
+    // The API key is stored encrypted (NeProfiles secret setting).
+    st->cloudApiKey.clear();
+    NeProfiles_GetSecretSetting("ai.cloud_api_key", st->cloudApiKey);
+    // Hand the key to the client so cloud sends can use it right away.
+    NeAiClient_SetCloudApiKey(st->cloudApiKey);
+
     int mode = 0, signedIn = 0;
     NeProfiles_GetIntSetting("ai.cloud_mode", 0, mode);
     NeProfiles_GetIntSetting("ai.signed_in", 0, signedIn);
@@ -333,6 +405,9 @@ static void Ai_LoadPrefs(AiWindowState* st)
     st->cloudMode = (mode != 0);
     st->signedIn = (signedIn != 0);
     st->role = (role == (int)AiMenuRole::Agent) ? AiMenuRole::Agent : AiMenuRole::Suggest;
+    // The cached flag above can be stale (e.g. `ollama signout` while the app
+    // was closed); ask the daemon and adopt its real sign-in state.
+    Ai_ReconcileSignInState(st);
     Ai_LoadHistory();
 }
 
@@ -2229,6 +2304,157 @@ static void Ai_ShowModelCheckDialog(HWND parent)
     SetForegroundWindow(parent);
 }
 
+// ── AI menu hover tooltip (owned by the AI window) ────────────────────────────
+// A dedicated yellow tooltip that looks identical to the shared multilingual
+// tooltip, but is OWNED BY THE AI WINDOW.  The shared singleton (tooltip.cpp) is
+// owned by whichever top-level window created it first — normally the main
+// editor — so showing it from the separate AI window pulled the editor's window
+// group forward and sent the AI window behind.  A tooltip owned by the AI window
+// stays in the AI window's group and never steals activation.
+static HWND  s_hAiTipWnd = NULL;
+static HFONT s_hAiTipFont = NULL;
+static std::wstring s_aiTipText;
+
+static LRESULT CALLBACK Ai_MenuTipWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    if (msg == WM_PAINT) {
+        PAINTSTRUCT ps;
+        HDC hdc = BeginPaint(hwnd, &ps);
+        RECT rc; GetClientRect(hwnd, &rc);
+        FillRect(hdc, &rc, GetSysColorBrush(COLOR_INFOBK));
+        HFONT old = s_hAiTipFont ? (HFONT)SelectObject(hdc, s_hAiTipFont) : NULL;
+        SetBkMode(hdc, TRANSPARENT);
+        SetTextColor(hdc, RGB(0, 0, 0));
+        RECT tr = rc;
+        tr.left += S(8); tr.top += S(6); tr.right -= S(8); tr.bottom -= S(6);
+        DrawTextW(hdc, s_aiTipText.c_str(), -1, &tr, DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
+        if (old) SelectObject(hdc, old);
+        EndPaint(hwnd, &ps);
+        return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static void Ai_HideMenuTip()
+{
+    if (s_hAiTipWnd && IsWindowVisible(s_hAiTipWnd)) ShowWindow(s_hAiTipWnd, SW_HIDE);
+}
+
+static void Ai_DestroyMenuTip()
+{
+    if (s_hAiTipWnd) { DestroyWindow(s_hAiTipWnd); s_hAiTipWnd = NULL; }
+    if (s_hAiTipFont) { DeleteObject(s_hAiTipFont); s_hAiTipFont = NULL; }
+    s_aiTipText.clear();
+}
+
+static void Ai_ShowMenuTip(HWND owner, const std::wstring& text)
+{
+    if (!owner || text.empty()) return;
+
+    if (!s_hAiTipFont) {
+        NONCLIENTMETRICSW ncm = {}; ncm.cbSize = sizeof(ncm);
+        SystemParametersInfoW(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0);
+        LOGFONTW lf = ncm.lfMessageFont;
+        UINT dpi = GetDpiForWindow(owner);
+        lf.lfHeight = -MulDiv(12, dpi > 0 ? dpi : 96, 72);
+        lf.lfWeight = FW_BOLD;
+        lf.lfQuality = CLEARTYPE_QUALITY;
+        lf.lfCharSet = DEFAULT_CHARSET;
+        wcscpy_s(lf.lfFaceName, L"Segoe UI");
+        s_hAiTipFont = CreateFontIndirectW(&lf);
+    }
+
+    s_aiTipText = text;
+
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    if (!s_hAiTipWnd) {
+        WNDCLASSW wc = {};
+        wc.lpfnWndProc = Ai_MenuTipWndProc;
+        wc.hInstance = hi;
+        wc.hCursor = LoadCursorW(NULL, MAKEINTRESOURCEW(kSystemArrowCursor));
+        wc.hbrBackground = GetSysColorBrush(COLOR_INFOBK);
+        wc.lpszClassName = L"NSBEditAiMenuTip";
+        if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) RegisterClassW(&wc);
+        s_hAiTipWnd = CreateWindowExW(WS_EX_TOPMOST | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+            L"NSBEditAiMenuTip", L"", WS_POPUP | WS_BORDER,
+            0, 0, 10, 10, owner, NULL, hi, NULL);
+    }
+    if (!s_hAiTipWnd) return;
+
+    // Measure (word-wrapped, capped like the shared tooltip).
+    HDC hdc = GetDC(s_hAiTipWnd);
+    HFONT old = s_hAiTipFont ? (HFONT)SelectObject(hdc, s_hAiTipFont) : NULL;
+    RECT calc = { 0, 0, S(480) - S(16), 0 };
+    DrawTextW(hdc, text.c_str(), -1, &calc, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+    if (old) SelectObject(hdc, old);
+    ReleaseDC(s_hAiTipWnd, hdc);
+    int w = (calc.right - calc.left) + S(16);
+    int h = (calc.bottom - calc.top) + S(12);
+
+    POINT pt; GetCursorPos(&pt);
+    int x = pt.x + S(18), y = pt.y + S(12);
+    HMONITOR hm = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO mi = {}; mi.cbSize = sizeof(mi);
+    if (GetMonitorInfo(hm, &mi)) {
+        if (x + w > mi.rcWork.right - 8)  x = mi.rcWork.right - w - 8;
+        if (x < mi.rcWork.left + 8)       x = mi.rcWork.left + 8;
+        if (y + h > mi.rcWork.bottom - 8) y = mi.rcWork.bottom - h - 8;
+        if (y < mi.rcWork.top + 8)        y = mi.rcWork.top + 8;
+    }
+    SetWindowPos(s_hAiTipWnd, HWND_TOPMOST, x, y, w, h, SWP_SHOWWINDOW | SWP_NOACTIVATE);
+    InvalidateRect(s_hAiTipWnd, NULL, TRUE);
+}
+
+// Prompt for the Ollama cloud API key, validate it, and store it ONLY in the
+// local profile.  On success the client is told to use the key and the UI flips
+// to "Signed in" — no browser / `ollama signin` needed.  An empty entry clears
+// the stored key.  When a key already exists the field is pre-filled with a
+// fixed mask sentinel (never the real secret); leaving it unchanged keeps the
+// stored key, typing a new value replaces it, clearing it removes it.
+static void Ai_PromptAndSetApiKey(HWND hwnd, AiWindowState* st)
+{
+    if (!st) return;
+    Ai_HideMenuTip();   // menu-hover tooltip: clear before disabling the window
+
+    // Sentinel shown (as password dots) when a key is already stored, so the
+    // real key never enters the dialog control.
+    static const wchar_t* kApiKeyMask = L"********************";
+    const bool hadKey = !st->cloudApiKey.empty();
+
+    std::wstring key = hadKey ? kApiKeyMask : std::wstring();
+    if (!Ne_ShowInputDialog(hwnd, Ne_Ls(L"AI_APIKEY_TITLE"), Ne_Ls(L"AI_APIKEY_PROMPT"),
+                            key, (hadKey ? std::wstring(kApiKeyMask) : std::wstring()), true)) {
+        return;   // cancelled
+    }
+
+    // Trim whitespace/newlines that ride along with a paste.
+    while (!key.empty() && (key.front() == L' ' || key.front() == L'\t' ||
+                            key.front() == L'\r' || key.front() == L'\n')) key.erase(key.begin());
+    while (!key.empty() && (key.back() == L' ' || key.back() == L'\t' ||
+                            key.back() == L'\r' || key.back() == L'\n')) key.pop_back();
+
+    // Left the mask untouched → keep the existing key, do nothing.
+    if (hadKey && key == kApiKeyMask) return;
+
+    st->cloudApiKey = key;
+    NeAiClient_SetCloudApiKey(st->cloudApiKey);
+
+    if (st->cloudApiKey.empty()) {
+        st->signedIn = false;
+        Ai_SavePrefs(st);
+        Ai_RefreshUi(hwnd);
+        Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_API_KEY_CLEARED"));
+        return;
+    }
+
+    bool valid = NeAiClient_ValidateCloudApiKey(st->cloudApiKey);
+    st->signedIn = valid;
+    if (valid) st->cloudMode = true;   // a valid key means the user wants cloud
+    Ai_SavePrefs(st);
+    Ai_RefreshUi(hwnd);
+    Ai_AppendLog(hwnd, valid ? Ne_Ls(L"AI_LOG_API_KEY_OK") : Ne_Ls(L"AI_LOG_API_KEY_BAD"));
+}
+
 static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback, int answerStart,
                                std::vector<std::wstring> mapChunks = {}, std::wstring reduceHeader = {})
 {
@@ -2762,6 +2988,7 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_LOCAL, Ne_Ls(L"AI_MENU_LOCAL_ONLY"), false);
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_MODE_CLOUD, Ne_Ls(L"AI_MENU_CLOUD_SUBSCRIPTION"), false);
     Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL, false);
+    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SET_API_KEY, Ne_Ls(L"AI_MENU_ADD_API_KEY"), false);
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_IN, Ne_Ls(L"AI_MENU_SIGN_IN"), false);
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_OUT, Ne_Ls(L"AI_MENU_SIGN_OUT"), false);
     Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL, false);
@@ -4109,6 +4336,24 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_EXITSIZEMOVE:
         if (s_aiGeometryReady && !s_aiClosing) Ai_SaveWinPlacement(hwnd);
         return 0;
+    case WM_MENUSELECT: {
+        // Hover help for the "Add API key" menu item, using a tooltip OWNED by
+        // the AI window so it never steals activation to the editor.
+        UINT item = LOWORD(wParam);
+        UINT flags = HIWORD(wParam);
+        if (flags != 0xFFFF && !(flags & MF_POPUP) && item == IDM_AI_SET_API_KEY) {
+            std::wstring msg = Ne_Ls(L"AI_TIP_ADD_API_KEY");
+            size_t p;
+            while ((p = msg.find(L"\\n")) != std::wstring::npos) msg.replace(p, 2, L"\n");
+            Ai_ShowMenuTip(hwnd, msg);
+        } else {
+            Ai_HideMenuTip();
+        }
+        return 0;
+    }
+    case WM_EXITMENULOOP:
+        Ai_HideMenuTip();
+        break;
     case WM_COMMAND:
         if (st && HIWORD(wParam) == EN_CHANGE) {
             if (LOWORD(wParam) == IDC_AI_INPUT && st->hInputSb) {
@@ -4155,18 +4400,40 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_CLOUD_SUB_SELECTED"));
             }
             return 0;
+        case IDM_AI_SET_API_KEY:
+            Ai_PromptAndSetApiKey(hwnd, st);
+            return 0;
         case IDM_AI_SIGN_IN:
             if (st) {
-                st->signedIn = true;
-                Ai_SavePrefs(st);
-                Ai_RefreshUi(hwnd);
-                ShellExecuteW(hwnd, L"open", L"https://ollama.com", NULL, NULL, SW_SHOWNORMAL);
-                Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_OPENED_SIGNUP"));
+                if (st->cloudApiKey.empty()) {
+                    // Browser-free path: ask for an API key and validate it.
+                    Ai_PromptAndSetApiKey(hwnd, st);
+                } else {
+                    bool valid = NeAiClient_ValidateCloudApiKey(st->cloudApiKey);
+                    st->signedIn = valid;
+                    if (valid) st->cloudMode = true;
+                    Ai_SavePrefs(st);
+                    Ai_RefreshUi(hwnd);
+                    Ai_AppendLog(hwnd, valid ? Ne_Ls(L"AI_LOG_API_KEY_OK") : Ne_Ls(L"AI_LOG_API_KEY_BAD"));
+                }
             }
             return 0;
         case IDM_AI_SIGN_OUT:
             if (st) {
+                // Forget the API key (local only) and drop any daemon session,
+                // then fall back to a local model.
+                st->cloudApiKey.clear();
+                NeAiClient_SetCloudApiKey(L"");
+                NeAiClient_OllamaSignout();
                 st->signedIn = false;
+                st->cloudMode = false;
+                std::vector<std::wstring> locals = Ai_GetModelCandidates();
+                bool haveLast = false;
+                if (!st->model.empty()) {
+                    if (locals.empty()) haveLast = true;
+                    else for (const std::wstring& m : locals) { if (m == st->model) { haveLast = true; break; } }
+                }
+                if (!haveLast) st->model = locals.empty() ? Ai_DefaultModelName() : locals.front();
                 Ai_SavePrefs(st);
                 Ai_RefreshUi(hwnd);
                 Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_SIGNED_OUT_LOCALLY"));
@@ -4406,13 +4673,14 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_DESTROY:
         Ai_StopLiveTypingTimer(hwnd);
         Ai_StopThinkingTimer(hwnd);
+        Ai_DestroyMenuTip();
         if (st) {
             if (st->hLogSb) msb_detach(st->hLogSb);
             if (st->hInputSb) msb_detach(st->hInputSb);
             if (st->spinner) { st->spinner->Hide(); delete st->spinner; st->spinner = NULL; }
             if (st->hFont) DeleteObject(st->hFont);
             if (st->hPaneFont) DeleteObject(st->hPaneFont);
-            if (s_hAiMenuFont) DeleteObject(s_hAiMenuFont);
+            if (s_hAiMenuFont) { DeleteObject(s_hAiMenuFont); s_hAiMenuFont = NULL; }
             Ai_ClearMenuStorage();
             if (st->hLog) {
                 AiCopyCode_HandleDestroy(st->hLog);
@@ -4433,6 +4701,8 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 void Ne_ShowAiWindow(HWND parent)
 {
     if (s_hwndAiWindow && IsWindow(s_hwndAiWindow)) {
+        AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(s_hwndAiWindow, GWLP_USERDATA);
+        if (st) Ai_ReconcileSignInState(st);   // pick up terminal signin/signout
         Ai_RefreshUi(s_hwndAiWindow);
         ShowWindow(s_hwndAiWindow, SW_SHOW);
         SetForegroundWindow(s_hwndAiWindow);

@@ -40,6 +40,13 @@ bool NeProfiles_SetIntSetting(const char* key, int value);
 bool NeProfiles_GetStrSetting(const char* key, const std::string& defaultValue, std::string& out);
 bool NeProfiles_SetStrSetting(const char* key, const std::string& value);
 
+// Encrypted string settings (key/value store in DB).  The value is encrypted
+// with NeCrypto (AES-256-CBC, DPAPI-wrapped key) before it touches the DB, so
+// secrets such as API keys are never stored in plaintext.  Requires
+// NeCrypto_Init() to have succeeded; falls back to leaving `out` empty.
+bool NeProfiles_GetSecretSetting(const char* key, std::wstring& out);
+bool NeProfiles_SetSecretSetting(const char* key, const std::wstring& value);
+
 // True when running from the installed Program Files layout.
 // False for portable mode (db next to exe) or in-memory fallback.
 bool NeProfiles_IsInstalled();

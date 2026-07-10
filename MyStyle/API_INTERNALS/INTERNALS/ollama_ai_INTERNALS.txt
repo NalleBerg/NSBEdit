@@ -127,6 +127,66 @@ FILES:
     - ai.cloud_model
     - ai.cloud_mode
     - ai.signed_in
+    - ai.cloud_api_key   (ENCRYPTED via NeProfiles_SetSecretSetting/GetSecretSetting;
+                          AES-256-CBC NeCrypto, DPAPI-wrapped key, stored as hex —
+                          never plaintext.  Loaded key is pushed to the client with
+                          NeAiClient_SetCloudApiKey so cloud sends can use it.)
+
+  CLOUD SIGN-IN (two paths)
+    (a) Local daemon (browser connect): `ollama signin` links this machine's key
+        to the account; ai.signed_in is only a cache, reconciled from POST
+        /api/me (200 signed in / 401 signed out) on window open and reuse.
+    (b) API key (browser-free): Cloud -> Add API key (IDM_AI_SET_API_KEY) opens a
+        masked Ne_ShowInputDialog; the key is validated with
+        NeAiClient_ValidateCloudApiKey (GET https://ollama.com/api/tags, bearer)
+        and stored encrypted.  With a key set, Ai_ReconcileSignInState uses the
+        key's validity as the sign-in state and does NOT switch to a local model.
+        The "-cloud" send is routed by NeAiClient_AskOllamaStream to
+        https://ollama.com/api/generate over WinHTTP (WINHTTP_FLAG_SECURE +
+        Authorization: Bearer) via Ai_CloudAskStream — curl is not used because
+        the bundled curl has no CA bundle.  A WM_MENUSELECT handler shows a
+        dedicated AI-owned tooltip (Ai_ShowMenuTip/Ai_HideMenuTip, s_hAiTipWnd)
+        for the menu item (AI_TIP_ADD_API_KEY, literal \n -> newline).  It does
+        NOT use the shared tooltip.cpp singleton: that window is owned by the
+        first top-level window to show a tooltip (the editor), so showing it from
+        the separate AI window pulled the editor forward and sent the AI window
+        behind.  The dedicated tooltip (same yellow COLOR_INFOBK look, 12pt Segoe
+        UI bold, WS_EX_NOACTIVATE) is owned by the AI window and never steals
+        activation; it is destroyed in WM_DESTROY (Ai_DestroyMenuTip).
+
+  MENU FONT GOTCHA
+    The owner-draw menu font s_hAiMenuFont is a file-scope global.  It is created
+    lazily in WM_MEASUREITEM/WM_DRAWITEM and freed on WM_DESTROY.  DeleteObject
+    MUST be followed by `s_hAiMenuFont = NULL`, otherwise the next time the AI
+    window opens `if (!s_hAiMenuFont)` is false, the dangling handle is reused,
+    SelectObject fails, and the menu falls back to the tiny default system font
+    (intermittently, depending on GDI handle reuse).
+
+  SIGN-IN DETECTION (ai.signed_in is only a cache)
+    ai.signed_in is NOT authoritative — Ollama tracks sign-in via the CLI
+    (`ollama signin` / `ollama signout`), and the user can sign out from a
+    terminal while NSBEdit is closed, leaving the stored flag stale (window
+    would wrongly show "Account: signed in" with Cloud models enabled).
+    The real state comes from the local daemon:
+        POST http://localhost:11434/api/me
+          HTTP 200        -> signed in
+          HTTP 401 / 403  -> signed out
+          other / no daemon -> unknown
+    There is NO GET whoami endpoint (GET /api/me returns 405).
+    NeAiClient_QueryOllamaSignIn() (ne_ai_client.cpp) performs this probe and
+    returns a tri-state int: 1 signed in, 0 signed out, -1 unknown (4 s
+    WinHttpSetTimeouts so window-open never stalls when offline).
+    Ai_ReconcileSignInState(st) (ollama_ai.cpp) adopts the live value and
+    rewrites ai.signed_in ONLY when the answer is definitive (>= 0); on -1 it
+    keeps the cached value.  It runs at window open (inside Ai_LoadPrefs, BEFORE
+    Ai_LoadHistory so it must persist single keys directly, NOT via Ai_SavePrefs
+    which would clobber history) and again on the Ne_ShowAiWindow reuse path.
+    When the daemon reports signed-out it also forces local mode: sets
+    st->cloudMode = false, persists ai.cloud_mode = 0, and picks a local model —
+    the last-used one (st->model) if still present in Ai_GetModelCandidates(),
+    otherwise the first entry in that list (Ai_DefaultModelName() if the daemon
+    list is empty) — persisting ai.model.  This keeps the user off a greyed-out
+    cloud model after an external signout.
 
   CLOUD MODE (how it works)
     Ollama cloud models are served through the SAME local endpoint

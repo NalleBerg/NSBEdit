@@ -10,3 +10,13 @@ zip/
 
 # Machine-specific workspace file (absolute paths)
 *.code-workspace
+
+# Secrets — never commit API keys or the local profile database.
+# The Ollama cloud API key is entered in-app and stored ONLY in the per-user
+# profile DB under %APPDATA%\NSBEdit\nsbedit.db (never in the repo or the zip).
+*api*key*.txt
+*API*KEY*.txt
+*apikey*
+*.key
+nsbedit.db
+*.db

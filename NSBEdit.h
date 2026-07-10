@@ -24,3 +24,9 @@ struct NsbCodeStyleRun {
 // Implemented in NSBEdit.cpp.
 std::vector<NsbCodeStyleRun> NsbAi_HighlightCode(const std::wstring& code,
                                                  const std::wstring& fenceLang);
+
+// Styled modal input dialog (owner-draw buttons, DPI-aware).  Returns true and
+// fills `out` when the user confirms.  `initialValue` pre-fills the edit; set
+// `password` to mask the field (e.g. for an API key).  Implemented in NSBEdit.cpp.
+bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt,
+                        std::wstring& out, const std::wstring& initialValue, bool password);

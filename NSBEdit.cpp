@@ -2908,8 +2908,9 @@ static void Ne_UpdateStatusText(HWND hwnd)
 }
 
 static bool Ne_PromptSaveIfModified(HWND hwnd); // forward
-static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out,
-                               const std::wstring& initialValue); // forward
+static bool Ne_TabIsEmpty(NeTabDoc* doc);       // forward (defined near Ne_PromptSaveIfModified)
+bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out,
+                        const std::wstring& initialValue = L"", bool password = false); // forward
 static bool Ne_LoadPathIntoEditor(HWND hwnd, const std::wstring& path);
 
 static bool Ne_GetFileStamp(const std::wstring& path, FILETIME* outWrite, ULONGLONG* outSize)
@@ -8515,10 +8516,13 @@ static void Ne_New(HWND hwnd)
     Ne_UpdateStatusText(hwnd);
     HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (hEdit) {
+        // Suppress EN_CHANGE while applying the plain-text look and attaching
+        // scrollbars — EM_SETCHARFORMAT(SCF_ALL) would otherwise fire EN_CHANGE
+        // (ENM_CHANGE is enabled at creation) and mark the brand-new empty tab
+        // "modified", nagging the user with a save prompt when it is closed.
+        SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_SELCHANGE);
         Ne_ApplyPlainTextLook(hEdit);
-        SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
         Ne_SubclassEditForCaret(hEdit);
-        SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_SELCHANGE);  // suppress EN_CHANGE during attach
         Ne_AttachScrollbars(hEdit);
         SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
         SetFocus(hEdit);
@@ -8727,11 +8731,11 @@ static void Ne_Open(HWND hwnd)
     if (!got) { s_suppressDiskCheck = false; return; }
 
     // If the active tab is an untouched untitled RichEdit, reuse it instead of
-    // opening a new tab.
+    // opening a new tab.  Judge by real emptiness (not the modified flag).
     NeTabDoc* existingDoc = NeTabs_GetActiveDoc(hwnd);
     bool reuseTab = existingDoc &&
                     existingDoc->path.empty() &&
-                    !existingDoc->modified &&
+                    Ne_TabIsEmpty(existingDoc) &&
                     existingDoc->hEdit && !existingDoc->hSci;
     if (!reuseTab) {
         if (!NeTabs_AddUntitled(hwnd)) { s_suppressDiskCheck = false; return; }
@@ -9185,10 +9189,24 @@ static void Ne_AutoSaveTabs(HWND hwnd)
     }
 }
 
+// True when a tab has no real text content (empty RichEdit or empty Scintilla).
+static bool Ne_TabIsEmpty(NeTabDoc* doc)
+{
+    if (!doc) return true;
+    if (doc->hSci)  return SendMessageW(doc->hSci,  SCI_GETLENGTH,    0, 0) == 0;
+    if (doc->hEdit) return SendMessageW(doc->hEdit, WM_GETTEXTLENGTH, 0, 0) == 0;
+    return true;
+}
+
 static bool Ne_PromptSaveIfModified(HWND hwnd)
 {
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
     if (!doc || !doc->modified) return true;
+    // An untitled tab with no real content has nothing to save — close it
+    // silently.  (A fresh untitled RichEdit can be flagged modified by a
+    // spurious EN_CHANGE now that ENM_CHANGE is enabled at creation; an empty
+    // tab must never nag the user on close.)
+    if (doc->path.empty() && !doc->isFtpFile && Ne_TabIsEmpty(doc)) return true;
     const wchar_t* name = doc->path.empty() ? Ls(L"UNTITLED") : doc->path.c_str();
     wchar_t msg[MAX_PATH + 64];
     swprintf_s(msg, MAX_PATH + 64, Ls(L"MSG_SAVE_PROMPT"), name);
@@ -9435,11 +9453,15 @@ static void Ne_SessionRestore(HWND hwnd)
     for (int i = 0; i < (int)tabs.size(); i++) {
         const NeSessionTab& t = tabs[i];
 
-        // Create a new tab, or reuse the initial empty untitled tab.
+        // Create a new tab, or reuse the initial empty untitled tab.  Judge by
+        // real emptiness, not the modified flag: a fresh untitled RichEdit can
+        // be flagged modified by a spurious EN_CHANGE (ENM_CHANGE is now enabled
+        // at creation), and we must still reuse it instead of leaving it as a
+        // stray untitled tab beside the restored files.
         NeTabDoc* existingDoc = NeTabs_GetActiveDoc(hwnd);
         bool reuseTab = firstTab && existingDoc &&
                         existingDoc->path.empty() &&
-                        !existingDoc->modified &&
+                        Ne_TabIsEmpty(existingDoc) &&
                         existingDoc->hEdit && !existingDoc->hSci;
         if (!reuseTab) {
             if (!NeTabs_AddUntitled(hwnd)) continue;
@@ -11846,8 +11868,8 @@ static void Ne_ShowPreviewOnFtp(HWND hwnd)
     }
 }
 
-static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out,
-                               const std::wstring& initialValue = L"")
+bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt, std::wstring& out,
+                        const std::wstring& initialValue, bool password)
 {
     HINSTANCE hi = GetModuleHandleW(NULL);
     WNDCLASSW wc = {}; wc.lpfnWndProc = Ne_InputDlgProc; wc.hInstance = hi;
@@ -11882,7 +11904,7 @@ static bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t*
     SendMessageW(hLbl, WM_SETFONT, (WPARAM)hFont, TRUE);
 
     HWND hEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
-        WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL,
+        WS_CHILD|WS_VISIBLE|WS_TABSTOP|ES_AUTOHSCROLL | (password ? ES_PASSWORD : 0),
         PAD, PAD + S(28), rc.right - 2*PAD, S(26), dlg, (HMENU)4001, hi, NULL);
     SendMessageW(hEdit, WM_SETFONT, (WPARAM)hFont, TRUE);
     if (!initialValue.empty()) {
@@ -12525,7 +12547,7 @@ static void Ne_ShowFtpBrowser(HWND parent, int64_t profileId)
         NeTabDoc* existingDoc = NeTabs_GetActiveDoc(parent);
         bool reuseTab = existingDoc &&
                         existingDoc->path.empty() &&
-                        !existingDoc->modified &&
+                        Ne_TabIsEmpty(existingDoc) &&
                         existingDoc->hEdit && !existingDoc->hSci;
         if (!reuseTab) NeTabs_AddUntitled(parent);
         Ne_LoadPathIntoEditor(parent, d.pendingOpenLocal);
@@ -13969,11 +13991,15 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             cfD.yHeight   = s_neFontSizes[s_neFontDefault] * 20;
             cfD.bCharSet  = DEFAULT_CHARSET;
             wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
+            // Suppress EN_CHANGE while applying the initial default format and
+            // attaching scrollbars.  ENM_CHANGE is enabled at creation now, so
+            // EM_SETCHARFORMAT(SCF_ALL) would otherwise fire EN_CHANGE and mark
+            // the fresh untitled tab "modified" — leaving a stray untitled tab
+            // and a needless save prompt on close.
+            SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_SELCHANGE);
             SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
             SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
-            SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
             Ne_SubclassEditForCaret(hEdit);
-            SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_SELCHANGE);  // suppress EN_CHANGE during attach
             Ne_AttachScrollbars(hEdit);
             SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
         }
@@ -14175,7 +14201,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 NeTabDoc* existingDoc = NeTabs_GetActiveDoc(hwnd);
                 bool reuseTab = existingDoc &&
                                 existingDoc->path.empty() &&
-                                !existingDoc->modified &&
+                                Ne_TabIsEmpty(existingDoc) &&
                                 existingDoc->hEdit && !existingDoc->hSci;
                 if (!reuseTab) NeTabs_AddUntitled(hwnd);
                 if (!Ne_LoadPathIntoEditor(hwnd, rpath)) {

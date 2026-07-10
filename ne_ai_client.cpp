@@ -7,6 +7,7 @@
 #include <regex>
 #include <string>
 #include <vector>
+#include <mutex>
 
 // Set when the user presses Stop; the streaming write callback aborts the
 // transfer and the worker skips any retry.  Lives at file scope so both the
@@ -16,6 +17,24 @@ static std::atomic<bool> g_aiCancelRequested{false};
 void NeAiClient_RequestCancel()   { g_aiCancelRequested.store(true); }
 void NeAiClient_ResetCancel()     { g_aiCancelRequested.store(false); }
 bool NeAiClient_IsCancelRequested() { return g_aiCancelRequested.load(); }
+
+// The user's Ollama cloud API key.  Set from the AI window (loaded from the
+// local profile); read by the cloud send path.  Guarded because the send runs
+// on a worker thread while the UI thread may update the key.
+static std::mutex g_cloudApiKeyMutex;
+static std::wstring g_cloudApiKey;
+
+void NeAiClient_SetCloudApiKey(const std::wstring& key)
+{
+    std::lock_guard<std::mutex> lock(g_cloudApiKeyMutex);
+    g_cloudApiKey = key;
+}
+
+static std::wstring Ai_GetCloudApiKey()
+{
+    std::lock_guard<std::mutex> lock(g_cloudApiKeyMutex);
+    return g_cloudApiKey;
+}
 
 namespace {
 
@@ -177,6 +196,57 @@ static bool Ai_FindJsonStringField(const std::string& json, const char* field, s
             case 'n': outValue += '\n'; break;
             case 'r': outValue += '\r'; break;
             case 't': outValue += '\t'; break;
+            case 'u': {
+                // Decode \uXXXX (and surrogate pairs) into UTF-8 so values such
+                // as the sign-in URL, which arrives as ...\u0026key=... (& ),
+                // come back intact.
+                auto hexDigit = [](char c) -> int {
+                    if (c >= '0' && c <= '9') return c - '0';
+                    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+                    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+                    return -1;
+                };
+                if (pos + 4 < json.size()) {
+                    int h1 = hexDigit(json[pos + 1]), h2 = hexDigit(json[pos + 2]);
+                    int h3 = hexDigit(json[pos + 3]), h4 = hexDigit(json[pos + 4]);
+                    if (h1 >= 0 && h2 >= 0 && h3 >= 0 && h4 >= 0) {
+                        unsigned int cp = (unsigned)((h1 << 12) | (h2 << 8) | (h3 << 4) | h4);
+                        pos += 4;
+                        if (cp >= 0xD800 && cp <= 0xDBFF && pos + 6 < json.size() &&
+                            json[pos + 1] == '\\' && json[pos + 2] == 'u') {
+                            int g1 = hexDigit(json[pos + 3]), g2 = hexDigit(json[pos + 4]);
+                            int g3 = hexDigit(json[pos + 5]), g4 = hexDigit(json[pos + 6]);
+                            if (g1 >= 0 && g2 >= 0 && g3 >= 0 && g4 >= 0) {
+                                unsigned int lo = (unsigned)((g1 << 12) | (g2 << 8) | (g3 << 4) | g4);
+                                if (lo >= 0xDC00 && lo <= 0xDFFF) {
+                                    cp = 0x10000u + ((cp - 0xD800u) << 10) + (lo - 0xDC00u);
+                                    pos += 6;
+                                }
+                            }
+                        }
+                        if (cp < 0x80) {
+                            outValue += (char)cp;
+                        } else if (cp < 0x800) {
+                            outValue += (char)(0xC0 | (cp >> 6));
+                            outValue += (char)(0x80 | (cp & 0x3F));
+                        } else if (cp < 0x10000) {
+                            outValue += (char)(0xE0 | (cp >> 12));
+                            outValue += (char)(0x80 | ((cp >> 6) & 0x3F));
+                            outValue += (char)(0x80 | (cp & 0x3F));
+                        } else {
+                            outValue += (char)(0xF0 | (cp >> 18));
+                            outValue += (char)(0x80 | ((cp >> 12) & 0x3F));
+                            outValue += (char)(0x80 | ((cp >> 6) & 0x3F));
+                            outValue += (char)(0x80 | (cp & 0x3F));
+                        }
+                    } else {
+                        outValue += 'u';
+                    }
+                } else {
+                    outValue += 'u';
+                }
+                break;
+            }
             default: outValue += ch; break;
             }
             escape = false;
@@ -306,6 +376,95 @@ bool NeAiClient_IsOllamaResponsive()
                     WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX) &&
                     status == 200) {
                     ok = true;
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+
+    WinHttpCloseHandle(hSession);
+    return ok;
+}
+
+int NeAiClient_QueryOllamaSignIn(std::wstring* outSigninUrl)
+{
+    if (outSigninUrl) outSigninUrl->clear();
+
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return -1;
+
+    // Keep the probe snappy: the daemon validates the sign-in key with
+    // ollama.com, so cap every phase so window-open never stalls if the
+    // network is slow or offline.
+    WinHttpSetTimeouts(hSession, 4000, 4000, 4000, 4000);
+
+    int result = -1;   // unknown until the daemon gives a definitive answer
+    HINTERNET hConnect = WinHttpConnect(hSession, kOllamaHost, 11434, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/me",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (hRequest) {
+            if (WinHttpSendRequest(hRequest,
+                WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0;
+                DWORD statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
+                    if (status == 200) {
+                        result = 1;   // signed in
+                    } else if (status == 401 || status == 403) {
+                        result = 0;   // reachable but not signed in
+                        if (outSigninUrl) {
+                            std::string body;
+                            std::string url;
+                            if (Ai_ReadBody(hRequest, body) &&
+                                Ai_FindJsonStringField(body, "signin_url", url) && !url.empty()) {
+                                *outSigninUrl = Ai_Utf8ToWide(url);
+                            }
+                        }
+                    }
+                    // Any other status leaves result at -1 (unknown).
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+
+    WinHttpCloseHandle(hSession);
+    return result;
+}
+
+bool NeAiClient_OllamaSignout()
+{
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return false;
+
+    WinHttpSetTimeouts(hSession, 4000, 4000, 4000, 4000);
+
+    bool ok = false;
+    HINTERNET hConnect = WinHttpConnect(hSession, kOllamaHost, 11434, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/signout",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (hRequest) {
+            if (WinHttpSendRequest(hRequest,
+                WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0;
+                DWORD statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
+                    // 200 = signed out now; 401 = already signed out — both fine.
+                    ok = (status == 200 || status == 401);
                 }
             }
             WinHttpCloseHandle(hRequest);
@@ -506,12 +665,169 @@ bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
     return ok && outError.empty();
 }
 
+bool NeAiClient_ValidateCloudApiKey(const std::wstring& key)
+{
+    if (key.empty()) return false;
+
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return false;
+    WinHttpSetTimeouts(hSession, 8000, 8000, 8000, 15000);
+
+    bool ok = false;
+    HINTERNET hConnect = WinHttpConnect(hSession, L"ollama.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", L"/api/tags",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+        if (hRequest) {
+            std::wstring auth = L"Authorization: Bearer " + key + L"\r\n";
+            WinHttpAddRequestHeaders(hRequest, auth.c_str(), (DWORD)-1L,
+                WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
+            if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0;
+                DWORD statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
+                    ok = (status == 200);
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+
+    WinHttpCloseHandle(hSession);
+    return ok;
+}
+
+// Streams a "-cloud" model straight from https://ollama.com/api/generate using
+// the bearer API key.  Mirrors the local curl path's NDJSON handling: append
+// "response" tokens, and use "thinking" ONLY when a line has no "response" (so
+// reasoning models don't double every token).  Honours the shared Stop flag.
+static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& prompt,
+    const std::wstring& apiKey, void* context, NeAiOllamaChunkFn onChunk,
+    std::wstring& outReply, std::wstring& outError, int numCtx)
+{
+    outReply.clear();
+    outError.clear();
+
+    int ctx = numCtx > 0 ? numCtx : 12288;
+    std::string body = std::string("{\"model\":\"") +
+        Ai_EscapeJson(Ai_WideToUtf8(model)) +
+        "\",\"prompt\":\"" +
+        Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
+        "\",\"stream\":true,\"think\":false"
+        ",\"options\":{\"num_ctx\":" + std::to_string(ctx) + "}}";
+
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) { outError = L"Could not open WinHTTP session."; return false; }
+    // Long receive window: cloud replies stream token by token and a large
+    // model can take a while to emit the first one.
+    WinHttpSetTimeouts(hSession, 15000, 15000, 30000, 120000);
+
+    bool ok = false;
+    HINTERNET hConnect = WinHttpConnect(hSession, L"ollama.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/generate",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+        if (hRequest) {
+            std::wstring headers = L"Content-Type: application/json\r\nAuthorization: Bearer ";
+            headers += apiKey;
+            headers += L"\r\n";
+            if (WinHttpSendRequest(hRequest, headers.c_str(), (DWORD)-1L,
+                    (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0;
+                DWORD statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
+                    if (status == 200) {
+                        std::string pending;
+                        bool done = false;
+                        while (!g_aiCancelRequested.load()) {
+                            DWORD available = 0;
+                            if (!WinHttpQueryDataAvailable(hRequest, &available)) break;
+                            if (available == 0) break;
+                            std::string chunk;
+                            chunk.resize(available);
+                            DWORD read = 0;
+                            if (!WinHttpReadData(hRequest, &chunk[0], available, &read) || read == 0) break;
+                            chunk.resize(read);
+                            pending += chunk;
+
+                            size_t linePos = 0;
+                            while ((linePos = pending.find('\n')) != std::string::npos) {
+                                std::string line = Ai_TrimJsonLine(pending.substr(0, linePos));
+                                pending.erase(0, linePos + 1);
+                                if (line.empty()) continue;
+
+                                std::string replyUtf8;
+                                if (Ai_FindJsonStringField(line, "response", replyUtf8) && !replyUtf8.empty()) {
+                                    std::wstring wideChunk = Ai_Utf8ToWide(replyUtf8);
+                                    outReply += wideChunk;
+                                    if (onChunk && !wideChunk.empty()) onChunk(context, wideChunk);
+                                } else {
+                                    std::string thinkingUtf8;
+                                    if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8) && !thinkingUtf8.empty()) {
+                                        std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
+                                        outReply += wideChunk;
+                                        if (onChunk && !wideChunk.empty()) onChunk(context, wideChunk);
+                                    }
+                                }
+
+                                bool d = false;
+                                if (Ai_FindJsonBoolField(line, "done", d) && d) done = true;
+                                std::string errUtf8;
+                                if (Ai_FindJsonStringField(line, "error", errUtf8) && !errUtf8.empty()) {
+                                    outError = Ai_Utf8ToWide(errUtf8);
+                                }
+                            }
+                            if (!outError.empty()) break;
+                        }
+                        ok = outError.empty() && (done || !outReply.empty());
+                    } else if (status == 401 || status == 403) {
+                        outError = L"Ollama cloud rejected the API key (HTTP " +
+                            std::to_wstring(status) + L").  Check Cloud → Add API key.";
+                    } else {
+                        outError = L"Ollama cloud returned HTTP status " +
+                            std::to_wstring(status) + L".";
+                    }
+                }
+            } else {
+                outError = Ai_FormatWinHttpErrorAt(L"Could not reach Ollama cloud", L"send request");
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+
+    WinHttpCloseHandle(hSession);
+    if (!ok && outError.empty()) outError = L"Ollama cloud request failed.";
+    return ok && outError.empty();
+}
+
 bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& prompt,
     void* context, NeAiOllamaChunkFn onChunk, std::wstring& outReply, std::wstring& outError,
     int numCtx)
 {
     outReply.clear();
     outError.clear();
+
+    // Cloud routing: when the model is a "-cloud" model and the user has set an
+    // API key, talk straight to https://ollama.com/api over WinHTTP (schannel +
+    // Windows cert store — reliable TLS) with an Authorization: Bearer header,
+    // instead of the local daemon.  This needs no `ollama signin`/browser step.
+    {
+        std::wstring apiKey = Ai_GetCloudApiKey();
+        if (!apiKey.empty() && model.find(L"-cloud") != std::wstring::npos) {
+            return Ai_CloudAskStream(model, prompt, apiKey, context, onChunk, outReply, outError, numCtx);
+        }
+    }
 
     bool ok = false;
     CURL* curl = curl_easy_init();

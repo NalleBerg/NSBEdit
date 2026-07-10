@@ -726,6 +726,19 @@
                                                 NeAiClient_RequestCancel/ResetCancel/
                                                 IsCancelRequested (atomic) make the curl write
                                                 callback abort the stream for the Stop button.
+                                                NeAiClient_QueryOllamaSignIn() probes the real
+                                                cloud sign-in state via POST /api/me (200 = signed
+                                                in, 401/403 = signed out, other/unreachable =
+                                                unknown, returned as tri-state 1/0/-1). There is no
+                                                GET whoami endpoint (GET /api/me = 405).
+                                                Browser-free cloud: NeAiClient_SetCloudApiKey stores
+                                                the user's ollama.com key; AskOllamaStream then routes
+                                                any "-cloud" model to https://ollama.com/api/generate
+                                                over WinHTTP (WINHTTP_FLAG_SECURE, Authorization:
+                                                Bearer) via Ai_CloudAskStream — NOT curl, whose build
+                                                has no CA bundle. NeAiClient_ValidateCloudApiKey =
+                                                GET ollama.com/api/tags; NeAiClient_OllamaSignout =
+                                                POST /api/signout.
 
   ne_projects.h / ne_projects.cpp               AI project (workspace) store and scanner.
                                                 Reuses the shared SQLite handle from
@@ -760,6 +773,33 @@
                                                 while the user is signed out, Send opens the
                                                 Ollama sign-up page and returns instead of
                                                 falling through to the local transport.
+                                                The `ai.signed_in` pref is only a cache:
+                                                Ai_ReconcileSignInState() re-checks the daemon
+                                                (NeAiClient_QueryOllamaSignIn) on window open and
+                                                on Ne_ShowAiWindow reuse, so an external
+                                                `ollama signout`/`signin` is honoured. When the
+                                                daemon reports signed-out it also drops cloud
+                                                mode and reverts to the last-used local model
+                                                (st->model), or the first local model in
+                                                Ai_GetModelCandidates() if that is unavailable.
+                                                Cloud can also be used browser-free: Cloud -> Add
+                                                API key (IDM_AI_SET_API_KEY) opens a masked
+                                                Ne_ShowInputDialog; the key is validated and stored
+                                                ENCRYPTED (NeProfiles_SetSecretSetting, ai.cloud_api_key),
+                                                and a WM_MENUSELECT hover tooltip (ShowMultilingualTooltip)
+                                                explains it. When a key is set, sign-in state = key
+                                                validity and no local-switch happens. Menu font: the
+                                                global s_hAiMenuFont must be set to NULL after
+                                                DeleteObject on WM_DESTROY, else the next window open
+                                                reuses a dangling handle and the menu renders in the
+                                                tiny system font.
+                                                The Add-API-key hover help uses a DEDICATED tooltip
+                                                owned by the AI window (Ai_ShowMenuTip/Ai_HideMenuTip,
+                                                s_hAiTipWnd) — NOT the shared tooltip.cpp singleton,
+                                                which is owned by the first top-level window to use it
+                                                (the editor) and would pull the editor forward, sending
+                                                the AI window behind.  Same yellow COLOR_INFOBK look,
+                                                WS_EX_NOACTIVATE, destroyed with the window.
                                                 The Cloud menu also includes a modal Check
                                                 local models maintenance action that streams
                                                 progress while it checks the installed
@@ -931,6 +971,13 @@
                                                 table (values already stored as TEXT).
                                                 Used for per-profile last-visited FTP
                                                 folder (key ftp_lastdir_<id>).
+                                                NeProfiles_GetSecretSetting / SetSecretSetting —
+                                                ENCRYPTED string key/value store: the value is
+                                                run through NeCrypto (AES-256-CBC, DPAPI-wrapped
+                                                key) and kept as lowercase hex in the same
+                                                settings table, so secrets such as the Ollama
+                                                cloud API key (ai.cloud_api_key) never appear in
+                                                plaintext in the DB.
                                                 Passwords encrypted at rest via NeCrypto
                                                 (ne_crypto.h); remember_pwd flag controls
                                                 whether password is persisted.

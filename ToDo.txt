@@ -1,0 +1,6 @@
+Hex- binary - decimal converter
+color-picker
+subnet calc
+
+
+2: The mode we are making first is Suggest mode. So all the Agent mode models shall have a big icon: shell32.dll - 109, and a text «Agent mode is not implemented yet!» Suggest models will work and use the model chosen in the model menu

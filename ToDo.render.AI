@@ -1,0 +1,9 @@
+AI render todo:
+
+1. Encapsulate each code block in a visible box.
+2. Color-code the code block with Scintilla styling.
+3. Place the Copy code control directly over the box, aligned to the left.
+4. Use a colored icon for the copy action.
+5. Make Copy code copy all code and nothing else.
+6. Make selected answer text support right-click copy from the context menu, and keep Ctrl+C working.
+7. Once the code block works as expected, render the rest of the answer, all parts.
