@@ -208,6 +208,13 @@ static std::vector<AiModelMenuItem> s_aiModelMenuItems;
 static UINT s_aiNextModelMenuId = IDM_AI_MODEL_DEFAULT;
 static std::vector<std::wstring> s_aiInputHistory;
 static constexpr size_t kAiInputHistoryLimit = 500;
+// True while the query input's WM_PASTE handler is inserting text. Multi-line
+// inserts fire EN_CHANGE synchronously mid-insert; letting the custom scrollbar
+// reflow (which calls EM_SETRECT back on the RichEdit) run at that point
+// re-enters the control while it is still mutating and crashes. The flag makes
+// EN_CHANGE skip the reflow so the paste handler can do it once, safely, after
+// the insert completes.
+static bool s_aiInputPasting = false;
 
 static std::wstring Ai_GetExeDir()
 {
@@ -2883,20 +2890,57 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
         return 0;
     }
     if (msg == WM_PASTE) {
-        // Strip incoming colours/formatting so pasted text always uses the input
-        // box's own readable formatting. Rich sources such as a dark editor tab
-        // otherwise paste light-coloured text that is invisible on the white
-        // input box.
-        UINT fmt = 0;
-        if (IsClipboardFormatAvailable(CF_UNICODETEXT)) fmt = CF_UNICODETEXT;
-        else if (IsClipboardFormatAvailable(CF_TEXT))   fmt = CF_TEXT;
-        if (fmt) {
+        // Read the clipboard text ourselves and insert it with EM_REPLACESEL
+        // instead of relying on EM_PASTESPECIAL. EM_PASTESPECIAL crashes the
+        // control on some multi-line plain-text payloads that originate outside
+        // the app (e.g. a selection copied from a PowerShell/CMD console); a
+        // manual insert of a sanitized buffer is both safe and lets us normalize
+        // line endings and force the input box's own readable formatting. Rich
+        // sources such as a dark editor tab otherwise paste light-coloured text
+        // that is invisible on the white input box.
+        std::wstring text;
+        bool haveText = false;
+        if (OpenClipboard(hwnd)) {
+            if (HANDLE hUni = GetClipboardData(CF_UNICODETEXT)) {
+                if (const wchar_t* p = (const wchar_t*)GlobalLock(hUni)) {
+                    text.assign(p);
+                    GlobalUnlock(hUni);
+                    haveText = true;
+                }
+            } else if (HANDLE hAnsi = GetClipboardData(CF_TEXT)) {
+                if (const char* pa = (const char*)GlobalLock(hAnsi)) {
+                    int need = MultiByteToWideChar(CP_ACP, 0, pa, -1, NULL, 0);
+                    if (need > 1) {
+                        text.resize((size_t)need - 1);
+                        MultiByteToWideChar(CP_ACP, 0, pa, -1, &text[0], need);
+                    }
+                    GlobalUnlock(hAnsi);
+                    haveText = true;
+                }
+            }
+            CloseClipboard();
+        }
+        if (haveText) {
+            // Sanitize: drop embedded NULs and collapse CRLF/CR/LF to the plain
+            // CR that RichEdit uses internally for paragraph breaks.
+            std::wstring clean;
+            clean.reserve(text.size());
+            for (size_t i = 0; i < text.size(); ++i) {
+                wchar_t c = text[i];
+                if (c == L'\0') continue;
+                if (c == L'\r') {
+                    clean.push_back(L'\r');
+                    if (i + 1 < text.size() && text[i + 1] == L'\n') ++i;
+                    continue;
+                }
+                if (c == L'\n') { clean.push_back(L'\r'); continue; }
+                clean.push_back(c);
+            }
             CHARRANGE before = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&before);
-            SendMessageW(hwnd, EM_PASTESPECIAL, fmt, 0);
-            // Force the pasted run to solid black. EM_PASTESPECIAL keeps whatever
-            // colour the insertion point carried, which for text copied from an
-            // untitled/dark editor window can be light and therefore invisible
-            // on the white input box.
+            s_aiInputPasting = true;
+            SendMessageW(hwnd, EM_REPLACESEL, TRUE, (LPARAM)clean.c_str());
+            // Force the pasted run to solid black so text copied from a dark
+            // source stays visible on the white input box.
             CHARRANGE after = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&after);
             if (after.cpMax > before.cpMin) {
                 CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
@@ -2909,8 +2953,13 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
                 CHARRANGE caret = { after.cpMax, after.cpMax };
                 SendMessageW(hwnd, EM_EXSETSEL, 0, (LPARAM)&caret);
             }
-            return 0;
+            s_aiInputPasting = false;
+            // Reflow the custom scrollbar exactly once, now that the insert is
+            // complete, so the reflow never re-enters the RichEdit mid-change.
+            if (st && st->hInputSb) msb_notify_content_changed(st->hInputSb);
+            SendMessageW(hwnd, EM_SCROLLCARET, 0, 0);
         }
+        return 0;
     }
     if (msg == WM_CONTEXTMENU) {
         // RichEdit suppresses its own popup here; provide our own Cut/Copy/
@@ -4357,6 +4406,10 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_COMMAND:
         if (st && HIWORD(wParam) == EN_CHANGE) {
             if (LOWORD(wParam) == IDC_AI_INPUT && st->hInputSb) {
+                // Suppress the reflow while a paste is inserting text: it would
+                // re-enter the RichEdit (EM_SETRECT) mid-insert and crash. The
+                // paste handler reflows once after the insert finishes.
+                if (s_aiInputPasting) return 0;
                 msb_notify_content_changed(st->hInputSb);
                 return 0;
             }

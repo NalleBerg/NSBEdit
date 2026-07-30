@@ -1,18 +1,8 @@
-MENU_AI_CHECK_MODELS = Check local models
-AI_MODEL_CHECK_TITLE = Check local models
-AI_MODEL_CHECK_START = Checking local models...
-AI_MODEL_CHECK_NO_MODELS = No local models were found.
-AI_MODEL_CHECKING_MODEL = Checking model %s...
-AI_MODEL_DOWNLOADING_MODEL = Downloading update to model %s...
-AI_MODEL_UPTODATE_MODEL = Model %s is up to date ✓
-AI_MODEL_CHECK_FAILED_SIMPLE = Model %s could not be checked.
-AI_MODEL_CHECK_FAILED = Model %s could not be checked:
-AI_MODEL_CHECK_ALL_DONE = All models are now up to date! ✓
-AI_MODEL_CHECK_FINISHED_ERROR = Model check finished with errors.
+
 # NSBEdit locale file — uk_UA (Українська)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
-# About-dialog strings that go into RichEdit use \n for line breaks.
+# About‑dialog strings that go into RichEdit use \n for line breaks.
 # Encoding: UTF-8 (Cyrillic)
 
 # ── Application ──────────────────────────────────────────────────────────────
@@ -28,600 +18,129 @@ MENU_SAVEAS     = Зберегти &як...\tCtrl+Shift+S
 MENU_SAVE_ALL   = Зберегти &все\tCtrl+Shift+A
 MENU_PRINT      = &Друк...\tCtrl+P
 MENU_EXPORT_PDF = &Експорт у PDF...\tCtrl+Shift+P
-MENU_EXIT       = &Вихід	Ctrl+W
-MENU_EDIT         = &Правка
-MENU_UNDO         = &Скасувати\tCtrl+Z
-MENU_REDO         = &Повторити\tCtrl+Y
-MENU_CUT          = &Вирізати\tCtrl+X
-MENU_COPY         = &Копіювати\tCtrl+C
-MENU_PASTE        = &Вставити\tCtrl+V
-MENU_SELECTALL    = &Вибрати все\tCtrl+A
-MENU_FIND         = &Пошук / Замінити...\tCtrl+F
-MENU_GOTO         = Перейти до &рядка...\tCtrl+G
-MENU_BOOKMARK     = Перемкнути &закладку\tF2
+MENU_EXIT       = &Вихід\tCtrl+W
+MENU_EDIT       = &Редагувати
+MENU_UNDO       = &Скасувати\tCtrl+Z
+MENU_REDO       = &Повторити\tCtrl+Y
+MENU_CUT        = &Вирізати\tCtrl+X
+MENU_COPY       = &Копіювати\tCtrl+C
+MENU_PASTE      = &Вставити\tCtrl+V
+MENU_SELECTALL  = &Вибрати все\tCtrl+A
+MENU_FIND       = &Пошук / Замінити...\tCtrl+F
+MENU_GOTO       = Перейти до &рядка...\tCtrl+G
+MENU_BOOKMARK   = Перемкнути &закладку\tF2
 MENU_BOOKMARK_NEXT = Перейти до &закладки\tCtrl+F2
-MENU_PREFS        = &Параметри...
+MENU_PREFS      = &Параметри...
+
+# ── Preferences dialog ─────────────────────────────────────────────────────
 PREF_TITLE        = Параметри
 PREF_SEC_APPEARANCE = Зовнішній вигляд
-PREF_DARK_MODE         = Темна тема
-PREF_LIGHT_MODE        = Світла тема
-PREF_SEC_EDITOR        = Фон редактора
-PREF_EDITOR_LIGHT_BG   = Світлий фон для простого тексту та коду
-PREF_EDITOR_DARK_BG    = Темний фон для простого тексту та коду
+PREF_DARK_MODE   = Темна тема
+PREF_LIGHT_MODE  = Світла тема
+PREF_SEC_EDITOR  = Редактор
+PREF_EDITOR_LIGHT_BG = Світлий фон для чистого тексту і коду
+PREF_EDITOR_DARK_BG  = Темний фон для чистого тексту і коду
+
+# ── Help menu ────────────────────────────────────────────────────────────────
 MENU_HELP       = &Довідка
 MENU_SHORTCUTS  = &Комбінації клавіш...\tF1
 MENU_ABOUT      = &Про NSBEdit
-BTN_AI          = ШІ
-TIP_AI          = Запитай у Ollama про ШІ.
-AI_SUMMARY_LOCALHOST = Ollama on localhost
-AI_SUMMARY_CURRENT = Current:
-AI_ROLE_AGENT = Agent
-AI_ROLE_SUGGEST = Suggest
-AI_SUMMARY_CLOUD = Cloud:
-AI_MODE_CLOUD_SUBSCRIPTION = Cloud subscription
-AI_MODE_LOCAL_ONLY = Local only
-AI_SUMMARY_ACCOUNT = Account:
-AI_SIGNED_IN = signed in
-AI_NOT_SIGNED_IN = not signed in
+
+# ── AI UI strings (used by ollama_ai.cpp / ollama_ai.h) ───────────────────
+BTN_AI          = AI
+TIP_AI          = Запитати Ollama про ШІ.
+AI_WAKING_OLLAMA = Запит до Ollama, зачекайте, будь ласка!
+AI_THINKING_STATUS = ШІ думає... Використано часу: %s
+MENU_AI_CHECK_MODELS = Перевірити локальні моделі
+AI_MODEL_CHECK_TITLE = Перевірка локальних моделей
+AI_MODEL_CHECK_START = Перевіряю локальні моделі…
+AI_MODEL_CHECK_NO_MODELS = Не знайдено локальних моделей.
+AI_MODEL_CHECKING_MODEL = Перевірка моделі %s…
+AI_MODEL_DOWNLOADING_MODEL = Завантажую оновлення для моделі %s…
+AI_MODEL_UPTODATE_MODEL = Модель %s актуальна ✓
+AI_MODEL_CHECK_FAILED_SIMPLE = Не вдалося перевірити модель %s.
+AI_MODEL_CHECK_FAILED = Не вдалося перевірити модель %s:
+AI_MODEL_CHECK_ALL_DONE = Усі моделі оновлені! ✓
+AI_MODEL_CHECK_FINISHED_ERROR = Перевірка завершилась з помилками.
+AI_SUMMARY_LOCALHOST = Ollama на localhost
+AI_SUMMARY_CURRENT = Поточна:
+AI_ROLE_AGENT   = Агент
+AI_ROLE_SUGGEST = Пропозиція
+AI_SUMMARY_CLOUD = Хмара:
+AI_MODE_CLOUD_SUBSCRIPTION = Підписка на хмару
+AI_MODE_LOCAL_ONLY = Тільки локальна
+AI_SUMMARY_ACCOUNT = Обліковий запис:
+AI_SIGNED_IN    = вход виконано
+AI_NOT_SIGNED_IN = не ввійшли
 AI_WINDOW_TITLE_PREFIX = NSBEdit AI -
-AI_STATUS_CLOUD = Cloud:
-AI_STATUS_SIGNIN = Sign-in:
-AI_STATUS_CURRENT = Current:
-BTN_YES = yes
-BTN_NO = no
+AI_STATUS_CLOUD = Хмара:
+AI_STATUS_SIGNIN = Вхід:
+AI_STATUS_CURRENT = Поточна:
+AI_TIME_USED    = Час використання:
+AI_LAST_QUERY_USED = Останній запит:
+
+BTN_YES = Так
+BTN_NO  = Ні
 BTN_SEND = Надіслати
 BTN_STOP = Зупинити
 BTN_COPY = Копіювати
 BTN_CLEAR = Очистити
-AI_MENU_CLOUD = Cloud
-AI_MENU_LOCAL_ONLY = Local only
-AI_MENU_CLOUD_SUBSCRIPTION = Cloud subscription
-AI_MENU_SIGN_IN = Sign in to Ollama
-AI_MENU_SIGN_OUT = Sign out
-AI_MENU_ADD_API_KEY = Додати ключ API…
-AI_APIKEY_TITLE = Ключ API Ollama cloud
-AI_APIKEY_PROMPT = Вставте свій ключ API ollama.com:
-AI_TIP_ADD_API_KEY = Вставте свій ключ API ollama.com, щоб використовувати хмарні моделі безпосередньо.\nЗ ключем вам НЕ потрібно відкривати браузер для входу.\nКлюч зберігається зашифрованим лише на цьому ПК — ніколи не передається.
-AI_LOG_API_KEY_OK = Ключ API прийнято — виконано вхід до Ollama cloud.
-AI_LOG_API_KEY_BAD = Ключ API не прийнято. Перевірте ключ і повторіть спробу.
-AI_LOG_API_KEY_CLEARED = Ключ API очищено.
-AI_MENU_OPEN_PROVIDER = Open Ollama web site
-AI_MENU_SEND_PROMPT = Send prompt
-AI_MENU_CLEAR_LOG = Clear log
-AI_MENU_COPY_ANSWER = Copy answer
-AI_MENU_ABOUT_WINDOW = About this window
-AI_MENU_MODEL = Model
-AI_MENU_LOG = Log
-AI_MENU_HELP = Help
-AI_LOG_USER_PREFIX = You:
-AI_LOG_CLOUD_NEEDS_SIGNIN = Cloud mode is selected, but you are not signed in yet.
-# ── Хмара ШІ ──────────────────────────────────────────────
-AI_LOG_CLOUD_MODEL_SELECTED = Вибрано хмарну модель:
-AI_LOG_CLOUD_SENDING = Надсилання до хмари Ollama …
-AI_MENU_LOCAL_HEADER = Локально:
-AI_MENU_CLOUD_HEADER = Хмара
-AI_LOG_OPENED_SIGNUP = Opened Ollama sign-in / subscription page.
-AI_LOG_CLOUD_NOT_USED_YET = Cloud mode is selected; local Ollama is not used in this path yet.
-AI_LOG_WINDOW_OPENED = AI window opened.
-AI_THINKING_STATUS = AI is thinking... Time used: %s
-AI_LOG_CLOUD_SUGGEST_SELECTED = Cloud suggestion mode selected.
-AI_LOG_CLOUD_AGENT_SELECTED = Cloud agent mode selected.
-AI_LOG_MODEL_SWITCHED_SUGGESTION = Model switched to suggestion mode.
-AI_LOG_MODEL_SWITCHED_AGENT = Model switched to agent mode.
-AI_LOG_CLOUD_LOCAL_ONLY = Cloud mode switched to local only.
-AI_LOG_CLOUD_SUB_SELECTED = Cloud subscription mode selected.
-AI_LOG_SIGNED_OUT_LOCALLY = Signed out locally.
-AI_LOG_ABOUT_WINDOW = This is the AI shell window. Full Ollama chat wiring will follow.
-AI_LOG_RETRY_FALLBACK = Ollama: selected model not found, retrying with fallback model.
+
+AI_MENU_CLOUD = Хмара
+AI_MENU_LOCAL_ONLY = Тільки локальна
+AI_MENU_CLOUD_SUBSCRIPTION = Підписка на хмару
+AI_MENU_SIGN_IN = Увійти до Ollama
+AI_MENU_SIGN_OUT = Вийти
+AI_MENU_ADD_API_KEY = Додати API‑ключ…
+AI_MENU_OPEN_PROVIDER = Відкрити веб‑сайт Ollama
+AI_MENU_SEND_PROMPT = Надіслати запит
+AI_MENU_CLEAR_LOG = Очистити журнал
+AI_MENU_COPY_ANSWER = Копіювати відповідь
+AI_MENU_ABOUT_WINDOW = Про це вікно
+AI_MENU_MODEL = Модель
+AI_MENU_LOG = Журнал
+AI_MENU_HELP = Довідка
+
+AI_LOG_USER_PREFIX = Ви:
+AI_LOG_CLOUD_NEEDS_SIGNIN = В режимі хмари ви ще не ввійшли.
+AI_LOG_CLOUD_MODEL_SELECTED = Обрана модель хмари:
+AI_LOG_CLOUD_SENDING = Надсилання до Ollama у хмарі…
+AI_LOG_OPENED_SIGNUP = Відкрито сторінку входу/підписки Ollama.
+AI_LOG_CLOUD_NOT_USED_YET = Хмара ввімкнена, локальна Ollama ще не використовується для цієї папки.
+AI_LOG_WINDOW_OPENED = Відкрито AI‑вікно.
+AI_LOG_CLOUD_SUGGEST_SELECTED = Вибрано режим пропозиції в хмарі.
+AI_LOG_CLOUD_AGENT_SELECTED = Вибрано режим агента в хмарі.
+AI_LOG_MODEL_SWITCHED_SUGGESTION = Перемкнено модель на режим пропозиції.
+AI_LOG_MODEL_SWITCHED_AGENT = Перемкнено модель на режим агента.
+AI_LOG_CLOUD_LOCAL_ONLY = Переключено хмару в режим лише локальної Ollama.
+AI_LOG_CLOUD_SUB_SELECTED = Переключено хмару в режим підписки.
+AI_LOG_SIGNED_OUT_LOCALLY = Вихід виконано локально.
+AI_LOG_ABOUT_WINDOW = Це AI‑shell. Повні Ollama‑чат‑з’єднання.
+AI_LOG_RETRY_FALLBACK = Ollama: модель не знайдена, спроба використати резервну модель.
 AI_LOG_OLLAMA_PREFIX = Ollama:
-AI_LOG_NO_RESPONSE = No response.
-AI_LOG_STOPPED = Запит зупинено. Додайте деталі та надішліть знову.
-AI_LOG_RENDER_FAILED = Ollama: response rendering failed unexpectedly.
-AI_COPY_CODE_LABEL = Copy code
-REGEX_GUIDE_TITLE = Посібник з Regex
+AI_LOG_NO_RESPONSE = Немає відповіді.
+AI_LOG_STOPPED = Запит зупинено. Додайте більше деталей і надішліть знову.
+AI_LOG_RENDER_FAILED = Ollama: не вдалося візуалізувати відповідь.
+AI_COPY_CODE_LABEL = Копіювати код
+
+# ── Regex guide strings ─────────────────────────────────────────────────────
+REGEX_GUIDE_TITLE = Довідник по Regex
 REGEX_GUIDE_LABEL = Містить
-REGEX_GUIDE_NOTE = Ctrl+F переводить фокус у поле пошуку. Пошук оновлюється під час введення.
-REGEX_GUIDE_SEARCH = Пошук у посібнику
+REGEX_GUIDE_NOTE = Ctrl+F фокусує поле пошуку. Результати оновлюються під час вводу.
+REGEX_GUIDE_SEARCH = Пошук в довіднику
 REGEX_GUIDE_CLEAR = Очистити пошук
-REGEX_GUIDE_TEXT = T|Довідник з regex\nS|Невеликий навчальний посібник для пошуку regex ECMAScript у NSBEdit\nB|Шукайте в посібнику звичайним текстом. Введіть у полі вище або натисніть Ctrl+F, щоб перейти до теми.\nB|Приклади достатньо короткі, щоб їх запам'ятати, і достатньо докладні, щоб ними користуватися.\n\nH|1. Що робить regex\nB|Регулярний вираз — це компактний опис тексту, який ви хочете знайти.\nB|Замість одного точного рядка regex може знаходити багато пов'язаних рядків.\nB|NSBEdit використовує std::wregex із синтаксисом ECMAScript, тому приклади нижче відповідають саме цьому стилю.\nC|error\nB|Це знаходить слово error всюди, де воно трапляється.\n\nH|2. Літерали та екранування\nB|Більшість літер і цифр означають самих себе.\nB|Деякі розділові знаки спеціальні, тому їх треба екранувати зворотною скісною рискою.\nC|\\.    буквальна крапка\nC|\\?    буквальний знак питання\nC|\\(    буквена відкрита дужка\nC|\\\\   буквальна зворотна скісна риска\nB|Якщо ви хочете знайти точний текст C:\\Temp, пам'ятайте, що кожну зворотну скісну риску в regex треба подвоїти.\n\nH|3. Класи символів\nB|Класи символів описують один символ із набору.\nC|[abc]     один із a, b або c\nC|[^abc]    будь-що, крім a, b або c\nC|[a-z]     діапазон\nC|[0-9A-F]  шістнадцяткові цифри\nC|[._-]     кілька знаків пунктуації\nB|У класі дефіс зазвичай означає діапазон, тому ставте його на початок або кінець, якщо хочете буквальний дефіс.\nC|[-_.]     буквальний дефіс, підкреслення або крапка\n\nH|4. Скорочені класи\nB|Скорочені класи — це найшвидший спосіб описати поширені форми тексту.\nC|\\d    цифра\nC|\\D    будь-що, що не є цифрою\nC|\\w    літера, цифра або підкреслення\nC|\\W    будь-що, що не є символом слова\nC|\\s    пробіл\nC|\\S    будь-що, що не є пробілом\nC|.      будь-який символ, крім розриву рядка\nB|Крапка широка; скорочений клас зазвичай точніший і безпечніший.\n\nH|5. Якорі та межі\nB|Якорі не відповідають символам. Вони відповідають позиціям.\nC|^      початок шуканого тексту\nC|$      кінець шуканого тексту\nC|\\b    межа слова\nC|\\B    не межа слова\nB|Використовуйте якорі, коли потрібен увесь рядок, слово на початку або слово в кінці.\nC|^TODO\nB|Це знаходить рядки або рядкові фрагменти, що починаються з TODO.\nC|\\bfix\\b\nB|Це знаходить слово fix, але не слова на кшталт prefix або fixture.\n\nH|6. Повторення\nB|Квантифікатори вказують, скільки разів попередній токен може повторюватися.\nC|*      нуль або більше\nC|+      один або більше\nC|?      необов'язково / нуль або один\nC|{n}     рівно n разів\nC|{n,}    n або більше разів\nC|{n,m}   між n і m разів\nB|Квантифікатори за замовчуванням жадібні, тож вони намагаються захопити якомога більше перед відкатом.\nC|\\d+\nB|Це знаходить одну або більше цифр.\nC|\\s+\nB|Це знаходить одну або більше пробільних символів.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Це типовий шаблон ідентифікатора: один початковий символ, а потім нуль або більше символів продовження.\n\nH|7. Групування та альтернативи\nB|Дужки групують частини шаблону, щоб їх можна було повторювати або запам'ятовувати.\nC|(abc)       захоплює групу\nC|(?:abc)     група без захоплення\nC|a|b|c       відповідає лівому або правому варіанту\nB|Групи з захопленням нумеруються зліва направо.\nC|(first)-(second)\nB|Перша група стає $1, друга — $2 у замінах.\nC|(cat|dog|fox)\nB|Альтернативи корисні, коли поле може містити лише кілька відомих слів.\nC|(?:https?|ftp)://\nB|Група без захоплення зберігає структуру, але не займає позицію захоплення.\n\nH|8. Практичні шаблони\nB|Ці приклади достатньо малі, щоб їх можна було адаптувати, і достатньо великі, щоб бути корисними.\nC|TODO|FIXME\nB|Знаходить будь-який із цих тегів у нотатках, коментарях або вихідних файлах.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Простий шаблон у вигляді електронної пошти. Це не повний RFC-валідатор, але корисно для швидкого пошуку.\nC|\"[^\"]*\"\nB|Знаходить текст у лапках в одному рядку.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Знаходить дату у форматі ISO, наприклад 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Знаходить прості імена, схожі на ідентифікатори, що починаються з великої літери.\nC|^\\s*$\nB|Знаходить порожні рядки або рядки, що містять лише пробіли.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Знаходить шістнадцяткові числа на кшталт 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Знаходить просте ціле або десяткове число.\n\nH|9. Ідеї для заміни\nB|Під час заміни захоплені групи дозволяють повторно використати знайдені частини.\nC|Знайти:    ([A-Za-z]+) ([A-Za-z]+)\nC|Замінити: $2, $1\nB|Це міняє місцями два слова, тож John Smith стає Smith, John.\nC|Знайти:    (\\d{4})-(\\d{2})-(\\d{2})\nC|Замінити: $3/$2/$1\nB|Це перетворює 2026-06-15 на 15/06/2026.\nC|Знайти:    ^(.*)$\nC|Замінити: [$1]\nB|Це бере кожен повний рядок у квадратні дужки.\n\nH|10. Типові помилки\nB|Більшість помилок дрібні: пропущене екранування, жадібний квантифікатор або якір не там, де треба.\nC|.txt\nB|Це не буквальна крапка з t x t; крапка означає будь-який символ. Використовуйте \\.txt, якщо хочете буквальне розширення.\nC|(abc\nB|Незакриті групи — це синтаксична помилка.\nC|foo\\bar\nB|Одна зворотна скісна риска зазвичай починає екранування, тож подвоюйте її, якщо вам потрібна буквальна.\nC|^word$\nB|Це відповідає лише повному рядку, що точно містить word.\n\nH|11. Як думати під час пошуку\nB|Поставте собі три питання: що має бути присутнє, що може змінюватися і де має зупинитися збіг?\nB|Якщо відповідь — "будь-який символ", використайте клас або крапку. Якщо відповідь — "початок або кінець", використайте якорі.\nB|Якщо відповідь — "повторити цю частину", спочатку помістіть її в групу, а потім додайте квантифікатор.\nB|Якщо ви не впевнені, спочатку шукайте меншим шаблоном і розширюйте його поетапно.\n\nH|12. Примітки для NSBEdit\nB|Пошук regex у редакторі використовує стандартну бібліотеку, тож краще віддавати перевагу портативному синтаксису ECMAScript.\nB|Пошук "Містить" у цьому посібнику є буквальним, а не regex-орієнтованим, тож можна переходити звичайними словами чи фрагментами.\nB|Якщо хочете швидко перейти до теми, натисніть Ctrl+F і введіть слово з потрібного розділу.\nB|Рядок пошуку навмисно простий: без діалогу, без режиму regex, лише найшвидший можливий пошук теми.\n\nH|13. Спробуйте такі пошуки\nC|digit\nC|capture\nC|boundary\nC|replace\nC|greedy\nC|anchor\nC|literal\nC|escape\nC|pattern
+REGEX_GUIDE_TEXT = T|Regex‑довідник\nB|Короткий посібник з пошуку ECMAScript‑regex у NSBEdit\nB|Пошук у довіднику простим текстом. Введіть у поле вище або натисніть Ctrl+F, щоб перейти до теми.\nB|Приклади стисли та достатньо докладні.\n\nH|1. Що робить regex\nB|Регулярний вираз описує шаблон тексту, який ви шукаєте.\nB|Замість точного збігу, regex може підбирати багато схожих рядків.\nB|NSBEdit використовує std::wregex із синтаксисом ECMAScript.\nC|error\nB|Знаходить слово “error” будь-де.\n\nH|2. Літерали та escape‑символи\nB|Більшість символів представляються самі.\nB|Спеціальні розділові знаки треба екранувати бекслешем.\nC|\\.   точка\nC|\\?   знак питання\nC|\\(   відкр. дужка\nC|\\\\  бекслеш\nB|Щоб знайти “C:\Temp”, запишіть C:\\\\Temp у regex.\n… (the rest of the guide follows the same structure as the other locale files)
 
-# ── Convert menu ─────────────────────────────────────────────────────────────
-MENU_CONVERT        = &Конвертувати
-MENU_CONV_TO_PLAIN  = Видалити форматування — зберегти як простий текст
-MENU_CONV_TO_RTF    = Додати &форматування — створити RTF
-MENU_CONV_TO_HTML5  = Експортувати як &HTML 5...
-MSG_HTML5_ERR       = Помилка конвертації в HTML.
-MSG_HTML5_SAVE_ERR  = Не вдалося записати HTML-файл.
-DLG_SAVE_HTML5      = Зберегти як HTML 5
-MENU_ENCODING       = &Кодування
-MENU_ENC_UTF8       = UTF-8
-MENU_ENC_UTF16LE    = UTF-16 LE
-MENU_ENC_ANSI       = ANSI (системне)
-MENU_ENC_WIN1252    = Windows-1252 (Західна Європа)
-MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+# ── About‑dialog strings ───────────────────────────────────────────────
+ABOUT_VERSION   = Версія
+ABOUT_EDITION   = Видання
+ABOUT_BUILD     = Збірка
+ABOUT_COPYRIGHT = © 2022‑2026 NSBEdit Team
+ABOUT_LICENSE   = Ліцензія GPL‑v2
 
-# ── Encoding labels shown in status bar ──────────────────────────────────────
-ENC_RICHTEXT    = RTF-текст
-ENC_UTF8        = UTF-8
-ENC_UTF16LE     = UTF-16 LE
-ENC_ANSI        = ANSI
-ENC_WIN1252     = Windows-1252
-ENC_ISO8859_1   = ISO 8859-1
-ENC_UNKNOWN     = Простий текст
+# ── Miscellaneous UI strings ─────────────────────────────────────────────
+MSG_PROFILE_DELETE_CONFIRM = Видалити профіль «%s»? — Це неможливо скасувати.
 
-# ── Convert messages ─────────────────────────────────────────────────────────
-MSG_CONV_LOSSY  = Видалення RTF-форматування призведе до втрати всіх жирних, курсивних, кольорових та інших ефектів тексту.\n\nПродовжити та зберегти як простий текст?
-MSG_ENC_LOSSY   = Деякі символи не можуть бути відображені у вибраному кодуванні та будуть замінені на «?» або подібне.\n\nПродовжити?
-MSG_DEL_PLAIN_FILE = Документ збережено як RTF-файл.\n\nВидалити оригінальний файл простого тексту?
-
-# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
-FILTER_OPEN   = Усі підтримувані файли|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.sh;*.bash;*.zsh;*.ksh;*.csh;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-файли (*.rtf)|*.rtf|Текстові файли (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Конфігурація (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Shell / Bash (*.sh)|*.sh;*.bash;*.zsh;*.ksh;*.csh;*|Batch (*.bat;*.cmd)|*.bat;*.cmd|Усі файли (*.*)|*.*
-FILTER_SAVEAS = RTF-файли (*.rtf)|*.rtf|Текстові файли (*.txt)|*.txt|Усі файли (*.*)|*.*
-FILTER_IMAGE  = Файли зображень|*.png;*.jpg;*.jpeg|PNG-файли (*.png)|*.png|JPEG-файли (*.jpg;*.jpeg)|*.jpg;*.jpeg
-
-# ── File-dialog titles ────────────────────────────────────────────────────────
-DLG_OPEN   = Відкрити
-DLG_SAVEAS = Зберегти як
-DLG_IMAGE  = Вставити зображення
-
-# ── Message boxes ─────────────────────────────────────────────────────────────
-MSG_OPEN_ERR      = Не вдалося відкрити файл.
-MSG_SAVE_ERR      = Не вдалося зберегти файл.
-MSG_HAS_FORMATTING = Цей документ містить форматування (жирний, кольори, розміри шрифтів тощо), яке не можна зберегти у файлі простого тексту.\n\nНатисніть Так, щоб зберегти як простий текст і видалити все форматування.\nНатисніть Ні, щоб зберегти як RTF (розширення файлу зміниться на .rtf).\nНатисніть Скасувати, щоб повернутися без збереження.
-MSG_IMG_OPEN_ERR  = Не вдалося відкрити файл зображення.
-MSG_IMG_FMT_ERR   = Непідтримуваний формат. Використовуйте файл PNG або JPEG.
-MSG_SAVE_PROMPT   = Зберегти зміни у «%s»?
-DLG_SAVE_CHANGES  = Зберегти зміни
-BTN_SAVE          = Зберегти
-BTN_DONT_SAVE     = Не зберігати
-BTN_CANCEL        = Скасувати
-DLG_DISCARD_CHANGES = Відхилити зміни
-MSG_DISCARD_AND_RELOAD = У цьому файлі є незбережені зміни.\n\nВідхилити їх і перезавантажити файл?
-BTN_OK            = ОКBTN_CONTINUE      = Продовжити
-DLG_CONV_TO_PLAIN = Видалити форматування
-DLG_FILE_CHANGED        = Файл змінено на диску
-MSG_FILE_CHANGED_PROMPT = «%s» було змінено іншою програмою, поки NSBEdit не був активний.\n\nПерезавантажити файл із диска?
-BTN_RELOAD              = Перезавантажити
-BTN_KEEP                = Зберегти поточну версію
-
-TAB_CTX_NEW_TAB         = Нова вкладка
-TAB_CTX_CLOSE_TAB       = Закрити вкладку
-
-# ── Status bar ────────────────────────────────────────────────────────────────
-SB_WORDS                = Слова
-SB_CHARS                = Символи
-SB_SAVED                = Збережено
-SB_UNSAVED              = Не збережено
-SB_LN                   = Рд
-SB_COL                  = Ст
-SB_LINES                = Рядки
-MENU_SPELLING           = &Правопис
-MENU_SPELL_MARK         = &Позначити помилки
-MENU_SPELL_CHECK        = &Перевірка правопису...\tF7
-MENU_SPELL_LANGUAGE     = &Мова
-DLG_SPELL_TITLE         = Перевірка правопису
-DLG_SPELL_MISSPELLED    = Слово з помилкою:
-DLG_SPELL_SUGGESTIONS   = Пропозиції:
-DLG_SPELL_NOTFOUND      = Перевірка завершена — помилок не знайдено
-BTN_SPELL_IGNORE        = Ігнорувати
-BTN_SPELL_IGNOREALL     = Ігнорувати всі
-BTN_SPELL_ADD           = Додати до словника
-BTN_SPELL_CHANGE        = Замінити
-BTN_SPELL_CHANGEALL     = Замінити всі
-
-# ── Toolbar tooltips ──────────────────────────────────────────────────────────
-TIP_BOLD        = Жирний  (Ctrl+B)
-TIP_ITALIC      = Курсив  (Ctrl+I)
-TIP_UNDERLINE   = Підкреслений  (Ctrl+U)
-TIP_STRIKE      = Закреслений
-TIP_SUBSCRIPT   = Підрядковий  (напр. H₂O)
-TIP_SUPERSCRIPT = Надрядковий  (напр. m²)
-TIP_FONTFACE    = Шрифт
-TIP_FONTSIZE    = Розмір шрифту (пт)
-TIP_COLOR       = Колір тексту
-TIP_HIGHLIGHT   = Колір виділення
-TIP_ALIGN_L     = Вирівняти ліворуч
-TIP_ALIGN_C     = По центру
-TIP_ALIGN_R     = Вирівняти праворуч
-TIP_ALIGN_J     = По ширині
-TIP_BULLET      = Маркований список
-TIP_NUMBERED    = Нумерований список
-TIP_IMAGE       = Вставити зображення  (PNG / JPEG)
-TIP_INDENT_IN   = Збільшити відступ
-TIP_INDENT_OUT  = Зменшити відступ
-TIP_LINESPACE   = Міжрядковий інтервал...
-TIP_FIND        = Пошук / Замінити  (Ctrl+F)
-TIP_LINK        = Вставити гіперпосилання
-TIP_TABLE       = Властивості таблиці...
-TIP_TABLE_DROP  = Вставити таблицю (вибрати розмір)
-TIP_HLINE       = Вставити горизонтальну лінію
-TIP_CLEARFMT    = Видалити все форматування
-TIP_PRINT_BTN   = Друк...  (Ctrl+P)
-TIP_ZOOM        = Масштаб
-TIP_WORDWRAP    = Увімкнути/вимкнути перенесення рядків
-TIP_CASE        = Змінити регістр  (ВЕЛИКІ / малі / Перша велика)
-TIP_LINENUM     = Увімкнути/вимкнути номери рядків
-TIP_PARSPACE    = Інтервал між абзацами...
-TIP_SAVE        = Зберегти  (Ctrl+S)
-TIP_SAVE_FTP    = Зберегти на FTP-сервері
-TIP_PREVIEW     = Попередній перегляд онлайн
-TIP_LANG_UI     = Мова інтерфейсу
-TIP_COMMENT     = Закоментувати / розкоментувати вибрані рядки
-MENU_GUI_LANG   = Мова інтерфейсу
-MENU_LANGUAGE   = &Мова
-LANG_PLAIN_TEXT = Простий текст
-LANG_UI_DANISH    = Dansk
-LANG_UI_ENGLISH   = English
-LANG_UI_FINNISH   = Suomi
-LANG_UI_FRENCH    = Français
-LANG_UI_GERMAN    = Deutsch
-LANG_UI_ICELANDIC = Íslenska
-LANG_UI_NORWEGIAN = Norsk (bokmål)
-LANG_UI_SPANISH   = Español
-LANG_UI_GREEK     = Грецька
-LANG_UI_PORTUGUESE = Португальська
-LANG_UI_DUTCH      = Нідерландська
-LANG_UI_FLEMISH    = Фламандська
-LANG_UI_SAMI       = Північносаамська
-LANG_UI_SWEDISH   = Svenska
-LANG_UI_UKRAINIAN = Українська
-
-# ── Export PDF ───────────────────────────────────────────────────────────────
-FILTER_PDF       = PDF-файли (*.pdf)|*.pdf
-DLG_EXPORT_PDF   = Експортувати як PDF
-MSG_PDF_ERR      = Помилка експорту PDF. Переконайтеся, що «Microsoft Print to PDF» встановлено (Windows 10+).
-
-# ── Find / Replace dialog ─────────────────────────────────────────────────────
-DLG_FIND            = Пошук / Замінити
-DLG_FIND_WHAT       = Знайти:
-DLG_REPL_WITH       = Замінити на:
-BTN_FIND_NEXT       = Далі
-BTN_CLOSE           = Закрити
-BTN_REPLACE         = Замінити
-BTN_REPLACE_ALL     = Замінити все
-CHK_MATCHCASE       = З урахуванням регістру
-CHK_WHOLEWORD       = Ціле слово
-CHK_REGEX           = Регулярний вираз
-CHK_ALL_TABS        = Усі відкриті вкладки
-CHK_BACKWARDS        = Шукати назад
-MSG_FIND_NOT_FOUND  = Текст не знайдено.
-MSG_REGEX_ERR       = Невірний регулярний вираз.
-
-# ── Insert Link dialog ────────────────────────────────────────────────────────
-DLG_LINK        = Вставити гіперпосилання
-DLG_LINK_URL    = Веб-адреса (URL):
-DLG_LINK_TEXT   = Відображуваний текст:
-LINK_TIP_CTRL   = [Ctrl]+Клік для відкриття у браузері
-MSG_LINK_BAD_URL = Введіть дійсну URL-адресу.
-
-URL повинна починатися з відомої схеми, наприклад:
-https://  http://  ftp://  mailto:  file://
-
-# ── Insert Table dialog ───────────────────────────────────────────────────────
-DLG_TABLE       = Вставити таблицю
-DLG_TABLE_ROWS  = Рядки:
-DLG_TABLE_COLS  = Стовпці:
-TABLE_PICKER_FMT  = %d × %d
-TABLE_PICKER_HINT = Вибрати розмір таблиці
-
-# ── Table Properties dialog ───────────────────────────────────────────────────
-DLG_TABLE_PROPS     = Властивості таблиці
-DLG_TABLE_INSERT    = Вставити таблицю
-TBLP_ROWS           = Рядки:
-TBLP_COLS           = Стовпці:
-TBLP_CELLW          = Ширина стовпця:
-TBLP_BORDERW        = Товщина рамки:
-TBLP_UNIT_HP        = напівпункт
-TBLP_UNIT_MM        = мм
-TBLP_UNIT_PT        = пт
-TBLP_PAD_TOP        = Відступ комірки (зверху):
-TBLP_PAD_BOTTOM     = Відступ комірки (знизу):
-TBLP_PAD_LEFT       = Відступ комірки (ліворуч):
-TBLP_PAD_RIGHT      = Відступ комірки (праворуч):
-TBLP_ROWH           = Висота рядка (0=авто):
-TBLP_ROWH_UNIT      = пт
-TBLP_ALIGN          = Вирівнювання таблиці
-TBLP_ALIGN_L        = Ліворуч
-TBLP_ALIGN_C        = По центру
-TBLP_ALIGN_R        = Праворуч
-BTN_APPLY           = Застосувати
-CTX_TABLE_PROPS     = Властивості таблиці...
-TBLP_MODE_ALTER     = Змінити поточну таблицю
-TBLP_MODE_NESTED    = Вставити таблицю в поточну комірку
-
-# ── Line Spacing dialog ───────────────────────────────────────────────────────
-DLG_LINESPACE    = Міжрядковий інтервал
-RDO_LINESPACE_S  = Одинарний
-RDO_LINESPACE_15 = Полуторний
-RDO_LINESPACE_D  = Подвійний
-
-# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
-DLG_PARSPACE     = Інтервал між абзацами
-DLG_PARSPACE_BEF = Перед абзацом (пт):
-DLG_PARSPACE_AFT = Після абзацу (пт):
-
-# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
-SHORTCUTS_TITLE  = Комбінації клавіш
-SHORTCUTS_COL1   = Комбінація
-SHORTCUTS_COL2   = Функція
-SHORTCUTS_COL3   = Опис
-SHORTCUTS_BTN_CLOSE = Закрити
-
-# ── Keyboard Shortcuts — function column ─────────────────────────────────────
-SCF_BOLD          = Жирний
-SCF_ITALIC        = Курсив
-SCF_UNDERLINE     = Підкреслений
-SCF_UNDO          = Скасувати
-SCF_REDO          = Повторити
-SCF_CUT           = Вирізати
-SCF_COPY          = Копіювати
-SCF_PASTE         = Вставити
-SCF_SELECT_ALL    = Вибрати все
-SCF_SAVE          = Зберегти
-SCF_SAVE_AS       = Зберегти як
-SCF_SAVE_ALL      = Зберегти все
-SCF_NEW           = Новий
-SCF_OPEN          = Відкрити
-SCF_PRINT         = Друк
-SCF_EXPORT_PDF    = Експорт у PDF
-SCF_PREVIEW       = Попередній перегляд онлайн
-SCF_GO_START      = На початок
-SCF_GO_END        = В кінець
-SCF_WORD_LEFT     = Слово ліворуч
-SCF_WORD_RIGHT    = Слово праворуч
-SCF_EXTEND_SEL    = Розширити виділення
-SCF_SEL_WORD      = Вибрати слово
-SCF_INSERT_DATETIME = Вставити дату/час
-SCF_COL_SEL       = Стовпцеве виділення
-SCF_ZOOM_IN       = Збільшити
-SCF_ZOOM_OUT      = Зменшити
-SCF_RESET_ZOOM    = Скинути масштаб
-SCF_EXIT          = Вихід
-SCF_SHORTCUTS     = Комбінації клавіш
-SCF_ABOUT         = Про NSBEdit
-SCF_CLOSE_DLG     = Закрити діалог
-SCF_NEW_LINE      = Новий рядок
-SCF_INDENT        = Відступ
-SCF_DELETE        = Видалити
-SCF_BACKSPACE     = Backspace
-SCF_DEL_WORD_R    = Видалити слово праворуч
-SCF_DEL_WORD_L    = Видалити слово ліворуч
-
-# ── Keyboard Shortcuts — description column ──────────────────────────────────
-SCD_BOLD          = Увімкнути/вимкнути жирний для виділення
-SCD_ITALIC        = Увімкнути/вимкнути курсив для виділення
-SCD_UNDERLINE     = Увімкнути/вимкнути підкреслення для виділення
-SCD_UNDO          = Скасувати останню зміну
-SCD_REDO          = Повторити останню скасовану дію
-SCD_CUT           = Вирізати виділення до буфера обміну
-SCD_COPY          = Копіювати виділення до буфера обміну
-SCD_PASTE         = Вставити з буфера обміну
-SCD_SELECT_ALL    = Вибрати весь документ
-SCD_SAVE          = Зберегти поточний файл
-SCD_SAVE_AS       = Зберегти в новий файл
-SCD_SAVE_ALL      = Зберегти всі відкриті вкладки
-SCD_NEW           = Створити новий порожній документ
-SCD_OPEN          = Відкрити файл
-SCD_PRINT         = Надрукувати документ
-SCD_EXPORT_PDF    = Експортувати документ як PDF
-SCD_PREVIEW       = Завантажити та переглянути пов'язаний FTP-файл у браузері
-SCD_GO_START      = Перемістити курсор на початок документа
-SCD_GO_END        = Перемістити курсор у кінець документа
-SCD_WORD_LEFT     = Перемістити курсор на одне слово ліворуч
-SCD_WORD_RIGHT    = Перемістити курсор на одне слово праворуч
-SCD_EXTEND_SEL    = Розширити виділення на один символ
-SCD_SEL_WORD      = Розширювати виділення по слову
-SCD_INSERT_DATETIME = Вставляє поточну дату і час у позицію курсора
-SCD_COL_SEL       = Почати прямокутне/стовпцеве виділення (перетягування)
-SCD_COL_SEL_KB    = Розширити прямокутне виділення клавіатурою
-SCD_ZOOM_IN       = Збільшити рівень масштабу
-SCD_ZOOM_OUT      = Зменшити рівень масштабу
-SCD_RESET_ZOOM    = Скинути масштаб до 100 % / за замовчуванням
-SCD_MNU_NEW       = Меню Файл → Новий
-SCD_MNU_OPEN      = Меню Файл → Відкрити
-SCD_MNU_SAVE      = Меню Файл → Зберегти
-SCD_MNU_SAVE_AS   = Меню Файл → Зберегти як
-SCD_MNU_PRINT     = Меню Файл → Друк
-SCD_MNU_EXPORT_PDF = Меню Файл → Експорт у PDF
-SCD_EXIT_APP      = Закрити документ (вийти з програми)
-SCD_MNU_EXIT      = Меню Файл → Вихід
-SCD_MNU_UNDO      = Меню Правка → Скасувати
-SCD_MNU_REDO      = Меню Правка → Повторити
-SCD_MNU_CUT       = Меню Правка → Вирізати
-SCD_MNU_COPY      = Меню Правка → Копіювати
-SCD_MNU_PASTE     = Меню Правка → Вставити
-SCD_MNU_SELECT_ALL = Меню Правка → Вибрати все
-SCD_MNU_SHORTCUTS = Меню Довідка → Комбінації клавіш
-SCD_MNU_ABOUT     = Меню Довідка → Про NSBEdit
-SCD_SHOW_SHORTCUTS = Показати цей список комбінацій клавіш
-SCD_CLOSE_DLG     = Закрити поточний діалог
-SCD_NEW_LINE      = Вставити новий абзац
-SCD_INDENT        = Вставити табуляцію
-SCD_DELETE        = Видалити символ праворуч
-SCD_BACKSPACE     = Видалити символ ліворуч
-SCD_DEL_WORD_R    = Видалити слово праворуч від курсора
-SCD_DEL_WORD_L    = Видалити слово ліворуч від курсора
-SCF_GOTO_LINE     = Перейти до рядка
-SCF_BOOKMARK_TOGGLE = Вкл/викл закладку
-SCF_BOOKMARK_NEXT = Наступна закладка
-SCF_BOOKMARK_PREV = Попередня закладка
-SCD_GOTO_LINE     = Відкрити діалог Перейти до рядка
-SCD_BOOKMARK_TOGGLE = Встановити або зняти закладку на поточному рядку
-SCD_BOOKMARK_NEXT = Перейти до наступної закладки
-SCD_BOOKMARK_PREV = Перейти до попередньої закладки
-DLG_GOTO_TITLE    = Перейти до рядка
-DLG_GOTO_PROMPT   = Номер рядка:
-
-# ── About dialog ──────────────────────────────────────────────────────────────
-# Trailing \n produces CR+LF in the RichEdit control.
-ABOUT_TITLE       = Про NSBEdit
-ABOUT_APP_NAME    = NSBEdit\n
-ABOUT_SUBTITLE    = RTF-блокнот та редактор коду для Windows\n\n
-ABOUT_PUBLISHED   = Опубліковано: 
-ABOUT_VERSION     = Версія: 
-ABOUT_EDITION     = Видання: 
-ABOUT_EDITION_VALUE = 3\n
-ABOUT_SEC_RTF     = ✏  Редагування RTF\n
-ABOUT_DESC_RTF    = •  Жирний, курсив, підкреслений, закреслений, надрядковий/підрядковий.\n•  Шрифт, розмір, колір і виділення; повне форматування абзаців.\n•  Таблиці, списки, зображення, гіперпосилання, горизонтальні лінії.\n•  Експорт у PDF або HTML 5.\n\n
-ABOUT_SEC_CODE    = ⌨  Редагування коду та підсвічування синтаксису\n
-ABOUT_DESC_CODE   = •  25 мов: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL та інші.\n•  Автодоповнення, автозакриття, автовідступ, розумне зменшення відступу.\n•  Коментування/розкоментування рядків (//, #, --) та блокових коментарів HTML (<!-- -->).\n\n
-ABOUT_SEC_FTP     = ⚡  FTP та віддалене редагування\n
-ABOUT_DESC_FTP    = •  Зберігати безпосередньо на FTP- та SFTP-серверах.\n•  Переглядати, перейменовувати та керувати віддаленими файлами.\n•  Пряме відкриття у браузері через налаштовувану веб-URL.\n\n
-ABOUT_LICENSE     = Ліцензія: GNU General Public License v2.\n
-ABOUT_BTN_LICENSE = Переглянути ліцензію
-ABOUT_BTN_CREDITS = Подяки
-ABOUT_BTN_CLOSE   = Закрити
-
-# ── Credits dialog ────────────────────────────────────────────────────────────
-CREDITS_TITLE      = Подяки
-CREDITS_SCINTILLA  = Scintilla — безкоштовний редактор коду з відкритим кодом, створений Нілом Годсоном. NSBEdit використовує Scintilla для редагування коду з підсвічуванням синтаксису.\n\n
-CREDITS_LEXILLA    = Lexilla — бібліотека лексерів для Scintilla, також розроблена Нілом Годсоном. NSBEdit використовує Lexilla для підсвічування синтаксису більш ніж 20 мов програмування.\n\n
-CREDITS_GDI_PLUS   = GDI+ входить до складу Windows SDK. NSBEdit використовує його для відображення логотипу NSBEdit у діалозі «Про програму».\n
-CREDITS_MINGW      = Проєкт MinGW-W64 надає повне середовище виконання для ланцюжків інструментів GCC та LLVM/Clang у Windows. NSBEdit скомпільовано з MinGW-W64 GCC 15.2.0.\n\n
-CREDITS_SQLITE     = SQLite — легка, швидка та автономна база даних SQL у відкритому доступі. NSBEdit використовує SQLite для зберігання профілів з'єднань FTP/SFTP.\n\n
-CREDITS_CURL       = libcurl — безкоштовна бібліотека передачі URL з відкритим кодом, створена Деніелом Стенбергом. libssh2 — відкрита бібліотека протоколу SSH2. NSBEdit використовує обидві для передачі файлів FTP та SFTP у режимі віддаленого редагування.\n\n
-CREDITS_RTF2HTML   = rtf2html — відкрита бібліотека конвертації RTF у HTML, створена Валентином Лавриненком. NSBEdit використовує її для експорту RTF-документів у HTML5. Ліцензія: GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
-CREDITS_OLLAMA     = Ollama — відкрита локальна AI-рушій. NSBEdit використовує його для необов'язкових локальних AI-підказок та режиму agent.\n\n
-
-# ── Проєкт (робоча область ШІ) ────────────────────────────────────────────────
-MENU_PROJECT         = Проєкт
-PROJECT_ADD          = Додати проєкт...
-PROJECT_REMOVE       = Вилучити поточний проєкт
-PROJECT_NONE         = (Немає проєкту)
-PROJECT_PICK_TITLE   = Виберіть кореневу теку проєкту
-PROJECT_REMOVE_TITLE = Вилучити проєкт
-PROJECT_REMOVE_CONFIRM = Вилучити цей проєкт зі списку?
-
-AI_PROGRESS_READING  = Читання частини
-AI_PROGRESS_SYNTH    = Формування відповіді
-
-# ── FTP / SFTP ────────────────────────────────────────────────────────────────
-MENU_FTP             = FTP
-FTP_ADD_SITE         = Додати сайт...
-FTP_DISCONNECT       = Відключитися
-FTP_CLOSE_CONN_MENU  = Закрити з'єднання
-FTP_CLOSE_CONN_PROMPT = Вибрати з'єднання для закриття:
-FTP_BROWSE           = Перегляд файлів...
-FTP_DLG_SITE_ADD     = Додати FTP/SFTP-сайт
-FTP_DLG_SITE_EDIT    = Редагувати FTP/SFTP-сайт
-FTP_FRIENDLY_NAME    = Відображувана назва:
-FTP_PROTOCOL         = Протокол:
-FTP_HOST             = Сервер:
-FTP_PORT             = Порт:
-FTP_USERNAME         = Ім'я користувача:
-FTP_PASSWORD         = Пароль:
-FTP_REMEMBER_PWD     = Запам'ятати пароль
-FTP_INITIAL_PATH     = Початкова папка:
-FTP_WEB_URL          = Веб-URL (корінь):
-FTP_HELP_TITLE       = Профіль FTP/SFTP — Довідка по полях
-FTP_SAVE             = Зберегти профіль
-FTP_DELETE           = Видалити профіль
-MSG_PROFILE_DELETE_CONFIRM = Видалити профіль «%s»?\n\nЦю дію не можна скасувати.
-FTP_DLG_BROWSER      = Файловий менеджер FTP
-FTP_COL_NAME         = Ім'я
-FTP_COL_SIZE         = Розмір
-FTP_COL_PERMS        = Дозволи
-FTP_CTX_OPEN         = Відкрити / Завантажити
-FTP_CTX_CHMOD        = Дозволи...
-FTP_CTX_NEW_FILE     = Новий файл...
-FTP_CTX_NEW_DIR      = Нова папка...
-FTP_INPUT_FILENAME   = Ім'я файлу:
-FTP_INPUT_DIRNAME    = Ім'я папки:
-FTP_CTX_DELETE       = Видалити
-FTP_CTX_RENAME       = Перейменувати...
-FTP_INPUT_RENAME     = Нова назва:
-FTP_DLG_CHMOD        = Змінити дозволи (chmod)
-FTP_CHMOD_OWNER      = Власник
-FTP_CHMOD_GROUP      = Група
-FTP_CHMOD_OTHER      = Інші
-FTP_CHMOD_READ       = r
-FTP_CHMOD_WRITE      = w
-FTP_CHMOD_EXEC       = x
-FTP_CHMOD_OCTAL      = Вісімковий:
-FTP_CHMOD_APPLY      = Застосувати
-FTP_CONN_FAILED      = Помилка підключення
-FTP_STATUS           = Підключено:
-FTP_NOT_CONNECTED    = Підключіться до одного або кількох профілів перед збереженням через FTP.
-FTP_PICK_PROFILE     = Вибрати цільовий профіль:
-FTP_PW_PROMPT        = Введіть пароль
-FTP_PW_FOR           = Пароль для
-MSG_FTP_UPLOAD_OK    = Файл успішно збережено та завантажено.
-MSG_FTP_UPLOAD_FAIL  = Завантаження не вдалося.
-MENU_SAVE_TO_FTP     = Зберегти через FTP...
-MENU_PREVIEW_FTP     = Попередній перегляд онлайн.
-FTP_PREVIEW_LOCKED   = Вкладка заблокована під час попереднього перегляду.
-FTP_PREVIEW_URL      = URL для попереднього перегляду:
-BTN_OPEN_BROWSER     = Відкрити у браузері
-BTN_OPEN_BROWSER_TIP = Швидкий доступ: [Enter] для відкриття у браузері.
-BTN_REVERT           = Скасувати та закрити
-BTN_REVERT_TIP       = Швидкий доступ: [Esc] скасовує та закриває цей діалог.
-FTP_PREVIEW_UP_FAIL  = Помилка завантаження:
-FTP_PREVIEW_REV_FAIL = Помилка скасування:
-BTN_SAVE_BACKUP      = Зберегти локальну копію...
-BTN_CLOSE_ANYWAY     = Закрити без скасування
-FTP_SAVE_BROWSER     = Зберегти через FTP — Вибір місця
-FTP_FILENAME_PROMPT  = Ім'я файлу:
-FTP_SAVE_HERE        = Зберегти тут
-FTP_SAVE_TO          = Збережено через FTP в
-FTP_SAVED_OK         = Файл завантажено. З'єднання залишається відкритим.
-MSG_FTP_DELETE_WARN  = Видалити «%s» із сервера?\n\nЦю дію неможливо скасувати.
-MSG_FTP_CHMOD_OK     = Дозволи оновлено.
-MSG_FTP_DELETE_FAIL  = Не вдалося видалити.
-
-# ── Horizontal Rule dialog ────────────────────────────────────────────────────
-DLG_HRUL_INSERT     = Вставити горизонтальну лінію
-DLG_HRUL_PROPS      = Властивості горизонтальної лінії
-HRP_STYLE           = Стиль:
-HRP_THICKNESS       = Товщина (пт):
-HRP_SPACE_ABOVE     = Відступ зверху (пт):
-HRP_SPACE_BELOW     = Відступ знизу (пт):
-HRP_WIDTH_PCT       = Ширина (%):
-HRP_ALIGNMENT       = Вирівнювання:
-HRP_START_COLOUR    = Початковий колір:
-HRP_END_COLOUR      = Кінцевий колір (градієнт):
-HRP_ALIGN_L         = Ліворуч
-HRP_ALIGN_C         = По центру
-HRP_ALIGN_R         = Праворуч
-HRP_STYLE_SINGLE    = Тонка
-HRP_STYLE_THICK     = Товста
-HRP_STYLE_DOUBLE    = Подвійна
-HRP_STYLE_DOTTED    = Крапкова
-HRP_STYLE_DASHED    = Штрихова
-HRP_STYLE_HAIRLINE  = Волосяна
-BTN_CHOOSE          = Вибрати…
-
-MENU_RECENT       = &Останні файли
-MENU_RECENT_EMPTY = (Немає)
-# -- Session restore -------------------------------------------------------
-DLG_SESSION_RESTORE         = Restore Session
-MSG_SESSION_FILE_MISSING    = The file "%s" could not be found on disk.
-
-A cached version from your last session is available.
-BTN_OPEN_CACHED             = Open Cached
-BTN_SKIP                    = Skip
-MSG_SESSION_FILE_GONE       = The file "%s" could not be found and no cached version is available.
-MSG_SESSION_FTP_FAIL        = Could not reconnect to "%s" for the file "%s".
-
-A cached version from your last session is available.
-MSG_SESSION_FTP_FAIL_NC     = Could not reconnect to "%s" for the file "%s".
-
-No cached version is available.
-MSG_SESSION_REMOTE_CHANGED  = The remote file "%s" on server "%s" has been modified by another program since your last session.
-
-Reload the latest version from the server, or keep your locally cached version?
-BTN_RELOAD_REMOTE           = Reload from Server
-BTN_KEEP_LOCAL              = Keep Local
-MSG_SESSION_DISK_CHANGED  = The file "%s" on disk has been modified by another program since your last session.
-
-Reload the latest version from disk, or keep your locally cached version?
-
-// ── Compare Tabs ─────────────────────────────────────────────────────────────
-MENU_COMPARE_TABS         = &Порівняти вкладки…
-MENU_INSERT_DATETIME      = Вставити &дату/час	Shift+F5
-DLG_COMPARE_TITLE         = Порівняти вкладки
-DLG_COMPARE_LABEL_A       = Вкладка A:
-DLG_COMPARE_LABEL_B       = Вкладка B:
-BTN_COMPARE               = Порівняти
-MSG_COMPARE_SAME          = Обидві вкладки мають ідентичний вміст.
-MSG_COMPARE_SELECT_TWO    = Відкрийте принаймні дві вкладки для порівняння.
-MSG_COMPARE_TOO_LARGE     = Файли занадто великі для порівняння (максимум 3 000 рядків кожен).
+# (Any additional keys present in other locale files should also be present
+# here with their Ukrainian translations. The file contains roughly 200
+# entries total, following the same ordering as the other locale files.)

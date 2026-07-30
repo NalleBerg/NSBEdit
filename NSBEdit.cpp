@@ -24,6 +24,8 @@
 #include <unordered_set>
 #include <regex>
 #include <stdio.h>
+#include <exception>
+#include <stdlib.h>
 #include "dpi.h"
 #include "tooltip/tooltip.h"
 #include "ne_autocomplete/ne_autocomplete.h"
@@ -15804,8 +15806,103 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 }
 
 // ── WinMain ───────────────────────────────────────────────────────────────────
+// ── Crash diagnostics ───────────────────────────────────────────────────────
+// Writes a concise crash report (exception code, faulting address as
+// module+offset, and a stack backtrace) next to the executable as crash.log so
+// an otherwise-silent termination can be pinpointed.  addr2line -e NSBEdit.exe
+// <offset> resolves each frame to a source line.
+static void Ne_WriteCrashReport(const char* header, EXCEPTION_POINTERS* ep)
+{
+    wchar_t logPath[MAX_PATH] = {};
+    // Prefer %APPDATA%\NSBEdit (always writable, alongside nsbedit.db); fall back
+    // to the executable's own directory if APPDATA is unavailable.
+    DWORD envLen = GetEnvironmentVariableW(L"APPDATA", logPath, MAX_PATH);
+    if (envLen > 0 && envLen < MAX_PATH - 24) {
+        wcscat_s(logPath, MAX_PATH, L"\\NSBEdit");
+        CreateDirectoryW(logPath, NULL);
+        wcscat_s(logPath, MAX_PATH, L"\\crash.log");
+    } else {
+        GetModuleFileNameW(NULL, logPath, MAX_PATH);
+        if (wchar_t* slash = wcsrchr(logPath, L'\\'))
+            wcscpy_s(slash + 1, (size_t)(MAX_PATH - (slash + 1 - logPath)), L"crash.log");
+        else
+            wcscpy_s(logPath, MAX_PATH, L"crash.log");
+    }
+
+    HANDLE hf = CreateFileW(logPath, GENERIC_WRITE, FILE_SHARE_READ, NULL,
+                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hf == INVALID_HANDLE_VALUE) return;
+
+    char buf[4096];
+    int n = 0;
+    n += _snprintf_s(buf + n, sizeof(buf) - n, _TRUNCATE, "%s\r\n", header ? header : "crash");
+
+    auto modOffset = [&](void* p, const char* tag) {
+        HMODULE hm = NULL;
+        if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                               GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                               (LPCWSTR)p, &hm) && hm) {
+            char mp[MAX_PATH] = {};
+            GetModuleFileNameA(hm, mp, MAX_PATH);
+            const char* base = strrchr(mp, '\\');
+            n += _snprintf_s(buf + n, sizeof(buf) - n, _TRUNCATE,
+                             "%s %s+0x%llX\r\n", tag, base ? base + 1 : mp,
+                             (unsigned long long)((char*)p - (char*)hm));
+        } else {
+            n += _snprintf_s(buf + n, sizeof(buf) - n, _TRUNCATE, "%s %p\r\n", tag, p);
+        }
+    };
+
+    if (ep && ep->ExceptionRecord) {
+        n += _snprintf_s(buf + n, sizeof(buf) - n, _TRUNCATE,
+                         "Exception code: 0x%08lX\r\n",
+                         (unsigned long)ep->ExceptionRecord->ExceptionCode);
+        modOffset(ep->ExceptionRecord->ExceptionAddress, "Fault:");
+    }
+
+    void* frames[40] = {};
+    USHORT nf = RtlCaptureStackBackTrace(0, 40, frames, NULL);
+    for (USHORT i = 0; i < nf && n < (int)sizeof(buf) - 160; ++i) {
+        char tag[16];
+        _snprintf_s(tag, sizeof(tag), _TRUNCATE, "  [%02u]", (unsigned)i);
+        modOffset(frames[i], tag);
+    }
+
+    DWORD written = 0;
+    WriteFile(hf, buf, (DWORD)n, &written, NULL);
+    CloseHandle(hf);
+}
+
+static LONG WINAPI Ne_UnhandledExceptionFilter(EXCEPTION_POINTERS* ep)
+{
+    Ne_WriteCrashReport("=== Unhandled SEH exception ===", ep);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
+static void Ne_TerminateHandler()
+{
+    char header[512];
+    const char* what = "unknown";
+    std::string whatStr;
+    try {
+        if (std::exception_ptr e = std::current_exception())
+            std::rethrow_exception(e);
+    } catch (const std::exception& ex) {
+        whatStr = ex.what();
+        what = whatStr.c_str();
+    } catch (...) {
+        what = "non-std C++ exception";
+    }
+    _snprintf_s(header, sizeof(header), _TRUNCATE,
+                "=== std::terminate (uncaught C++ exception) ===\r\nwhat(): %s", what);
+    Ne_WriteCrashReport(header, NULL);
+    abort();
+}
+
 int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
 {
+    SetUnhandledExceptionFilter(Ne_UnhandledExceptionFilter);
+    std::set_terminate(Ne_TerminateHandler);
     SetProcessDPIAware();
     Ne_GdiplusInit();
     {

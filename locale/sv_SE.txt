@@ -1,592 +1,185 @@
-MENU_AI_CHECK_MODELS = Check local models
-AI_MODEL_CHECK_TITLE = Check local models
-AI_MODEL_CHECK_START = Checking local models...
-AI_MODEL_CHECK_NO_MODELS = No local models were found.
-AI_MODEL_CHECKING_MODEL = Checking model %s...
-AI_MODEL_DOWNLOADING_MODEL = Downloading update to model %s...
-AI_MODEL_UPTODATE_MODEL = Model %s is up to date ✓
-AI_MODEL_CHECK_FAILED_SIMPLE = Model %s could not be checked.
-AI_MODEL_CHECK_FAILED = Model %s could not be checked:
-AI_MODEL_CHECK_ALL_DONE = All models are now up to date! ✓
-AI_MODEL_CHECK_FINISHED_ERROR = Model check finished with errors.
+
 # NSBEdit locale file — sv_SE (Svenska)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
-# About-dialog strings that go into RichEdit use \n for line breaks.
+# About‑dialog strings that go into RichEdit use \n for line breaks.
 
 # ── Application ──────────────────────────────────────────────────────────────
 APP_NAME = NSBEdit
 UNTITLED = Namnlös
 
 # ── Menus ─────────────────────────────────────────────────────────────────────
-MENU_FILE       = &Arkiv
-MENU_NEW        = &Ny\tCtrl+N
-MENU_OPEN       = &Öppna...\tCtrl+O
-MENU_SAVE       = &Spara\tCtrl+S
-MENU_SAVEAS     = Spara &som...\tCtrl+Shift+S
-MENU_SAVE_ALL   = Spara &alla\tCtrl+Shift+A
-MENU_PRINT      = &Skriv ut...\tCtrl+P
-MENU_EXPORT_PDF = &Exportera som PDF...\tCtrl+Shift+P
-MENU_EXIT       = A&vsluta	Ctrl+W
-MENU_EDIT         = &Redigera
-MENU_UNDO         = &Ångra\tCtrl+Z
-MENU_REDO         = &Gör om\tCtrl+Y
-MENU_CUT          = Klipp u&t\tCtrl+X
-MENU_COPY         = &Kopiera\tCtrl+C
-MENU_PASTE        = K&listra in\tCtrl+V
-MENU_SELECTALL    = Markera &allt\tCtrl+A
-MENU_FIND         = &Sök / Ersätt...	Ctrl+F
-MENU_GOTO         = Gå till &rad...\tCtrl+G
-MENU_BOOKMARK     = Växla &bokmärke\tF2
-MENU_BOOKMARK_NEXT = Gå till &bokmärke\tCtrl+F2
-MENU_PREFS        = &Inställningar...
-PREF_TITLE        = Inställningar
-PREF_SEC_APPEARANCE = Utseende
-PREF_DARK_MODE         = Mörkt tema
-PREF_LIGHT_MODE        = Ljust tema
-PREF_SEC_EDITOR        = Redigerarens bakgrund
-PREF_EDITOR_LIGHT_BG   = Ljus bakgrund för oformaterad text och kod
-PREF_EDITOR_DARK_BG    = Mörk bakgrund för oformaterad text och kod
-MENU_HELP       = &Hjälp
-MENU_SHORTCUTS  = &Kortkommandon...\tF1
-MENU_ABOUT      = &Om NSBEdit
-BTN_AI          = AI
-TIP_AI          = Fråga Ollama om AI.
-AI_SUMMARY_LOCALHOST = Ollama on localhost
-AI_SUMMARY_CURRENT = Current:
-AI_ROLE_AGENT = Agent
-AI_ROLE_SUGGEST = Suggest
-AI_SUMMARY_CLOUD = Cloud:
-AI_MODE_CLOUD_SUBSCRIPTION = Cloud subscription
-AI_MODE_LOCAL_ONLY = Local only
-AI_SUMMARY_ACCOUNT = Account:
-AI_SIGNED_IN = signed in
-AI_NOT_SIGNED_IN = not signed in
-AI_WINDOW_TITLE_PREFIX = NSBEdit AI -
-AI_STATUS_CLOUD = Cloud:
-AI_STATUS_SIGNIN = Sign-in:
-AI_STATUS_CURRENT = Current:
-BTN_YES = yes
-BTN_NO = no
-BTN_SEND = Skicka
-BTN_STOP = Stoppa
-BTN_COPY = Kopiera
+MENU_FILE               = &Arkiv
+MENU_NEW                = &Ny\tCtrl+N
+MENU_OPEN               = &Öppna...\tCtrl+O
+MENU_SAVE               = &Spara\tCtrl+S
+MENU_SAVEAS             = Spara &som...\tCtrl+Shift+S
+MENU_SAVE_ALL           = Spara &alla\tCtrl+Shift+A
+MENU_PRINT              = &Skriv ut...\tCtrl+P
+MENU_EXPORT_PDF         = &Exportera som PDF...\tCtrl+Shift+P
+MENU_EXIT               = A&vsluta\tCtrl+W
+MENU_EDIT               = &Redigera
+MENU_UNDO               = &Ångra\tCtrl+Z
+MENU_REDO               = &Gör om\tCtrl+Y
+MENU_CUT                = Klipp u&t\tCtrl+X
+MENU_COPY               = &Kopiera\tCtrl+C
+MENU_PASTE              = K&listra in\tCtrl+V
+MENU_SELECTALL          = Markera &allt\tCtrl+A
+MENU_FIND               = &Sök / Ersätt...\tCtrl+F
+MENU_GOTO               = Gå till &rad...\tCtrl+G
+MENU_BOOKMARK           = Växla &bokmärke\tF2
+MENU_BOOKMARK_NEXT      = Gå till &bokmärke\tCtrl+F2
+MENU_PREFS              = &Inställningar...
+MENU_HELP               = &Hjälp
+MENU_SHORTCUTS          = &Tangentbordsgenvägar...\tF1
+MENU_ABOUT              = &Om NSBEdit
+
+# ── Preferences ───────────────────────────────────────────────────────────────
+PREF_TITLE                = Inställningar
+PREF_SEC_APPEARANCE       = Utseende
+PREF_DARK_MODE            = Mörkt tema
+PREF_LIGHT_MODE           = Ljust tema
+PREF_SEC_EDITOR           = Redigeringsbakgrund
+PREF_EDITOR_LIGHT_BG      = Ljus bakgrund för ren text och kod
+PREF_EDITOR_DARK_BG       = Mörk bakgrund för ren text och kod
+
+# ── Buttons (generic) ───────────────────────────────────────────────────────
+BTN_YES   = ja
+BTN_NO    = nej
+BTN_SEND  = Skicka
+BTN_STOP  = Stoppa
+BTN_COPY  = Kopiera
 BTN_CLEAR = Rensa
-AI_MENU_CLOUD = Cloud
-AI_MENU_LOCAL_ONLY = Local only
-AI_MENU_CLOUD_SUBSCRIPTION = Cloud subscription
-AI_MENU_SIGN_IN = Sign in to Ollama
-AI_MENU_SIGN_OUT = Sign out
-AI_MENU_ADD_API_KEY = Lägg till API-nyckel…
-AI_APIKEY_TITLE = Ollama moln-API-nyckel
-AI_APIKEY_PROMPT = Klistra in din ollama.com API-nyckel:
-AI_TIP_ADD_API_KEY = Klistra in din ollama.com API-nyckel för att använda molnmodeller direkt.\nMed en nyckel behöver du INTE öppna webbläsaren för att logga in.\nNyckeln lagras krypterad endast på den här datorn — delas aldrig.
-AI_LOG_API_KEY_OK = API-nyckel godkänd — inloggad på Ollama moln.
-AI_LOG_API_KEY_BAD = API-nyckeln godkändes inte. Kontrollera nyckeln och försök igen.
-AI_LOG_API_KEY_CLEARED = API-nyckel rensad.
-AI_MENU_OPEN_PROVIDER = Open Ollama web site
-AI_MENU_SEND_PROMPT = Send prompt
-AI_MENU_CLEAR_LOG = Clear log
-AI_MENU_COPY_ANSWER = Copy answer
-AI_MENU_ABOUT_WINDOW = About this window
-AI_MENU_MODEL = Model
-AI_MENU_LOG = Log
-AI_MENU_HELP = Help
-AI_LOG_USER_PREFIX = You:
-AI_LOG_CLOUD_NEEDS_SIGNIN = Cloud mode is selected, but you are not signed in yet.
-# ── AI-moln ───────────────────────────────────────────────
-AI_LOG_CLOUD_MODEL_SELECTED = Molnmodell vald:
-AI_LOG_CLOUD_SENDING = Skickar till Ollama-molnet …
-AI_MENU_LOCAL_HEADER = Lokal:
-AI_MENU_CLOUD_HEADER = Moln
-AI_LOG_OPENED_SIGNUP = Opened Ollama sign-in / subscription page.
-AI_LOG_CLOUD_NOT_USED_YET = Cloud mode is selected; local Ollama is not used in this path yet.
-AI_LOG_WINDOW_OPENED = AI window opened.
-AI_THINKING_STATUS = AI is thinking... Time used: %s
-AI_LOG_CLOUD_SUGGEST_SELECTED = Cloud suggestion mode selected.
-AI_LOG_CLOUD_AGENT_SELECTED = Cloud agent mode selected.
-AI_LOG_MODEL_SWITCHED_SUGGESTION = Model switched to suggestion mode.
-AI_LOG_MODEL_SWITCHED_AGENT = Model switched to agent mode.
-AI_LOG_CLOUD_LOCAL_ONLY = Cloud mode switched to local only.
-AI_LOG_CLOUD_SUB_SELECTED = Cloud subscription mode selected.
-AI_LOG_SIGNED_OUT_LOCALLY = Signed out locally.
-AI_LOG_ABOUT_WINDOW = This is the AI shell window. Full Ollama chat wiring will follow.
-AI_LOG_RETRY_FALLBACK = Ollama: selected model not found, retrying with fallback model.
-AI_LOG_OLLAMA_PREFIX = Ollama:
-AI_LOG_NO_RESPONSE = No response.
-AI_LOG_STOPPED = Begäran stoppad. Lägg till mer information och skicka igen.
-AI_LOG_RENDER_FAILED = Ollama: response rendering failed unexpectedly.
-AI_COPY_CODE_LABEL = Copy code
-REGEX_GUIDE_TITLE = Regex-guide
-REGEX_GUIDE_LABEL = Innehåller
-REGEX_GUIDE_NOTE = Ctrl+F fokuserar sökrutan. Sökningen uppdateras medan du skriver.
-REGEX_GUIDE_SEARCH = Sök i guiden
-REGEX_GUIDE_CLEAR = Rensa sökning
-REGEX_GUIDE_TEXT = T|Regex-referensguide\nS|En liten lärguide för NSBEdits ECMAScript-regexsökning\nB|Sök i guiden med vanlig text. Skriv i rutan ovan eller tryck Ctrl+F för att hoppa till ett ämne.\nB|Exemplen är korta nog att minnas och tillräckligt detaljerade för att använda.\n\nH|1. Vad en regex gör\nB|Ett reguljärt uttryck är en kompakt beskrivning av texten du vill hitta.\nB|I stället för att matcha en exakt sträng kan en regex hitta många besläktade strängar.\nB|NSBEdit använder std::wregex med ECMAScript-syntax, så exemplen nedan följer den stilen.\nC|error\nB|Det hittar ordet error var det än förekommer.\n\nH|2. Literaler och escaping\nB|De flesta bokstäver och siffror betyder sig själva.\nB|Viss skiljetecken är speciell och måste escapeas med ett omvänt snedstreck.\nC|\\.    en bokstavlig punkt\nC|\\?    ett bokstavligt frågetecken\nC|\\(    en bokstavlig öppnande parentes\nC|\\\\   ett bokstavligt omvänt snedstreck\nB|Om du vill matcha den exakta texten C:\\Temp, kom ihåg att dubblera varje omvänt snedstreck i regexen.\n\nH|3. Teckenklasser\nB|Teckenklasser beskriver ett enda tecken ur en mängd.\nC|[abc]     en av a, b eller c\nC|[^abc]    allt utom a, b eller c\nC|[a-z]     ett intervall\nC|[0-9A-F]  hexsiffror\nC|[._-]     några skiljetecken\nB|Inuti en klass betyder strecket vanligtvis ett intervall, så placera det först eller sist om du vill ha ett bokstavligt streck.\nC|[-_.]     bokstavligt streck, understreck eller punkt\n\nH|4. Förkortade klasser\nB|Förkortade klasser är det snabbaste sättet att beskriva vanliga textformer.\nC|\\d    siffra\nC|\\D    allt som inte är en siffra\nC|\\w    bokstav, siffra eller understreck\nC|\\W    allt som inte är ett ordtecken\nC|\\s    whitespace\nC|\\S    allt som inte är whitespace\nC|.      vilket tecken som helst utom radbrytning\nB|En punkt är bred; en förkortad klass är oftast mer specifik och säkrare.\n\nH|5. Ankra och gränser\nB|Ankrar matchar inte tecken. De matchar positioner.\nC|^      början på den sökta texten\nC|$      slutet på den sökta texten\nC|\\b    ordgräns\nC|\\B    inte en ordgräns\nB|Använd ankrar när du vill ha en hel rad, ett ord i början eller ett ord i slutet.\nC|^TODO\nB|Det hittar rader eller strängar som börjar med TODO.\nC|\\bfix\\b\nB|Det hittar ordet fix, men inte ord som prefix eller fixture.\n\nH|6. Upprepning\nB|Kvantisatorer säger hur många gånger det föregående tokenet får upprepas.\nC|*      noll eller fler\nC|+      en eller fler\nC|?      valfritt / noll eller ett\nC|{n}     exakt n gånger\nC|{n,}    n gånger eller fler\nC|{n,m}   mellan n och m gånger\nB|Kvantisatorer är som standard giriga, så de försöker ta så mycket som möjligt innan de backar.\nC|\\d+\nB|Det hittar en eller flera siffror.\nC|\\s+\nB|Det hittar en eller flera whitespace-tecken.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Det är ett vanligt identifierarmönster: ett starttecken, sedan noll eller fler fortsättningstecken.\n\nH|7. Gruppering och alternation\nB|Parenteser grupperar delar av mönstret så att du kan upprepa dem eller komma ihåg dem.\nC|(abc)       fångar en grupp\nC|(?:abc)     grupp utan capture\nC|a|b|c       matchar vänster eller höger\nB|Capturing-grupper numreras från vänster till höger.\nC|(first)-(second)\nB|Den första gruppen blir $1 och den andra $2 i ersättningar.\nC|(cat|dog|fox)\nB|Alternation är användbar när ett fält bara kan innehålla några få kända ord.\nC|(?:https?|ftp)://\nB|En icke-fångande grupp behåller strukturen men tar inte en capture-plats.\n\nH|8. Praktiska mönster\nB|De här exemplen är små nog att anpassa och stora nog att vara användbara.\nC|TODO|FIXME\nB|Hittar någon av dessa taggar i anteckningar, kommentarer eller källfiler.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Ett enkelt mönster med e-postform. Det är inte en fullständig RFC-validerare, men det är användbart för snabba sökningar.\nC|\"[^\"]*\"\nB|Hittar text inom citattecken på en rad.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Hittar ett ISO-liknande datum som 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Hittar enkla identifierarliknande namn som börjar med versal.\nC|^\\s*$\nB|Hittar tomma rader eller rader som bara innehåller mellanslag.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Hittar hex-tal som 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Hittar ett enkelt heltal eller decimaltal.\n\nH|9. Idéer för ersättningar\nB|När du ersätter kan fångade grupper låta dig återanvända de delar du matchade.\nC|Sök:      ([A-Za-z]+) ([A-Za-z]+)\nC|Ersätt:   $2, $1\nB|Det byter plats på två ord, så John Smith blir Smith, John.\nC|Sök:      (\\d{4})-(\\d{2})-(\\d{2})\nC|Ersätt:   $3/$2/$1\nB|Det gör om 2026-06-15 till 15/06/2026.\nC|Sök:      ^(.*)$\nC|Ersätt:   [$1]\nB|Det ramar in varje hel rad med hakparenteser.\n\nH|10. Vanliga misstag\nB|De flesta misstag är små: en saknad escape, en girig kvantisator eller ett ankare på fel plats.\nC|.txt\nB|Det här är inte en bokstavlig punkt följd av t x t; punkt betyder vilket tecken som helst. Använd \\.txt om du vill ha en bokstavlig filändelse.\nC|(abc\nB|Oavslutade grupper är ett syntaxfel.\nC|foo\\bar\nB|Ett ensamt omvänt snedstreck börjar oftast en escape, så dubblera det när du vill ha ett bokstavligt.\nC|^word$\nB|Det matchar bara en hel rad som innehåller exakt word.\n\nH|11. Så tänker du när du söker\nB|Fråga dig själv tre saker: vad måste finnas, vad får variera och var ska matchen sluta?\nB|Om svaret är "vilket tecken som helst", använd en klass eller en punkt. Om svaret är "början eller slutet", använd ankrar.\nB|Om svaret är "upprepa den här delen", lägg den i en grupp innan du lägger till en kvantisator.\nB|Om du är osäker, sök först med ett mindre mönster och bygg ut det bit för bit.\n\nH|12. Noteringar för NSBEdit\nB|Redigerarens regex-sökning använder standardbiblioteket, så portabel ECMAScript-syntax är att föredra.\nB|Den här guidens "Innehåller"-sökning är bokstavlig och inte regex-baserad, så du kan hoppa med vanliga ord eller fragment.\nB|Om du snabbt vill till ett ämne, tryck Ctrl+F och skriv ett ord från den sektion du vill ha.\nB|Sökraden är medvetet enkel: ingen dialog, inget regex-läge, bara den snabbaste möjliga ämnessökaren.\n\nH|13. Prova dessa sökningar\nC|digit\nC|capture\nC|boundary\nC|replace\nC|greedy\nC|anchor\nC|literal\nC|escape\nC|pattern
 
-# ── Convert menu ─────────────────────────────────────────────────────────────
-MENU_CONVERT        = Kon&vertera
-MENU_CONV_TO_PLAIN  = Ta bort formatering — spara som oformaterad text
-MENU_CONV_TO_RTF    = Lägg till &formatering — skapa RTF
-MENU_CONV_TO_HTML5  = Exportera som &HTML 5...
-MSG_HTML5_ERR       = HTML-konverteringen misslyckades.
-MSG_HTML5_SAVE_ERR  = Kunde inte skriva HTML-fil.
-DLG_SAVE_HTML5      = Spara som HTML 5
-MENU_ENCODING       = &Teckenkodning
-MENU_ENC_UTF8       = UTF-8
-MENU_ENC_UTF16LE    = UTF-16 LE
-MENU_ENC_ANSI       = ANSI (system)
-MENU_ENC_WIN1252    = Windows-1252 (västeuropeisk)
-MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+# ── AI UI ─────────────────────────────────────────────────────────────────────
+BTN_AI                     = AI
+TIP_AI                     = Fråga Ollama om KI.
+AI_WAKING_OLLAMA           = Kontaktar Ollama, vänligen vänta!
+AI_THINKING_STATUS         = KI tänker… Använd tid: %s
+MENU_AI_CHECK_MODELS       = Kontrollera lokala modeller
+AI_MODEL_CHECK_TITLE       = Kontrollera lokala modeller
+AI_MODEL_CHECK_START       = Kontrollerar lokala modeller…
+AI_MODEL_CHECK_NO_MODELS   = Inga lokala modeller hittades.
+AI_MODEL_CHECKING_MODEL    = Kontrollerar modell %s…
+AI_MODEL_DOWNLOADING_MODEL = Hämtar uppdatering till modell %s…
+AI_MODEL_UPTODATE_MODEL    = Modell %s är uppdaterad ✓
+AI_MODEL_CHECK_FAILED_SIMPLE = Modell %s kunde inte kontrolleras.
+AI_MODEL_CHECK_FAILED      = Modell %s kunde inte kontrolleras:
+AI_MODEL_CHECK_ALL_DONE    = Alla modeller är nu uppdaterade! ✓
+AI_MODEL_CHECK_FINISHED_ERROR = Modellkontrollen avslutades med fel.
+AI_SUMMARY_LOCALHOST       = Ollama på localhost
+AI_SUMMARY_CURRENT         = Aktuell:
+AI_ROLE_AGENT              = Agent
+AI_ROLE_SUGGEST            = Föreslå
+AI_SUMMARY_CLOUD           = Moln:
+AI_MODE_CLOUD_SUBSCRIPTION = Moln‑abonnemang
+AI_MODE_LOCAL_ONLY         = Endast lokalt
+AI_SUMMARY_ACCOUNT         = Konto:
+AI_SIGNED_IN              = inloggad
+AI_NOT_SIGNED_IN          = ej inloggad
+AI_WINDOW_TITLE_PREFIX    = NSBEdit AI -
+AI_STATUS_CLOUD           = Moln:
+AI_STATUS_SIGNIN          = Logga in:
+AI_STATUS_CURRENT         = Aktuell:
+AI_TIME_USED              = Använd tid:
+AI_LAST_QUERY_USED        = Senaste fråga använde:
+AI_LOG_API_KEY_OK         = API‑nyckel accepterad — inloggad på Ollama‑molnet.
+AI_LOG_API_KEY_BAD        = API‑nyckeln avslogs. Kontrollera nyckeln och försök igen.
+AI_LOG_API_KEY_CLEARED    = API‑nyckel raderad.
+AI_MENU_CLOUD             = Moln
+AI_MENU_LOCAL_ONLY        = Endast lokalt
+AI_MENU_CLOUD_SUBSCRIPTION = Moln‑abonnemang
+AI_MENU_SIGN_IN           = Logga in på Ollama
+AI_MENU_SIGN_OUT          = Logga ut
+AI_MENU_ADD_API_KEY       = Lägg till API‑nyckel…
+AI_APIKEY_TITLE           = Ollama‑moln‑API‑nyckel
+AI_APIKEY_PROMPT          = Klistra in din ollama.com‑API‑nyckel:
+AI_TIP_ADD_API_KEY        = Ange en Ollama‑moln‑API‑nyckel för att använda moln‑modeller utan webbläsaren.\nNyckeln lagras krypterat endast på denna PC.
+AI_MENU_OPEN_PROVIDER     = Öppna Ollama‑webbplats
+AI_MENU_SEND_PROMPT       = Skicka prompt
+AI_MENU_CLEAR_LOG         = Rensa logg
+AI_MENU_COPY_ANSWER       = Kopiera svar
+AI_MENU_ABOUT_WINDOW      = Om detta fönster
+AI_LOG_USER_PREFIX        = Du:
+AI_LOG_CLOUD_NEEDS_SIGNIN = Moln‑läge är valt men du är ännu ej inloggad.
+AI_LOG_CLOUD_MODEL_SELECTED = Moln‑modell vald:
+AI_LOG_CLOUD_SENDING      = Skickar till Ollama‑molnet …
+AI_LOG_OPENED_SIGNUP     = Öppnade Ollama‑inloggning/abonnemangssida.
+AI_LOG_CLOUD_NOT_USED_YET = Moln‑läge är valt; lokal Ollama används ännu inte i den här vägen.
+AI_LOG_WINDOW_OPENED      = AI‑fönster öppnat.
+AI_LOG_CLOUD_SUGGEST_SELECTED = Moln‑förslagsläge valt.
+AI_LOG_CLOUD_AGENT_SELECTED   = Moln‑agentläge valt.
+AI_LOG_MODEL_SWITCHED_SUGGESTION = Modell bytt till förslagsläge.
+AI_LOG_MODEL_SWITCHED_AGENT = Modell bytt till agentläge.
+AI_LOG_CLOUD_LOCAL_ONLY   = Moln‑läge bytt till endast lokalt.
+AI_LOG_CLOUD_SUB_SELECTED = Moln‑abonnemangsläge valt.
+AI_LOG_SIGNED_OUT_LOCALLY = Utloggad lokalt.
+AI_LOG_ABOUT_WINDOW       = Detta är AI‑skal‑fönstret. Fullständiga Ollama‑chatt‑anslutningar följer.
+AI_LOG_RETRY_FALLBACK     = Ollama: vald modell saknas, försöker fallback‑modell.
+AI_LOG_OLLAMA_PREFIX      = Ollama:
+AI_LOG_NO_RESPONSE        = Inget svar.
+AI_LOG_STOPPED            = Frågan stoppad. Lägg till mer info och skicka igen.
+AI_LOG_RENDER_FAILED      = Ollama: visning av svar misslyckades oväntat.
+AI_COPY_CODE_LABEL        = Kopiera kod
 
-# ── Encoding labels shown in status bar ──────────────────────────────────────
-ENC_RICHTEXT    = RTF-text
-ENC_UTF8        = UTF-8
-ENC_UTF16LE     = UTF-16 LE
-ENC_ANSI        = ANSI
-ENC_WIN1252     = Windows-1252
-ENC_ISO8859_1   = ISO 8859-1
-ENC_UNKNOWN     = Oformaterad text
+# ── RTF editor UI ───────────────────────────────────────────────────────────────
+rtfe_tip_bold            = Fet (Ctrl+B)
+rtfe_tip_italic          = Kursiv (Ctrl+I)
+rtfe_tip_underline       = Understruken (Ctrl+U)
+rtfe_tip_strike          = Genomstruken
+rtfe_tip_subscript       = Nedsänkt (t.ex. H₂O)
+rtfe_tip_superscript     = Upphöjd (t.ex. m²)
+rtfe_tip_fontface        = Teckensnitt
+rtfe_tip_fontsize        = Teckenstorlek (pt)
+rtfe_tip_color           = Textfärg
+rtfe_tip_highlight       = Markeringsfärg
+rtfe_tip_align_l         = Vänsterjustera
+rtfe_tip_align_c         = Centrera
+rtfe_tip_align_r         = Högerjustera
+rtfe_tip_align_j         = Justera
+rtfe_tip_bullet          = Punktlista
+rtfe_tip_numbered        = Numrerad lista
+rtfe_tip_image           = Infoga bild (PNG/JPEG)
+rtfe_tip_open            = Öppna fil… (RTF/TXT)
 
-# ── Convert messages ─────────────────────────────────────────────────────────
-MSG_CONV_LOSSY  = Om du tar bort RTF-formateringen raderas all fetstil, kursiv, färger och andra formateringseffekter.\n\nFortsätt och spara som oformaterad text?
-MSG_ENC_LOSSY   = Vissa tecken kanske inte kan representeras i den valda teckenkodningen och ersätts med «?» eller liknande.\n\nFortsätt?
-MSG_DEL_PLAIN_FILE = Dokumentet har sparats som en RTF-fil.\n\nVill du ta bort den ursprungliga textfilen?
+rtfe_img_filter_all      = Bildfiler
+rtfe_img_filter_png      = PNG‑filer (*.png)
+rtfe_img_filter_jpeg     = JPEG‑filer (*.jpg;*.jpeg)
+rtfe_img_dlg_title       = Infoga bild
 
-# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
-FILTER_OPEN   = Alla filer som stöds|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.sh;*.bash;*.zsh;*.ksh;*.csh;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-filer (*.rtf)|*.rtf|Textfiler (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Konfiguration (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Shell / Bash (*.sh)|*.sh;*.bash;*.zsh;*.ksh;*.csh;*|Batch (*.bat;*.cmd)|*.bat;*.cmd|Alla filer (*.*)|*.*
-FILTER_SAVEAS = RTF-filer (*.rtf)|*.rtf|Textfiler (*.txt)|*.txt|Alla filer (*.*)|*.*
-FILTER_IMAGE  = Bildfiler|*.png;*.jpg;*.jpeg|PNG-filer (*.png)|*.png|JPEG-filer (*.jpg;*.jpeg)|*.jpg;*.jpeg
+rtfe_open_filter_all     = Tillåtna filer (*.rtf;*.txt;*.md)
+rtfe_open_filter_rtf     = RTF‑filer (*.rtf)
+rtfe_open_filter_txt     = Text‑filer (*.txt)
+rtfe_open_filter_md      = Markdown‑filer (*.md)
+rtfe_open_filter_any     = Alla filer
 
-# ── File-dialog titles ────────────────────────────────────────────────────────
-DLG_OPEN   = Öppna
-DLG_SAVEAS = Spara som
-DLG_IMAGE  = Infoga bild
+# ── FTP UI ─────────────────────────────────────────────────────────────────────
+FTP_CLOSE_CONN_MENU       = Stäng anslutning
+FTP_CLOSE_CONN_PROMPT     = Stäng anslutning till "%s"?
+MSG_PROFILE_DELETE_CONFIRM = Ta bort profil ‘%s’? — Detta kan inte ångras.
 
-# ── Message boxes ─────────────────────────────────────────────────────────────
-MSG_OPEN_ERR      = Det gick inte att öppna filen.
-MSG_SAVE_ERR      = Det gick inte att spara filen.
-MSG_HAS_FORMATTING = Det här dokumentet innehåller formatering (fetstil, färger, teckenstorlekar m.m.) som inte kan lagras i en oformaterad textfil.\n\nKlicka Ja för att spara som oformaterad text och ta bort all formatering.\nKlicka Nej för att spara som RTF i stället (filen byter ändelse till .rtf).\nKlicka Avbryt för att gå tillbaka utan att spara.
-MSG_IMG_OPEN_ERR  = Det gick inte att öppna bildfilen.
-MSG_IMG_FMT_ERR   = Formatet stöds inte. Använd PNG eller JPEG.
-MSG_SAVE_PROMPT   = Spara ändringar i "%s"?
-DLG_SAVE_CHANGES  = Spara ändringar
-BTN_SAVE          = Spara
-BTN_DONT_SAVE     = Spara inte
-BTN_CANCEL        = Avbryt
-DLG_DISCARD_CHANGES = Förkasta ändringar
-MSG_DISCARD_AND_RELOAD = Du har osparade ändringar i den här filen.\n\nFörkasta dem och ladda om filen?
-BTN_OK            = OK
-BTN_CONTINUE      = Fortsätt
-DLG_CONV_TO_PLAIN = Ta bort formatering
+# ── About dialog ───────────────────────────────────────────────────────────────
+ABOUT_EDITION            = Utgåva: %s
+ABOUT_SEC_RTF            = RTF‑redigering
+ABOUT_DESC_RTF           = Stöd för Rich‑Text‑format med avancerade formatalternativ.
+ABOUT_SEC_CODE           = Kodredigering & syntax‑markering
+ABOUT_DESC_CODE          = Scintilla‑baserad kodredigerare med hundratals språkstöd.
+ABOUT_SEC_FTP            = FTP & fjärrredigering
+ABOUT_DESC_FTP           = Säkert uppladdning och redigering av filer på fjärrservrar.
+BTN_VIEW_LICENCE         = Visa licens
+BTN_CREDITS              = Tack
+BTN_CLOSE                = Stäng
 
-DLG_FILE_CHANGED        = Filen har ändrats på disk
-MSG_FILE_CHANGED_PROMPT = "%s" ändrades av ett annat program medan NSBEdit inte var aktivt.\n\nLäs in från disk igen?
-BTN_RELOAD              = Läs in igen
-BTN_KEEP                = Behåll nuvarande
+# ── Miscellaneous UI strings (examples – extend as needed) ─────────────────────
+REGEX_GUIDE_TITLE        = Regex‑guide
+REGEX_GUIDE_LABEL        = Innehåller
+REGEX_GUIDE_NOTE         = Ctrl+F fokuserar sökfältet. Sökning uppdateras medan du skriver.
+REGEX_GUIDE_SEARCH      = Sök i guiden
+REGEX_GUIDE_CLEAR       = Rensa sökning
+REGEX_GUIDE_TEXT        = T|Regex‑referensguide\nS|En liten lärandeguide för NSBEdits ECMAScript‑regex‑sökning\nB|Sök i guiden med vanlig text. Skriv i fältet ovan eller tryck Ctrl+F för att hoppa till ett ämne.\nB|Exemplen är korta nog att komma ihåg och detaljerade nog att vara användbara.\n\nH|1. Vad en regex gör\nB|Ett reguljärt uttryck är en kompakt beskrivning av texten du vill hitta.\nB|Istället för att matcha en exakt sträng kan en regex matcha många närbesläktade strängar.\nB|NSBEdit använder std::wregex med ECMAScript‑syntax, så exemplen följer den stilen.\nC|error\nB|Det hittar ordet “error” varhelst det förekommer.\n\nH|2. Literaler och escaping\nB|De flesta bokstäver och siffror betyder sig själva.\nB|Vissa skiljetecken är speciella och måste escapas med ett omvänt snedstreck.\nC|\\.    ett bokstavligt punkt\nC|\\?    ett bokstavligt frågetecken\nC|\\(    en bokstavlig öppnande parentes\nC|\\\\   ett bokstavligt omvänt snedstreck\nB|Om du vill matcha texten C:\\Temp, skriv varje omvänt snedstreck dubbelt i regex‑en.\n\nH|3. Teckenklasser\nB|Teckenklasser beskriver ett tecken ur en mängd.\nC|[abc]     ett av a, b eller c\nC|[^abc]    allt utom a, b eller c\nC|[a‑z]     ett intervall\nC|[0‑9A‑F]  hex‑siffror\nC|[._‑]     några skiljetecken\nB|Inuti en klass betyder bindestrecket vanligtvis ett intervall, så placera det först eller sist för ett bokstavligt bindestreck.\nC|[-_.]     bokstavligt bindestreck, understrykning eller punkt\n\nH|4. Förkortade klasser\nB|Förkortade klasser är det snabbaste sättet att beskriva vanliga textmönster.\nC|\\d    siffra\nC|\\D    allt som inte är en siffra\nC|\\w    bokstav, siffra eller understrykning\nC|\\W    allt som inte är ett ordtecken\nC|\\s    mellanslag\nC|\\S    allt som inte är mellanslag\nC|.      vilket tecken som helst förutom radbrytning\nB|En punkt är bred; en förkortad klass är oftast mer specifik och säkrare.\n\nH|5. Ankare och gränser\nB|Ankare matchar inte tecken, de matchar positioner.\nC|^      början av den sökta texten\nC|$      slutet av den sökta texten\nC|\\b    ordgräns\nC|\\B    ingen ordgräns\nB|Använd ankare när du vill ha en hel rad, ett ord i början eller ett ord i slutet.\nC|^TODO\nB|Det hittar rader eller strängar som börjar med TODO.\nC|\\bfix\\b\nB|Det hittar ordet “fix”, men inte ord som “prefix” eller “fixture”.\n\nH|6. Upprepning\nB|Kvantifierare anger hur många gånger föregående token får upprepas.\nC|*      noll eller fler\nC|+      en eller fler\nC|?      valfritt / noll eller en\nC|{n}    exakt n gånger\nC|{n,}   n eller fler gånger\nC|{n,m}  mellan n och m gånger\nB|Kvantifierare är som standard giriga och försöker konsumera så mycket som möjligt innan de backtrackar.\nC|\\d+\nB|Det hittar en eller flera siffror.\nC|\\s+\nB|Det hittar ett eller flera mellanslagstecken.\nC|[A‑Za‑z_][A‑Za‑z0‑9_]*\nB|Det är ett vanligt identifierarmönster: ett starttecken och sedan noll eller fler fortsättningstecken.\n\nH|7. Gruppering och alternativ\nB|Parenteser grupperar delar av mönstret så att du kan upprepa dem eller referera till dem.\nC|(abc)      fångar “abc” som en grupp\nC|(?:abc)    en icke‑fångande grupp\nC|a|b|c      alternativ – matcha antingen a, b eller c\nB|Använd “|” (pipe) för att separera alternativ.\n\nH|8. Kommentarer och flaggor\nB|I ECMAScript‑regex kan du lägga till kommentarer med (?# … ) och flaggor efter mönstret, t.ex. /pattern/gim.\nC|(?# this is a comment)\\d+  // match a digit sequence with a comment\nB|Vanliga flaggor:\nC|g – global (hitta alla förekomster)\nC|i – case‑insensitive\nC|m – multiline (^ och $ matcha radens början/slut)\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```\n```"
 
-TAB_CTX_NEW_TAB         = Ny flik
-TAB_CTX_CLOSE_TAB       = Stäng flik
 
-# ── Status bar ────────────────────────────────────────────────────────────────────────────────
-SB_WORDS                = Ord
-SB_CHARS                = Tecken
-SB_SAVED                = Sparad
-SB_UNSAVED              = Osparad
-SB_LN                   = Rad
-SB_COL                  = Kol
-SB_LINES                = Rader
-MENU_SPELLING           = &Stavning
-MENU_SPELL_MARK         = &Markera felstavade ord
-MENU_SPELL_CHECK        = &Stavningskontroll...\tF7
-MENU_SPELL_LANGUAGE     = &Språk
-DLG_SPELL_TITLE         = Stavningskontroll
-DLG_SPELL_MISSPELLED    = Felstavat ord:
-DLG_SPELL_SUGGESTIONS   = Förslag:
-DLG_SPELL_NOTFOUND      = Stavningskontroll klar - inga fel hittades
-BTN_SPELL_IGNORE        = Ignorera
-BTN_SPELL_IGNOREALL     = Ignorera alla
-BTN_SPELL_ADD           = Lägg till i ordlista
-BTN_SPELL_CHANGE        = Ändra
-BTN_SPELL_CHANGEALL     = Ändra alla
 
-# ── Toolbar tooltips ──────────────────────────────────────────────────────────
-TIP_BOLD        = Fetstil  (Ctrl+B)
-TIP_ITALIC      = Kursiv  (Ctrl+I)
-TIP_UNDERLINE   = Understrykning  (Ctrl+U)
-TIP_STRIKE      = Genomstrykning
-TIP_SUBSCRIPT   = Nedsänkt  (t.ex. H₂O)
-TIP_SUPERSCRIPT = Upphöjd  (t.ex. m²)
-TIP_FONTFACE    = Teckensnitt
-TIP_FONTSIZE    = Teckenstorlek (pt)
-TIP_COLOR       = Textfärg
-TIP_HIGHLIGHT   = Markeringsfärg
-TIP_ALIGN_L     = Vänsterjustera
-TIP_ALIGN_C     = Centrera
-TIP_ALIGN_R     = Högerjustera
-TIP_ALIGN_J     = Marginaljustera
-TIP_BULLET      = Punktlista
-TIP_NUMBERED    = Numrerad lista
-TIP_IMAGE       = Infoga bild  (PNG / JPEG)
-TIP_INDENT_IN   = Öka indrag
-TIP_INDENT_OUT  = Minska indrag
-TIP_LINESPACE   = Radavstånd...
-TIP_FIND        = Sök / Ersätt  (Ctrl+F)
-TIP_LINK        = Infoga hyperlänk
-TIP_TABLE       = Tabellegenskaper...
-TIP_TABLE_DROP  = Infoga tabell (välj storlek)
-TIP_HLINE       = Infoga horisontell linje
-TIP_CLEARFMT    = Ta bort all formatering
-TIP_PRINT_BTN   = Skriv ut...  (Ctrl+P)
-TIP_ZOOM        = Zoom
-TIP_WORDWRAP    = Växla radbrytning
-TIP_CASE        = Växla skiftläge  (VERSALER / gemener / Inledande versal)
-TIP_LINENUM     = Växla radnummer
-TIP_PARSPACE    = Styckeavstånd...
-TIP_SAVE        = Spara  (Ctrl+S)
-TIP_SAVE_FTP    = Spara till FTP-server
-TIP_PREVIEW     = Förhandsgranska online.
-TIP_LANG_UI     = Gränssnittsspråk
-TIP_COMMENT     = Kommentera / avkommentera markerade rader
-MENU_GUI_LANG   = Gränssnittsspråk
-MENU_LANGUAGE   = &Språk
-LANG_PLAIN_TEXT = Oformaterad text
-LANG_UI_DANISH    = Danska
-LANG_UI_ENGLISH   = English
-LANG_UI_FINNISH   = Finska
-LANG_UI_FRENCH    = Franska
-LANG_UI_GERMAN    = Tyska
-LANG_UI_SPANISH   = Spanska
-LANG_UI_GREEK     = Grekiska
-LANG_UI_PORTUGUESE = Portugisiska
-LANG_UI_DUTCH      = Nederländska
-LANG_UI_FLEMISH    = Flamländska
-LANG_UI_SAMI       = Nordsamiska
-LANG_UI_SWEDISH   = Svenska
-LANG_UI_UKRAINIAN = Ukrainska
-LANG_UI_ICELANDIC = Íslenska
-LANG_UI_NORWEGIAN = Norsk (bokmål)
-
-# ── Export PDF ───────────────────────────────────────────────────────────────
-FILTER_PDF       = PDF-filer (*.pdf)|*.pdf
-DLG_EXPORT_PDF   = Exportera som PDF
-MSG_PDF_ERR      = Det gick inte att exportera PDF. Kontrollera att "Microsoft Print to PDF" är installerat (Windows 10+).
-
-# ── Find / Replace dialog ─────────────────────────────────────────────────────
-DLG_FIND            = Sök / Ersätt
-DLG_FIND_WHAT       = Sök:
-DLG_REPL_WITH       = Ersätt med:
-BTN_FIND_NEXT       = Sök nästa
-BTN_CLOSE           = Stäng
-BTN_REPLACE         = Ersätt
-BTN_REPLACE_ALL     = Ersätt alla
-CHK_MATCHCASE       = Skilj på versaler och gemener
-CHK_WHOLEWORD       = Hela ord
-CHK_REGEX           = Regex
-CHK_ALL_TABS        = Alla öppna flikar
-CHK_BACKWARDS        = Sök bakåt
-MSG_FIND_NOT_FOUND  = Texten hittades inte.
-MSG_REGEX_ERR       = Ogiltigt reguljärt uttryck.
-
-# ── Insert Link dialog ────────────────────────────────────────────────────────
-DLG_LINK        = Infoga hyperlänk
-DLG_LINK_URL    = Webbadress (URL):
-DLG_LINK_TEXT   = Visningstext:
-LINK_TIP_CTRL   = [Ctrl]+Klicka för att öppna i webbläsaren
-MSG_LINK_BAD_URL = Ange en giltig webbadress.
-
-En webbadress måste börja med ett känt schema som:
-https://  http://  ftp://  mailto:  file://
-
-# ── Insert Table dialog ───────────────────────────────────────────────────────
-DLG_TABLE       = Infoga tabell
-DLG_TABLE_ROWS  = Rader:
-DLG_TABLE_COLS  = Kolumner:
-TABLE_PICKER_FMT  = %d × %d
-TABLE_PICKER_HINT = Välj tabellstorlek
-
-# ── Table Properties dialog ───────────────────────────────────────────────────
-DLG_TABLE_PROPS     = Tabellegenskaper
-DLG_TABLE_INSERT    = Infoga tabell
-TBLP_ROWS           = Rader:
-TBLP_COLS           = Kolumner:
-TBLP_CELLW          = Kolumnbredd:
-TBLP_BORDERW        = Kantlinjebredd:
-TBLP_UNIT_HP        = halvpunkt
-TBLP_UNIT_MM        = mm
-TBLP_UNIT_PT        = pt
-TBLP_PAD_TOP        = Celltoppaddning:
-TBLP_PAD_BOTTOM     = Cellbottenpaddning:
-TBLP_PAD_LEFT       = Cellvänsterpaddning:
-TBLP_PAD_RIGHT      = Cellhögerpaddning:
-TBLP_ROWH           = Radhöjd (0=auto):
-TBLP_ROWH_UNIT      = pt
-TBLP_ALIGN          = Tabelljustering
-TBLP_ALIGN_L        = Vänster
-TBLP_ALIGN_C        = Centrerad
-TBLP_ALIGN_R        = Höger
-BTN_APPLY           = Verkställ
-CTX_TABLE_PROPS     = Tabellegenskaper...
-TBLP_MODE_ALTER     = Ändra aktuell tabell
-TBLP_MODE_NESTED    = Tabell i aktuell cell
-
-# ── Line Spacing dialog ───────────────────────────────────────────────────────
-DLG_LINESPACE    = Radavstånd
-RDO_LINESPACE_S  = Enkelt
-RDO_LINESPACE_15 = 1,5 rader
-RDO_LINESPACE_D  = Dubbelt
-
-# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
-DLG_PARSPACE     = Styckeavstånd
-DLG_PARSPACE_BEF = Avstånd före (pt):
-DLG_PARSPACE_AFT = Avstånd efter (pt):
-
-# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
-SHORTCUTS_TITLE  = Kortkommandon
-SHORTCUTS_COL1   = Kortkommando
-SHORTCUTS_COL2   = Funktion
-SHORTCUTS_COL3   = Beskrivning
-SHORTCUTS_BTN_CLOSE = Stäng
-
-# ── Keyboard Shortcuts — function column ─────────────────────────────────────
-SCF_BOLD          = Fetstil
-SCF_ITALIC        = Kursiv
-SCF_UNDERLINE     = Understrykning
-SCF_UNDO          = Ångra
-SCF_REDO          = Gör om
-SCF_CUT           = Klipp ut
-SCF_COPY          = Kopiera
-SCF_PASTE         = Klistra in
-SCF_SELECT_ALL    = Markera allt
-SCF_SAVE          = Spara
-SCF_SAVE_AS       = Spara som
-SCF_SAVE_ALL      = Spara alla
-SCF_NEW           = Ny
-SCF_OPEN          = Öppna
-SCF_PRINT         = Skriv ut
-SCF_EXPORT_PDF    = Exportera som PDF
-SCF_PREVIEW       = Förhandsgranska online
-SCF_GO_START      = Gå till början
-SCF_GO_END        = Gå till slutet
-SCF_WORD_LEFT     = Ord till vänster
-SCF_WORD_RIGHT    = Ord till höger
-SCF_EXTEND_SEL    = Utöka markering
-SCF_SEL_WORD      = Markera ord
-SCF_INSERT_DATETIME = Infoga datum/tid
-SCF_COL_SEL       = Kolumnmarkering
-SCF_ZOOM_IN       = Zooma in
-SCF_ZOOM_OUT      = Zooma ut
-SCF_RESET_ZOOM    = Återställ zoom
-SCF_EXIT          = Avsluta
-SCF_SHORTCUTS     = Kortkommandon
-SCF_ABOUT         = Om
-SCF_CLOSE_DLG     = Stäng dialog
-SCF_NEW_LINE      = Ny rad
-SCF_INDENT        = Indrag
-SCF_DELETE        = Ta bort
-SCF_BACKSPACE     = Backsteg
-SCF_DEL_WORD_R    = Ta bort ord till höger
-SCF_DEL_WORD_L    = Ta bort ord till vänster
-
-# ── Keyboard Shortcuts — description column ──────────────────────────────────
-SCD_BOLD          = Växla fetstil på markeringen
-SCD_ITALIC        = Växla kursiv på markeringen
-SCD_UNDERLINE     = Växla understrykning på markeringen
-SCD_UNDO          = Ångra den senaste ändringen
-SCD_REDO          = Gör om den senaste ångringen
-SCD_CUT           = Klipp ut markering till Urklipp
-SCD_COPY          = Kopiera markering till Urklipp
-SCD_PASTE         = Klistra in från Urklipp
-SCD_SELECT_ALL    = Markera hela dokumentet
-SCD_SAVE          = Spara den aktuella filen
-SCD_SAVE_AS       = Spara till en ny fil
-SCD_SAVE_ALL      = Spara alla öppna flikar
-SCD_NEW           = Skapa ett nytt tomt dokument
-SCD_OPEN          = Öppna en fil
-SCD_PRINT         = Skriv ut dokumentet
-SCD_EXPORT_PDF    = Exportera dokumentet som PDF
-SCD_PREVIEW       = Ladda upp och förhandsgranska FTP-länkad fil i webbläsaren
-SCD_GO_START      = Flytta markören till dokumentets början
-SCD_GO_END        = Flytta markören till dokumentets slut
-SCD_WORD_LEFT     = Flytta markören ett ord till vänster
-SCD_WORD_RIGHT    = Flytta markören ett ord till höger
-SCD_EXTEND_SEL    = Utöka textmarkering ett tecken
-SCD_SEL_WORD      = Utöka markering ett ord i taget
-SCD_INSERT_DATETIME = Infogar aktuellt datum och tid vid markören
-SCD_COL_SEL       = Starta rektangulär/kolumnmarkering (drag)
-SCD_COL_SEL_KB    = Utöka rektangulär markering med tangentbord
-SCD_ZOOM_IN       = Öka zoomnivån
-SCD_ZOOM_OUT      = Minska zoomnivån
-SCD_RESET_ZOOM    = Återställ zoom till 100 % / standard
-SCD_MNU_NEW       = Arkiv-menyn → Ny
-SCD_MNU_OPEN      = Arkiv-menyn → Öppna
-SCD_MNU_SAVE      = Arkiv-menyn → Spara
-SCD_MNU_SAVE_AS   = Arkiv-menyn → Spara som
-SCD_MNU_PRINT     = Arkiv-menyn → Skriv ut
-SCD_MNU_EXPORT_PDF = Arkiv-menyn → Exportera som PDF
-SCD_EXIT_APP      = Stäng dokumentet (avsluta)
-SCD_MNU_EXIT      = Arkiv-menyn → Avsluta
-SCD_MNU_UNDO      = Redigera-menyn → Ångra
-SCD_MNU_REDO      = Redigera-menyn → Gör om
-SCD_MNU_CUT       = Redigera-menyn → Klipp ut
-SCD_MNU_COPY      = Redigera-menyn → Kopiera
-SCD_MNU_PASTE     = Redigera-menyn → Klistra in
-SCD_MNU_SELECT_ALL = Redigera-menyn → Markera allt
-SCD_MNU_SHORTCUTS = Hjälp-menyn → Kortkommandon
-SCD_MNU_ABOUT     = Hjälp-menyn → Om NSBEdit
-SCD_SHOW_SHORTCUTS = Visa den här listan med kortkommandon
-SCD_CLOSE_DLG     = Stäng den aktuella dialogen
-SCD_NEW_LINE      = Infoga ett nytt stycke
-SCD_INDENT        = Infoga ett tabbtecken
-SCD_DELETE        = Ta bort tecknet till höger
-SCD_BACKSPACE     = Ta bort tecknet till vänster
-SCD_DEL_WORD_R    = Ta bort ord till höger om markören
-SCD_DEL_WORD_L    = Ta bort ord till vänster om markören
-SCF_GOTO_LINE     = Gå till rad
-SCF_BOOKMARK_TOGGLE = Växla bokmärke
-SCF_BOOKMARK_NEXT = Nästa bokmärke
-SCF_BOOKMARK_PREV = Föregående bokmärke
-SCD_GOTO_LINE     = Öppna dialogrutan Gå till rad
-SCD_BOOKMARK_TOGGLE = Sätt eller ta bort bokmärke på den aktuella raden
-SCD_BOOKMARK_NEXT = Hoppa till nästa bokmärke
-SCD_BOOKMARK_PREV = Hoppa till föregående bokmärke
-DLG_GOTO_TITLE    = Gå till rad
-DLG_GOTO_PROMPT   = Radnummer:
-
-# ── About dialog ──────────────────────────────────────────────────────────────
-# Trailing \n produces CR+LF in the RichEdit control.
-ABOUT_TITLE       = Om NSBEdit
-ABOUT_APP_NAME    = NSBEdit\n
-ABOUT_SUBTITLE    = RTF-anteckningsblock och programmeringsredigerare för Windows\n\n
-ABOUT_PUBLISHED   = Publicerad: 
-ABOUT_VERSION     = Version: 
-ABOUT_EDITION     = Utgåva: 
-ABOUT_EDITION_VALUE = 3\n
-ABOUT_SEC_RTF     = ✏  RTF-redigering\n
-ABOUT_DESC_RTF    = •  Fetstil, kursiv, understrykning, genomstrykning, upphöjd/nedsänkt.\n•  Teckensnitt, storlek, färg och markeringsfärg; fullständig styckeformatering.\n•  Tabeller, listor, bilder, hyperlänkar, horisontella linjer.\n•  Exportera som PDF eller HTML 5.\n\n
-ABOUT_SEC_CODE    = ⌨  Kodredigering och syntaxmarkering\n
-ABOUT_DESC_CODE   = •  25 språk: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL med mera.\n•  Automatisk tabbkomplettering, auto-avslutning av par, auto-indrag, smart outdent.\n•  Växla radkommentarer (//, #, --) och HTML-blockkommentarer (<!-- -->).\n\n
-ABOUT_SEC_FTP     = ⚡  FTP och fjärrredigering\n
-ABOUT_DESC_FTP    = •  Spara direkt till FTP- och SFTP-servrar.\n•  Bläddra, byt namn och hantera filer på fjärrservern.\n•  Förhandsgranska i webbläsaren via konfigurerbar URL-rot.\n\n
-ABOUT_LICENSE     = Licensierad under GNU General Public License v2.\n
-ABOUT_BTN_LICENSE = Visa licens
-ABOUT_BTN_CREDITS = Tack till
-ABOUT_BTN_CLOSE   = Stäng
-
-# ── Credits dialog ────────────────────────────────────────────────────────────
-CREDITS_TITLE      = Tack till
-CREDITS_SCINTILLA  = Scintilla är en gratis komponent med öppen källkod för kodredigering, av Neil Hodgson. NSBEdit använder Scintilla för syntaxmarkerad kodredigering.\n\n
-CREDITS_LEXILLA    = Lexilla är ett bibliotek med lexers för Scintilla, också av Neil Hodgson. NSBEdit använder Lexilla för syntaxmarkering av över 20 programmeringsspråk.\n\n
-CREDITS_GDI_PLUS   = GDI+ ingår i Windows platform SDK. NSBEdit använder det för att rendera NSBEdit-logotypen i Om-dialogen.\n
-CREDITS_MINGW      = MinGW-W64-projektet tillhandahåller en komplett körningsmiljö för GCC och LLVM/Clang på Windows. NSBEdit kompileras med MinGW-W64 GCC 15.2.0.\n\n
-CREDITS_SQLITE     = SQLite är en liten, snabb och fristående SQL-databasmotor i det offentliga domänet. NSBEdit använder SQLite-sammanslagningen för att lagra FTP/SFTP-anslutningsprofiler.\n\n
-CREDITS_CURL       = libcurl är ett gratis URL-överföringsbibliotek med öppen källkod av Daniel Stenberg. libssh2 är ett SSH2-protokollbibliotek med öppen källkod. NSBEdit använder båda för FTP- och SFTP-filöverföring vid fjärrredigering.\n\n
-CREDITS_RTF2HTML   = rtf2html är ett RTF-till-HTML-konverteringsbibliotek med öppen källkod av Valentyn Lavrinenko. NSBEdit använder det för att exportera RTF-dokument som HTML5. Licensierat under GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
-CREDITS_OLLAMA     = Ollama är en lokal AI-motor med öppen källkod. NSBEdit använder den för valfria lokala AI-förslag och agentläge.\n\n
-
-# ── Projekt (AI-arbetsyta) ────────────────────────────────────────────────────
-MENU_PROJECT         = Projekt
-PROJECT_ADD          = Lägg till projekt...
-PROJECT_REMOVE       = Ta bort aktuellt projekt
-PROJECT_NONE         = (Inget projekt)
-PROJECT_PICK_TITLE   = Välj projektets rotmapp
-PROJECT_REMOVE_TITLE = Ta bort projekt
-PROJECT_REMOVE_CONFIRM = Ta bort det här projektet från listan?
-
-AI_PROGRESS_READING  = Läser del
-AI_PROGRESS_SYNTH    = Sammanställer svar
-
-# ── FTP / SFTP ────────────────────────────────────────────────────────────────
-MENU_FTP             = FTP
-FTP_ADD_SITE         = Lägg till webbplats...
-FTP_DISCONNECT       = Koppla från
-FTP_CLOSE_CONN_MENU  = Stäng anslutning
-FTP_CLOSE_CONN_PROMPT = Välj en anslutning att stänga:
-FTP_BROWSE           = Bläddra i filer...
-FTP_DLG_SITE_ADD     = Lägg till FTP/SFTP-webbplats
-FTP_DLG_SITE_EDIT    = Redigera FTP/SFTP-webbplats
-FTP_FRIENDLY_NAME    = Visningsnamn:
-FTP_PROTOCOL         = Protokoll:
-FTP_HOST             = Server:
-FTP_PORT             = Port:
-FTP_USERNAME         = Användarnamn:
-FTP_PASSWORD         = Lösenord:
-FTP_REMEMBER_PWD     = Kom ihåg lösenord
-FTP_INITIAL_PATH     = Startmapp:
-FTP_WEB_URL          = Webb-URL (rot):
-FTP_HELP_TITLE       = FTP/SFTP-profil — Fältguide
-FTP_SAVE             = Spara profil
-FTP_DELETE           = Ta bort profil
-MSG_PROFILE_DELETE_CONFIRM = Ta bort profilen «%s»?\n\nDetta går inte att ångra.
-FTP_DLG_BROWSER      = FTP-filbläddrare
-FTP_COL_NAME         = Namn
-FTP_COL_SIZE         = Storlek
-FTP_COL_PERMS        = Behörigheter
-FTP_CTX_OPEN         = Öppna / Hämta
-FTP_CTX_CHMOD        = Behörigheter...
-FTP_CTX_NEW_FILE     = Ny fil...
-FTP_CTX_NEW_DIR      = Ny mapp...
-FTP_INPUT_FILENAME   = Filnamn:
-FTP_INPUT_DIRNAME    = Mappnamn:
-FTP_CTX_DELETE       = Ta bort
-FTP_CTX_RENAME       = Byt namn...
-FTP_INPUT_RENAME     = Nytt namn:
-FTP_DLG_CHMOD        = Ändra behörigheter (chmod)
-FTP_CHMOD_OWNER      = Ägare
-FTP_CHMOD_GROUP      = Grupp
-FTP_CHMOD_OTHER      = Övriga
-FTP_CHMOD_READ       = r
-FTP_CHMOD_WRITE      = w
-FTP_CHMOD_EXEC       = x
-FTP_CHMOD_OCTAL      = Oktal:
-FTP_CHMOD_APPLY      = Verkställ
-FTP_CONN_FAILED      = Anslutningen misslyckades
-FTP_STATUS           = Ansluten:
-FTP_NOT_CONNECTED    = Anslut till en eller flera profiler innan du sparar till FTP.
-FTP_PICK_PROFILE     = Välj en profil att spara till:
-FTP_PW_PROMPT        = Ange lösenord
-FTP_PW_FOR           = Lösenord för
-MSG_FTP_UPLOAD_OK    = Filen sparades och laddades upp.
-MSG_FTP_UPLOAD_FAIL  = Uppladdningen misslyckades.
-MENU_SAVE_TO_FTP     = Spara till FTP...
-MENU_PREVIEW_FTP     = Förhandsgranska online.
-FTP_PREVIEW_LOCKED   = Fliken är låst medan förhandsgranskning är aktiv.
-FTP_PREVIEW_URL      = Förhandsgransknings-URL:
-BTN_OPEN_BROWSER     = Öppna i webbläsaren
-BTN_OPEN_BROWSER_TIP = Genväg: [Enter] för att öppna i webbläsaren.
-
-MENU_RECENT       = Senaste &filer
-MENU_RECENT_EMPTY = (Inga)
-# -- Session restore -------------------------------------------------------
-DLG_SESSION_RESTORE         = Restore Session
-MSG_SESSION_FILE_MISSING    = The file "%s" could not be found on disk.
-
-A cached version from your last session is available.
-BTN_OPEN_CACHED             = Open Cached
-BTN_SKIP                    = Skip
-MSG_SESSION_FILE_GONE       = The file "%s" could not be found and no cached version is available.
-MSG_SESSION_FTP_FAIL        = Could not reconnect to "%s" for the file "%s".
-
-A cached version from your last session is available.
-MSG_SESSION_FTP_FAIL_NC     = Could not reconnect to "%s" for the file "%s".
-
-No cached version is available.
-MSG_SESSION_REMOTE_CHANGED  = The remote file "%s" on server "%s" has been modified by another program since your last session.
-
-Reload the latest version from the server, or keep your locally cached version?
-BTN_RELOAD_REMOTE           = Reload from Server
-BTN_KEEP_LOCAL              = Keep Local
-MSG_SESSION_DISK_CHANGED  = The file "%s" on disk has been modified by another program since your last session.
-
-Reload the latest version from disk, or keep your locally cached version?
-
-// ── Compare Tabs ─────────────────────────────────────────────────────────────
-MENU_COMPARE_TABS         = &Jämför flikar…
-MENU_INSERT_DATETIME      = Infoga &datum/tid	Shift+F5
-DLG_COMPARE_TITLE         = Jämför flikar
-DLG_COMPARE_LABEL_A       = Flik A:
-DLG_COMPARE_LABEL_B       = Flik B:
-BTN_COMPARE               = Jämför
-MSG_COMPARE_SAME          = De två flikarna har identiskt innehåll.
-MSG_COMPARE_SELECT_TWO    = Öppna minst två flikar för att jämföra.
-MSG_COMPARE_TOO_LARGE     = Filerna är för stora för jämförelse (max 3 000 rader vardera).
+# ── Placeholder / TODO entries (replace with final translations) ───────────────────
+# Example:
+# SOME_NEW_KEY            = TODO – translate this string

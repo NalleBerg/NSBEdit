@@ -1,617 +1,132 @@
+
 # NSBEdit locale file — fi_FI (Suomi)
-AI_SUMMARY_LOCALHOST = Ollama on localhost
-AI_SUMMARY_CURRENT = Current:
-AI_ROLE_AGENT = Agent
-AI_ROLE_SUGGEST = Suggest
-AI_SUMMARY_CLOUD = Cloud:
-AI_MODE_CLOUD_SUBSCRIPTION = Cloud subscription
-AI_MODE_LOCAL_ONLY = Local only
-AI_SUMMARY_ACCOUNT = Account:
-AI_SIGNED_IN = signed in
-AI_NOT_SIGNED_IN = not signed in
+
+BTN_AI          = AI
+TIP_AI          = Kysy Ollamalta tekoälyä.
+AI_WAKING_OLLAMA = Yhdistetään Ollamaan, odota hetki!
+AI_THINKING_STATUS = AI miettii... Käytetty aika: %s
+MENU_AI_CHECK_MODELS = Tarkista paikalliset mallit
+AI_MODEL_CHECK_TITLE = Tarkista paikalliset mallit
+AI_MODEL_CHECK_START = Tarkistetaan paikallisia malleja...
+AI_MODEL_CHECK_NO_MODELS = Paikallisia malleja ei löytynyt.
+AI_MODEL_CHECKING_MODEL = Tarkistetaan mallia %s...
+AI_MODEL_DOWNLOADING_MODEL = Ladataan päivitystä mallille %s...
+AI_MODEL_UPTODATE_MODEL = Malli %s on ajan tasalla ✓
+AI_MODEL_CHECK_FAILED_SIMPLE = Mallia %s ei voitu tarkistaa.
+AI_MODEL_CHECK_FAILED = Mallia %s ei voitu tarkistaa:
+AI_MODEL_CHECK_ALL_DONE = Kaikki mallit ovat nyt ajan tasalla! ✓
+AI_MODEL_CHECK_FINISHED_ERROR = Mallien tarkistus päättyi virheeseen.
+AI_SUMMARY_LOCALHOST = Ollama localhostissa
+AI_SUMMARY_CURRENT = Nykyinen:
+AI_ROLE_AGENT = Agentti
+AI_ROLE_SUGGEST = Ehdota
+AI_SUMMARY_CLOUD = Pilvi:
+AI_MODE_CLOUD_SUBSCRIPTION = Pilvipalvelu
+AI_MODE_LOCAL_ONLY = Vain paikallinen
+AI_SUMMARY_ACCOUNT = Tili:
+AI_SIGNED_IN = kirjautunut sisään
+AI_NOT_SIGNED_IN = ei kirjautunut sisään
 AI_WINDOW_TITLE_PREFIX = NSBEdit AI -
-AI_STATUS_CLOUD = Cloud:
-AI_STATUS_SIGNIN = Sign-in:
-AI_STATUS_CURRENT = Current:
-BTN_YES = yes
-BTN_NO = no
+AI_STATUS_CLOUD = Pilvi:
+AI_STATUS_SIGNIN = Kirjaudu sisään:
+AI_STATUS_CURRENT = Nykyinen:
+BTN_YES = kyllä
+BTN_NO = ei
 BTN_SEND = Lähetä
 BTN_STOP = Pysäytä
 BTN_COPY = Kopioi
 BTN_CLEAR = Tyhjennä
-AI_MENU_CLOUD = Cloud
-AI_MENU_LOCAL_ONLY = Local only
-AI_MENU_CLOUD_SUBSCRIPTION = Cloud subscription
-AI_MENU_SIGN_IN = Sign in to Ollama
-AI_MENU_SIGN_OUT = Sign out
+AI_MENU_CLOUD = Pilvi
+AI_MENU_LOCAL_ONLY = Vain paikallinen
+AI_MENU_CLOUD_SUBSCRIPTION = Pilvipalvelu
+AI_MENU_SIGN_IN = Kirjaudu Ollamaan
+AI_MENU_SIGN_OUT = Kirjaudu ulos
 AI_MENU_ADD_API_KEY = Lisää API-avain…
-AI_APIKEY_TITLE = Ollama-pilven API-avain
-AI_APIKEY_PROMPT = Liitä ollama.com API-avaimesi:
-AI_TIP_ADD_API_KEY = Liitä ollama.com API-avaimesi käyttääksesi pilvimalleja suoraan.\nAvaimella sinun EI tarvitse avata selainta kirjautuaksesi.\nAvain tallennetaan salattuna vain tähän tietokoneeseen — sitä ei koskaan jaeta.
-AI_LOG_API_KEY_OK = API-avain hyväksytty — kirjauduttu Ollama-pilveen.
-AI_LOG_API_KEY_BAD = API-avainta ei hyväksytty. Tarkista avain ja yritä uudelleen.
-AI_LOG_API_KEY_CLEARED = API-avain tyhjennetty.
-AI_MENU_OPEN_PROVIDER = Open Ollama web site
-AI_MENU_SEND_PROMPT = Send prompt
-AI_MENU_CLEAR_LOG = Clear log
-AI_MENU_COPY_ANSWER = Copy answer
-AI_MENU_ABOUT_WINDOW = About this window
-AI_MENU_MODEL = Model
-AI_MENU_LOG = Log
-AI_MENU_HELP = Help
-AI_LOG_USER_PREFIX = You:
-AI_LOG_CLOUD_NEEDS_SIGNIN = Cloud mode is selected, but you are not signed in yet.
-# ── Tekoälypilvi ──────────────────────────────────────────
+AI_APIKEY_TITLE = Ollama pilvipalvelun API-avain
+AI_APIKEY_PROMPT = Syötä ollama.com API-avaimesi:
+AI_TIP_ADD_API_KEY = Syötä ollama.com API-avaimesi käyttääksesi pilvimalleja suoraan.\nAPI-avaimeen ei tarvitse avata selainta kirjautuaksesi sisään.\nAvain tallentuu salattuna vain tälle tietokoneelle — sitä ei koskaan jaeta.
+AI_LOG_API_KEY_OK = API-avain hyväksytty — kirjautunut pilvipalveluun.
+AI_LOG_API_KEY_BAD = API-avaimea ei hyväksytty. Tarkista avain ja yritä uudelleen.
+AI_LOG_API_KEY_CLEARED = API-avaimeen tyhjennetty.
+AI_MENU_OPEN_PROVIDER = Avaa Ollama-verkkosivu
+AI_MENU_SEND_PROMPT = Lähetä kehote
+AI_MENU_CLEAR_LOG = Tyhjennä loki
+AI_MENU_COPY_ANSWER = Kopioi vastaus
+AI_MENU_ABOUT_WINDOW = Tietoja tästä ikkunasta
+AI_MENU_MODEL = Malli
+AI_MENU_LOG = Loki
+AI_MENU_HELP = Ohje
+AI_LOG_USER_PREFIX = Sinä:
+AI_LOG_CLOUD_NEEDS_SIGNIN = Pilvitila on valittu, mutta et ole vielä kirjautunut sisään.
+# ── AI-sky ────────────────────────────────────────────────
 AI_LOG_CLOUD_MODEL_SELECTED = Pilvimalli valittu:
-AI_LOG_CLOUD_SENDING = Lähetetään Ollama-pilveen …
+AI_LOG_CLOUD_SENDING = Lähetetään Ollama-pilveen…
 AI_MENU_LOCAL_HEADER = Paikallinen:
 AI_MENU_CLOUD_HEADER = Pilvi
-AI_LOG_OPENED_SIGNUP = Opened Ollama sign-in / subscription page.
-AI_LOG_CLOUD_NOT_USED_YET = Cloud mode is selected; local Ollama is not used in this path yet.
-AI_LOG_WINDOW_OPENED = AI window opened.
-AI_THINKING_STATUS = AI is thinking... Time used: %s
-AI_LOG_CLOUD_SUGGEST_SELECTED = Cloud suggestion mode selected.
-AI_LOG_CLOUD_AGENT_SELECTED = Cloud agent mode selected.
-AI_LOG_MODEL_SWITCHED_SUGGESTION = Model switched to suggestion mode.
-AI_LOG_MODEL_SWITCHED_AGENT = Model switched to agent mode.
-AI_LOG_CLOUD_LOCAL_ONLY = Cloud mode switched to local only.
-AI_LOG_CLOUD_SUB_SELECTED = Cloud subscription mode selected.
-AI_LOG_SIGNED_OUT_LOCALLY = Signed out locally.
-AI_LOG_ABOUT_WINDOW = This is the AI shell window. Full Ollama chat wiring will follow.
-AI_LOG_RETRY_FALLBACK = Ollama: selected model not found, retrying with fallback model.
+AI_LOG_OPENED_SIGNUP = Avattiin Ollama kirjautumis- / tilaus-sivu.
+AI_LOG_CLOUD_NOT_USED_YET = Pilvitila on valittu; paikallista Ollamaa ei käytetä vielä tässä polussa.
+AI_LOG_WINDOW_OPENED = AI-ikkuna avattu.
+AI_LOG_CLOUD_SUGGEST_SELECTED = Pilvi-ehdotustila valittu.
+AI_LOG_CLOUD_AGENT_SELECTED = Pilvi-agenttitila valittu.
+AI_LOG_MODEL_SWITCHED_SUGGESTION = Malli vaihdettu ehdotustilaan.
+AI_LOG_MODEL_SWITCHED_AGENT = Malli vaihdettu agenttitilaan.
+AI_LOG_CLOUD_LOCAL_ONLY = Pilvitila vaihdettu vain paikalliseen tilaan.
+AI_LOG_CLOUD_SUB_SELECTED = Pilvipalvelutila valittu.
+AI_LOG_SIGNED_OUT_LOCALLY = Kirjattu ulos paikallisesti.
+AI_LOG_ABOUT_WINDOW = Tämä on AI-shell-ikkuna. Täysin Ollama-chat-yhteydet seuraavat.
+AI_LOG_RETRY_FALLBACK = Ollama: valittua mallia ei löytynyt, yritetään uudelleen varavalmiudella.
 AI_LOG_OLLAMA_PREFIX = Ollama:
-AI_LOG_NO_RESPONSE = No response.
-AI_LOG_STOPPED = Pyyntö pysäytetty. Lisää tietoja ja lähetä uudelleen.
-AI_LOG_RENDER_FAILED = Ollama: response rendering failed unexpectedly.
-AI_COPY_CODE_LABEL = Copy code
+AI_LOG_NO_RESPONSE = Ei vastausta.
+AI_LOG_STOPPED = Kysely pysäytetty. Lisää tarkempia tietoja ja lähetä uudelleen.
+AI_LOG_RENDER_FAILED = Ollama: vastauksen näyttö epäonnistui odottamattomasti.
+AI_COPY_CODE_LABEL = Kopioi koodi
+
+# NSBEdit locale file — fi_FI (Suomi)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
 
 # ── Application ──────────────────────────────────────────────────────────────
 APP_NAME = NSBEdit
-UNTITLED = Nimetön
+UNTITLED = Nimeämätön
 
 # ── Menus ─────────────────────────────────────────────────────────────────────
-MENU_FILE       = &Tiedosto
+MENU_FILE       = &Tiedostot
 MENU_NEW        = &Uusi\tCtrl+N
 MENU_OPEN       = &Avaa...\tCtrl+O
 MENU_SAVE       = &Tallenna\tCtrl+S
 MENU_SAVEAS     = Tallenna &nimellä...\tCtrl+Shift+S
 MENU_SAVE_ALL   = Tallenna &kaikki\tCtrl+Shift+A
 MENU_PRINT      = &Tulosta...\tCtrl+P
-MENU_EXPORT_PDF = &Vie PDF-tiedostona...\tCtrl+Shift+P
+MENU_EXPORT_PDF = Eks&portoi PDF:nä...\tCtrl+Shift+P
 MENU_EXIT       = &Lopeta	Ctrl+W
 MENU_EDIT         = &Muokkaa
 MENU_UNDO         = &Kumoa\tCtrl+Z
-MENU_REDO         = &Tee uudelleen\tCtrl+Y
+MENU_REDO         = &Toista\tCtrl+Y
 MENU_CUT          = &Leikkaa\tCtrl+X
 MENU_COPY         = &Kopioi\tCtrl+C
 MENU_PASTE        = &Liitä\tCtrl+V
 MENU_SELECTALL    = Valitse &kaikki\tCtrl+A
-MENU_FIND         = &Etsi / Korvaa...	Ctrl+F
-MENU_GOTO         = Siirry &riville...\tCtrl+G
-MENU_BOOKMARK     = Vaihda &kirjanmerkki\tF2
-MENU_BOOKMARK_NEXT = Siirry &kirjanmerkkiin\tCtrl+F2
+MENU_FIND         = &Etsi / Korvaa...\tCtrl+F
+MENU_GOTO         = Siirry riviin...\tCtrl+G
+MENU_BOOKMARK     = Vaihda kirjanmerkki\tF2
+MENU_BOOKMARK_NEXT = Siirry kirjanmerkkiin\tCtrl+F2
 MENU_PREFS        = &Asetukset...
 PREF_TITLE        = Asetukset
 PREF_SEC_APPEARANCE = Ulkoasu
 PREF_DARK_MODE         = Tumma teema
 PREF_LIGHT_MODE        = Vaalea teema
 PREF_SEC_EDITOR        = Editorin tausta
-PREF_EDITOR_LIGHT_BG   = Vaalea tausta pelkälle tekstille ja koodille
-PREF_EDITOR_DARK_BG    = Tumma tausta pelkälle tekstille ja koodille
+PREF_EDITOR_LIGHT_BG   = Vaalea tausta pelkästä tekstillä ja koodilla
+PREF_EDITOR_DARK_BG    = Tumma tausta pelkästä tekstillä ja koodilla
 MENU_HELP       = &Ohje
 MENU_SHORTCUTS  = &Pikanäppäimet...\tF1
-MENU_ABOUT      = &Tietoja NSBEdit
-BTN_AI          = Tekoäly
+MENU_ABOUT      = &Tietoja NSBEditistä
+BTN_AI          = AI
 TIP_AI          = Kysy Ollamalta tekoälyä.
-REGEX_GUIDE_TITLE = Regex-opas
+REGEX_GUIDE_TITLE = Säännöllisten lausekkeiden ohje
 REGEX_GUIDE_LABEL = Sisältää
-REGEX_GUIDE_NOTE = Ctrl+F kohdistaa hakukenttään. Haku päivittyy kirjoittaessa.
-REGEX_GUIDE_SEARCH = Hae oppaasta
+REGEX_GUIDE_NOTE = Ctrl+F keskittää hakukenttään. Haku päivittyy kirjoittaessa.
+REGEX_GUIDE_SEARCH = Etsi ohjeesta
 REGEX_GUIDE_CLEAR = Tyhjennä haku
-REGEX_GUIDE_TEXT = T|Regex-viiteopas\nS|Pieni oppimisopas NSBEditin ECMAScript-regex-hakuun\nB|Hae oppaasta tavallisella tekstillä. Kirjoita yläpuolella olevaan kenttään tai siirry aiheeseen painamalla Ctrl+F.\nB|Esimerkit pysyvät riittävän lyhyinä muistettaviksi ja riittävän tarkkoina käytettäviksi.\n\nH|1. Mitä regex tekee\nB|Säännöllinen lauseke on tiivis kuvaus tekstistä, jonka haluat löytää.\nB|Yhden tarkan merkkijonon sijaan regex voi löytää monia siihen liittyviä merkkijonoja.\nB|NSBEdit käyttää std::wregexia ECMAScript-syntaksilla, joten alla olevat esimerkit noudattavat sitä tyyliä.\nC|error\nB|Se löytää sanan error kaikkialta, missä se esiintyy.\n\nH|2. Kirjaimelliset merkit ja escapet\nB|Useimmat kirjaimet ja numerot tarkoittavat itseään.\nB|Jotkin välimerkit ovat erikoisia, joten ne täytyy escapeata kenoviivalla.\nC|\\.    kirjaimellinen piste\nC|\\?    kirjaimellinen kysymysmerkki\nC|\\(    kirjaimellinen auki oleva sulku\nC|\\\\   kirjaimellinen kenoviiva\nB|Jos haluat löytää tarkan tekstin C:\\Temp, muista tuplata jokainen kenoviiva regexissä.\n\nH|3. Merkkiluokat\nB|Merkkiluokat kuvaavat yhden merkin joukosta.\nC|[abc]     yksi merkeistä a, b tai c\nC|[^abc]    kaikki paitsi a, b tai c\nC|[a-z]     vaihteluväli\nC|[0-9A-F]  heksadesimaalit\nC|[._-]     muutamia välimerkkejä\nB|Luokan sisällä viiva tarkoittaa yleensä vaihteluväliä, joten aseta se alkuun tai loppuun, jos haluat kirjaimellisen viivan.\nC|[-_.]     kirjaimellinen viiva, alaviiva tai piste\n\nH|4. Lyhenneluokat\nB|Lyhenneluokat ovat nopein tapa kuvata tavallisia tekstimuotoja.\nC|\\d    numero\nC|\\D    kaikki mikä ei ole numero\nC|\\w    kirjain, numero tai alaviiva\nC|\\W    kaikki mikä ei ole sanamerkki\nC|\\s    tyhjä tila\nC|\\S    kaikki mikä ei ole tyhjä tila\nC|.      mikä tahansa merkki paitsi rivinvaihto\nB|Piste on laaja; lyhenneluokka on yleensä tarkempi ja turvallisempi.\n\nH|5. Ankkurit ja rajat\nB|Ankkurit eivät vastaa merkkejä. Ne vastaavat paikkoja.\nC|^      haetun tekstin alku\nC|$      haetun tekstin loppu\nC|\\b    sanan raja\nC|\\B    ei sanan raja\nB|Käytä ankkureita, kun haluat kokonaisen rivin, sanan alussa tai sanan lopussa.\nC|^TODO\nB|Se löytää rivit tai merkkijonot, jotka alkavat TODO:lla.\nC|\\bfix\\b\nB|Se löytää sanan fix, mutta ei sanoja kuten prefix tai fixture.\n\nH|6. Toisto\nB|Määrääjät kertovat, kuinka monta kertaa edellinen token voi toistua.\nC|*      nolla tai useampi\nC|+      yksi tai useampi\nC|?      valinnainen / nolla tai yksi\nC|{n}     täsmälleen n kertaa\nC|{n,}    n kertaa tai useammin\nC|{n,m}   n:n ja m:n kerran välillä\nB|Määrääjät ovat oletuksena ahneita, joten ne yrittävät syödä mahdollisimman paljon ennen backtrackingia.\nC|\\d+\nB|Se löytää yhden tai useamman numeron.\nC|\\s+\nB|Se löytää yhden tai useamman väli­merkin.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Tämä on tavallinen tunnistemalli: yksi aloitusmerkki, sitten nolla tai useampi jatkomerkki.\n\nH|7. Ryhmittely ja vaihtoehdot\nB|Sulkeet ryhmittävät kuvion osia, jotta voit toistaa niitä tai muistaa ne.\nC|(abc)       sieppaa ryhmän\nC|(?:abc)     ryhmä ilman sieppausta\nC|a|b|c       osuu vasempaan tai oikeaan\nB|Siepatut ryhmät numeroidaan vasemmalta oikealle.\nC|(first)-(second)\nB|Ensimmäinen ryhmä muuttuu korvauksissa arvoksi $1, toinen arvoksi $2.\nC|(cat|dog|fox)\nB|Vaihtoehdot ovat hyödyllisiä, kun kentässä voi olla vain muutama tunnettu sana.\nC|(?:https?|ftp)://\nB|Ei-sieppaava ryhmä säilyttää rakenteen mutta ei vie sieppauspaikkaa.\n\nH|8. Käytännölliset kuviot\nB|Nämä esimerkit ovat tarpeeksi pieniä muokattaviksi ja tarpeeksi suuria ollakseen hyödyllisiä.\nC|TODO|FIXME\nB|Löytää kumman tahansa tunnisteen muistiinpanoista, kommenteista tai lähdetiedostoista.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Yksinkertainen sähköpostia muistuttava kuvio. Se ei ole täydellinen RFC-validointi, mutta siitä on hyötyä nopeissa hauissa.\nC|\"[^\"]*\"\nB|Löytää lainausmerkkien sisällä olevan tekstin yhdeltä riviltä.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Löytää ISO-tyylisen päivämäärän kuten 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Löytää yksinkertaiset tunnistetta muistuttavat nimet, jotka alkavat isolla kirjaimella.\nC|^\\s*$\nB|Löytää tyhjät rivit tai rivit, joissa on vain välilyöntejä.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Löytää heksamuotoiset luvut kuten 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Löytää yksinkertaisen kokonais- tai desimaaliluvun.\n\nH|9. Korvausideoita\nB|Kun korvaat, siepatut ryhmät antavat sinun käyttää löydettyjä osia uudelleen.\nC|Etsi:     ([A-Za-z]+) ([A-Za-z]+)\nC|Korvaa:   $2, $1\nB|Se vaihtaa kahden sanan paikat, joten John Smith muuttuu muotoon Smith, John.\nC|Etsi:     (\\d{4})-(\\d{2})-(\\d{2})\nC|Korvaa:   $3/$2/$1\nB|Se muuttaa 2026-06-15 muotoon 15/06/2026.\nC|Etsi:     ^(.*)$\nC|Korvaa:   [$1]\nB|Se laittaa jokaisen kokonaisen rivin hakasulkeisiin.\n\nH|10. Tavalliset virheet\nB|Useimmat virheet ovat pieniä: puuttuva escape, ahne määrääjä tai ankkuri väärässä kohdassa.\nC|.txt\nB|Tämä ei ole kirjaimellinen piste ja sitten t x t; piste tarkoittaa mitä tahansa merkkiä. Käytä \\.txt, jos haluat kirjaimellisen päätteen.\nC|(abc\nB|Sulkeutumattomat ryhmät ovat syntaksivirhe.\nC|foo\\bar\nB|Yksi kenoviiva aloittaa yleensä escapen, joten tuplaa se, kun tarvitset kirjaimellisen.\nC|^word$\nB|Tämä vastaa vain koko riviä, joka sisältää täsmälleen wordin.\n\nH|11. Kuinka ajatella haettaessa\nB|Kysy itseltäsi kolme asiaa: mitä pitää olla mukana, mikä saa vaihdella ja missä osuman pitää päättyä?\nB|Jos vastaus on "mikä tahansa merkki", käytä luokkaa tai pistettä. Jos vastaus on "alku tai loppu", käytä ankkureita.\nB|Jos vastaus on "toista tämä osa", laita se ryhmään ennen määrääjän lisäämistä.\nB|Jos olet epävarma, hae ensin pienemmällä kuviolla ja kasvata sitä pala kerrallaan.\n\nH|12. Huomautuksia NSBEditiin\nB|Editorin regex-haku käyttää standardikirjastoa, joten kannattaa suosia siirrettävää ECMAScript-syntaksia.\nB|Tämän oppaan "Sisältää"-haku on kirjaimellinen eikä regex-pohjainen, joten voit hypätä tavallisilla sanoilla tai fragmenteilla.\nB|Jos haluat nopeasti aiheeseen, paina Ctrl+F ja kirjoita sana haluamastasi osiosta.\nB|Hakurivi on tarkoituksella yksinkertainen: ei dialogia, ei regex-tilaa, vain mahdollisimman nopea aiheenhakija.\n\nH|13. Kokeile näitä hakuja\nC|digit\nC|capture\nC|boundary\nC|replace\nC|greedy\nC|anchor\nC|literal\nC|escape\nC|pattern
-
-# ── Convert menu ─────────────────────────────────────────────────────────────
-MENU_CONVERT        = M&uunna
-MENU_CONV_TO_PLAIN  = Poista muotoilu — tallenna pelkkänä tekstinä
-MENU_CONV_TO_RTF    = Lisää &muotoilu — luo RTF
-MENU_CONV_TO_HTML5  = Vie &HTML 5 -tiedostona...
-MSG_HTML5_ERR       = HTML-muunnos epäonnistui.
-MSG_HTML5_SAVE_ERR  = HTML-tiedoston kirjoittaminen epäonnistui.
-DLG_SAVE_HTML5      = Tallenna HTML 5 -tiedostona
-MENU_ENCODING       = &Merkistö
-MENU_ENC_UTF8       = UTF-8
-MENU_ENC_UTF16LE    = UTF-16 LE
-MENU_ENC_ANSI       = ANSI (järjestelmä)
-MENU_ENC_WIN1252    = Windows-1252 (Länsi-Eurooppa)
-MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
-
-# ── Encoding labels shown in status bar ──────────────────────────────────────
-ENC_RICHTEXT    = RTF-teksti
-ENC_UTF8        = UTF-8
-ENC_UTF16LE     = UTF-16 LE
-ENC_ANSI        = ANSI
-ENC_WIN1252     = Windows-1252
-ENC_ISO8859_1   = ISO 8859-1
-ENC_UNKNOWN     = Pelkkä teksti
-
-# ── Convert messages ─────────────────────────────────────────────────────────
-MSG_CONV_LOSSY  = RTF-muotoilun poistaminen hävittää kaiken lihavoidun, kursivoidun, värit ja muut tekstiefektit.\n\nJatketaanko ja tallennetaanko pelkkänä tekstinä?
-MSG_ENC_LOSSY   = Joitakin merkkejä ei ehkä voi esittää valitussa merkistössä, ja ne korvataan merkillä «?» tai vastaavalla.\n\nJatketaanko?
-MSG_DEL_PLAIN_FILE = Asiakirja on tallennettu RTF-tiedostona.\n\nPoistetaanko alkuperäinen pelkkä tekstitiedosto?
-
-# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
-FILTER_OPEN   = Kaikki tuetut tiedostot|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.sh;*.bash;*.zsh;*.ksh;*.csh;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-tiedostot (*.rtf)|*.rtf|Tekstitiedostot (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Asetukset (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Shell / Bash (*.sh)|*.sh;*.bash;*.zsh;*.ksh;*.csh;*|Batch (*.bat;*.cmd)|*.bat;*.cmd|Kaikki tiedostot (*.*)|*.*
-FILTER_SAVEAS = RTF-tiedostot (*.rtf)|*.rtf|Tekstitiedostot (*.txt)|*.txt|Kaikki tiedostot (*.*)|*.*
-FILTER_IMAGE  = Kuvatiedostot|*.png;*.jpg;*.jpeg|PNG-tiedostot (*.png)|*.png|JPEG-tiedostot (*.jpg;*.jpeg)|*.jpg;*.jpeg
-
-# ── File-dialog titles ────────────────────────────────────────────────────────
-DLG_OPEN   = Avaa
-DLG_SAVEAS = Tallenna nimellä
-DLG_IMAGE  = Lisää kuva
-
-# ── Message boxes ─────────────────────────────────────────────────────────────
-MSG_OPEN_ERR      = Tiedoston avaaminen epäonnistui.
-MSG_SAVE_ERR      = Tiedoston tallentaminen epäonnistui.
-MSG_HAS_FORMATTING = Tämä asiakirja sisältää muotoilua (lihavointi, värit, fonttikoot jne.), jota ei voi tallentaa pelkkänä tekstitiedostona.\n\nNapsauta Kyllä tallentaaksesi pelkkänä tekstinä ja poistaaksesi kaiken muotoilun.\nNapsauta Ei tallentaaksesi RTF-muodossa (tiedoston pääte muuttuu .rtf:ksi).\nNapsauta Peruuta palataksesi tallentamatta.
-MSG_IMG_OPEN_ERR  = Kuvatiedoston avaaminen epäonnistui.
-MSG_IMG_FMT_ERR   = Muoto ei ole tuettu. Käytä PNG- tai JPEG-tiedostoa.
-MSG_SAVE_PROMPT   = Tallennetaanko muutokset tiedostoon "%s"?
-DLG_SAVE_CHANGES  = Tallenna muutokset
-BTN_SAVE          = Tallenna
-BTN_DONT_SAVE     = Älä tallenna
-BTN_CANCEL        = Peruuta
-DLG_DISCARD_CHANGES = Hylkää muutokset
-MSG_DISCARD_AND_RELOAD = Tässä tiedostossa on tallentamattomia muutoksia.\n\nHylätäänkö ne ja ladataanko tiedosto uudelleen?
-BTN_OK            = OK
-BTN_CONTINUE      = Jatka
-DLG_CONV_TO_PLAIN = Poista muotoilu
-
-DLG_FILE_CHANGED        = Tiedosto on muuttunut levyllä
-MSG_FILE_CHANGED_PROMPT = "%s" muutettiin toisessa ohjelmassa, kun NSBEdit ei ollut aktiivinen.\n\nLadataanko tiedosto levyltä uudelleen?
-BTN_RELOAD              = Lataa uudelleen
-BTN_KEEP                = Säilytä nykyinen
-
-TAB_CTX_NEW_TAB         = Uusi välilehti
-TAB_CTX_CLOSE_TAB       = Sulje välilehti
-
-# ── Status bar ────────────────────────────────────────────────────────────────────────────────
-SB_WORDS                = Sanoja
-SB_CHARS                = Merkkejä
-SB_SAVED                = Tallennettu
-SB_UNSAVED              = Tallentamaton
-SB_LN                   = Rv
-SB_COL                  = Sar
-SB_LINES                = Rivit
-MENU_SPELLING           = &Oikoluku
-MENU_SPELL_MARK         = &Merkitse kirjoitusvirheet
-MENU_SPELL_CHECK        = &Oikoluku...\tF7
-MENU_SPELL_LANGUAGE     = &Kieli
-DLG_SPELL_TITLE         = Oikoluku
-DLG_SPELL_MISSPELLED    = Virheellinen sana:
-DLG_SPELL_SUGGESTIONS   = Ehdotukset:
-DLG_SPELL_NOTFOUND      = Oikoluku valmis - ei virheitä
-BTN_SPELL_IGNORE        = Ohita
-BTN_SPELL_IGNOREALL     = Ohita kaikki
-BTN_SPELL_ADD           = Lisää sanakirjaan
-BTN_SPELL_CHANGE        = Muuta
-BTN_SPELL_CHANGEALL     = Muuta kaikki
-
-# ── Toolbar tooltips ──────────────────────────────────────────────────────────
-TIP_BOLD        = Lihavointi  (Ctrl+B)
-TIP_ITALIC      = Kursivointi  (Ctrl+I)
-TIP_UNDERLINE   = Alleviivaus  (Ctrl+U)
-TIP_STRIKE      = Yliviivaus
-TIP_SUBSCRIPT   = Alaindeksi  (esim. H₂O)
-TIP_SUPERSCRIPT = Yläindeksi  (esim. m²)
-TIP_FONTFACE    = Fontti
-TIP_FONTSIZE    = Fonttikoko (pt)
-TIP_COLOR       = Tekstin väri
-TIP_HIGHLIGHT   = Korostusväri
-TIP_ALIGN_L     = Tasaa vasemmalle
-TIP_ALIGN_C     = Keskitä
-TIP_ALIGN_R     = Tasaa oikealle
-TIP_ALIGN_J     = Tasaa molemmille reunoille
-TIP_BULLET      = Luettelomerkkiluettelo
-TIP_NUMBERED    = Numeroitu luettelo
-TIP_IMAGE       = Lisää kuva  (PNG / JPEG)
-TIP_INDENT_IN   = Suurenna sisennystä
-TIP_INDENT_OUT  = Pienennä sisennystä
-TIP_LINESPACE   = Riviväli...
-TIP_FIND        = Etsi / Korvaa  (Ctrl+F)
-TIP_LINK        = Lisää hyperlinkki
-TIP_TABLE       = Taulukon ominaisuudet...
-TIP_TABLE_DROP  = Lisää taulukko (valitse koko)
-TIP_HLINE       = Lisää vaakaviiva
-TIP_CLEARFMT    = Poista kaikki muotoilu
-TIP_PRINT_BTN   = Tulosta...  (Ctrl+P)
-TIP_ZOOM        = Zoomaus
-TIP_WORDWRAP    = Vaihda tekstin rivittymistä
-TIP_CASE        = Vaihda kirjainkokoa  (ISOT / pienet / Alkukirjain isolla)
-TIP_LINENUM     = Vaihda rivinumerointia
-TIP_PARSPACE    = Kappaleen välistys...
-TIP_SAVE        = Tallenna  (Ctrl+S)
-TIP_SAVE_FTP    = Tallenna FTP-palvelimelle
-TIP_PREVIEW     = Esikatsele verkossa.
-TIP_LANG_UI     = Käyttöliittymän kieli
-TIP_COMMENT     = Kommentoi / poista kommentti valituilla riveillä
-MENU_GUI_LANG   = Käyttöliittymän kieli
-MENU_LANGUAGE   = &Kieli
-LANG_PLAIN_TEXT = Pelkkä teksti
-LANG_UI_DANISH    = Dansk
-LANG_UI_ENGLISH   = English
-LANG_UI_FINNISH   = Suomi
-LANG_UI_FRENCH    = Ranska
-LANG_UI_GERMAN    = Saksa
-LANG_UI_SPANISH   = Espanja
-LANG_UI_GREEK     = Kreikka
-LANG_UI_PORTUGUESE = Portugali
-LANG_UI_DUTCH      = Hollanti
-LANG_UI_FLEMISH    = Flaami
-LANG_UI_SAMI       = Pohjoissaame
-LANG_UI_SWEDISH   = Ruotsi
-LANG_UI_UKRAINIAN = Ukraina
-LANG_UI_ICELANDIC = Íslenska
-LANG_UI_NORWEGIAN = Norsk (bokmål)
-
-# ── Export PDF ───────────────────────────────────────────────────────────────
-FILTER_PDF       = PDF-tiedostot (*.pdf)|*.pdf
-DLG_EXPORT_PDF   = Vie PDF-tiedostona
-MSG_PDF_ERR      = PDF-vienti epäonnistui. Varmista, että "Microsoft Print to PDF" on asennettu (Windows 10+).
-
-# ── Find / Replace dialog ─────────────────────────────────────────────────────
-DLG_FIND            = Etsi / Korvaa
-DLG_FIND_WHAT       = Etsi:
-DLG_REPL_WITH       = Korvaa:
-BTN_FIND_NEXT       = Etsi seuraava
-BTN_CLOSE           = Sulje
-BTN_REPLACE         = Korvaa
-BTN_REPLACE_ALL     = Korvaa kaikki
-CHK_MATCHCASE       = Kirjainkoko erotellaan
-CHK_WHOLEWORD       = Koko sana
-CHK_REGEX           = Regex
-CHK_ALL_TABS        = Kaikki avoimet välilehdet
-CHK_BACKWARDS        = Hae taaksepäin
-MSG_FIND_NOT_FOUND  = Tekstiä ei löydy.
-MSG_REGEX_ERR       = Virheellinen säännöllinen lauseke.
-
-# ── Insert Link dialog ────────────────────────────────────────────────────────
-DLG_LINK        = Lisää hyperlinkki
-DLG_LINK_URL    = Verkko-osoite (URL):
-DLG_LINK_TEXT   = Näytettävä teksti:
-LINK_TIP_CTRL   = [Ctrl]+Napsauta avataksesi selaimessa
-MSG_LINK_BAD_URL = Anna kelvollinen URL-osoite.
-
-URL-osoitteen on alettava tunnetulla skeemalla, esim.:
-https://  http://  ftp://  mailto:  file://
-
-# ── Insert Table dialog ───────────────────────────────────────────────────────
-DLG_TABLE       = Lisää taulukko
-DLG_TABLE_ROWS  = Rivejä:
-DLG_TABLE_COLS  = Sarakkeita:
-TABLE_PICKER_FMT  = %d × %d
-TABLE_PICKER_HINT = Valitse taulukon koko
-
-# ── Table Properties dialog ───────────────────────────────────────────────────
-DLG_TABLE_PROPS     = Taulukon ominaisuudet
-DLG_TABLE_INSERT    = Lisää taulukko
-TBLP_ROWS           = Rivejä:
-TBLP_COLS           = Sarakkeita:
-TBLP_CELLW          = Sarakkeen leveys:
-TBLP_BORDERW        = Reunuksen leveys:
-TBLP_UNIT_HP        = puolipiste
-TBLP_UNIT_MM        = mm
-TBLP_UNIT_PT        = pt
-TBLP_PAD_TOP        = Solun pehmuste ylhäällä:
-TBLP_PAD_BOTTOM     = Solun pehmuste alhaalla:
-TBLP_PAD_LEFT       = Solun pehmuste vasemmalla:
-TBLP_PAD_RIGHT      = Solun pehmuste oikealla:
-TBLP_ROWH           = Rivin korkeus (0=auto):
-TBLP_ROWH_UNIT      = pt
-TBLP_ALIGN          = Taulukon tasaus
-TBLP_ALIGN_L        = Vasen
-TBLP_ALIGN_C        = Keskitetty
-TBLP_ALIGN_R        = Oikea
-BTN_APPLY           = Käytä
-CTX_TABLE_PROPS     = Taulukon ominaisuudet...
-TBLP_MODE_ALTER     = Muokkaa nykyistä taulukkoa
-TBLP_MODE_NESTED    = Taulukko nykyisessä solussa
-
-# ── Line Spacing dialog ───────────────────────────────────────────────────────
-DLG_LINESPACE    = Riviväli
-RDO_LINESPACE_S  = Yksinkertainen
-RDO_LINESPACE_15 = 1,5-kertainen
-RDO_LINESPACE_D  = Kaksinkertainen
-
-# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
-DLG_PARSPACE     = Kappaleen välistys
-DLG_PARSPACE_BEF = Välistys ennen (pt):
-DLG_PARSPACE_AFT = Välistys jälkeen (pt):
-
-# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
-SHORTCUTS_TITLE  = Pikanäppäimet
-SHORTCUTS_COL1   = Pikanäppäin
-SHORTCUTS_COL2   = Toiminto
-SHORTCUTS_COL3   = Kuvaus
-SHORTCUTS_BTN_CLOSE = Sulje
-
-# ── Keyboard Shortcuts — function column ─────────────────────────────────────
-SCF_BOLD          = Lihavointi
-SCF_ITALIC        = Kursivointi
-SCF_UNDERLINE     = Alleviivaus
-SCF_UNDO          = Kumoa
-SCF_REDO          = Tee uudelleen
-SCF_CUT           = Leikkaa
-SCF_COPY          = Kopioi
-SCF_PASTE         = Liitä
-SCF_SELECT_ALL    = Valitse kaikki
-SCF_SAVE          = Tallenna
-SCF_SAVE_AS       = Tallenna nimellä
-SCF_SAVE_ALL      = Tallenna kaikki
-SCF_NEW           = Uusi
-SCF_OPEN          = Avaa
-SCF_PRINT         = Tulosta
-SCF_EXPORT_PDF    = Vie PDF-tiedostona
-SCF_PREVIEW       = Esikatsele verkossa
-SCF_GO_START      = Siirry alkuun
-SCF_GO_END        = Siirry loppuun
-SCF_WORD_LEFT     = Sana vasemmalle
-SCF_WORD_RIGHT    = Sana oikealle
-SCF_EXTEND_SEL    = Laajenna valintaa
-SCF_SEL_WORD      = Valitse sana
-SCF_INSERT_DATETIME = Lisää päivämäärä/aika
-SCF_COL_SEL       = Sarakevalinta
-SCF_ZOOM_IN       = Lähennä
-SCF_ZOOM_OUT      = Loitonna
-SCF_RESET_ZOOM    = Nollaa zoomaus
-SCF_EXIT          = Lopeta
-SCF_SHORTCUTS     = Pikanäppäimet
-SCF_ABOUT         = Tietoja
-SCF_CLOSE_DLG     = Sulje valintaikkuna
-SCF_NEW_LINE      = Uusi rivi
-SCF_INDENT        = Sisennys
-SCF_DELETE        = Poista
-SCF_BACKSPACE     = Askelpalautin
-SCF_DEL_WORD_R    = Poista sana oikealta
-SCF_DEL_WORD_L    = Poista sana vasemmalta
-
-# ── Keyboard Shortcuts — description column ──────────────────────────────────
-SCD_BOLD          = Vaihda valitun tekstin lihavointia
-SCD_ITALIC        = Vaihda valitun tekstin kursivointia
-SCD_UNDERLINE     = Vaihda valitun tekstin alleviivausta
-SCD_UNDO          = Kumoa viimeisin muutos
-SCD_REDO          = Tee viimeisin kumottu muutos uudelleen
-SCD_CUT           = Leikkaa valinta leikepöydälle
-SCD_COPY          = Kopioi valinta leikepöydälle
-SCD_PASTE         = Liitä leikepöydältä
-SCD_SELECT_ALL    = Valitse koko asiakirja
-SCD_SAVE          = Tallenna nykyinen tiedosto
-SCD_SAVE_AS       = Tallenna uuteen tiedostoon
-SCD_SAVE_ALL      = Tallenna kaikki avoimet välilehdet
-SCD_NEW           = Luo uusi tyhjä asiakirja
-SCD_OPEN          = Avaa tiedosto
-SCD_PRINT         = Tulosta asiakirja
-SCD_EXPORT_PDF    = Vie asiakirja PDF-tiedostona
-SCD_PREVIEW       = Lataa ja esikatsele FTP-linkitetty tiedosto selaimessa
-SCD_GO_START      = Siirrä kohdistin asiakirjan alkuun
-SCD_GO_END        = Siirrä kohdistin asiakirjan loppuun
-SCD_WORD_LEFT     = Siirrä kohdistin yksi sana vasemmalle
-SCD_WORD_RIGHT    = Siirrä kohdistin yksi sana oikealle
-SCD_EXTEND_SEL    = Laajenna tekstivalintaa yhdellä merkillä
-SCD_SEL_WORD      = Laajenna valintaa yksi sana kerrallaan
-SCD_INSERT_DATETIME = Lisää nykyinen päivämäärä ja aika kursorin kohtaan
-SCD_COL_SEL       = Aloita suorakaiteen muotoinen/sarakevalinta (vedä)
-SCD_COL_SEL_KB    = Laajenna suorakaiteen muotoista valintaa näppäimistöllä
-SCD_ZOOM_IN       = Suurenna zoomaustasoa
-SCD_ZOOM_OUT      = Pienennä zoomaustasoa
-SCD_RESET_ZOOM    = Nollaa zoomaus 100 %:iin / oletukseen
-SCD_MNU_NEW       = Tiedosto-valikko → Uusi
-SCD_MNU_OPEN      = Tiedosto-valikko → Avaa
-SCD_MNU_SAVE      = Tiedosto-valikko → Tallenna
-SCD_MNU_SAVE_AS   = Tiedosto-valikko → Tallenna nimellä
-SCD_MNU_PRINT     = Tiedosto-valikko → Tulosta
-SCD_MNU_EXPORT_PDF = Tiedosto-valikko → Vie PDF-tiedostona
-SCD_EXIT_APP      = Sulje asiakirja (lopeta ohjelma)
-SCD_MNU_EXIT      = Tiedosto-valikko → Lopeta
-SCD_MNU_UNDO      = Muokkaa-valikko → Kumoa
-SCD_MNU_REDO      = Muokkaa-valikko → Tee uudelleen
-SCD_MNU_CUT       = Muokkaa-valikko → Leikkaa
-SCD_MNU_COPY      = Muokkaa-valikko → Kopioi
-SCD_MNU_PASTE     = Muokkaa-valikko → Liitä
-SCD_MNU_SELECT_ALL = Muokkaa-valikko → Valitse kaikki
-SCD_MNU_SHORTCUTS = Ohje-valikko → Pikanäppäimet
-SCD_MNU_ABOUT     = Ohje-valikko → Tietoja NSBEdit
-SCD_SHOW_SHORTCUTS = Näytä tämä pikanäppäinluettelo
-SCD_CLOSE_DLG     = Sulje nykyinen valintaikkuna
-SCD_NEW_LINE      = Lisää uusi kappale
-SCD_INDENT        = Lisää sarkasmerkki
-SCD_DELETE        = Poista merkki oikealla
-SCD_BACKSPACE     = Poista merkki vasemmalla
-SCD_DEL_WORD_R    = Poista sana kohdistimen oikealta puolelta
-SCD_DEL_WORD_L    = Poista sana kohdistimen vasemmalta puolelta
-SCF_GOTO_LINE     = Siirry riville
-SCF_BOOKMARK_TOGGLE = Vaihda kirjanmerkki
-SCF_BOOKMARK_NEXT = Seuraava kirjanmerkki
-SCF_BOOKMARK_PREV = Edellinen kirjanmerkki
-SCD_GOTO_LINE     = Avaa Siirry riville -valintaikkuna
-SCD_BOOKMARK_TOGGLE = Aseta tai poista kirjanmerkki nykyiseltä riviltä
-SCD_BOOKMARK_NEXT = Siirry seuraavaan kirjanmerkkiin
-SCD_BOOKMARK_PREV = Siirry edelliseen kirjanmerkkiin
-DLG_GOTO_TITLE    = Siirry riville
-DLG_GOTO_PROMPT   = Rivinumero:
-
-# ── About dialog ──────────────────────────────────────────────────────────────
-# Trailing \n produces CR+LF in the RichEdit control.
-ABOUT_TITLE       = Tietoja NSBEdit
-ABOUT_APP_NAME    = NSBEdit\n
-ABOUT_SUBTITLE    = RTF-muistio ja ohjelmointieditori Windowsille\n\n
-ABOUT_PUBLISHED   = Julkaistu: 
-ABOUT_VERSION     = Versio: 
-ABOUT_EDITION     = Painos: 
-ABOUT_EDITION_VALUE = 3\n
-ABOUT_SEC_RTF     = ✏  RTF-muokkaus\n
-ABOUT_DESC_RTF    = •  Lihavointi, kursivointi, alleviivaus, yliviivaus, ylä-/alaindeksi.\n•  Fontti, koko, väri ja korostus; täysi kappalemuotoilu.\n•  Taulukot, luettelot, kuvat, hyperlinkit, vaakaviivat.\n•  Vienti PDF- tai HTML 5 -tiedostona.\n\n
-ABOUT_SEC_CODE    = ⌨  Koodin muokkaus ja syntaksin korostus\n
-ABOUT_DESC_CODE   = •  25 kieltä: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL ja muut.\n•  Automaattinen täydennys, automaattinen sulkeminen, automaattinen sisennys, älykäs ulossisennys.\n•  Rivin kommenttien (//, #, --) ja HTML-lohkokommenttien (<!-- -->) vaihto.\n\n
-ABOUT_SEC_FTP     = ⚡  FTP ja etämuokkaus\n
-ABOUT_DESC_FTP    = •  Tallenna suoraan FTP- ja SFTP-palvelimille.\n•  Selaa, nimeä uudelleen ja hallinnoi etätiedostoja.\n•  Suora esikatselu selaimessa määritettävän verkko-URL-juuren kautta.\n\n
-ABOUT_LICENSE     = Lisensoitu GNU General Public License v2 -lisenssillä.\n
-ABOUT_BTN_LICENSE = Näytä lisenssi
-ABOUT_BTN_CREDITS = Kiitokset
-ABOUT_BTN_CLOSE   = Sulje
-
-# ── Credits dialog ────────────────────────────────────────────────────────────
-CREDITS_TITLE      = Kiitokset
-CREDITS_SCINTILLA  = Scintilla on Neil Hodgsonin kehittämä ilmainen avoimen lähdekoodin koodieditorin komponentti. NSBEdit käyttää Scintillaa syntaksikorosteiseen koodin muokkaukseen.\n\n
-CREDITS_LEXILLA    = Lexilla on Scintillalle tarkoitettu lexer-kirjasto, myös Neil Hodgsonin kehittämä. NSBEdit käyttää Lexillaa yli 20 ohjelmointikielen syntaksikorostukseen.\n\n
-CREDITS_GDI_PLUS   = GDI+ on osa Windows platform SDK:ta. NSBEdit käyttää sitä NSBEdit-logon renderöintiin Tietoja-valintaikkunassa.\n
-CREDITS_MINGW      = MinGW-W64-projekti tarjoaa täydellisen suoritusympäristön GCC- ja LLVM/Clang-työkalukettjuille Windowsissa. NSBEdit on käännetty MinGW-W64 GCC 15.2.0:lla.\n\n
-CREDITS_SQLITE     = SQLite on pieni, nopea ja itsenäinen SQL-tietokantamoottori, joka on julkisessa omistuksessa. NSBEdit käyttää SQLite-yhteenliittymää FTP/SFTP-yhteysprofiilien tallentamiseen.\n\n
-CREDITS_CURL       = libcurl on Daniel Stenbergin kehittämä ilmainen avoimen lähdekoodin URL-siirtokirjasto. libssh2 on avoimen lähdekoodin SSH2-protokollakirjasto. NSBEdit käyttää molempia FTP- ja SFTP-tiedostonsiirtoon etämuokkauksessa.\n\n
-CREDITS_RTF2HTML   = rtf2html on Valentyn Lavrinenkon kehittämä avoimen lähdekoodin RTF–HTML-muunnoskirjasto. NSBEdit käyttää sitä RTF-asiakirjojen viemiseen HTML5-muotoon. Lisensoitu GNU Lesser General Public License v2.1 -lisenssillä (LGPLv2.1).\n\n
-CREDITS_OLLAMA     = Ollama on avoimen lähdekoodin paikallinen AI-ajuri. NSBEdit käyttää sitä valinnaisiin paikallisiin AI-ehdotuksiin ja agenttitilaan.\n\n
-
-# ── Projekti (AI-työtila) ─────────────────────────────────────────────────────
-MENU_PROJECT         = Projekti
-PROJECT_ADD          = Lisää projekti...
-PROJECT_REMOVE       = Poista nykyinen projekti
-PROJECT_NONE         = (Ei projektia)
-PROJECT_PICK_TITLE   = Valitse projektin juurikansio
-PROJECT_REMOVE_TITLE = Poista projekti
-PROJECT_REMOVE_CONFIRM = Poistetaanko tämä projekti luettelosta?
-
-AI_PROGRESS_READING  = Luetaan osaa
-AI_PROGRESS_SYNTH    = Kootaan vastausta
-
-# ── FTP / SFTP ────────────────────────────────────────────────────────────────
-MENU_FTP             = FTP
-FTP_ADD_SITE         = Lisää sivusto...
-FTP_DISCONNECT       = Katkaise yhteys
-FTP_CLOSE_CONN_MENU  = Sulje yhteys
-FTP_CLOSE_CONN_PROMPT = Valitse suljettava yhteys:
-FTP_BROWSE           = Selaa tiedostoja...
-FTP_DLG_SITE_ADD     = Lisää FTP/SFTP-sivusto
-FTP_DLG_SITE_EDIT    = Muokkaa FTP/SFTP-sivustoa
-FTP_FRIENDLY_NAME    = Näyttönimi:
-FTP_PROTOCOL         = Protokolla:
-FTP_HOST             = Palvelin:
-FTP_PORT             = Portti:
-FTP_USERNAME         = Käyttäjänimi:
-FTP_PASSWORD         = Salasana:
-FTP_REMEMBER_PWD     = Muista salasana
-FTP_INITIAL_PATH     = Aloituskansio:
-FTP_WEB_URL          = Verkko-URL (juuri):
-FTP_HELP_TITLE       = FTP/SFTP-profiili — Kenttäopas
-FTP_SAVE             = Tallenna profiili
-FTP_DELETE           = Poista profiili
-MSG_PROFILE_DELETE_CONFIRM = Poistetaanko profiili «%s»?\n\nTätä toimintoa ei voi peruuttaa.
-FTP_DLG_BROWSER      = FTP-tiedostoselain
-FTP_COL_NAME         = Nimi
-FTP_COL_SIZE         = Koko
-FTP_COL_PERMS        = Käyttöoikeudet
-FTP_CTX_OPEN         = Avaa / Lataa
-FTP_CTX_CHMOD        = Käyttöoikeudet...
-FTP_CTX_NEW_FILE     = Uusi tiedosto...
-FTP_CTX_NEW_DIR      = Uusi kansio...
-FTP_INPUT_FILENAME   = Tiedostonimi:
-FTP_INPUT_DIRNAME    = Kansion nimi:
-FTP_CTX_DELETE       = Poista
-FTP_CTX_RENAME       = Nimeä uudelleen...
-FTP_INPUT_RENAME     = Uusi nimi:
-FTP_DLG_CHMOD        = Muuta käyttöoikeuksia (chmod)
-FTP_CHMOD_OWNER      = Omistaja
-FTP_CHMOD_GROUP      = Ryhmä
-FTP_CHMOD_OTHER      = Muut
-FTP_CHMOD_READ       = r
-FTP_CHMOD_WRITE      = w
-FTP_CHMOD_EXEC       = x
-FTP_CHMOD_OCTAL      = Oktaali:
-FTP_CHMOD_APPLY      = Käytä
-FTP_CONN_FAILED      = Yhteyden muodostaminen epäonnistui
-FTP_STATUS           = Yhdistetty:
-FTP_NOT_CONNECTED    = Muodosta yhteys yhteen tai useampaan profiiliin ennen FTP-tallennusta.
-FTP_PICK_PROFILE     = Valitse profiili, johon tallennetaan:
-FTP_PW_PROMPT        = Anna salasana
-FTP_PW_FOR           = Salasana kohteelle
-MSG_FTP_UPLOAD_OK    = Tiedosto tallennettiin ja ladattiin onnistuneesti.
-MSG_FTP_UPLOAD_FAIL  = Lataus epäonnistui.
-MENU_SAVE_TO_FTP     = Tallenna FTP:hen...
-MENU_PREVIEW_FTP     = Esikatsele verkossa.
-FTP_PREVIEW_LOCKED   = Välilehti on lukittu esikatselun ollessa aktiivinen.
-FTP_PREVIEW_URL      = Esikatselun URL:
-BTN_OPEN_BROWSER     = Avaa selaimessa
-BTN_OPEN_BROWSER_TIP = Pikakuvake: [Enter] avataksesi selaimessa.
-BTN_REVERT           = Palauta ja sulje
-BTN_REVERT_TIP       = Pikakuvake: [Esc] palauttaa ja sulkee tämän valintaikkunan.
-FTP_PREVIEW_UP_FAIL  = Lataus epäonnistui:
-FTP_PREVIEW_REV_FAIL = Palautus epäonnistui:
-BTN_SAVE_BACKUP      = Tallenna varmuuskopio paikallisesti...
-BTN_CLOSE_ANYWAY     = Sulje palauttamatta
-FTP_SAVE_BROWSER     = Tallenna FTP:hen — valitse kohde
-FTP_FILENAME_PROMPT  = Tiedostonimi:
-FTP_SAVE_HERE        = Tallenna tähän
-FTP_SAVE_TO          = Tallennettu FTP:hen
-FTP_SAVED_OK         = Tiedosto ladattu. Yhteys pidetään auki.
-MSG_FTP_DELETE_WARN  = Poistetaanko "%s" palvelimelta?\n\nTätä ei voi kumota.
-MSG_FTP_CHMOD_OK     = Käyttöoikeudet päivitetty.
-MSG_FTP_DELETE_FAIL  = Poistaminen epäonnistui.
-
-# ── Horizontal Rule dialog ────────────────────────────────────────────────────
-DLG_HRUL_INSERT     = Lisää vaakaviiva
-DLG_HRUL_PROPS      = Vaakaviivan ominaisuudet
-HRP_STYLE           = Tyyli:
-HRP_THICKNESS       = Paksuus (pt):
-HRP_SPACE_ABOVE     = Väli yläpuolella (pt):
-HRP_SPACE_BELOW     = Väli alapuolella (pt):
-HRP_WIDTH_PCT       = Leveys (%):
-HRP_ALIGNMENT       = Tasaus:
-HRP_START_COLOUR    = Aloitusväri:
-HRP_END_COLOUR      = Lopetusväri (liukuväri):
-HRP_ALIGN_L         = Vasen
-HRP_ALIGN_C         = Keskitetty
-HRP_ALIGN_R         = Oikea
-HRP_STYLE_SINGLE    = Yksinkertainen ohut
-HRP_STYLE_THICK     = Paksu
-HRP_STYLE_DOUBLE    = Kaksinkertainen
-HRP_STYLE_DOTTED    = Pisteytetty
-HRP_STYLE_DASHED    = Katkoviiva
-HRP_STYLE_HAIRLINE  = Hiusviiva
-BTN_CHOOSE          = Valitse…
-
-MENU_RECENT       = Viimeisimmät &tiedostot
-MENU_RECENT_EMPTY = (Ei mitään)
-# -- Session restore -------------------------------------------------------
-DLG_SESSION_RESTORE         = Restore Session
-MSG_SESSION_FILE_MISSING    = The file "%s" could not be found on disk.
-
-A cached version from your last session is available.
-BTN_OPEN_CACHED             = Open Cached
-BTN_SKIP                    = Skip
-MSG_SESSION_FILE_GONE       = The file "%s" could not be found and no cached version is available.
-MSG_SESSION_FTP_FAIL        = Could not reconnect to "%s" for the file "%s".
-
-A cached version from your last session is available.
-MSG_SESSION_FTP_FAIL_NC     = Could not reconnect to "%s" for the file "%s".
-
-No cached version is available.
-MSG_SESSION_REMOTE_CHANGED  = The remote file "%s" on server "%s" has been modified by another program since your last session.
-
-Reload the latest version from the server, or keep your locally cached version?
-BTN_RELOAD_REMOTE           = Reload from Server
-BTN_KEEP_LOCAL              = Keep Local
-MSG_SESSION_DISK_CHANGED  = The file "%s" on disk has been modified by another program since your last session.
-
-Reload the latest version from disk, or keep your locally cached version?
-
-// ── Compare Tabs ─────────────────────────────────────────────────────────────
-MENU_COMPARE_TABS         = &Vertaile välilehtiä…
-MENU_INSERT_DATETIME      = Lisää &päivämäärä/aika	Shift+F5
-DLG_COMPARE_TITLE         = Vertaile välilehtiä
-DLG_COMPARE_LABEL_A       = Välilehti A:
-DLG_COMPARE_LABEL_B       = Välilehti B:
-BTN_COMPARE               = Vertaile
-MSG_COMPARE_SAME          = Kahdella välilehdellä on sama sisältö.
-MSG_COMPARE_SELECT_TWO    = Avaa vähintään kaksi välilehteä vertailua varten.
-MSG_COMPARE_TOO_LARGE     = Tiedostot ovat liian suuria vertailuun (enintään 3 000 riviä kumpikin).
+REGEX_GUIDE_TEXT = T|Regex-viitteen ohje\nS|Pieni oppaasti NSBEditin ECMAScript-regex-hakuihin\nB|Etsi ohjeesta tavallisen tekstin avulla. Kirjoita yllä olevaan kenttään tai paina Ctrl+F siirtyäksesi aiheeseen.\nB|Esimerkit ovat riittävän lyhyitä muistamiseen ja riittävän yksityiskohtaisia käyttöön.\n\nH|1. Mitä regex tekee\nB|Säännöllinen lauseke on tiivis kuvaus tekstistä, jota haluat löytää.\nB|Sen sijaan että täsmäisessä merkkijonossa vastaavat vain yksi merkkijono, regex voi vastata monia samankaltaisia merkkijonoja.\nB|NSBEdit käyttää std::wregex -kirjastoa ECMAScript-syntaksilla, joten alla olevat esimerkit noudattavat tätä tyyliä.\nC|error\nB|Se löytää sanan error missä tahansa sijainnissa.\n\nH|2. Kirjaimet ja escape-merkit\nB|Useimmat kirjaimet ja numerot tarkoittavat vain itseään.\nB|Jotkut merkkipaketit ovat erityisiä ja pitää escape-merkkiin kenoviivalla.\nC|\\.    kirjainpiste\nC|\\?    kysymysmerkki\nC|\\(    avoimen sulkeen\nC|\\\\   kenoviiva\nB|Jos haluat täsmätä tarkalleen tekstille C:\\Temp, muista kirjoittaa jokainen kenoviiva kahdesti regexissä.\n\nH|3. Merkkiluokat\nB|Merkkiluokat kuvaavat yhden merkin joukosta.\nC|[abc]     jokin a, b tai c\nC|[^abc]    kaikki paitsi a, b tai c\nC|[a-z]     väli\nC|[0-9A-F]  heksadesimaaliluvut\nC|[._-]     muutama merkkipaketti\nB|Luokan sisällä viiva tarkoittaa tavallista väliä, joten aseta se ensimmäiseksi tai viimeiseksi jos haluat kirjainviivan.\nC|[-_.]     kirjainviiva, alaviiva tai piste\n\nH|4. Lyhenteet\nB|Lyhenteet ovat nopein tapa kuvailla yleisiä tekstimuotoja.\nC|\\d    numero\nC|\\D    kaikki mikä ei ole numero\nC|\\w    kirjain, numero tai alaviiva\nC|\\W    kaikki mikä ei ole sana-merkki\nC|\\s    väli\nC|\\S    kaikki mikä ei ole väli\nC|.      mikä tahansa merkki poislukien rivinvaihto\nB|Piste on laaja; lyhenteellä luokalla on yleensä tarkempi ja turvallisempi.\n\nH|5. Anchors ja rajat\nB|Ankkurit eivät täsmää merkkeihin. Ne täsmäävät sijainteihin.\nC|^      alkuperäinen teksti\nC|$      loppu tekstistä\nC|\\b    sana-rajat\nC|\\B    ei sana-rajat\nB|Käytä ankkureita, jos haluat koko rivin, sanan alussa tai sanan lopussa.\nC|^TODO\nB|Se löytää rivit tai merkkijonot jotka alkavat TODO:lla.\nC|\\bfix\\b\nB|Se löytää sanan fix, mutta ei sanoja kuten prefix tai fixture.\n\nH|6. Toistot\nB|Kvanttorit kertovat kuinka monta kertaa edellinen token voi toistua.\nC|*      nolla tai useampi\nC|+      yksi tai useampi\nC|?      valinnainen / nolla tai yksi\nC|{n}     tasan n kertaa\nC|{n,}    n tai enemmän\nC|{n,m}   välillä n ja m kertaa\nB|Kvanttorit ovat oletuksena ahneet, joten ne yrittävät syödä mahdollisimman paljon ennen takaisin.\nC|\\d+\nB|Se löytää yhden tai useamman numeron.\nC|\\s+\nB|Se löytää yhden tai useamman välimerkin.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Se on yleinen tunnistetunnus: yksi alkumerkki ja sitten nolla tai useampi jatke.\n\nH|7. Ryhmittely ja vaihtoehdot\nB|Sulkeet ryhmittelevät osia, jotta voit toistaa tai muistaa ne.\nC|(abc)       sieppaa ryhmän\nC|(?:abc)     ryhmä ilman sieppausta\nC|a|b|c       täsmää vasemmalle tai oikealle\nB|Sieppaavat ryhmät numeroidaan vasemmalta oikealle.\nC|(first)-(second)\nB|Ensimmäinen ryhmä on $1 ja toinen $2 korvauksissa.\nC|(cat|dog|fox)\nB|Vaihtoehdot ovat hyödyllisiä, kun kentässä voi olla vain muutama tunnettu sana.\nC|(?:https?|ftp)://\nB|Ei-sieppaava ryhmä säilyttää rakenteen, mutta ei käytä sieppauspaikkaa.\n\nH|8. Käytännön mallit\nB|Nämä esimerkit ovat pieniä muokattavaksi ja suuret hyödyllisiksi.\nC|TODO|FIXME\nB|Löytää joko merkinnät, kommentit tai lähdekooditiedostot.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Yksinkertainen sähköpostin muotoinen malli. Se ei ole täysi RFC-validaattori, mutta on hyödyllinen nopeisiin hakuun.\nC|\"[^\"]*\"\nB|Löytää tekstiä lainausmerkeissä yhdellä rivillä.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Löytää ISO-muotoisen päivämäärän kuten 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Löytää yksinkertaisia tunnistemuotoisia nimiä, jotka alkavat isolla kirjaimella.\nC|^\\s*$\nB|Löytää tyhjät rivit tai rivit, jotka sisältävät vain välimerkkejä.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Löytää hex-luvut kuten 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Löytää yksinkertaisen kokonais- tai desimaaliluvun.

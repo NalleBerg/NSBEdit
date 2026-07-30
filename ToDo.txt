@@ -1,6 +1,19 @@
-Hex- binary - decimal converter
-color-picker
-subnet calc
+Highlighting missing the spot
+Copy/paste problem from CLI
+Copy/paste weird color when pasting from Editor to Ai-query
+Auto save shall be to DB and NOT set the file as saved - only save-to file should do that
+ensure there is NO rtf-code in new file, as it now asks if you want to strip it when I save the file
+I want the name in active tab to be color: rgb(59, 125,59)
+
+Ollama: qwen3-coder:480b was retired at 2026-07-15 00:00:00 -0700 PDT (ref: ec2cb9ce-6022-4567-bca1-aea95e6d73a4)
+The cloud modeels must be updated when the AI ia opened. Any retired models must not show, and new models must show.
+The same goes for local models. even if I have copy and can use it I want it to change color if the
+online model is retired and maybe suggest an update to the new one if it is a new onee to download thet 
+fits the retired's capasabilitiees?
 
 
-2: The mode we are making first is Suggest mode. So all the Agent mode models shall have a big icon: shell32.dll - 109, and a text «Agent mode is not implemented yet!» Suggest models will work and use the model chosen in the model menu
+Search is no good as it cannot find and replace probably because the highlighting is off
+
+
+
+

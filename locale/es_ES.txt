@@ -1,69 +1,85 @@
+
 # NSBEdit locale file — es_ES (Español)
-AI_SUMMARY_LOCALHOST = Ollama on localhost
-AI_SUMMARY_CURRENT = Current:
-AI_ROLE_AGENT = Agent
-AI_ROLE_SUGGEST = Suggest
-AI_SUMMARY_CLOUD = Cloud:
-AI_MODE_CLOUD_SUBSCRIPTION = Cloud subscription
-AI_MODE_LOCAL_ONLY = Local only
-AI_SUMMARY_ACCOUNT = Account:
-AI_SIGNED_IN = signed in
-AI_NOT_SIGNED_IN = not signed in
-AI_WINDOW_TITLE_PREFIX = NSBEdit AI -
-AI_STATUS_CLOUD = Cloud:
-AI_STATUS_SIGNIN = Sign-in:
-AI_STATUS_CURRENT = Current:
-BTN_YES = yes
+
+BTN_AI          = IA
+TIP_AI          = Preguntar a Ollama sobre inteligencia artificial.
+AI_WAKING_OLLAMA = Contactando con Ollama, por favor espere...
+AI_THINKING_STATUS = La IA está pensando... Tiempo usado: %s
+MENU_AI_CHECK_MODELS = Comprobar modelos locales
+AI_MODEL_CHECK_TITLE = Comprobar modelos locales
+AI_MODEL_CHECK_START = Comprobando modelos locales...
+AI_MODEL_CHECK_NO_MODELS = No se encontraron modelos locales.
+AI_MODEL_CHECKING_MODEL = Comprobando modelo %s...
+AI_MODEL_DOWNLOADING_MODEL = Descargando actualización para el modelo %s...
+AI_MODEL_UPTODATE_MODEL = El modelo %s está actualizado ✓
+AI_MODEL_CHECK_FAILED_SIMPLE = No se pudo comprobar el modelo %s.
+AI_MODEL_CHECK_FAILED = No se pudo comprobar el modelo %s:
+AI_MODEL_CHECK_ALL_DONE = ¡Todos los modelos están ahora actualizados! ✓
+AI_MODEL_CHECK_FINISHED_ERROR = La comprobación de modelos terminó con errores.
+AI_SUMMARY_LOCALHOST = Ollama en localhost
+AI_SUMMARY_CURRENT = Actual:
+AI_ROLE_AGENT = Agente
+AI_ROLE_SUGGEST = Sugerencia
+AI_SUMMARY_CLOUD = Nube:
+AI_MODE_CLOUD_SUBSCRIPTION = Suscripción en la nube
+AI_MODE_LOCAL_ONLY = Solo local
+AI_SUMMARY_ACCOUNT = Cuenta:
+AI_SIGNED_IN = conectado
+AI_NOT_SIGNED_IN = no conectado
+AI_WINDOW_TITLE_PREFIX = NSBEdit IA -
+AI_STATUS_CLOUD = Nube:
+AI_STATUS_SIGNIN = Iniciar sesión:
+AI_STATUS_CURRENT = Actual:
+BTN_YES = sí
 BTN_NO = no
 BTN_SEND = Enviar
 BTN_STOP = Detener
 BTN_COPY = Copiar
-BTN_CLEAR = Borrar
-AI_MENU_CLOUD = Cloud
-AI_MENU_LOCAL_ONLY = Local only
-AI_MENU_CLOUD_SUBSCRIPTION = Cloud subscription
-AI_MENU_SIGN_IN = Sign in to Ollama
-AI_MENU_SIGN_OUT = Sign out
-AI_MENU_ADD_API_KEY = Añadir clave API…
+BTN_CLEAR = Limpiar
+AI_MENU_CLOUD = Nube
+AI_MENU_LOCAL_ONLY = Solo local
+AI_MENU_CLOUD_SUBSCRIPTION = Suscripción en la nube
+AI_MENU_SIGN_IN = Iniciar sesión en Ollama
+AI_MENU_SIGN_OUT = Cerrar sesión
+AI_MENU_ADD_API_KEY = Añadir clave API...
 AI_APIKEY_TITLE = Clave API de Ollama cloud
-AI_APIKEY_PROMPT = Pega tu clave API de ollama.com:
-AI_TIP_ADD_API_KEY = Pega tu clave API de ollama.com para usar modelos en la nube directamente.\nCon una clave NO necesitas abrir el navegador para iniciar sesión.\nLa clave se guarda cifrada solo en este PC — nunca se comparte.
-AI_LOG_API_KEY_OK = Clave API aceptada: sesión iniciada en Ollama cloud.
-AI_LOG_API_KEY_BAD = No se aceptó la clave API. Comprueba la clave e inténtalo de nuevo.
-AI_LOG_API_KEY_CLEARED = Clave API borrada.
-AI_MENU_OPEN_PROVIDER = Open Ollama web site
-AI_MENU_SEND_PROMPT = Send prompt
-AI_MENU_CLEAR_LOG = Clear log
-AI_MENU_COPY_ANSWER = Copy answer
-AI_MENU_ABOUT_WINDOW = About this window
-AI_MENU_MODEL = Model
-AI_MENU_LOG = Log
-AI_MENU_HELP = Help
-AI_LOG_USER_PREFIX = You:
-AI_LOG_CLOUD_NEEDS_SIGNIN = Cloud mode is selected, but you are not signed in yet.
-# ── Nube de IA ────────────────────────────────────────────
+AI_APIKEY_PROMPT = Introduzca su clave API de ollama.com:
+AI_TIP_ADD_API_KEY = Pegue su clave API de ollama.com para usar modelos en la nube directamente.\nCon una clave no necesita abrir el navegador para iniciar sesión.\nLa clave se guarda cifrada solo en esta máquina — nunca se comparte.
+AI_LOG_API_KEY_OK = Clave API aceptada — conectado a Ollama cloud.
+AI_LOG_API_KEY_BAD = La clave API no fue aceptada. Compruebe la clave e inténtelo de nuevo.
+AI_LOG_API_KEY_CLEARED = Clave API eliminada.
+AI_MENU_OPEN_PROVIDER = Abrir sitio web de Ollama
+AI_MENU_SEND_PROMPT = Enviar solicitud
+AI_MENU_CLEAR_LOG = Limpiar registro
+AI_MENU_COPY_ANSWER = Copiar respuesta
+AI_MENU_ABOUT_WINDOW = Acerca de esta ventana
+AI_MENU_MODEL = Modelo
+AI_MENU_LOG = Registro
+AI_MENU_HELP = Ayuda
+AI_LOG_USER_PREFIX = Tú:
+AI_LOG_CLOUD_NEEDS_SIGNIN = Seleccionado modo nube, pero aún no ha iniciado sesión.
+# ── AI-sky ────────────────────────────────────────────────
 AI_LOG_CLOUD_MODEL_SELECTED = Modelo en la nube seleccionado:
-AI_LOG_CLOUD_SENDING = Enviando a la nube de Ollama …
+AI_LOG_CLOUD_SENDING = Enviando a la nube de Ollama...
 AI_MENU_LOCAL_HEADER = Local:
 AI_MENU_CLOUD_HEADER = Nube
-AI_LOG_OPENED_SIGNUP = Opened Ollama sign-in / subscription page.
-AI_LOG_CLOUD_NOT_USED_YET = Cloud mode is selected; local Ollama is not used in this path yet.
-AI_LOG_WINDOW_OPENED = AI window opened.
-AI_THINKING_STATUS = AI is thinking... Time used: %s
-AI_LOG_CLOUD_SUGGEST_SELECTED = Cloud suggestion mode selected.
-AI_LOG_CLOUD_AGENT_SELECTED = Cloud agent mode selected.
-AI_LOG_MODEL_SWITCHED_SUGGESTION = Model switched to suggestion mode.
-AI_LOG_MODEL_SWITCHED_AGENT = Model switched to agent mode.
-AI_LOG_CLOUD_LOCAL_ONLY = Cloud mode switched to local only.
-AI_LOG_CLOUD_SUB_SELECTED = Cloud subscription mode selected.
-AI_LOG_SIGNED_OUT_LOCALLY = Signed out locally.
-AI_LOG_ABOUT_WINDOW = This is the AI shell window. Full Ollama chat wiring will follow.
-AI_LOG_RETRY_FALLBACK = Ollama: selected model not found, retrying with fallback model.
+AI_LOG_OPENED_SIGNUP = Abrió página de registro/inicio de sesión de Ollama.
+AI_LOG_CLOUD_NOT_USED_YET = Modo nube seleccionado; aún no se usa Ollama local en esta ruta.
+AI_LOG_WINDOW_OPENED = Ventana IA abierta.
+AI_LOG_CLOUD_SUGGEST_SELECTED = Modo sugerencia en la nube seleccionado.
+AI_LOG_CLOUD_AGENT_SELECTED = Modo agente en la nube seleccionado.
+AI_LOG_MODEL_SWITCHED_SUGGESTION = Modelo cambiado al modo sugerencia.
+AI_LOG_MODEL_SWITCHED_AGENT = Modelo cambiado al modo agente.
+AI_LOG_CLOUD_LOCAL_ONLY = Cambiado modo nube a solo local.
+AI_LOG_CLOUD_SUB_SELECTED = Modo suscripción en la nube seleccionado.
+AI_LOG_SIGNED_OUT_LOCALLY = Sesión cerrada localmente.
+AI_LOG_ABOUT_WINDOW = Esta es la ventana de shell IA. Las conexiones completas al chat Ollama seguirán aquí.
+AI_LOG_RETRY_FALLBACK = Ollama: modelo seleccionado no encontrado, intentando con modelo alternativo.
 AI_LOG_OLLAMA_PREFIX = Ollama:
-AI_LOG_NO_RESPONSE = No response.
-AI_LOG_STOPPED = Solicitud detenida. Añade más detalles y envía de nuevo.
-AI_LOG_RENDER_FAILED = Ollama: response rendering failed unexpectedly.
-AI_COPY_CODE_LABEL = Copy code
+AI_LOG_NO_RESPONSE = Sin respuesta.
+AI_LOG_STOPPED = Solicitud detenida. Añada más detalles y envíela de nuevo.
+AI_LOG_RENDER_FAILED = Ollama: falló la presentación de la respuesta inesperadamente.
+AI_COPY_CODE_LABEL = Copiar código
 
 # NSBEdit locale file — es_ES (Español)
 # Format:  KEY = value
@@ -75,25 +91,25 @@ APP_NAME = NSBEdit
 UNTITLED = Sin título
 
 # ── Menus ─────────────────────────────────────────────────────────────────────
-MENU_FILE       = &Archivo
+MENU_FILE       = &Archivos
 MENU_NEW        = &Nuevo\tCtrl+N
 MENU_OPEN       = &Abrir...\tCtrl+O
 MENU_SAVE       = &Guardar\tCtrl+S
 MENU_SAVEAS     = Guardar &como...\tCtrl+Shift+S
 MENU_SAVE_ALL   = Guardar &todo\tCtrl+Shift+A
-MENU_PRINT      = Im&primir...\tCtrl+P
-MENU_EXPORT_PDF = E&xportar como PDF...\tCtrl+Shift+P
-MENU_EXIT       = &Salir	Ctrl+W
+MENU_PRINT      = &Imprimir...\tCtrl+P
+MENU_EXPORT_PDF = &Exportar como PDF...\tCtrl+Shift+P
+MENU_EXIT       = &Salir\tCtrl+W
 MENU_EDIT         = &Editar
 MENU_UNDO         = &Deshacer\tCtrl+Z
 MENU_REDO         = &Rehacer\tCtrl+Y
 MENU_CUT          = &Cortar\tCtrl+X
 MENU_COPY         = &Copiar\tCtrl+C
 MENU_PASTE        = &Pegar\tCtrl+V
-MENU_SELECTALL    = &Seleccionar todo\tCtrl+A
-MENU_FIND         = &Buscar / Reemplazar...	Ctrl+F
-MENU_GOTO         = Ir a la &línea...\tCtrl+G
-MENU_BOOKMARK     = Alternar &marcador\tF2
+MENU_SELECTALL    = Seleccionar &todo\tCtrl+A
+MENU_FIND         = &Buscar / Reemplazar...\tCtrl+F
+MENU_GOTO         = Ir a &línea...\tCtrl+G
+MENU_BOOKMARK     = &Marcador\tF2
 MENU_BOOKMARK_NEXT = Ir al &marcador\tCtrl+F2
 MENU_PREFS        = &Preferencias...
 PREF_TITLE        = Preferencias
@@ -101,519 +117,16 @@ PREF_SEC_APPEARANCE = Apariencia
 PREF_DARK_MODE         = Tema oscuro
 PREF_LIGHT_MODE        = Tema claro
 PREF_SEC_EDITOR        = Fondo del editor
-PREF_EDITOR_LIGHT_BG   = Fondo claro para texto sin formato y código
-PREF_EDITOR_DARK_BG    = Fondo oscuro para texto sin formato y código
-MENU_HELP       = A&yuda
+PREF_EDITOR_LIGHT_BG   = Fondo claro para texto plano y código
+PREF_EDITOR_DARK_BG    = Fondo oscuro para texto plano y código
+MENU_HELP       = &Ayuda
 MENU_SHORTCUTS  = &Atajos de teclado...\tF1
 MENU_ABOUT      = &Acerca de NSBEdit
 BTN_AI          = IA
-TIP_AI          = Pregunta a Ollama por IA.
+TIP_AI          = Preguntar a Ollama sobre inteligencia artificial.
 REGEX_GUIDE_TITLE = Guía de expresiones regulares
 REGEX_GUIDE_LABEL = Contiene
-REGEX_GUIDE_NOTE = Ctrl+F enfoca el cuadro de búsqueda. La búsqueda se actualiza mientras escribes.
+REGEX_GUIDE_NOTE = Ctrl+F enfoca el campo de búsqueda. La búsqueda se actualiza mientras escribes.
 REGEX_GUIDE_SEARCH = Buscar en la guía
-REGEX_GUIDE_CLEAR = Borrar búsqueda
-REGEX_GUIDE_TEXT = T|Guía de referencia de expresiones regulares\nS|Una pequeña guía de aprendizaje para la búsqueda con regex ECMAScript de NSBEdit\nB|Busca en la guía con texto normal. Escribe en el cuadro de arriba o pulsa Ctrl+F para ir a un tema.\nB|Los ejemplos siguen siendo lo bastante cortos para recordarlos y lo bastante claros para usarlos.\n\nH|1. Qué hace una regex\nB|Una expresión regular es una descripción compacta del texto que quieres encontrar.\nB|En lugar de buscar una sola cadena exacta, una regex puede encontrar muchas cadenas relacionadas.\nB|NSBEdit usa std::wregex con sintaxis ECMAScript, así que los ejemplos siguientes siguen ese estilo.\nC|error\nB|Eso encuentra la palabra error allí donde aparezca.\n\nH|2. Literales y escapes\nB|La mayoría de las letras y números significan lo que parecen.\nB|Algunos signos de puntuación son especiales, así que deben escaparse con una barra invertida.\nC|\\.    un punto literal\nC|\\?    un signo de interrogación literal\nC|\\(    un paréntesis de apertura literal\nC|\\\\   una barra invertida literal\nB|Si quieres encontrar el texto exacto C:\\Temp, recuerda duplicar cada barra invertida dentro de la regex.\n\nH|3. Clases de caracteres\nB|Las clases de caracteres describen un solo carácter de un conjunto.\nC|[abc]     uno de a, b o c\nC|[^abc]    cualquier cosa excepto a, b o c\nC|[a-z]     un rango\nC|[0-9A-F]  dígitos hexadecimales\nC|[._-]     algunos signos de puntuación\nB|Dentro de una clase, el guion suele indicar un rango, así que colócalo al principio o al final si quieres un guion literal.\nC|[-_.]     guion literal, guion bajo o punto\n\nH|4. Clases abreviadas\nB|Las clases abreviadas son la forma más rápida de describir formas de texto comunes.\nC|\\d    dígito\nC|\\D    cualquier cosa que no sea un dígito\nC|\\w    letra, dígito o guion bajo\nC|\\W    cualquier cosa que no sea un carácter de palabra\nC|\\s    espacio en blanco\nC|\\S    cualquier cosa que no sea espacio en blanco\nC|.      cualquier carácter excepto un salto de línea\nB|El punto es muy amplio; una clase abreviada suele ser más precisa y segura.\n\nH|5. Anclas y límites\nB|Las anclas no coinciden con caracteres. Coinciden con posiciones.\nC|^      inicio del texto buscado\nC|$      final del texto buscado\nC|\\b    límite de palabra\nC|\\B    no es un límite de palabra\nB|Usa anclas cuando quieras una línea completa, una palabra al principio o una palabra al final.\nC|^TODO\nB|Eso encuentra líneas o cadenas que empiezan por TODO.\nC|\\bfix\\b\nB|Eso encuentra la palabra fix, pero no palabras como prefix o fixture.\n\nH|6. Repetición\nB|Los cuantificadores indican cuántas veces puede repetirse el token anterior.\nC|*      cero o más\nC|+      una o más\nC|?      opcional / cero o una\nC|{n}     exactamente n veces\nC|{n,}    n o más veces\nC|{n,m}   entre n y m veces\nB|Por defecto los cuantificadores son voraces, así que intentan consumir todo lo posible antes de retroceder.\nC|\\d+\nB|Eso encuentra uno o más dígitos.\nC|\\s+\nB|Eso encuentra uno o más espacios en blanco.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Ese es un patrón de identificador común: un carácter inicial y luego cero o más caracteres de continuación.\n\nH|7. Agrupación y alternancia\nB|Los paréntesis agrupan partes del patrón para poder repetirlas o recordarlas.\nC|(abc)       captura un grupo\nC|(?:abc)     grupo sin captura\nC|a|b|c       coincide a la izquierda o a la derecha\nB|Los grupos con captura se numeran de izquierda a derecha.\nC|(first)-(second)\nB|El primer grupo pasa a ser $1 y el segundo $2 en los reemplazos.\nC|(cat|dog|fox)\nB|La alternancia es útil cuando un campo solo puede contener unas pocas palabras conocidas.\nC|(?:https?|ftp)://\nB|Un grupo sin captura conserva la estructura pero no ocupa una posición de captura.\n\nH|8. Patrones prácticos\nB|Estos ejemplos son lo bastante pequeños para adaptarlos y lo bastante grandes para ser útiles.\nC|TODO|FIXME\nB|Encuentra cualquiera de esas etiquetas en notas, comentarios o archivos fuente.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Un patrón sencillo con forma de correo. No valida todo el RFC, pero sirve para búsquedas rápidas.\nC|\"[^\"]*\"\nB|Encuentra texto entre comillas en una sola línea.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Encuentra una fecha estilo ISO como 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Encuentra nombres simples parecidos a identificadores que empiecen por mayúscula.\nC|^\\s*$\nB|Encuentra líneas en blanco o líneas que solo contengan espacios.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Encuentra números en estilo hexadecimal como 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Encuentra un número entero o decimal sencillo.\n\nH|9. Ideas para reemplazos\nB|Cuando reemplazas, los grupos capturados te permiten reutilizar las partes que has encontrado.\nC|Buscar:    ([A-Za-z]+) ([A-Za-z]+)\nC|Reemplazar: $2, $1\nB|Eso intercambia dos palabras, así que John Smith se convierte en Smith, John.\nC|Buscar:    (\\d{4})-(\\d{2})-(\\d{2})\nC|Reemplazar: $3/$2/$1\nB|Eso convierte 2026-06-15 en 15/06/2026.\nC|Buscar:    ^(.*)$\nC|Reemplazar: [$1]\nB|Eso encierra cada línea completa entre corchetes.\n\nH|10. Errores comunes\nB|La mayoría de los errores son pequeños: un escape que falta, un cuantificador voraz o un ancla en el sitio equivocado.\nC|.txt\nB|Eso no es un punto literal seguido de t x t; el punto significa cualquier carácter. Usa \\.txt si quieres una extensión literal.\nC|(abc\nB|Los grupos sin cerrar son un error de sintaxis.\nC|foo\\bar\nB|Una sola barra invertida suele iniciar un escape, así que dóblala cuando necesites una literal.\nC|^word$\nB|Eso solo coincide con una línea completa que contenga exactamente word.\n\nH|11. Cómo pensar al buscar\nB|Hazte tres preguntas: qué debe estar presente, qué puede variar y dónde debe terminar la coincidencia.\nB|Si la respuesta es "cualquier carácter", usa una clase o un punto. Si la respuesta es "el inicio o el final", usa anclas.\nB|Si la respuesta es "repite esta parte", ponla en un grupo antes de añadirle un cuantificador.\nB|Si no estás seguro, busca primero con un patrón más pequeño y amplíalo poco a poco.\n\nH|12. Notas para NSBEdit\nB|La búsqueda regex del editor usa la biblioteca estándar, así que conviene preferir sintaxis ECMAScript portable.\nB|La búsqueda "Contiene" de esta guía es literal, no basada en regex, así que puedes saltar con palabras o fragmentos normales.\nB|Si quieres llegar rápido a un tema, pulsa Ctrl+F y escribe una palabra de la sección que necesitas.\nB|La línea de búsqueda es intencionadamente simple: sin diálogo, sin modo regex, solo el buscador de temas más rápido posible.\n\nH|13. Prueba estas búsquedas\nC|digit\nC|capture\nC|boundary\nC|replace\nC|greedy\nC|anchor\nC|literal\nC|escape\nC|pattern
-
-# ── Convert menu ─────────────────────────────────────────────────────────────
-MENU_CONVERT        = &Convertir
-MENU_CONV_TO_PLAIN  = Eliminar formato — guardar como texto sin formato
-MENU_CONV_TO_RTF    = Agregar &formato — crear RTF
-MENU_CONV_TO_HTML5  = Exportar como &HTML 5...
-MSG_HTML5_ERR       = Error en la conversión a HTML.
-MSG_HTML5_SAVE_ERR  = No se pudo escribir el archivo HTML.
-DLG_SAVE_HTML5      = Guardar como HTML 5
-MENU_ENCODING       = &Codificación
-MENU_ENC_UTF8       = UTF-8
-MENU_ENC_UTF16LE    = UTF-16 LE
-MENU_ENC_ANSI       = ANSI (sistema)
-MENU_ENC_WIN1252    = Windows-1252 (Europa occidental)
-MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
-
-# ── Encoding labels shown in status bar ──────────────────────────────────────
-ENC_RICHTEXT    = Texto RTF
-ENC_UTF8        = UTF-8
-ENC_UTF16LE     = UTF-16 LE
-ENC_ANSI        = ANSI
-ENC_WIN1252     = Windows-1252
-ENC_ISO8859_1   = ISO 8859-1
-ENC_UNKNOWN     = Texto sin formato
-
-# ── Convert messages ─────────────────────────────────────────────────────────
-MSG_CONV_LOSSY  = Al eliminar el formato RTF se perderán todas las negritas, cursivas, colores y otros efectos de texto.\n\n¿Continuar y guardar como texto sin formato?
-MSG_ENC_LOSSY   = Algunos caracteres no pueden representarse en la codificación seleccionada y serán reemplazados por «?» o similar.\n\n¿Continuar?
-MSG_DEL_PLAIN_FILE = El documento se ha guardado como archivo RTF.\n\n¿Desea eliminar el archivo de texto sin formato original?
-
-# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
-FILTER_OPEN   = Todos los archivos compatibles|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.sh;*.bash;*.zsh;*.ksh;*.csh;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|Archivos RTF (*.rtf)|*.rtf|Archivos de texto (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Configuración (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Shell / Bash (*.sh)|*.sh;*.bash;*.zsh;*.ksh;*.csh;*|Batch (*.bat;*.cmd)|*.bat;*.cmd|Todos los archivos (*.*)|*.*
-FILTER_SAVEAS = Archivos RTF (*.rtf)|*.rtf|Archivos de texto (*.txt)|*.txt|Todos los archivos (*.*)|*.*
-FILTER_IMAGE  = Archivos de imagen|*.png;*.jpg;*.jpeg|Archivos PNG (*.png)|*.png|Archivos JPEG (*.jpg;*.jpeg)|*.jpg;*.jpeg
-
-# ── File-dialog titles ────────────────────────────────────────────────────────
-DLG_OPEN   = Abrir
-DLG_SAVEAS = Guardar como
-DLG_IMAGE  = Insertar imagen
-
-# ── Message boxes ─────────────────────────────────────────────────────────────
-MSG_OPEN_ERR      = No se pudo abrir el archivo.
-MSG_SAVE_ERR      = No se pudo guardar el archivo.
-MSG_HAS_FORMATTING = Este documento contiene formato (negrita, colores, tamaños de fuente, etc.) que no puede guardarse en un archivo de texto sin formato.\n\nHaga clic en Sí para guardar como texto sin formato y eliminar todo el formato.\nHaga clic en No para guardar como RTF (la extensión del archivo cambiará a .rtf).\nHaga clic en Cancelar para volver sin guardar.
-MSG_IMG_OPEN_ERR  = No se pudo abrir el archivo de imagen.
-MSG_IMG_FMT_ERR   = Formato no compatible. Utilice un archivo PNG o JPEG.
-MSG_SAVE_PROMPT   = ¿Guardar los cambios en «%s»?
-DLG_SAVE_CHANGES  = Guardar cambios
-BTN_SAVE          = Guardar
-BTN_DONT_SAVE     = No guardar
-BTN_CANCEL        = Cancelar
-DLG_DISCARD_CHANGES = Descartar cambios
-MSG_DISCARD_AND_RELOAD = Tiene cambios sin guardar en este archivo.\n\n¿Desea descartarlos y recargar el archivo?
-BTN_OK            = Aceptar
-BTN_CONTINUE      = Continuar
-DLG_CONV_TO_PLAIN = Eliminar formato
-
-DLG_FILE_CHANGED        = Archivo modificado en el disco
-MSG_FILE_CHANGED_PROMPT = «%s» ha sido modificado por otro programa mientras NSBEdit no estaba activo.\n\n¿Recargar el archivo desde el disco?
-BTN_RELOAD              = Recargar
-BTN_KEEP                = Conservar la versión actual
-
-TAB_CTX_NEW_TAB         = Nueva pestaña
-TAB_CTX_CLOSE_TAB       = Cerrar pestaña
-
-# ── Status bar ────────────────────────────────────────────────────────────────────────────────
-SB_WORDS                = Palabras
-SB_CHARS                = Caracteres
-SB_SAVED                = Guardado
-SB_UNSAVED              = Sin guardar
-SB_LN                   = Ln
-SB_COL                  = Col
-SB_LINES                = Líneas
-MENU_SPELLING           = &Ortografía
-MENU_SPELL_MARK         = &Marcar palabras mal escritas
-MENU_SPELL_CHECK        = &Revisión ortográfica...\tF7
-MENU_SPELL_LANGUAGE     = &Idioma
-DLG_SPELL_TITLE         = Revisión ortográfica
-DLG_SPELL_MISSPELLED    = Palabra mal escrita:
-DLG_SPELL_SUGGESTIONS   = Sugerencias:
-DLG_SPELL_NOTFOUND      = Revisión ortográfica completa - no se encontraron errores
-BTN_SPELL_IGNORE        = Ignorar
-BTN_SPELL_IGNOREALL     = Ignorar todo
-BTN_SPELL_ADD           = Agregar al diccionario
-BTN_SPELL_CHANGE        = Cambiar
-BTN_SPELL_CHANGEALL     = Cambiar todo
-
-# ── Toolbar tooltips ──────────────────────────────────────────────────────────
-TIP_BOLD        = Negrita  (Ctrl+B)
-TIP_ITALIC      = Cursiva  (Ctrl+I)
-TIP_UNDERLINE   = Subrayado  (Ctrl+U)
-TIP_STRIKE      = Tachado
-TIP_SUBSCRIPT   = Subíndice  (ej. H₂O)
-TIP_SUPERSCRIPT = Superíndice  (ej. m²)
-TIP_FONTFACE    = Fuente
-TIP_FONTSIZE    = Tamaño de fuente (pt)
-TIP_COLOR       = Color del texto
-TIP_HIGHLIGHT   = Color de resaltado
-TIP_ALIGN_L     = Alinear a la izquierda
-TIP_ALIGN_C     = Centrar
-TIP_ALIGN_R     = Alinear a la derecha
-TIP_ALIGN_J     = Justificar
-TIP_BULLET      = Lista con viñetas
-TIP_NUMBERED    = Lista numerada
-TIP_IMAGE       = Insertar imagen  (PNG / JPEG)
-TIP_INDENT_IN   = Aumentar sangría
-TIP_INDENT_OUT  = Disminuir sangría
-TIP_LINESPACE   = Interlineado...
-TIP_FIND        = Buscar / Reemplazar  (Ctrl+F)
-TIP_LINK        = Insertar hipervínculo
-TIP_TABLE       = Propiedades de tabla...
-TIP_TABLE_DROP  = Insertar tabla (elegir tamaño)
-TIP_HLINE       = Insertar línea horizontal
-TIP_CLEARFMT    = Eliminar todo el formato
-TIP_PRINT_BTN   = Imprimir...  (Ctrl+P)
-TIP_ZOOM        = Zoom
-TIP_WORDWRAP    = Activar/desactivar ajuste de línea
-TIP_CASE        = Cambiar mayúsculas/minúsculas  (MAYÚSCULAS / minúsculas / Primera letra en mayúscula)
-TIP_LINENUM     = Activar/desactivar números de línea
-TIP_PARSPACE    = Espaciado de párrafo...
-TIP_SAVE        = Guardar  (Ctrl+S)
-TIP_SAVE_FTP    = Guardar en servidor FTP
-TIP_PREVIEW     = Vista previa en línea
-TIP_LANG_UI     = Idioma de la interfaz
-TIP_COMMENT     = Comentar / descomentar las líneas seleccionadas
-MENU_GUI_LANG   = Idioma de la interfaz
-MENU_LANGUAGE   = &Idioma
-LANG_PLAIN_TEXT = Texto sin formato
-LANG_UI_DANISH    = Dansk
-LANG_UI_ENGLISH   = English
-LANG_UI_FINNISH   = Suomi
-LANG_UI_FRENCH    = Français
-LANG_UI_GERMAN    = Deutsch
-LANG_UI_ICELANDIC = Íslenska
-LANG_UI_NORWEGIAN = Norsk (bokmål)
-LANG_UI_SPANISH   = Español
-LANG_UI_GREEK     = Griego
-LANG_UI_PORTUGUESE = Portugués
-LANG_UI_DUTCH      = Neerlandés
-LANG_UI_FLEMISH    = Flamenco
-LANG_UI_SAMI       = Sami del Norte
-LANG_UI_SWEDISH   = Svenska
-LANG_UI_UKRAINIAN = Ucraniano
-
-# ── Export PDF ───────────────────────────────────────────────────────────────
-FILTER_PDF       = Archivos PDF (*.pdf)|*.pdf
-DLG_EXPORT_PDF   = Exportar como PDF
-MSG_PDF_ERR      = Error al exportar el PDF. Compruebe que «Microsoft Print to PDF» está instalado (Windows 10+).
-
-# ── Find / Replace dialog ─────────────────────────────────────────────────────
-DLG_FIND            = Buscar / Reemplazar
-DLG_FIND_WHAT       = Buscar:
-DLG_REPL_WITH       = Reemplazar con:
-BTN_FIND_NEXT       = Siguiente
-BTN_CLOSE           = Cerrar
-BTN_REPLACE         = Reemplazar
-BTN_REPLACE_ALL     = Reemplazar todo
-CHK_MATCHCASE       = Distinguir mayúsculas/minúsculas
-CHK_WHOLEWORD       = Palabra completa
-CHK_REGEX           = Expresión regular
-CHK_ALL_TABS        = Todas las pestañas abiertas
-CHK_BACKWARDS        = Buscar hacia atrás
-MSG_FIND_NOT_FOUND  = Texto no encontrado.
-MSG_REGEX_ERR       = Expresión regular no válida.
-
-# ── Insert Link dialog ────────────────────────────────────────────────────────
-DLG_LINK        = Insertar hipervínculo
-DLG_LINK_URL    = Dirección web (URL):
-DLG_LINK_TEXT   = Texto mostrado:
-LINK_TIP_CTRL   = [Ctrl]+Clic para abrir en el navegador
-MSG_LINK_BAD_URL = Introduzca una URL válida.
-
-La URL debe comenzar con un esquema conocido, por ejemplo:
-https://  http://  ftp://  mailto:  file://
-
-# ── Insert Table dialog ───────────────────────────────────────────────────────
-DLG_TABLE       = Insertar tabla
-DLG_TABLE_ROWS  = Filas:
-DLG_TABLE_COLS  = Columnas:
-TABLE_PICKER_FMT  = %d × %d
-TABLE_PICKER_HINT = Elegir tamaño de tabla
-
-# ── Table Properties dialog ───────────────────────────────────────────────────
-DLG_TABLE_PROPS     = Propiedades de tabla
-DLG_TABLE_INSERT    = Insertar tabla
-TBLP_ROWS           = Filas:
-TBLP_COLS           = Columnas:
-TBLP_CELLW          = Ancho de columna:
-TBLP_BORDERW        = Grosor del borde:
-TBLP_UNIT_HP        = semipunto
-TBLP_UNIT_MM        = mm
-TBLP_UNIT_PT        = pt
-TBLP_PAD_TOP        = Relleno de celda (arriba):
-TBLP_PAD_BOTTOM     = Relleno de celda (abajo):
-TBLP_PAD_LEFT       = Relleno de celda (izquierda):
-TBLP_PAD_RIGHT      = Relleno de celda (derecha):
-TBLP_ROWH           = Alto de fila (0=auto):
-TBLP_ROWH_UNIT      = pt
-TBLP_ALIGN          = Alineación de tabla
-TBLP_ALIGN_L        = Izquierda
-TBLP_ALIGN_C        = Centrado
-TBLP_ALIGN_R        = Derecha
-BTN_APPLY           = Aplicar
-CTX_TABLE_PROPS     = Propiedades de tabla...
-TBLP_MODE_ALTER     = Modificar la tabla actual
-TBLP_MODE_NESTED    = Insertar tabla en la celda actual
-
-# ── Line Spacing dialog ───────────────────────────────────────────────────────
-DLG_LINESPACE    = Interlineado
-RDO_LINESPACE_S  = Simple
-RDO_LINESPACE_15 = 1,5
-RDO_LINESPACE_D  = Doble
-
-# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
-DLG_PARSPACE     = Espaciado de párrafo
-DLG_PARSPACE_BEF = Espacio antes (pt):
-DLG_PARSPACE_AFT = Espacio después (pt):
-
-# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
-SHORTCUTS_TITLE  = Atajos de teclado
-SHORTCUTS_COL1   = Atajo
-SHORTCUTS_COL2   = Función
-SHORTCUTS_COL3   = Descripción
-SHORTCUTS_BTN_CLOSE = Cerrar
-
-# ── Keyboard Shortcuts — function column ─────────────────────────────────────
-SCF_BOLD          = Negrita
-SCF_ITALIC        = Cursiva
-SCF_UNDERLINE     = Subrayado
-SCF_UNDO          = Deshacer
-SCF_REDO          = Rehacer
-SCF_CUT           = Cortar
-SCF_COPY          = Copiar
-SCF_PASTE         = Pegar
-SCF_SELECT_ALL    = Seleccionar todo
-SCF_SAVE          = Guardar
-SCF_SAVE_AS       = Guardar como
-SCF_SAVE_ALL      = Guardar todo
-SCF_NEW           = Nuevo
-SCF_OPEN          = Abrir
-SCF_PRINT         = Imprimir
-SCF_EXPORT_PDF    = Exportar como PDF
-SCF_PREVIEW       = Vista previa en línea
-SCF_GO_START      = Ir al inicio
-SCF_GO_END        = Ir al final
-SCF_WORD_LEFT     = Palabra a la izquierda
-SCF_WORD_RIGHT    = Palabra a la derecha
-SCF_EXTEND_SEL    = Extender selección
-SCF_SEL_WORD      = Seleccionar palabra
-SCF_INSERT_DATETIME = Insertar fecha/hora
-SCF_COL_SEL       = Selección de columna
-SCF_ZOOM_IN       = Ampliar
-SCF_ZOOM_OUT      = Reducir
-SCF_RESET_ZOOM    = Restablecer zoom
-SCF_EXIT          = Salir
-SCF_SHORTCUTS     = Atajos de teclado
-SCF_ABOUT         = Acerca de NSBEdit
-SCF_CLOSE_DLG     = Cerrar diálogo
-SCF_NEW_LINE      = Nueva línea
-SCF_INDENT        = Sangría
-SCF_DELETE        = Eliminar
-SCF_BACKSPACE     = Retroceso
-SCF_DEL_WORD_R    = Eliminar palabra a la derecha
-SCF_DEL_WORD_L    = Eliminar palabra a la izquierda
-
-# ── Keyboard Shortcuts — description column ──────────────────────────────────
-SCD_BOLD          = Activar/desactivar negrita en la selección
-SCD_ITALIC        = Activar/desactivar cursiva en la selección
-SCD_UNDERLINE     = Activar/desactivar subrayado en la selección
-SCD_UNDO          = Deshacer el último cambio
-SCD_REDO          = Rehacer la última acción deshecha
-SCD_CUT           = Cortar la selección al portapapeles
-SCD_COPY          = Copiar la selección al portapapeles
-SCD_PASTE         = Pegar desde el portapapeles
-SCD_SELECT_ALL    = Seleccionar todo el documento
-SCD_SAVE          = Guardar el archivo actual
-SCD_SAVE_AS       = Guardar en un nuevo archivo
-SCD_SAVE_ALL      = Guardar todas las pestañas abiertas
-SCD_NEW           = Crear un nuevo documento vacío
-SCD_OPEN          = Abrir un archivo
-SCD_PRINT         = Imprimir el documento
-SCD_EXPORT_PDF    = Exportar el documento como PDF
-SCD_PREVIEW       = Cargar y previsualizar el archivo FTP vinculado en el navegador
-SCD_GO_START      = Mover el cursor al inicio del documento
-SCD_GO_END        = Mover el cursor al final del documento
-SCD_WORD_LEFT     = Mover el cursor una palabra a la izquierda
-SCD_WORD_RIGHT    = Mover el cursor una palabra a la derecha
-SCD_EXTEND_SEL    = Extender la selección un carácter
-SCD_SEL_WORD      = Extender la selección palabra por palabra
-SCD_INSERT_DATETIME = Inserta la fecha y hora actuales en el cursor
-SCD_COL_SEL       = Iniciar selección rectangular/columna (arrastrar)
-SCD_COL_SEL_KB    = Extender selección rectangular con teclado
-SCD_ZOOM_IN       = Aumentar el nivel de zoom
-SCD_ZOOM_OUT      = Disminuir el nivel de zoom
-SCD_RESET_ZOOM    = Restablecer el zoom al 100 % / predeterminado
-SCD_MNU_NEW       = Menú Archivo → Nuevo
-SCD_MNU_OPEN      = Menú Archivo → Abrir
-SCD_MNU_SAVE      = Menú Archivo → Guardar
-SCD_MNU_SAVE_AS   = Menú Archivo → Guardar como
-SCD_MNU_PRINT     = Menú Archivo → Imprimir
-SCD_MNU_EXPORT_PDF = Menú Archivo → Exportar como PDF
-SCD_EXIT_APP      = Cerrar el documento (salir de la aplicación)
-SCD_MNU_EXIT      = Menú Archivo → Salir
-SCD_MNU_UNDO      = Menú Editar → Deshacer
-SCD_MNU_REDO      = Menú Editar → Rehacer
-SCD_MNU_CUT       = Menú Editar → Cortar
-SCD_MNU_COPY      = Menú Editar → Copiar
-SCD_MNU_PASTE     = Menú Editar → Pegar
-SCD_MNU_SELECT_ALL = Menú Editar → Seleccionar todo
-SCD_MNU_SHORTCUTS = Menú Ayuda → Atajos de teclado
-SCD_MNU_ABOUT     = Menú Ayuda → Acerca de NSBEdit
-SCD_SHOW_SHORTCUTS = Mostrar esta lista de atajos de teclado
-SCD_CLOSE_DLG     = Cerrar el diálogo actual
-SCD_NEW_LINE      = Insertar un nuevo párrafo
-SCD_INDENT        = Insertar una tabulación
-SCD_DELETE        = Eliminar el carácter a la derecha
-SCD_BACKSPACE     = Eliminar el carácter a la izquierda
-SCD_DEL_WORD_R    = Eliminar la palabra a la derecha del cursor
-SCD_DEL_WORD_L    = Eliminar la palabra a la izquierda del cursor
-SCF_GOTO_LINE     = Ir a la línea
-SCF_BOOKMARK_TOGGLE = Activar/desactivar marcador
-SCF_BOOKMARK_NEXT = Marcador siguiente
-SCF_BOOKMARK_PREV = Marcador anterior
-SCD_GOTO_LINE     = Abrir el diálogo Ir a la línea
-SCD_BOOKMARK_TOGGLE = Establecer o borrar un marcador en la línea actual
-SCD_BOOKMARK_NEXT = Saltar al siguiente marcador
-SCD_BOOKMARK_PREV = Saltar al marcador anterior
-DLG_GOTO_TITLE    = Ir a la línea
-DLG_GOTO_PROMPT   = Número de línea:
-
-# ── About dialog ──────────────────────────────────────────────────────────────
-# Trailing \n produces CR+LF in the RichEdit control.
-ABOUT_TITLE       = Acerca de NSBEdit
-ABOUT_APP_NAME    = NSBEdit\n
-ABOUT_SUBTITLE    = Bloc de notas RTF y editor de programación para Windows\n\n
-ABOUT_PUBLISHED   = Publicado: 
-ABOUT_VERSION     = Versión: 
-ABOUT_EDITION     = Edición: 
-ABOUT_EDITION_VALUE = 3\n
-ABOUT_SEC_RTF     = ✏  Edición RTF\n
-ABOUT_DESC_RTF    = •  Negrita, cursiva, subrayado, tachado, superíndice/subíndice.\n•  Fuente, tamaño, color y resaltado; formato completo de párrafo.\n•  Tablas, listas, imágenes, hipervínculos, líneas horizontales.\n•  Exportar como PDF o HTML 5.\n\n
-ABOUT_SEC_CODE    = ⌨  Edición de código y resaltado de sintaxis\n
-ABOUT_DESC_CODE   = •  25 lenguajes: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL y otros.\n•  Autocompletado, cierre automático, sangría automática, desangría inteligente.\n•  Comentar/descomentar líneas (//, #, --) y comentarios de bloque HTML (<!-- -->).\n\n
-ABOUT_SEC_FTP     = ⚡  FTP y edición remota\n
-ABOUT_DESC_FTP    = •  Guardar directamente en servidores FTP y SFTP.\n•  Explorar, renombrar y administrar archivos remotos.\n•  Vista previa directa en el navegador mediante una URL web configurable.\n\n
-ABOUT_LICENSE     = Bajo licencia GNU General Public License v2.\n
-ABOUT_BTN_LICENSE = Ver licencia
-ABOUT_BTN_CREDITS = Créditos
-ABOUT_BTN_CLOSE   = Cerrar
-
-# ── Credits dialog ────────────────────────────────────────────────────────────
-CREDITS_TITLE      = Créditos
-CREDITS_SCINTILLA  = Scintilla es un componente de editor de código gratuito y de código abierto creado por Neil Hodgson. NSBEdit usa Scintilla para la edición de código con resaltado de sintaxis.\n\n
-CREDITS_LEXILLA    = Lexilla es una biblioteca de lexers para Scintilla, también desarrollada por Neil Hodgson. NSBEdit usa Lexilla para el resaltado de sintaxis de más de 20 lenguajes de programación.\n\n
-CREDITS_GDI_PLUS   = GDI+ forma parte del SDK de Windows. NSBEdit lo usa para mostrar el logotipo de NSBEdit en el diálogo Acerca de.\n
-CREDITS_MINGW      = El proyecto MinGW-W64 proporciona un entorno de ejecución completo para las cadenas de herramientas GCC y LLVM/Clang en Windows. NSBEdit fue compilado con MinGW-W64 GCC 15.2.0.\n\n
-CREDITS_SQLITE     = SQLite es un motor de base de datos SQL ligero, rápido y autónomo de dominio público. NSBEdit usa SQLite para almacenar los perfiles de conexión FTP/SFTP.\n\n
-CREDITS_CURL       = libcurl es una biblioteca de transferencia de URL gratuita y de código abierto creada por Daniel Stenberg. libssh2 es una biblioteca de protocolo SSH2 de código abierto. NSBEdit usa ambas para transferencias de archivos FTP y SFTP en la edición remota.\n\n
-CREDITS_RTF2HTML   = rtf2html es una biblioteca de código abierto para convertir RTF a HTML creada por Valentyn Lavrynenko. NSBEdit la usa para exportar documentos RTF a HTML5. Bajo licencia GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
-CREDITS_OLLAMA     = Ollama es un motor de IA local de código abierto. NSBEdit lo usa para sugerencias locales de IA y modo agente opcionales.\n\n
-
-# ── Proyecto (espacio de trabajo IA) ──────────────────────────────────────────
-MENU_PROJECT         = Proyecto
-PROJECT_ADD          = Agregar proyecto...
-PROJECT_REMOVE       = Quitar el proyecto actual
-PROJECT_NONE         = (Ningún proyecto)
-PROJECT_PICK_TITLE   = Seleccione la carpeta raíz del proyecto
-PROJECT_REMOVE_TITLE = Quitar proyecto
-PROJECT_REMOVE_CONFIRM = ¿Quitar este proyecto de la lista?
-
-AI_PROGRESS_READING  = Leyendo bloque
-AI_PROGRESS_SYNTH    = Sintetizando respuesta
-
-# ── FTP / SFTP ────────────────────────────────────────────────────────────────
-MENU_FTP             = FTP
-FTP_ADD_SITE         = Agregar sitio...
-FTP_DISCONNECT       = Desconectar
-FTP_CLOSE_CONN_MENU  = Cerrar conexión
-FTP_CLOSE_CONN_PROMPT = Seleccionar la conexión a cerrar:
-FTP_BROWSE           = Explorar archivos...
-FTP_DLG_SITE_ADD     = Agregar sitio FTP/SFTP
-FTP_DLG_SITE_EDIT    = Editar sitio FTP/SFTP
-FTP_FRIENDLY_NAME    = Nombre para mostrar:
-FTP_PROTOCOL         = Protocolo:
-FTP_HOST             = Servidor:
-FTP_PORT             = Puerto:
-FTP_USERNAME         = Nombre de usuario:
-FTP_PASSWORD         = Contraseña:
-FTP_REMEMBER_PWD     = Recordar contraseña
-FTP_INITIAL_PATH     = Carpeta de inicio:
-FTP_WEB_URL          = URL web (raíz):
-FTP_HELP_TITLE       = Perfil FTP/SFTP — Guía de campos
-FTP_SAVE             = Guardar perfil
-FTP_DELETE           = Eliminar perfil
-MSG_PROFILE_DELETE_CONFIRM = ¿Eliminar el perfil «%s»?\n\nEsta acción no se puede deshacer.
-FTP_DLG_BROWSER      = Explorador de archivos FTP
-FTP_COL_NAME         = Nombre
-FTP_COL_SIZE         = Tamaño
-FTP_COL_PERMS        = Permisos
-FTP_CTX_OPEN         = Abrir / Descargar
-FTP_CTX_CHMOD        = Permisos...
-FTP_CTX_NEW_FILE     = Nuevo archivo...
-FTP_CTX_NEW_DIR      = Nueva carpeta...
-FTP_INPUT_FILENAME   = Nombre del archivo:
-FTP_INPUT_DIRNAME    = Nombre de la carpeta:
-FTP_CTX_DELETE       = Eliminar
-FTP_CTX_RENAME       = Renombrar...
-FTP_INPUT_RENAME     = Nuevo nombre:
-FTP_DLG_CHMOD        = Cambiar permisos (chmod)
-FTP_CHMOD_OWNER      = Propietario
-FTP_CHMOD_GROUP      = Grupo
-FTP_CHMOD_OTHER      = Otros
-FTP_CHMOD_READ       = r
-FTP_CHMOD_WRITE      = w
-FTP_CHMOD_EXEC       = x
-FTP_CHMOD_OCTAL      = Octal:
-FTP_CHMOD_APPLY      = Aplicar
-FTP_CONN_FAILED      = Error de conexión
-FTP_STATUS           = Conectado:
-FTP_NOT_CONNECTED    = Conéctese a uno o más perfiles antes de guardar via FTP.
-FTP_PICK_PROFILE     = Seleccionar el perfil de destino:
-FTP_PW_PROMPT        = Introducir contraseña
-FTP_PW_FOR           = Contraseña para
-MSG_FTP_UPLOAD_OK    = Archivo guardado y enviado correctamente.
-MSG_FTP_UPLOAD_FAIL  = El envío falló.
-MENU_SAVE_TO_FTP     = Guardar via FTP...
-MENU_PREVIEW_FTP     = Vista previa en línea.
-FTP_PREVIEW_LOCKED   = La pestaña está bloqueada durante la vista previa.
-FTP_PREVIEW_URL      = URL de vista previa:
-BTN_OPEN_BROWSER     = Abrir en el navegador
-BTN_OPEN_BROWSER_TIP = Acceso directo: [Intro] para abrir en el navegador.
-BTN_REVERT           = Revertir y cerrar
-BTN_REVERT_TIP       = Acceso directo: [Esc] revierte y cierra este diálogo.
-FTP_PREVIEW_UP_FAIL  = Error al enviar:
-FTP_PREVIEW_REV_FAIL = Error al revertir:
-BTN_SAVE_BACKUP      = Guardar copia local...
-BTN_CLOSE_ANYWAY     = Cerrar sin revertir
-FTP_SAVE_BROWSER     = Guardar via FTP — Elegir destino
-FTP_FILENAME_PROMPT  = Nombre del archivo:
-FTP_SAVE_HERE        = Guardar aquí
-FTP_SAVE_TO          = Guardado via FTP en
-FTP_SAVED_OK         = Archivo enviado. La conexión permanece abierta.
-MSG_FTP_DELETE_WARN  = ¿Eliminar «%s» del servidor?\n\nEsta acción es irreversible.
-MSG_FTP_CHMOD_OK     = Permisos actualizados.
-MSG_FTP_DELETE_FAIL  = Error al eliminar.
-
-# ── Horizontal Rule dialog ────────────────────────────────────────────────────
-DLG_HRUL_INSERT     = Insertar línea horizontal
-DLG_HRUL_PROPS      = Propiedades de línea horizontal
-HRP_STYLE           = Estilo:
-HRP_THICKNESS       = Grosor (pt):
-HRP_SPACE_ABOVE     = Espacio arriba (pt):
-HRP_SPACE_BELOW     = Espacio abajo (pt):
-HRP_WIDTH_PCT       = Ancho (%):
-HRP_ALIGNMENT       = Alineación:
-HRP_START_COLOUR    = Color inicial:
-HRP_END_COLOUR      = Color final (degradado):
-HRP_ALIGN_L         = Izquierda
-HRP_ALIGN_C         = Centro
-HRP_ALIGN_R         = Derecha
-HRP_STYLE_SINGLE    = Línea fina
-HRP_STYLE_THICK     = Gruesa
-HRP_STYLE_DOUBLE    = Doble
-HRP_STYLE_DOTTED    = Punteada
-HRP_STYLE_DASHED    = Discontinua
-HRP_STYLE_HAIRLINE  = Filete fino
-BTN_CHOOSE          = Elegir…
-
-MENU_RECENT       = Archivos &recientes
-MENU_RECENT_EMPTY = (Ninguno)
-# -- Session restore -------------------------------------------------------
-DLG_SESSION_RESTORE         = Restore Session
-MSG_SESSION_FILE_MISSING    = The file "%s" could not be found on disk.
-
-A cached version from your last session is available.
-BTN_OPEN_CACHED             = Open Cached
-BTN_SKIP                    = Skip
-MSG_SESSION_FILE_GONE       = The file "%s" could not be found and no cached version is available.
-MSG_SESSION_FTP_FAIL        = Could not reconnect to "%s" for the file "%s".
-
-A cached version from your last session is available.
-MSG_SESSION_FTP_FAIL_NC     = Could not reconnect to "%s" for the file "%s".
-
-No cached version is available.
-MSG_SESSION_REMOTE_CHANGED  = The remote file "%s" on server "%s" has been modified by another program since your last session.
-
-Reload the latest version from the server, or keep your locally cached version?
-BTN_RELOAD_REMOTE           = Reload from Server
-BTN_KEEP_LOCAL              = Keep Local
-MSG_SESSION_DISK_CHANGED  = The file "%s" on disk has been modified by another program since your last session.
-
-Reload the latest version from disk, or keep your locally cached version?
-
-// ── Compare Tabs ─────────────────────────────────────────────────────────────
-MENU_COMPARE_TABS         = &Comparar pestañas…
-MENU_INSERT_DATETIME      = Insertar &fecha/hora	Shift+F5
-DLG_COMPARE_TITLE         = Comparar pestañas
-DLG_COMPARE_LABEL_A       = Pestaña A:
-DLG_COMPARE_LABEL_B       = Pestaña B:
-BTN_COMPARE               = Comparar
-MSG_COMPARE_SAME          = Las dos pestañas tienen contenido idéntico.
-MSG_COMPARE_SELECT_TWO    = Abre al menos dos pestañas para comparar.
-MSG_COMPARE_TOO_LARGE     = Los archivos son demasiado grandes para comparar (máximo 3 000 líneas cada uno).
+REGEX_GUIDE_CLEAR = Limpiar búsqueda
+REGEX_GUIDE_TEXT = T|Referencia de expresiones regulares\nS|Una pequeña guía para aprender las búsquedas regex de NSBEdit\nB|Busca en esta guía usando texto común. Escribe en el campo superior, o presiona Ctrl+F para ir a un tema.\nB|Los ejemplos son cortos para recordarlos y detallados para usarlos.\n\nH|1. Qué hace una regex\nB|Una expresión regular es una descripción compacta del texto que quieres encontrar.\nB|En lugar de buscar una cadena exacta, una regex puede coincidir con muchas cadenas relacionadas.\nB|NSBEdit usa std::wregex con sintaxis ECMAScript, por lo tanto los ejemplos siguen ese estilo.\nC|error\nB|Encuentra la palabra error, donde sea que aparezca.\n\nH|2. Literales y escape\nB|La mayoría de letras y números significan lo que dicen.\nB|Algunos caracteres especiales deben escaparse con una barra invertida.\nC|\\.    un punto literal\nC|\\?    un signo de interrogación literal\nC|\\(    un paréntesis de apertura literal\nC|\\\\   una barra invertida literal\nB|Si quieres buscar la cadena exacta C:\\Temp, asegúrate de escribir cada barra doble en la regex.\n\nH|3. Clases de caracteres\nB|Las clases describen un carácter dentro de un conjunto.\nC|[abc]     uno entre a, b o c\nC|[^abc]    todo excepto a, b o c\nC|[a-z]     un intervalo\nC|[0-9A-F]  dígitos hexadecimales\nC|[._-]     algunos caracteres de puntuación\nB|Dentro de una clase, el guión normalmente indica un intervalo, así que ponlo al principio o al final si quieres un guión literal.\nC|[-_.]     guión, subrayado o punto literal\n\nH|4. Clases abreviadas\nB|Las clases abreviadas son la forma más rápida de describir formas comunes de texto.\nC|\\d    dígito\nC|\\D    cualquier cosa que no sea un dígito\nC|\\w    letra, número o guión bajo\nC|\\W    cualquier cosa que no sea un carácter de palabra\nC|\\s    espacio en blanco\nC|\\S    cualquier cosa que no sea espacio en blanco\nC|.      cualquier carácter excepto salto de línea\nB|Un punto es general; una clase abreviada suele ser más específica y segura.\n\nH|5. Anclas y límites\nB|Las anclas no coinciden con caracteres, sino con posiciones.\nC|^      inicio del texto buscado\nC|$      final del texto buscado\nC|\\b    límite de palabra\nC|\\B    no límite de palabra\nB|Usa anclas cuando quieras encontrar una línea completa, una palabra al principio o al final.\nC|^TODO\nB|Encuentra líneas o cadenas que comienzan con TODO.\nC|\\bfix\\b\nB|Encuentra la palabra fix, pero no palabras como prefix o fixture.\n\nH|6. Repetición\nB|Los cuantificadores indican cuántas veces puede repetirse el token anterior.\nC|*      cero o más\nC|+      uno o más\nC|?      opcional / cero o uno\nC|{n}     exactamente n veces\nC|{n,}    n o más veces\nC|{n,m}   entre n y m veces\nB|Los cuantificadores son greedy por defecto, intentan consumir lo máximo posible antes de retroceder.\nC|\\d+\nB|Encuentra uno o más dígitos.\nC|\\s+\nB|Encuentra uno o más espacios.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Es un patrón común de identificador: un carácter inicial y luego cero o más caracteres de continuación.\n\nH|7. Agrupaciones y alternativas\nB|Los paréntesis agrupan partes del patrón, para repetirlos o recordarlos.\nC|(abc)       grupo capturado\nC|(?:abc)     grupo sin captura\nC|a|b|c       coincide con izquierda o derecha\nB|Los grupos capturados se numeran de izquierda a derecha.\nC|(first)-(second)\nB|El primer grupo es $1 y el segundo $2 en reemplazos.\nC|(cat|dog|fox)\nB|La alternativa es útil cuando un campo solo puede contener palabras conocidas.\nC|(?:https?|ftp)://\nB|Un grupo sin captura mantiene la estructura pero no usa una posición de captura.\n\nH|8. Patrones prácticos\nB|Estos ejemplos son cortos para recordarlos y suficientemente largos para ser útiles.\nC|TODO|FIXME\nB|Encuentra etiquetas en notas, comentarios o archivos fuente.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Un patrón simple de correo electrónico. No es un validador RFC completo, pero útil para búsquedas rápidas.\nC|\"[^\"]*\"\nB|Encuentra texto entre comillas en una sola línea.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Encuentra una fecha tipo ISO como 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Encuentra nombres similares a identificadores que empiezan con mayúscula.\nC|^\\s*$\nB|Encuentra líneas vacías o solo con espacios.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Encuentra números hexadecimales como 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Encuentra un número entero o decimal simple.

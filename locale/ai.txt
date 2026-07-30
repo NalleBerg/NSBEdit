@@ -1,145 +1,83 @@
-Here isHere is the the translated translated content content for for the the ` `localelocale/de/de_DE_DE.txt.txt`` file file in in Danish Danish::
-
-``
-
-````
-BTN
-BTN_AI_AI          =          = AI AI
-T
-TIPIP_AI_AI          =          = Frag Frag O Ollllamaama K KII
-AI
-AI_W_WAKAKINGING__OLLOLLAMAAMA = = Frag Fragnerner O Ollllamaama,, vent vent ven venligligstst!!
-AI
-AI_TH_THINKINKINGING_STATUS_STATUS = = AI AI t tæænnkerker...... Br Brugugtt tid tid:: % %ss
-MENU
-MENU_AI_AI_CHECK_CHECK_MODE_MODELSLS = = Kont Kontrollrollérér lokale lokale mod modellereller
-AI
-AI_MODEL_MODEL_CHECK_CHECK_TITLE_TITLE = = Kont Kontrollrollérér lokale lokale mod modellereller
-AI
-AI_MODEL_MODEL_CHECK_CHECK_START_START = = Kont Kontrollerrollererer lokale lokale mod modellereller......
-AI
-AI_MODEL_MODEL_CHECK_CHECK_NO_NO_MODE_MODELSLS = = Ingen Ingen lokale lokale mod modellereller blev blev fund fundetet..
-AI
-AI_MODEL_MODEL_CHECK_CHECKINGING_MODEL_MODEL = = Kont Kontrollerrollererer model model % %ss......
-AI
-AI_MODEL_MODEL_DOWNLOAD_DOWNLOADINGING_MODEL_MODEL = = H Henterenter op opdaterdateringing til til model model % %ss......
-AI
-AI_MODEL_MODEL_U_UPTPTODODATEATE_MODEL_MODEL = = Model Model % %ss er er op opdaterdateretet ✓ ✓
-AI
-AI_MODEL_MODEL_CHECK_CHECK_FAILED_FAILED_SIMPLE_SIMPLE = = Model Model % %ss kunne kunne ikke ikke kont kontrollerrollereses..
-AI
-AI_MODEL_MODEL_CHECK_CHECK_FAILED_FAILED = = Model Model % %ss kunne kunne ikke ikke kont kontrollerrollereses::
-AI
-AI_MODEL_MODEL_CHECK_CHECK_ALL_ALL_DONE_DONE = = Alle Alle mod modellereller er er nu nu op opdaterdateredeede!! ✓ ✓
-AI
-AI_MODEL_MODEL_CHECK_CHECK_FIN_FINISHEDISHED_ERROR_ERROR = = Kont Kontrolrol af af mod modellereller af afslslututtedtedee med med fe fejljl..
-AI
-AI_SUM_SUMMARYMARY_LOCAL_LOCALHOSTHOST = = O Ollllamaama på på localhost localhost
-AI
-AI_SUM_SUMMARYMARY_CURRENT_CURRENT = = N Nuvuvæærenderende::
-AI
-AI_ROLE_ROLE_AGENT_AGENT = = Agent Agent
-AI
-AI_ROLE_ROLE_S_SUGUGGESTGEST = = F Foresoresllåå
-AI
-AI_SUM_SUMMARYMARY_C_CLOUDLOUD = = Cloud Cloud::
-AI
-AI_MODE_MODE_C_CLOUDLOUD_SUB_SUBSCRIPTIONSCRIPTION = = Cloud Cloud-ab-abonnementonnement
-AI
-AI_MODE_MODE_LOCAL_LOCAL_ONLY_ONLY = = Kun Kun lok lokaltalt
-AI
-AI_SUM_SUMMARYMARY_ACCOUNT_ACCOUNT = = K Kontoonto::
-AI
-AI_S_SIGNEDIGNED_IN_IN = = log loggetget ind ind
-AI
-AI_NOT_NOT_S_SIGNEDIGNED_IN_IN = = ikke ikke log loggetget ind ind
-AI
-AI_WINDOW_WINDOW_TITLE_TITLE_PREFIX_PREFIX = = NS NSBBEditEdit AI AI - -
-AI
-AI_STATUS_STATUS_C_CLOUDLOUD = = Cloud Cloud::
-AI
-AI_STATUS_STATUS_SIGN_SIGNININ = = Log Log ind ind::
-AI
-AI_STATUS_STATUS_CURRENT_CURRENT = = N Nuvuvæærenderende::
-BTN
-BTN_YES_YES = = ja ja
-BTN
-BTN_NO_NO = = ne nejj
-BTN
-BTN_SEND_SEND = = Send Send
-BTN
-BTN_STOP_STOP = = Stop Stop
-BTN
-BTN_COPY_COPY = = Kop Kopiiérér
-BTN
-BTN_CLEAR_CLEAR = = Ry Rydd
-AI
-AI_MENU_MENU_C_CLOUDLOUD = = Cloud Cloud
-AI
-AI_MENU_MENU_LOCAL_LOCAL_ONLY_ONLY = = Kun Kun lok lokaltalt
-AI
-AI_MENU_MENU_C_CLOUDLOUD_SUB_SUBSCRIPTIONSCRIPTION = = Cloud Cloud-ab-abonnementonnement
-AI
-AI_MENU_MENU_SIGN_SIGN_IN_IN = = Log Log ind ind på på O Ollllamaama
-AI
-AI_MENU_MENU_SIGN_SIGN_OUT_OUT = = Log Log ud ud
-AI
-AI_MENU_MENU_OPEN_OPEN_PROVIDER_PROVIDER = = Å Åbnbn O Ollllamaama-web-webstedsted
-AI
-AI_MENU_MENU_SEND_SEND_PROM_PROMPTPT = = Send Send prompt prompt
-AI
-AI_MENU_MENU_CLEAR_CLEAR_LOG_LOG = = Ry Rydd log log
-AI
-AI_MENU_MENU_COPY_COPY_ANS_ANSWERWER = = Kop Kopiiérér s svarvar
-AI
-AI_MENU_MENU_AB_ABOUTOUT_WINDOW_WINDOW = = Om Om dette dette vind vindueue
-AI
-AI_MENU_MENU_MODEL_MODEL = = Model Model
-AI
-AI_MENU_MENU_LOG_LOG = = Log Log
-AI
-AI_MENU_MENU_HELP_HELP = = H Hjjæælplp
-AI
-AI_LOG_LOG_USER_USER_PREFIX_PREFIX = = Du Du::
-AI
-AI_LOG_LOG_C_CLOUDLOUD_NEED_NEEDSS_SIGN_SIGNININ = = Cloud Cloud--tiltilstandstand er er val valgtgt,, men men du du er er ikke ikke log loggetget ind ind end endnunu..
-AI
-AI_LOG_LOG_OPEN_OPENEDED_SIGN_SIGNUPUP = = Å Åbnbnedeede O Ollllamaama log log-ind-ind / / ab abonnementonnementssssideide..
-AI
-AI_LOG_LOG_C_CLOUDLOUD_NOT_NOT_USED_USED_Y_YETET = = Cloud Cloud--tiltilstandstand er er val valgtgt;; lokal lokal O Ollllamaama br brugesuges ikke ikke i i denne denne st stii end endnunu..
-AI
-AI_LOG_LOG_WINDOW_WINDOW_OPEN_OPENEDED = = AI AI-v-vindindueue å åbbnetnet..
-AI
-AI_LOG_LOG_C_CLOUDLOUD_S_SUGUGGESTGEST_SELECTED_SELECTED = = Cloud Cloud--foforesresllååelseelseststililstandstand val valgtgt..
-AI
-AI_LOG_LOG_C_CLOUDLOUD_AGENT_AGENT_SELECTED_SELECTED = = Cloud Cloud-agent-agenttiltilstandstand val valgtgt..
-AI
-AI_LOG_LOG_MODEL_MODEL_SWITCH_SWITCHEDED_S_SUGUGGESTGESTIONION = = Model Model sk skiftiftetet til til fores foresllååelseelseststililstandstand..
-AI
-AI_LOG_LOG_MODEL_MODEL_SWITCH_SWITCHEDED_AGENT_AGENT = = Model Model sk skiftiftetet til til agent agenttiltilstandstand..
-AI
-AI_LOG_LOG_C_CLOUDLOUD_LOCAL_LOCAL_ONLY_ONLY = = Cloud Cloud--tiltilstandstand sk skiftiftetet til til kun kun lok lokaltalt..
-AI
-AI_LOG_LOG_C_CLOUDLOUD_SUB_SUB_SELECTED_SELECTED = = Cloud Cloud-ab-abonnementonnementststililstandstand val valgtgt..
-AI
-AI_LOG_LOG_S_SIGNEDIGNED_OUT_OUT_LOC_LOCALLYALLY = = Log Loggetget ud ud lok lokaltalt..
-AI
-AI_LOG_LOG_AB_ABOUTOUT_WINDOW_WINDOW = = D Detteette er er AI AI-shell-shell-v-vindinduetuet.. Ful Fuldede O Ollllamaama-chat-chat-for-forbindbindelelserser fø føllgerger..
-AI
-AI_LOG_LOG_RETRY_RETRY_FALL_FALLBACKBACK = = O Ollllamaama:: val valgtegte model model ikke ikke fund fundetet,, fors forsøøgerger igen igen med med fallback fallback-model-model..
-AI
-AI_LOG_LOG__OLLOLLAMAAMA_PREFIX_PREFIX = = O Ollllamaama::
-AI
-AI_LOG_LOG_NO_NO_RESPONSE_RESPONSE = = Int Intetet s svarvar..
-AI
-AI_LOG_LOG_STOP_STOPPEDPED = = F Foresoresppøørgrgselsel stopped stoppedee.. Til Tilfføjøj flere flere detal detaljerjer og og send send igen igen..
-AI
-AI_LOG_LOG_RENDER_RENDER_FAILED_FAILED = = O Ollllamaama:: s svarvarvisvisningning mis mislylykkkkedesedes u uventventetet..
-AI
-AI_COPY_COPY_CODE_CODE_LABEL_LABEL = = Kop Kopiiérér kode kode
-``
-````
-
-Let
-
-Let me me know know if if you you want want this this formatted formatted as as a a complete complete file file or or need need additional additional translations translations!!
+BTN_AI          = AI
+TIP_AI          = Ask Ollama A.I.
+AI_WAKING_OLLAMA = Asking Ollama, please wait!
+AI_THINKING_STATUS = AI is thinking... Time used: %s
+MENU_AI_CHECK_MODELS = Check local models
+AI_MODEL_CHECK_TITLE = Check local models
+AI_MODEL_CHECK_START = Checking local models...
+AI_MODEL_CHECK_NO_MODELS = No local models were found.
+AI_MODEL_CHECKING_MODEL = Checking model %s...
+AI_MODEL_DOWNLOADING_MODEL = Downloading update to model %s...
+AI_MODEL_UPTODATE_MODEL = Model %s is up to date ✓
+AI_MODEL_CHECK_FAILED_SIMPLE = Model %s could not be checked.
+AI_MODEL_CHECK_FAILED = Model %s could not be checked:
+AI_MODEL_CHECK_ALL_DONE = All models are now up to date! ✓
+AI_MODEL_CHECK_FINISHED_ERROR = Model check finished with errors.
+AI_SUMMARY_LOCALHOST = Ollama on localhost
+AI_SUMMARY_CURRENT = Current:
+AI_ROLE_AGENT = Agent
+AI_ROLE_SUGGEST = Suggest
+AI_SUMMARY_CLOUD = Cloud:
+AI_MODE_CLOUD_SUBSCRIPTION = Cloud subscription
+AI_MODE_LOCAL_ONLY = Local only
+AI_SUMMARY_ACCOUNT = Account:
+AI_SIGNED_IN = signed in
+AI_NOT_SIGNED_IN = not signed in
+AI_WINDOW_TITLE_PREFIX = NSBEdit AI -
+AI_STATUS_CLOUD = Cloud:
+AI_STATUS_SIGNIN = Sign-in:
+AI_STATUS_CURRENT = Current:
+AI_TIME_USED = Time used:
+AI_LAST_QUERY_USED = Last query used:
+AI_WAIT_TITLE = Please Wait
+BTN_YES = yes
+BTN_NO = no
+BTN_SEND = Send
+BTN_STOP = Stop
+BTN_COPY = Copy
+BTN_CLEAR = Clear
+AI_MENU_CLOUD = Cloud
+AI_MENU_LOCAL_ONLY = Local only
+AI_MENU_CLOUD_SUBSCRIPTION = Cloud subscription
+AI_MENU_SIGN_IN = Sign in to Ollama
+AI_MENU_SIGN_OUT = Sign out
+AI_MENU_ADD_API_KEY = Add API key…
+AI_MENU_OPEN_PROVIDER = Open Ollama web site
+AI_MENU_SEND_PROMPT = Send prompt
+AI_MENU_CLEAR_LOG = Clear log
+AI_MENU_COPY_ANSWER = Copy answer
+AI_MENU_ABOUT_WINDOW = About this window
+AI_MENU_MODEL = Model
+AI_MENU_LOG = Log
+AI_MENU_HELP = Help
+AI_LOG_USER_PREFIX = You:
+AI_LOG_CLOUD_NEEDS_SIGNIN = Cloud mode is selected, but you are not signed in yet.
+# ── AI cloud ──────────────────────────────────────────────
+AI_LOG_CLOUD_MODEL_SELECTED = Cloud model selected:
+AI_LOG_CLOUD_SENDING = Sending to Ollama cloud…
+AI_MENU_LOCAL_HEADER = Local:
+AI_MENU_CLOUD_HEADER = Cloud
+AI_LOG_OPENED_SIGNUP = Opened Ollama sign-in / subscription page.
+AI_LOG_CLOUD_NOT_USED_YET = Cloud mode is selected; local Ollama is not used in this path yet.
+AI_LOG_WINDOW_OPENED = AI window opened.
+AI_LOG_CLOUD_SUGGEST_SELECTED = Cloud suggestion mode selected.
+AI_LOG_CLOUD_AGENT_SELECTED = Cloud agent mode selected.
+AI_LOG_MODEL_SWITCHED_SUGGESTION = Model switched to suggestion mode.
+AI_LOG_MODEL_SWITCHED_AGENT = Model switched to agent mode.
+AI_LOG_CLOUD_LOCAL_ONLY = Cloud mode switched to local only.
+AI_LOG_CLOUD_SUB_SELECTED = Cloud subscription mode selected.
+AI_LOG_SIGNED_OUT_LOCALLY = Signed out locally.
+# ── AI cloud API key ──────────────────────────────────────
+AI_APIKEY_TITLE = Ollama cloud API key
+AI_APIKEY_PROMPT = Paste your ollama.com API key:
+AI_TIP_ADD_API_KEY = Paste your ollama.com API key to use cloud models directly.\nWith a key you do NOT need to open the browser to sign in.\nThe key is stored encrypted on this PC only — never shared.
+AI_LOG_API_KEY_OK = API key accepted — signed in to Ollama cloud.
+AI_LOG_API_KEY_BAD = API key was not accepted. Check the key and try again.
+AI_LOG_API_KEY_CLEARED = API key cleared.
+AI_LOG_ABOUT_WINDOW = This is the AI shell window. Full Ollama chat wiring will follow.
+AI_LOG_RETRY_FALLBACK = Ollama: selected model not found, retrying with fallback model.
+AI_LOG_OLLAMA_PREFIX = Ollama:
+AI_LOG_NO_RESPONSE = No response.
+AI_LOG_STOPPED = Request stopped. Add more details and send again.
+AI_LOG_RENDER_FAILED = Ollama: response rendering failed unexpectedly.
+AI_COPY_CODE_LABEL = Copy code
