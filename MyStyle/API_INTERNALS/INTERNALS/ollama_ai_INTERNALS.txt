@@ -462,3 +462,33 @@ v2026.07.09.13 - Stop control, full-project file access, batch parallelism, spin
     (do NOT re-raise on every SetText - the 1s thinking timer relayout was pulling the AI
     window in front of the editor = focus theft). Editor stays usable while Ollama runs
     (worker is a background std::thread).
+
+
+v2026.08.01.08 - Query-box paste (Ctrl+V) safety + no multi-line prompt truncation
+  - Ai_InputSubclassProc already had a safe WM_PASTE branch: it reads CF_UNICODETEXT
+    (or CF_TEXT) itself, sanitizes the buffer (drop NUL, collapse CRLF/CR/LF to the
+    single CR that RichEdit uses internally, and drop other C0 control chars except
+    TAB), inserts with EM_REPLACESEL, then forces the pasted run to solid black via
+    EM_SETCHARFORMAT (CFM_COLOR). This avoids EM_PASTESPECIAL, which crashes the
+    control on some console (CMD/PowerShell) multi-line payloads, and keeps text
+    readable when it was copied from a dark editor tab.
+  - BUG (fixed): that handler was BYPASSED by Ctrl+V. RichEdit's built-in Ctrl+V
+    pastes the clipboard's rich content directly without routing through the
+    subclass WM_PASTE, so:
+      * text copied from a dark editor tab kept its light colour -> nearly invisible
+        on the white query box, and
+      * console payloads went through RichEdit's own (crashy) paste and corrupted
+        the control -> the app crashed a moment later, typically on the next Send
+        (classic deferred heap-corruption symptom).
+    Only the right-click Paste worked, because it does SendMessage(WM_PASTE).
+  - FIX: intercept the keystroke in Ai_InputSubclassProc WM_KEYDOWN - Ctrl+V (V with
+    VK_CONTROL down, VK_MENU up to leave AltGr alone) and Shift+Insert - call
+    SendMessage(hwnd, WM_PASTE, 0, 0) and return 0 to swallow the key, plus swallow
+    the Ctrl+V WM_CHAR 0x16, so the safe path runs EXACTLY ONCE (no double paste).
+    Lesson: never rely on a subclass WM_PASTE alone for a RichEdit - Ctrl+V may not
+    route through it; trap the key (or handle EM_PASTESPECIAL) explicitly.
+  - BUG (fixed): multi-line prompt truncated on Send. Ai_DoSend / Ai_HistoryBrowse
+    read the input with GetWindowTextW(buf, inLen+1) where inLen = GetWindowTextLengthW.
+    RichEdit reports the length with single-CR line breaks but GetWindowText emits
+    CRLF, so a multi-line prompt overflowed inLen+1 and was cut off. Buffer is now
+    sized inLen*2+2 (worst-case CRLF expansion) and resized to the returned count.

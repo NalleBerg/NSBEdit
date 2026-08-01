@@ -1,4 +1,4 @@
-﻿// NSBEdit — standalone RTF notepad
+// NSBEdit — standalone RTF notepad
 // Full-featured RTF editor window with File menu, toolbar, and status bar.
 // Icon: shell32.dll index 70  (set on taskbar, title bar, and status bar).
 // Tooltips: English-only via project tooltip system.
@@ -974,7 +974,7 @@ static void Ne_SyncRichGutters(HWND hwnd)
     }
 }
 
-// Toggle line numbers on all open tabs and refresh all gutters.
+// Toggle Line numbers on all open tabs and refresh all gutters.
 static void Ne_SyncLineNumBtn(HWND hwnd)
 {
     const wchar_t* tipText =
@@ -3878,6 +3878,7 @@ static void Ne_DoFindNext(HWND dlg, bool keepDialogFocus = false)
                     text = Ne_GetEditText(doc->hEdit);
                 }
 
+                size_t firstNew = s_findAllTabMatches.size();
                 if (useRegex) {
                     for (auto it = std::wsregex_iterator(text.begin(), text.end(), re);
                          it != std::wsregex_iterator(); ++it) {
@@ -3893,6 +3894,27 @@ static void Ne_DoFindNext(HWND dlg, bool keepDialogFocus = false)
                         from = pos + (int)needle.size();
                     }
                 }
+
+                // Scintilla tabs use UTF-8 byte offsets; the matches just pushed for
+                // this tab are in UTF-16 (wide) index space. Convert them so later
+                // SCI_SETSEL navigation lands on the correct characters.
+                if (doc->hSci) {
+                    int prevWide = 0, prevByte = 0;
+                    for (size_t k = firstNew; k < s_findAllTabMatches.size(); k++) {
+                        auto& m = s_findAllTabMatches[k];
+                        prevByte += WideCharToMultiByte(CP_UTF8, 0,
+                                        text.c_str() + prevWide, m.start - prevWide,
+                                        NULL, 0, NULL, NULL);
+                        int byteStart = prevByte;
+                        int byteEnd   = byteStart + WideCharToMultiByte(CP_UTF8, 0,
+                                        text.c_str() + m.start, m.end - m.start,
+                                        NULL, 0, NULL, NULL);
+                        prevWide = m.end;
+                        prevByte = byteEnd;
+                        m.start  = byteStart;
+                        m.end    = byteEnd;
+                    }
+                }
             }
 
             s_findCachedNeedle    = needle;
@@ -3904,7 +3926,10 @@ static void Ne_DoFindNext(HWND dlg, bool keepDialogFocus = false)
 
             if (s_findAllTabMatches.empty()) {
                 Ne_UpdateFindCount();
-                { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_FIND_NOT_FOUND"), &btn, 1, IDOK); }
+                // Only nag when the user explicitly asked to find (button / Enter),
+                // not while typing — otherwise a mid-word prefix pops a modal box and
+                // steals focus, making multi-word phrases impossible to type/paste.
+                if (!keepDialogFocus) { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_FIND_NOT_FOUND"), &btn, 1, IDOK); }
                 return;
             }
 
@@ -4027,6 +4052,27 @@ static void Ne_DoFindNext(HWND dlg, bool keepDialogFocus = false)
             }
         }
 
+        // Matches above are in UTF-16 (wide) index space. Scintilla addresses the
+        // document in UTF-8 byte offsets, so convert each range to byte offsets
+        // before it is used for SCI_SETSEL / selection comparisons. (RichEdit keeps
+        // the wide/char positions, which already align with EM_EXSETSEL.)
+        if (isSci) {
+            int prevWide = 0, prevByte = 0;
+            for (auto& m : s_findMatches) {
+                prevByte += WideCharToMultiByte(CP_UTF8, 0,
+                                text.c_str() + prevWide, m.start - prevWide,
+                                NULL, 0, NULL, NULL);
+                int byteStart = prevByte;
+                int byteEnd   = byteStart + WideCharToMultiByte(CP_UTF8, 0,
+                                text.c_str() + m.start, m.end - m.start,
+                                NULL, 0, NULL, NULL);
+                prevWide = m.end;
+                prevByte = byteEnd;
+                m.start  = byteStart;
+                m.end    = byteEnd;
+            }
+        }
+
         s_findCachedNeedle    = needle;
         s_findCachedMatchCase = matchCase;
         s_findCachedWholeWord = wholeWord;
@@ -4036,7 +4082,10 @@ static void Ne_DoFindNext(HWND dlg, bool keepDialogFocus = false)
 
         if (s_findMatches.empty()) {
             Ne_UpdateFindCount();
-            { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_FIND_NOT_FOUND"), &btn, 1, IDOK); }
+            // Only nag on an explicit Find (button / Enter), not while typing — a
+            // mid-word prefix would otherwise pop a modal box and steal focus,
+            // making multi-word phrases impossible to type or paste.
+            if (!keepDialogFocus) { NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 }; Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_FIND_NOT_FOUND"), &btn, 1, IDOK); }
             return;
         }
 
@@ -4144,6 +4193,123 @@ static void Ne_DoReplace(HWND dlg, bool all)
             return false;
         }
     };
+
+    // ── Scintilla (code tab) replace path ─────────────────────────────────────
+    // Scintilla stores text as UTF-8 and addresses it in byte offsets, so it needs
+    // its own path (the RichEdit EM_* messages below do not work on Scintilla).
+    NeTabDoc* repDoc = NeTabs_GetActiveDoc(s_hwndMain);
+    if (repDoc && repDoc->hSci) {
+        HWND hSci = repDoc->hSci;
+
+        auto toU8 = [](const std::wstring& w) -> std::string {
+            if (w.empty()) return {};
+            int n = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), NULL, 0, NULL, NULL);
+            std::string s((size_t)n, '\0');
+            WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), s.data(), n, NULL, NULL);
+            return s;
+        };
+
+        // Whole document as wide text (for matching with the shared helpers).
+        std::wstring text;
+        {
+            std::string u8 = Ne_SciGetText(hSci);
+            if (!u8.empty()) {
+                int n = MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), -1, NULL, 0);
+                if (n > 1) { text.resize(n - 1); MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), -1, text.data(), n); }
+            }
+        }
+
+        if (all) {
+            struct MR { int s, e; std::wstring repl; };
+            std::vector<MR> mrs;
+            if (useRegex) {
+                std::wregex re;
+                if (!buildRegex(re)) return;
+                for (auto it = std::wsregex_iterator(text.begin(), text.end(), re);
+                     it != std::wsregex_iterator(); ++it) {
+                    int s = (int)it->position();
+                    mrs.push_back({ s, s + (int)it->length(), it->format(replacement) });
+                }
+            } else {
+                int from = 0;
+                while (true) {
+                    int pos = Ne_FindInText(text, needle, from, true, matchCase, wholeWord);
+                    if (pos < 0) break;
+                    mrs.push_back({ pos, pos + (int)needle.size(), replacement });
+                    from = pos + (int)needle.size();
+                }
+            }
+            if (mrs.empty()) {
+                NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_INFORMATION, 0 };
+                Ne_ShowChoiceDialog(dlg, Ls(L"DLG_FIND"), Ls(L"MSG_FIND_NOT_FOUND"), &btn, 1, IDOK);
+                return;
+            }
+
+            // Convert wide match ranges to UTF-8 byte offsets (ascending).
+            std::vector<std::pair<int,int>> bytes(mrs.size());
+            int prevWide = 0, prevByte = 0;
+            for (size_t i = 0; i < mrs.size(); i++) {
+                prevByte += WideCharToMultiByte(CP_UTF8, 0, text.c_str() + prevWide, mrs[i].s - prevWide, NULL, 0, NULL, NULL);
+                int bs = prevByte;
+                int be = bs + WideCharToMultiByte(CP_UTF8, 0, text.c_str() + mrs[i].s, mrs[i].e - mrs[i].s, NULL, 0, NULL, NULL);
+                prevWide = mrs[i].e; prevByte = be;
+                bytes[i] = { bs, be };
+            }
+
+            // Replace from last to first so earlier byte offsets stay valid.
+            SendMessageW(hSci, SCI_BEGINUNDOACTION, 0, 0);
+            for (int i = (int)mrs.size() - 1; i >= 0; i--) {
+                std::string repl = toU8(mrs[i].repl);
+                SendMessageW(hSci, SCI_SETTARGETRANGE, bytes[i].first, bytes[i].second);
+                SendMessageW(hSci, SCI_REPLACETARGET, (WPARAM)repl.size(), (LPARAM)repl.c_str());
+            }
+            SendMessageW(hSci, SCI_ENDUNDOACTION, 0, 0);
+
+            s_findMatches.clear();
+            s_findCachedNeedle.clear();
+            Ne_UpdateFindCount();
+        } else {
+            // Replace the current active (selected) match, then find the next one.
+            int selS = (int)SendMessageW(hSci, SCI_GETSELECTIONSTART, 0, 0);
+            int selE = (int)SendMessageW(hSci, SCI_GETSELECTIONEND,   0, 0);
+            if (selE > selS) {
+                std::string selU8((size_t)(selE - selS) + 1, '\0');
+                Sci_TextRange tr{};
+                tr.chrg.cpMin = selS;
+                tr.chrg.cpMax = selE;
+                tr.lpstrText  = selU8.data();
+                SendMessageW(hSci, SCI_GETTEXTRANGE, 0, (LPARAM)&tr);
+                selU8.resize((size_t)(selE - selS));
+
+                std::wstring selW;
+                if (!selU8.empty()) {
+                    int n = MultiByteToWideChar(CP_UTF8, 0, selU8.c_str(), (int)selU8.size(), NULL, 0);
+                    if (n > 0) { selW.resize(n); MultiByteToWideChar(CP_UTF8, 0, selU8.c_str(), (int)selU8.size(), selW.data(), n); }
+                }
+
+                bool doIt = false;
+                std::wstring expanded = replacement;
+                if (useRegex) {
+                    std::wregex re;
+                    if (buildRegex(re)) {
+                        std::wsmatch m;
+                        if (std::regex_search(selW, m, re)) { expanded = m.format(replacement); doIt = true; }
+                    }
+                } else {
+                    doIt = matchCase ? (selW == needle)
+                                     : (_wcsicmp(selW.c_str(), needle.c_str()) == 0);
+                }
+                if (doIt) {
+                    std::string repl = toU8(expanded);
+                    SendMessageW(hSci, SCI_REPLACESEL, 0, (LPARAM)repl.c_str());
+                }
+            }
+            s_findCachedNeedle.clear();
+            Ne_UpdateFindCount();
+            Ne_DoFindNext(dlg, false);
+        }
+        return;
+    }
 
     if (all) {
         std::wstring text = Ne_GetEditText(hEdit);

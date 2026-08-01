@@ -1124,6 +1124,27 @@
                                                 must be called after both RTF and non-RTF load
                                                 paths), and bug history.
 
+  API_INTERNALS\INTERNALS\find_replace_INTERNALS.txt
+                                                Find / Replace subsystem — the modeless
+                                                NsbFindClass window, incremental EN_CHANGE
+                                                search, s_findMatches / s_findAllTabMatches
+                                                state, and the three code paths
+                                                (all-tabs / Scintilla / RichEdit). CRITICAL
+                                                rule: matching runs on wide (UTF-16) text but
+                                                Scintilla is addressed in UTF-8 BYTE offsets,
+                                                so match ranges are converted with
+                                                WideCharToMultiByte before any SCI_* call.
+                                                Bug history: Scintilla highlight/selection
+                                                drift from multi-byte comment glyphs (─ • —);
+                                                Replace being a no-op on code tabs (RichEdit
+                                                EM_* path only → added SCI_SETTARGETRANGE /
+                                                SCI_REPLACETARGET + undo grouping); multi-word
+                                                Find blocked by the incremental not-found modal
+                                                stealing focus (now shown only on explicit
+                                                Find Next / Enter). Also documents the
+                                                GT_DEFAULT vs GT_RAWTEXT alignment caveat for
+                                                RichEdit extraction if tables/objects are added.
+
   API_INTERNALS\API\spinner_dialog_API.txt      Modal progress/spinner dialog component — API,
                                                 thread usage, and progress callback protocol.
 

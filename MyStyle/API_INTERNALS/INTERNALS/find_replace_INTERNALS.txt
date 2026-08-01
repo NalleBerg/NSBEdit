@@ -1,0 +1,198 @@
+find_replace_INTERNALS.txt
+════════════════════════════════════════════════════════════════════════════════
+  Find / Replace ── Implementation Internals
+════════════════════════════════════════════════════════════════════════════════
+
+All code lives in NSBEdit.cpp unless otherwise noted.  The search-result colour
+highlighting used on RichEdit tabs is a separate reusable module — see
+API\search_highlight_API.txt (NeHighlight_*).
+
+
+────────────────────────────────────────────────────────────────────────────────
+1. THE ONE RULE THAT GOVERNS THIS SUBSYSTEM
+────────────────────────────────────────────────────────────────────────────────
+
+NSBEdit has TWO editor backends and they count text positions differently:
+
+  RichEdit (RTF tabs, doc->hEdit)
+      Positions are UTF-16 CHARACTER offsets.
+      Addressed with EM_EXSETSEL / EM_EXGETSEL / EM_GETSELTEXT / EM_REPLACESEL.
+
+  Scintilla (code tabs, doc->hSci)
+      Positions are UTF-8 BYTE offsets.
+      Addressed with SCI_SETSEL / SCI_GETSELECTIONSTART / SCI_SETTARGETRANGE /
+      SCI_REPLACETARGET / SCI_REPLACESEL.
+
+All matching in this subsystem is done on WIDE (UTF-16, std::wstring) text so the
+shared helpers (Ne_FindInText, std::wregex, _wcsicmp, whole-word logic) work the
+same for both backends.  That produces WIDE-INDEX match ranges.
+
+  • For RichEdit, wide indices are already the right coordinate system → use as-is.
+  • For Scintilla, wide indices MUST be converted to UTF-8 byte offsets before
+    they touch any SCI_* message, otherwise every match after the first multi-byte
+    character (─ │ • — “ ” … arrows, accents, etc.) lands at the wrong place, and
+    the error GROWS the further down the document the match is.
+
+Conversion (ascending ranges, O(total length)):
+
+    int prevWide = 0, prevByte = 0;
+    for (auto& m : ranges) {
+        prevByte += WideCharToMultiByte(CP_UTF8, 0,
+                        text.c_str() + prevWide, m.start - prevWide, NULL,0,NULL,NULL);
+        int bs = prevByte;
+        int be = bs + WideCharToMultiByte(CP_UTF8, 0,
+                        text.c_str() + m.start, m.end - m.start, NULL,0,NULL,NULL);
+        prevWide = m.end;  prevByte = be;
+        m.start = bs;      m.end = be;
+    }
+
+WideCharToMultiByte(CP_UTF8, …, cchWideChar) with an exact prefix length returns
+the UTF-8 byte length of that prefix — that is the byte offset of the boundary.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2. THE FIND / REPLACE WINDOW
+────────────────────────────────────────────────────────────────────────────────
+
+Ne_ShowFindDialog(parent, hEdit)
+  Builds a MODELESS custom-class window ("NsbFindClass", proc Ne_FindDlgProc)
+  using the house style: measure-then-create, owner-draw buttons (Ne_DrawDialogButton
+  / s_findBtnDD), theme-aware custom checkboxes (CreateCustomCheckbox), DPI S()
+  sizing, AdjustWindowRectEx.  Controls:
+      IDC_NE_DLG_FIND_WHAT   Find edit           IDC_NE_DLG_REGEX      Regex
+      IDC_NE_DLG_REPL_WITH   Replace edit        IDC_NE_DLG_ALL_TABS   All open tabs
+      IDC_NE_DLG_MATCHCASE   Match case          IDC_NE_DLG_BACKWARDS  Search backwards
+      IDC_NE_DLG_WHOLEWORD   Whole word          IDC_NE_DLG_FIND_COUNT "3 / 14" counter
+      Buttons: Find Next / Replace / Replace All / Close
+
+  s_hwndFindEdit is the editor being searched (the active doc's hEdit or hSci).
+  It is captured at open time and re-pointed when all-tabs navigation switches tab.
+
+  On open, any current selection (or the cached current-word match on a Scintilla
+  tab) pre-fills the Find box and an immediate incremental search runs.
+
+Message pump routing (wWinMain)
+  Because the window is modeless AND a custom class, the main loop calls
+  IsDialogMessageW(s_hwndFind, &msg) FIRST so Tab / Enter / Esc / mnemonics work.
+  Enter → IDOK → Ne_DoFindNext; Esc / Close → DestroyWindow.
+
+WM_DESTROY clears NeHighlight state, all match caches, and the all-tabs state.
+
+
+────────────────────────────────────────────────────────────────────────────────
+3. STATE
+────────────────────────────────────────────────────────────────────────────────
+
+s_findMatches        std::vector<NeHighlightRange>  matches in the ACTIVE tab.
+                     Stored as CHAR offsets for a RichEdit tab, BYTE offsets for a
+                     Scintilla tab (converted right after they are built).
+s_findHL             NeHighlightState — RichEdit colour highlight + activeIdx.
+                     For Scintilla only activeIdx is used (colour highlight is a
+                     RichEdit-only feature; the active match is shown by SCI_SETSEL).
+s_findCached*        needle / matchCase / wholeWord / regex / allTabs / backwards.
+                     A change in any of these marks the search "dirty" → full rescan.
+                     Same params → the buttons just step activeIdx.
+s_findAllTabMatches  std::vector<NeAllTabMatch>{tabIndex,start,end} for all-tabs mode.
+                     Per-tab ranges are byte offsets for Scintilla tabs, char offsets
+                     for RichEdit tabs (converted per tab as they are built).
+s_findAllTabActiveIdx  current index into s_findAllTabMatches.
+
+
+────────────────────────────────────────────────────────────────────────────────
+4. Ne_DoFindNext(dlg, keepDialogFocus)
+────────────────────────────────────────────────────────────────────────────────
+
+Called from:
+  • the Find Next button / Enter   → keepDialogFocus = false (moves focus to editor)
+  • the EN_CHANGE handler as you type → keepDialogFocus = true  (focus stays in box)
+
+Flow:
+  1. Read needle + option checkboxes; empty needle clears highlight and returns.
+  2. Decide dirty vs. step (compare against s_findCached*).
+  3. Three code paths, chosen by checkbox / tab type:
+       a. ALL TABS      — scan every tab's wide text, build s_findAllTabMatches,
+                          convert Scintilla tabs' ranges to bytes, pick the match
+                          nearest the caret/selection, navigate + activate.
+       b. SINGLE Scintilla — wide text from Ne_SciGetText → matches → convert to
+                          bytes → SCI_SETSEL + SCI_SCROLLCARET on the active match.
+       c. SINGLE RichEdit  — wide text from Ne_GetEditText → matches (already the
+                          right coords) → NeHighlight_SetAll colours every match,
+                          activeIdx is selected/scrolled.
+  4. On a "step" (same params) just advance activeIdx (wrap-around) and re-navigate.
+  5. Ne_UpdateFindCount updates the "n / total" label.
+
+INCREMENTAL-SEARCH FOCUS RULE
+  The "text not found" modal (Ne_ShowChoiceDialog) is shown ONLY when
+  keepDialogFocus == false.  See §5, bug 3.
+
+
+────────────────────────────────────────────────────────────────────────────────
+5. BUG HISTORY  (regressions this subsystem has hit — do not reintroduce)
+────────────────────────────────────────────────────────────────────────────────
+
+BUG 1 — "highlight totally misses the phrase" on code tabs
+  Symptom: on a Scintilla (code) tab the highlight / selection landed BEFORE the
+  real match, and the gap got bigger the further down the file you searched.
+  Cause: matches were computed in UTF-16 wide-index space and fed straight into
+  SCI_SETSEL, which wants UTF-8 byte offsets.  Every 3-byte comment glyph
+  (─ │ • — arrows) added +2 bytes of drift per character.  RichEdit tabs were
+  unaffected because their positions ARE UTF-16 characters.
+  Fix: after building matches, convert wide ranges → byte offsets (§1) in BOTH
+  the single-tab Scintilla path and the per-tab all-tabs path.
+
+BUG 2 — Replace / Replace All did nothing on code tabs
+  Cause: Ne_DoReplace only had a RichEdit path (EM_EXSETSEL / EM_REPLACESEL).
+  On a Scintilla tab s_hwndFindEdit is the Scintilla HWND, and EM_* messages are
+  no-ops there, so nothing was replaced.
+  Fix: Ne_DoReplace branches on NeTabs_GetActiveDoc()->hSci first:
+     Replace All : build wide matches (+ regex m.format), convert to byte ranges,
+                   replace LAST→FIRST with SCI_SETTARGETRANGE + SCI_REPLACETARGET
+                   inside SCI_BEGINUNDOACTION / SCI_ENDUNDOACTION (one undo step,
+                   and earlier offsets stay valid while later ones are edited).
+     Replace     : verify the current selection (SCI_GETTEXTRANGE → wide) equals
+                   the needle (case rules) or regex-matches, SCI_REPLACESEL the
+                   UTF-8 replacement, then Ne_DoFindNext for the next hit.
+  Replacement text is converted wide→UTF-8 with WideCharToMultiByte(CP_UTF8).
+
+BUG 3 — could not type / paste a MULTI-WORD phrase into the Find box
+  Cause: EN_CHANGE runs an incremental Ne_DoFindNext on every keystroke.  While
+  typing "foo bar", the intermediate prefix "foo " often does not exist in the
+  document, which popped the modal "text not found" box.  The modal stole focus
+  from the edit control, so the next characters (and the space) never reached it.
+  Fix: suppress the not-found modal during incremental search — show it only when
+  keepDialogFocus == false (an explicit Find Next / Enter).  Same guard applies to
+  both the single-tab and all-tabs empty-result branches.
+
+
+────────────────────────────────────────────────────────────────────────────────
+6. RICHEDIT TEXT EXTRACTION — GT_DEFAULT vs GT_RAWTEXT  (alignment note)
+────────────────────────────────────────────────────────────────────────────────
+
+Ne_GetEditText uses EM_GETTEXTEX with GT_DEFAULT (codepage 1200).  For the current
+document set this stays position-aligned with EM_EXSETSEL:
+   • CR is NOT expanded to CRLF (a paragraph mark is one character, as in memory).
+   • \line soft breaks come back as a single 0x0B (verified against EM_GETSELTEXT).
+GT_DEFAULT does, however, STRIP table / math-object structure characters and object
+markers (U+FFFC).  If RTF TABLES or embedded objects are ever added to a document,
+GT_DEFAULT extraction will become SHORTER than the in-memory text and every match
+after the table will be mis-highlighted — the same class of bug as §5.1 but on the
+RichEdit side.  The fix at that point is to switch Ne_GetEditText (for the find
+path) to GT_RAWTEXT, which "maintains character-position alignment between the
+retrieved text and the text in memory."  Left as GT_DEFAULT today because no
+document type currently contains tables/objects and GT_RAWTEXT would surface the
+raw structure glyphs in unrelated callers (e.g. Compare Tabs line splitting).
+
+
+────────────────────────────────────────────────────────────────────────────────
+7. QUICK REFERENCE
+────────────────────────────────────────────────────────────────────────────────
+
+  Ne_ShowFindDialog      build / focus the modeless Find window
+  Ne_FindDlgProc         window proc (WM_COMMAND buttons, EN_CHANGE incremental)
+  Ne_DoFindNext          find / step / navigate (all-tabs | Scintilla | RichEdit)
+  Ne_DoReplace           replace one / all (Scintilla branch, then RichEdit branch)
+  Ne_FindInText          wide-string substring search (case + whole-word)
+  Ne_GetEditText         RichEdit → wide text (EM_GETTEXTEX, GT_DEFAULT)
+  Ne_SciGetText          Scintilla → UTF-8 text (caller converts to wide)
+  Ne_UpdateFindCount     refresh the "n / total" label
+  NeHighlight_*          RichEdit colour highlight module (search_highlight_API.txt)

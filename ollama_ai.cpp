@@ -538,9 +538,11 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
         if (hInput) {
             int inLen = GetWindowTextLengthW(hInput);
             if (inLen > 0) {
-                current.resize((size_t)inLen);
-                int copied = GetWindowTextW(hInput, &current[0], inLen + 1);
-                current.resize((size_t)copied);
+                // Size for CRLF expansion so a multi-line draft is not truncated.
+                std::wstring buf((size_t)inLen * 2 + 2, L'\0');
+                int copied = GetWindowTextW(hInput, &buf[0], (int)buf.size());
+                buf.resize((size_t)copied);
+                current = std::move(buf);
             }
         }
         st->historyDraft = current;
@@ -2882,6 +2884,26 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
             return 0;
         }
     }
+    // Route Ctrl+V / Shift+Insert through our own sanitizing WM_PASTE handler
+    // below. RichEdit's built-in paste otherwise inserts the clipboard's rich
+    // content directly, which means:
+    //   • text copied from a dark editor tab keeps its light colour and is
+    //     nearly invisible on the white input box, and
+    //   • some console (CMD/PowerShell) payloads corrupt the control and crash
+    //     the app a moment later (e.g. on the next Send).
+    // Swallowing the key here (and the matching Ctrl+V WM_CHAR 0x16 below)
+    // guarantees the safe path runs exactly once — no double paste.
+    if (msg == WM_KEYDOWN &&
+        ((wParam == L'V' && (GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_MENU) & 0x8000)) ||
+         (wParam == VK_INSERT && (GetKeyState(VK_SHIFT) & 0x8000)))) {
+        SendMessageW(hwnd, WM_PASTE, 0, 0);
+        return 0;
+    }
+    if (msg == WM_CHAR && wParam == 0x16) {
+        // Ctrl+V control char — already handled in WM_KEYDOWN; swallow so the
+        // control never performs (or double-performs) its own paste.
+        return 0;
+    }
     if (msg == WM_CHAR && (wParam == L'\r') && plainEnter) {
         return 0;
     }
@@ -2934,6 +2956,8 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
                     continue;
                 }
                 if (c == L'\n') { clean.push_back(L'\r'); continue; }
+                if (c == L'\t') { clean.push_back(c); continue; }
+                if (c < 0x20) continue; // drop other C0 controls (ESC, BEL, BS, FF, VT…)
                 clean.push_back(c);
             }
             CHARRANGE before = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&before);
@@ -4023,9 +4047,13 @@ static void Ai_DoSend(HWND hwnd)
     if (hInput) {
         int inLen = GetWindowTextLengthW(hInput);
         if (inLen > 0) {
-            prompt.resize((size_t)inLen);
-            int copied = GetWindowTextW(hInput, &prompt[0], inLen + 1);
-            prompt.resize((size_t)copied);
+            // RichEdit reports the length with single-CR line breaks but emits
+            // CRLF from GetWindowText, so size the buffer for that expansion
+            // (worst case doubles) to avoid truncating multi-line prompts.
+            std::wstring buf((size_t)inLen * 2 + 2, L'\0');
+            int copied = GetWindowTextW(hInput, &buf[0], (int)buf.size());
+            buf.resize((size_t)copied);
+            prompt = std::move(buf);
         }
     }
     if (prompt.empty()) return;
