@@ -43,6 +43,8 @@
 #define IDC_AI_ANSWER_TEXT        1959
 #define IDC_AI_STATUS_TIMER       1960
 #define IDC_AI_STOP_BTN           1961
+#define IDC_AI_PREV_BTN           1962
+#define IDC_AI_NEXT_BTN           1963
 
 #define IDM_AI_MODEL_DEFAULT      1901
 #define IDM_AI_MODEL_FALLBACK     1902
@@ -63,6 +65,7 @@
 #define WM_AI_MODELCHECK_DONE     (WM_APP + 73)
 #define WM_AI_SEND_APPEND         (WM_APP + 74)
 #define WM_AI_PROGRESS            (WM_APP + 75)
+#define WM_AI_CLOUDMODELS_READY   (WM_APP + 76)  // lParam = new std::vector<std::wstring>*
 
 static constexpr UINT_PTR kAiLiveTypingTimerId = 0xA11E;
 static constexpr UINT_PTR kAiLiveTypingStartDelayTimerId = 0xA11F;
@@ -91,7 +94,7 @@ struct AiButtonSpec {
 
 struct AiDialogData {
     int buttonCount = 0;
-    AiButtonSpec buttons[5];
+    AiButtonSpec buttons[7];
 };
 
 struct AiWindowState {
@@ -143,6 +146,14 @@ struct AiWindowState {
     int answerWheelAccum = 0;
     int answerScrollY = 0;
     int answerContentHeight = 0;
+    // ── Conversation history (accumulated answers, persisted to the DB) ───────
+    // Each entry is one turn: the user's prompt and the raw markdown reply. The
+    // whole conversation is re-rendered into hLog on each new answer, separated
+    // by dividers. turnAnchors holds the char offset in hLog where each turn's
+    // "You:" line begins, for the Prev/Next navigation buttons.
+    std::vector<std::pair<std::wstring, std::wstring>> conversation;
+    std::vector<int> turnAnchors;
+    int navTurn = -1;
 };
 
 struct AiAnswerBlockDesc {
@@ -251,7 +262,8 @@ static void Ai_NormalizeModelNameLocal(std::wstring& model);
 static void Ai_AddUniqueModel(std::vector<std::wstring>& models, const std::wstring& model);
 static std::vector<std::wstring> Ai_GetModelCandidates();
 static void Ai_SetWrapToWindow(HWND hwndEdit);
-static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply);
+static void Ai_RenderConversation(HWND hwnd);
+static bool Ai_CommitLiveReply(HWND hwnd);
 static void Ai_FinalizeLiveReply(HWND hwnd);
 static void Ai_SetThinkingStatusText(HWND hwnd);
 static void Ai_ClearRenderedAnswer(HWND hwnd);
@@ -274,7 +286,7 @@ static void Ai_OpenOllamaSignUp(HWND hwnd);
 static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR dwRefData);
 static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARFORMAT2W* normalFmt, const CHARFORMAT2W* boldFmt, const CHARFORMAT2W* italicFmt, const CHARFORMAT2W* codeFmt, const CHARFORMAT2W* resetFmt);
-static void Ai_AppendFirstCodeBlockReply(HWND hLog, const std::wstring& reply);
+static void Ai_AppendMarkdownBlocks(HWND hLog, const std::wstring& reply);
 static void Ai_ApplyButtons(AiWindowState* st);
 static void Ai_ShowModelCheckDialog(HWND parent);
 
@@ -701,8 +713,31 @@ static std::wstring Ai_DefaultCloudModelName()
 // Curated list of well-known Ollama cloud models, merged with any "-cloud"
 // models the local daemon already reports.  Used to populate the Model menu so
 // the user can pick which cloud model to use.
+
+// Live cloud model list, populated asynchronously from ollama.com/api/tags when
+// the AI window opens (see Ai_RefreshCloudModelsAsync). Empty until the first
+// successful fetch — the curated fallback below is used until then. Only ever
+// read/written on the UI thread (the worker hands it over via PostMessage).
+static std::vector<std::wstring> s_cloudModelsLive;
+
 static std::vector<std::wstring> Ai_CloudModelCandidates()
 {
+    // Prefer the LIVE list fetched from ollama.com/api/tags: retired models are
+    // already gone from it and newly-released ones are present. Fall back to the
+    // curated list below when no API key is set / the fetch has not completed.
+    if (!s_cloudModelsLive.empty()) {
+        std::vector<std::wstring> live;
+        for (std::wstring m : s_cloudModelsLive) {
+            // The app routes cloud models by the "-cloud" suffix; normalise so
+            // both the menu and the send path agree on the name.
+            if (m.find(L"-cloud") == std::wstring::npos) m += L"-cloud";
+            bool present = false;
+            for (const std::wstring& e : live) { if (e == m) { present = true; break; } }
+            if (!present) live.push_back(m);
+        }
+        if (!live.empty()) return live;
+    }
+
     std::vector<std::wstring> models = {
         L"qwen3-coder:480b-cloud",
         L"gpt-oss:120b-cloud",
@@ -720,6 +755,22 @@ static std::vector<std::wstring> Ai_CloudModelCandidates()
         }
     }
     return models;
+}
+
+// Fetch the current cloud model list in the background and, when it differs from
+// what we already have, hand it to the UI thread (WM_AI_CLOUDMODELS_READY) which
+// updates s_cloudModelsLive and rebuilds the menu. No-op without an API key.
+static void Ai_RefreshCloudModelsAsync(HWND hwnd)
+{
+    if (!hwnd) return;
+    std::thread([hwnd]() {
+        std::vector<std::wstring> models;
+        if (NeAiClient_ListCloudModels(models) && !models.empty()) {
+            if (IsWindow(hwnd))
+                PostMessageW(hwnd, WM_AI_CLOUDMODELS_READY, 0,
+                             (LPARAM)new std::vector<std::wstring>(std::move(models)));
+        }
+    }).detach();
 }
 
 static void Ai_NormalizeModelName(std::wstring& model)
@@ -1296,7 +1347,7 @@ static int Ai_GetTextEndPos(HWND hLog)
     return got.cpMax;
 }
 
-static void Ai_AppendFirstCodeBlockReply(HWND hLog, const std::wstring& reply)
+static void Ai_AppendMarkdownBlocks(HWND hLog, const std::wstring& reply)
 {
     if (!hLog || reply.empty()) return;
 
@@ -1358,7 +1409,6 @@ static void Ai_AppendFirstCodeBlockReply(HWND hLog, const std::wstring& reply)
     }();
 
     std::vector<AiAnswerBlockDesc> blocks = Ai_ParseAnswerBlocks(reply);
-    AiCopyCode_Clear(hLog);
     for (const AiAnswerBlockDesc& block : blocks) {
         if (!block.isCode) {
             // Split the prose block into individual lines so headings, block
@@ -1696,74 +1746,117 @@ static bool Ai_CopyAnswerText(HWND hwndLog)
     return true;
 }
 
-static bool Ai_RenderMarkdownReply(HWND hwnd, const std::wstring& reply)
+// Re-render every stored conversation turn into hLog, separated by a divider,
+// recording each turn's "You:" char offset in st->turnAnchors for Prev/Next.
+static void Ai_RenderConversation(HWND hwnd)
 {
-    if (reply.empty()) return false;
-
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st) return false;
-
-    std::wstring text = reply;
-    Ai_ReplaceAll(text, L"\r\n", L"\n");
-    Ai_ReplaceAll(text, L"\r", L"\n");
-    Ai_UnescapeModelText(text);
-
+    if (!st) return;
     HWND hLog = st->hLog;
-    Ai_ClearRenderedAnswer(hwnd);
-    if (!hLog || !IsWindow(hLog)) {
-        return false;
-    }
+    if (!hLog || !IsWindow(hLog)) return;
 
-    st->answerRawMarkdown = text;
-    st->answerCopyText = text;
+    static const CHARFORMAT2W kNormal = []() {
+        CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR | CFM_BOLD | CFM_ITALIC;
+        cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(0, 0, 0); cf.crBackColor = RGB(255, 255, 255);
+        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji"); return cf;
+    }();
+    static const CHARFORMAT2W kYou = []() {
+        CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR | CFM_BOLD | CFM_ITALIC;
+        cf.dwEffects = CFE_BOLD; cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(59, 125, 59); cf.crBackColor = RGB(255, 255, 255);
+        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji"); return cf;
+    }();
+    static const CHARFORMAT2W kOllama = []() {
+        CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR | CFM_BOLD | CFM_ITALIC;
+        cf.dwEffects = CFE_BOLD; cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(0, 120, 215); cf.crBackColor = RGB(255, 255, 255);
+        lstrcpyW(cf.szFaceName, L"Segoe UI Emoji"); return cf;
+    }();
+    static const CHARFORMAT2W kSep = []() {
+        CHARFORMAT2W cf = {}; cf.cbSize = sizeof(cf);
+        cf.dwMask = CFM_FACE | CFM_SIZE | CFM_COLOR | CFM_BACKCOLOR | CFM_BOLD | CFM_ITALIC;
+        cf.yHeight = MulDiv(12, 20, 1);
+        cf.crTextColor = RGB(170, 170, 170); cf.crBackColor = RGB(255, 255, 255);
+        lstrcpyW(cf.szFaceName, L"Segoe UI"); return cf;
+    }();
 
-    std::wstring keepText = st->answerIntroText;
-    if (keepText.empty()) {
-        int end = GetWindowTextLengthW(hLog);
-        if (end > 0 && st->replyBaseStart >= 0) {
-            std::wstring logText;
-            logText.resize((size_t)end + 1);
-            GetWindowTextW(hLog, logText.data(), end + 1);
-            logText.resize((size_t)end);
+    Ai_ClearRenderedAnswer(hwnd);   // wipes hLog + legacy blocks
+    AiCopyCode_Clear(hLog);         // reset code-copy registry ONCE for the whole doc
+    st->turnAnchors.clear();
+    st->answerRawMarkdown.clear();
 
-            int keepEnd = st->replyBaseStart < end ? st->replyBaseStart : end;
-            keepText = logText.substr(0, (size_t)keepEnd);
+    const std::wstring youLabel    = Ne_Ls(L"AI_LOG_USER_PREFIX");
+    const std::wstring ollamaLabel = Ne_Ls(L"AI_LOG_OLLAMA_PREFIX");
+    const std::wstring sepLine(48, L'\u2500');
+
+    std::wstring copyAll;
+    for (size_t i = 0; i < st->conversation.size(); ++i) {
+        const std::wstring& prompt  = st->conversation[i].first;
+        const std::wstring& replyMd = st->conversation[i].second;
+
+        if (i > 0) {
+            Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kNormal, false);
+            Ai_AppendRichRun(hLog, sepLine, &kSep, &kNormal, false);
+            Ai_AppendRichRun(hLog, L"\r\n\r\n", nullptr, &kNormal, false);
         }
+
+        st->turnAnchors.push_back(GetWindowTextLengthW(hLog));
+
+        Ai_AppendRichRun(hLog, youLabel, &kYou, &kNormal, false);
+        Ai_AppendRichRun(hLog, prompt + L"\r\n\r\n", &kNormal, &kNormal, false);
+        Ai_AppendRichRun(hLog, ollamaLabel + L"\r\n", &kOllama, &kNormal, false);
+
+        std::wstring md = replyMd;
+        Ai_ReplaceAll(md, L"\r\n", L"\n");
+        Ai_ReplaceAll(md, L"\r", L"\n");
+        Ai_UnescapeModelText(md);
+        Ai_AppendMarkdownBlocks(hLog, md);
+
+        copyAll += youLabel + prompt + L"\n\n" + ollamaLabel + L"\n" + replyMd + L"\n\n";
     }
 
-    // Two blank lines between the echoed prompt and the model's answer.
-    if (!keepText.empty()) {
-        while (!keepText.empty() && (keepText.back() == L'\n' || keepText.back() == L'\r'))
-            keepText.pop_back();
-        keepText += L"\r\n\r\n\r\n";
+    st->answerCopyText = copyAll;
+    s_aiAnswerCopyRanges[hLog] = CHARRANGE{ 0, GetWindowTextLengthW(hLog) };
+
+    // Show the newest turn (its "You:" line near the top of the pane).
+    st->navTurn = (int)st->conversation.size() - 1;
+    if (st->navTurn >= 0 && st->navTurn < (int)st->turnAnchors.size()) {
+        int off = st->turnAnchors[st->navTurn];
+        int line = (int)SendMessageW(hLog, EM_LINEFROMCHAR, (WPARAM)off, 0);
+        int firstVis = (int)SendMessageW(hLog, EM_GETFIRSTVISIBLELINE, 0, 0);
+        SendMessageW(hLog, EM_LINESCROLL, 0, line - firstVis);
     }
+    if (st->hLogSb) { msb_notify_content_changed(st->hLogSb); msb_sync(st->hLogSb); }
+}
 
-    SetWindowTextW(hLog, keepText.c_str());
-    if (!keepText.empty()) {
-        CHARFORMAT2W cf = {};
-        cf.cbSize = sizeof(cf);
-        cf.dwMask = CFM_COLOR;
-        cf.crTextColor = RGB(20, 20, 20);
-        CHARRANGE range = { 0, (LONG)keepText.size() };
-        SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
-        SendMessageW(hLog, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
-        range.cpMin = range.cpMax = (LONG)keepText.size();
-        SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&range);
-    }
-
-    Ai_AppendFirstCodeBlockReply(hLog, text);
-
-    LONG answerStart = (LONG)keepText.size();
-    CHARRANGE viewRange = { 0, 0 };
-    SendMessageW(hLog, EM_EXSETSEL, 0, (LPARAM)&viewRange);
-    SendMessageW(hLog, WM_VSCROLL, SB_TOP, 0);
-    SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
-
-    CHARRANGE answerRange = { answerStart, GetWindowTextLengthW(hLog) };
-    s_aiAnswerCopyRanges[hLog] = answerRange;
-    if (st->hLogSb) msb_notify_content_changed(st->hLogSb);
-    Ai_AnswerHostScrollTo(st->hAnswerHost, 0);
+// Commit the just-finished streamed reply as a new conversation turn, persist it
+// to the DB, and re-render the whole conversation.
+static bool Ai_CommitLiveReply(HWND hwnd)
+{
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (!st || st->liveReply.empty()) return false;
+    st->conversation.emplace_back(st->lastPrompt, st->liveReply);
+    NeProfiles_AiAnswersAppend(st->lastPrompt, st->liveReply);
+    Ai_RenderConversation(hwnd);
     return true;
+}
+
+// Scroll the answer pane to conversation turn `idx` (its "You:" line).
+static void Ai_ScrollToTurn(HWND hwnd, int idx)
+{
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (!st || !st->hLog || !IsWindow(st->hLog)) return;
+    if (idx < 0 || idx >= (int)st->turnAnchors.size()) return;
+    st->navTurn = idx;
+    int off = st->turnAnchors[idx];
+    int line = (int)SendMessageW(st->hLog, EM_LINEFROMCHAR, (WPARAM)off, 0);
+    int firstVis = (int)SendMessageW(st->hLog, EM_GETFIRSTVISIBLELINE, 0, 0);
+    SendMessageW(st->hLog, EM_LINESCROLL, 0, line - firstVis);
+    if (st->hLogSb) msb_sync(st->hLogSb);
 }
 
 static void Ai_FinalizeLiveReply(HWND hwnd)
@@ -1773,7 +1866,7 @@ static void Ai_FinalizeLiveReply(HWND hwnd)
         return;
     }
 
-    if (Ai_RenderMarkdownReply(hwnd, st->liveReply)) {
+    if (Ai_CommitLiveReply(hwnd)) {
         st->liveTypingFinalRendered = true;
         Ai_SetThinkingStatusText(hwnd);
     }
@@ -3022,12 +3115,14 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
 static void Ai_ApplyButtons(AiWindowState* st)
 {
     if (!st || !st->dd) return;
-    st->dd->buttonCount = 5;
+    st->dd->buttonCount = 7;
     st->dd->buttons[0] = AiButtonSpec{ IDC_AI_SEND_BTN,  Ne_Ls(L"BTN_SEND"),  AiBtnTone::Green, Ai_MeasureButtonWidth(Ne_Ls(L"BTN_SEND")),  true };
     st->dd->buttons[1] = AiButtonSpec{ IDC_AI_STOP_BTN,  Ne_Ls(L"BTN_STOP"),  AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_STOP")),  false };
     st->dd->buttons[2] = AiButtonSpec{ IDC_AI_COPY_BTN,  Ne_Ls(L"BTN_COPY"),  AiBtnTone::Blue,  Ai_MeasureButtonWidth(Ne_Ls(L"BTN_COPY")),  false, true };
-    st->dd->buttons[3] = AiButtonSpec{ IDC_AI_CLEAR_BTN, Ne_Ls(L"BTN_CLEAR"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLEAR")), true };
-    st->dd->buttons[4] = AiButtonSpec{ IDC_AI_CLOSE_BTN, Ne_Ls(L"BTN_CLOSE"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLOSE")), true };
+    st->dd->buttons[3] = AiButtonSpec{ IDC_AI_PREV_BTN,  Ne_Ls(L"BTN_PREV"),  AiBtnTone::Blue,  Ai_MeasureButtonWidth(Ne_Ls(L"BTN_PREV")),  false };
+    st->dd->buttons[4] = AiButtonSpec{ IDC_AI_NEXT_BTN,  Ne_Ls(L"BTN_NEXT"),  AiBtnTone::Blue,  Ai_MeasureButtonWidth(Ne_Ls(L"BTN_NEXT")),  false };
+    st->dd->buttons[5] = AiButtonSpec{ IDC_AI_CLEAR_BTN, Ne_Ls(L"BTN_CLEAR"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLEAR")), true };
+    st->dd->buttons[6] = AiButtonSpec{ IDC_AI_CLOSE_BTN, Ne_Ls(L"BTN_CLOSE"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLOSE")), true };
 }
 
 static HMENU Ai_BuildMenu(const AiWindowState* st)
@@ -3046,6 +3141,10 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
         Ai_AddModelMenuItem(hModel, model, AiMenuRole::Suggest);
     }
 
+    // “Check local models” belongs with the Local models: place it between the
+    // Local and Cloud groups, with a divider above and below it.
+    Ai_AppendMenuOD(hModel, MF_SEPARATOR, 0, NULL, false);
+    Ai_AppendMenuOD(hModel, MF_STRING, IDM_AI_CHECK_MODELS, Ne_Ls(L"MENU_AI_CHECK_MODELS"), false);
     Ai_AppendMenuOD(hModel, MF_SEPARATOR, 0, NULL, false);
     // "Cloud" section header, then the cloud models — served through the
     // signed-in local Ollama daemon.  Greyed until the user signs in
@@ -3064,8 +3163,6 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SET_API_KEY, Ne_Ls(L"AI_MENU_ADD_API_KEY"), false);
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_IN, Ne_Ls(L"AI_MENU_SIGN_IN"), false);
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_SIGN_OUT, Ne_Ls(L"AI_MENU_SIGN_OUT"), false);
-    Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL, false);
-    Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_CHECK_MODELS, Ne_Ls(L"MENU_AI_CHECK_MODELS"), false);
     Ai_AppendMenuOD(hCloud, MF_SEPARATOR, 0, NULL, false);
     Ai_AppendMenuOD(hCloud, MF_STRING, IDM_AI_OPEN_PROVIDER, Ne_Ls(L"AI_MENU_OPEN_PROVIDER"), false);
 
@@ -4068,7 +4165,10 @@ static void Ai_DoSend(HWND hwnd)
     Ai_StopThinkingTimer(hwnd);
     Ai_StartThinkingTimer(hwnd);
 
-    Ai_ClearRenderedAnswer(hwnd);
+    // Re-render the accumulated conversation so previous answers stay visible;
+    // the new prompt echo + streamed reply are appended below and become part of
+    // the conversation once the answer completes (Ai_CommitLiveReply).
+    Ai_RenderConversation(hwnd);
 
     if (hInput) SetWindowTextW(hInput, L"");
 
@@ -4313,7 +4413,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         int btnY = S(438);
         int btnX = S(10) + S(820) - totalBtnW;
-        HWND btnHwnds[5] = {};
+        HWND btnHwnds[7] = {};
         int bx = btnX;
         for (int i = 0; i < st->dd->buttonCount; ++i) {
             const AiButtonSpec& b = st->dd->buttons[i];
@@ -4326,8 +4426,8 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         HWND hSend  = btnHwnds[0];
         HWND hStop  = btnHwnds[1];
         HWND hCopy  = btnHwnds[2];
-        HWND hClear = btnHwnds[3];
-        HWND hClose = btnHwnds[4];
+        HWND hClear = btnHwnds[5];
+        HWND hClose = btnHwnds[6];
 
         HWND hStatus = CreateWindowExW(0, L"STATIC", L"",
             WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP,
@@ -4352,6 +4452,20 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
         Ai_RefreshUi(hwnd);
         Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_WINDOW_OPENED"));
+        // Load any persisted conversation history and render it. Accumulated
+        // answers survive across restarts until the user presses Clear.
+        {
+            std::vector<NeAiAnswerRow> rows;
+            if (NeProfiles_AiAnswersLoad(rows) && !rows.empty()) {
+                st->conversation.reserve(rows.size());
+                for (auto& r : rows) st->conversation.emplace_back(r.prompt, r.replyMd);
+                Ai_RenderConversation(hwnd);
+            }
+        }
+        // Refresh the cloud model list from ollama.com in the background; when it
+        // arrives (WM_AI_CLOUDMODELS_READY) the menu is rebuilt so retired models
+        // drop off and newly-released ones appear.
+        Ai_RefreshCloudModelsAsync(hwnd);
         SetFocus(hInput);
         return 0;
     }
@@ -4528,6 +4642,10 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         case IDM_AI_LOG_CLEAR:
             if (st) {
+                st->conversation.clear();
+                st->turnAnchors.clear();
+                st->navTurn = -1;
+                NeProfiles_AiAnswersClear();
                 if (st->hLog && IsWindow(st->hLog)) {
                     SetWindowTextW(st->hLog, L"");
                 }
@@ -4550,6 +4668,20 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         case IDC_AI_COPY_BTN:
             SendMessageW(hwnd, WM_COMMAND, IDM_AI_LOG_COPY, 0);
+            return 0;
+        case IDC_AI_PREV_BTN:
+            if (st && !st->turnAnchors.empty()) {
+                int idx = (st->navTurn < 0) ? (int)st->turnAnchors.size() - 1 : st->navTurn - 1;
+                if (idx < 0) idx = 0;
+                Ai_ScrollToTurn(hwnd, idx);
+            }
+            return 0;
+        case IDC_AI_NEXT_BTN:
+            if (st && !st->turnAnchors.empty()) {
+                int idx = (st->navTurn < 0) ? 0 : st->navTurn + 1;
+                if (idx > (int)st->turnAnchors.size() - 1) idx = (int)st->turnAnchors.size() - 1;
+                Ai_ScrollToTurn(hwnd, idx);
+            }
             return 0;
         case IDC_AI_CLEAR_BTN:
             SendMessageW(hwnd, WM_COMMAND, IDM_AI_LOG_CLEAR, 0);
@@ -4623,6 +4755,19 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         return 0;
     }
+    case WM_AI_CLOUDMODELS_READY: {
+        // Live cloud model list arrived from ollama.com. Adopt it and rebuild the
+        // menu if it changed so retired models disappear and new ones show up.
+        auto* list = (std::vector<std::wstring>*)lParam;
+        if (list) {
+            if (*list != s_cloudModelsLive) {
+                s_cloudModelsLive = std::move(*list);
+                if (st) Ai_RefreshUi(hwnd);   // rebuilds the menu from the new list
+            }
+            delete list;
+        }
+        return 0;
+    }
     case WM_AI_SEND_APPEND: {
         auto* chunk = (AiStreamChunk*)lParam;
         if (st && chunk && !chunk->chunk.empty()) {
@@ -4681,7 +4826,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     Ai_StopLiveTypingTimer(hwnd);
                 }
                 if (st && !st->liveReply.empty() && !st->liveTypingFinalRendered) {
-                    Ai_RenderMarkdownReply(hwnd, st->liveReply);
+                    Ai_CommitLiveReply(hwnd);
                     st->liveTypingFinalRendered = true;
                 }
             }
@@ -4785,6 +4930,7 @@ void Ne_ShowAiWindow(HWND parent)
         AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(s_hwndAiWindow, GWLP_USERDATA);
         if (st) Ai_ReconcileSignInState(st);   // pick up terminal signin/signout
         Ai_RefreshUi(s_hwndAiWindow);
+        Ai_RefreshCloudModelsAsync(s_hwndAiWindow); // refresh cloud model list on reopen
         ShowWindow(s_hwndAiWindow, SW_SHOW);
         SetForegroundWindow(s_hwndAiWindow);
         return;

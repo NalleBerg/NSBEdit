@@ -703,7 +703,52 @@ bool NeAiClient_ValidateCloudApiKey(const std::wstring& key)
     return ok;
 }
 
-// Streams a "-cloud" model straight from https://ollama.com/api/generate using
+bool NeAiClient_ListCloudModels(std::vector<std::wstring>& outModels)
+{
+    outModels.clear();
+    std::wstring key = Ai_GetCloudApiKey();
+    if (key.empty()) return false;
+
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return false;
+    WinHttpSetTimeouts(hSession, 8000, 8000, 8000, 15000);
+
+    bool ok = false;
+    HINTERNET hConnect = WinHttpConnect(hSession, L"ollama.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", L"/api/tags",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+        if (hRequest) {
+            std::wstring auth = L"Authorization: Bearer " + key + L"\r\n";
+            WinHttpAddRequestHeaders(hRequest, auth.c_str(), (DWORD)-1L,
+                WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE);
+            if (WinHttpSendRequest(hRequest, WINHTTP_NO_ADDITIONAL_HEADERS, 0,
+                WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0;
+                DWORD statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX) &&
+                    status == 200) {
+                    std::string response;
+                    if (Ai_ReadBody(hRequest, response)) {
+                        std::vector<std::wstring> models;
+                        if (Ai_FindJsonArrayStringFields(response, "name", models))
+                            outModels = std::move(models);
+                        ok = true;
+                    }
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+
+    WinHttpCloseHandle(hSession);
+    return ok;
+}
 // the bearer API key.  Mirrors the local curl path's NDJSON handling: append
 // "response" tokens, and use "thinking" ONLY when a line has no "response" (so
 // reasoning models don't double every token).  Honours the shared Stop flag.

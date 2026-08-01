@@ -47,6 +47,13 @@ bool NeProfiles_SetStrSetting(const char* key, const std::string& value);
 bool NeProfiles_GetSecretSetting(const char* key, std::wstring& out);
 bool NeProfiles_SetSecretSetting(const char* key, const std::wstring& value);
 
+// ── AI answer history (conversation persistence for the AI window) ────────────
+// One stored conversation turn: the user's prompt and the raw markdown reply.
+struct NeAiAnswerRow { std::wstring prompt; std::wstring replyMd; };
+bool NeProfiles_AiAnswersAppend(const std::wstring& prompt, const std::wstring& replyMd);
+bool NeProfiles_AiAnswersLoad(std::vector<NeAiAnswerRow>& out);
+bool NeProfiles_AiAnswersClear();
+
 // True when running from the installed Program Files layout.
 // False for portable mode (db next to exe) or in-memory fallback.
 bool NeProfiles_IsInstalled();

@@ -1,6 +1,18 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 1 August 2026 &mdash; 2026.08.01.08 (08:34)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 1 August 2026 &mdash; 2026.08.01.10 (10:26)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.08.01.10 (AI: accumulating answers + live cloud model list; green active tab; new-file .txt default)</span></h3>
+<p><strong>AI: accumulating answers + live cloud model list; green active tab; new-file .txt default (01.08.2026, 10:26):</strong></p>
+<ul>
+<li><strong>Feature: the AI window keeps every answer:</strong> answers are no longer wiped on each new question. Each prompt + reply is appended below the previous one with a divider between them and the newest scrolled into view, so you can scroll up through the whole conversation. New <strong>Prev / Next</strong> buttons (between <strong>Copy</strong> and <strong>Clear</strong>) jump from answer to answer, and <strong>Clear</strong> wipes them all. The conversation is <strong>saved to the database</strong>, so your answers are restored the next time you open NSBEdit &mdash; until you clear them. Streaming still shows the live text as it arrives and renders it (with copyable, syntax-highlighted code cells) once the answer completes.</li>
+<li><strong>Feature: the cloud model list is live:</strong> opening the AI window now fetches the current cloud catalogue from <code>ollama.com/api/tags</code> (using your <strong>Cloud &rarr; Add API key</strong>) in the background and rebuilds the <strong>Model</strong> menu, so <strong>retired models disappear</strong> (e.g. <code>qwen3-coder:480b</code>) and <strong>newly-released ones show up</strong> automatically. Without an API key it falls back to the built-in curated list.</li>
+<li><strong>Change: Check local models moved to the Model menu:</strong> it now sits between the <strong>Local</strong> and <strong>Cloud</strong> model groups (with a divider above and below) instead of in the Cloud menu, where it belongs with the local models.</li>
+<li><strong>Feature: the active tab's name is green:</strong> the current tab's file name is drawn in green &mdash; <code>rgb(59, 125, 59)</code> in light mode and a lighter green in dark mode &mdash; bold, with a standout background and blue accent, so the active page is easy to spot. Tabs are now custom-painted in both light and dark modes.</li>
+<li><strong>Fix: new files are plain text, not RTF:</strong> a brand-new (Ctrl+N) file no longer asks to &ldquo;strip formatting&rdquo; on save, and <strong>Save As now defaults to <code>.txt</code></strong> (with the Text filter preselected) for a plain document. Only a document actually converted to RTF via <em>Convert &rarr; Add formatting</em> (or an opened <code>.rtf</code>) defaults to <code>.rtf</code>. The uniform editor-theme text colour is no longer mistaken for user formatting.</li>
+<li><strong>Fix: restored blank tab keeps the dark editor background:</strong> an empty untitled tab reopened from the saved session came back with a white background instead of the dark text area; it now matches a fresh Ctrl+N tab.</li>
+</ul>
 
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.08.01.08 (Fixes: Find/Replace on code tabs; AI query-box paste; autocomplete Esc; DB-only autosave)</span></h3>

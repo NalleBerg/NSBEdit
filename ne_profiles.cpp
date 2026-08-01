@@ -194,6 +194,14 @@ bool NeProfiles_Init()
         "  caret_pos       INTEGER NOT NULL DEFAULT 0,"
         "  scroll_line     INTEGER NOT NULL DEFAULT 0,"
         "  spell_lang      TEXT    NOT NULL DEFAULT ''"
+        ");"
+        // AI answer history (conversation persistence for the AI window).
+        "CREATE TABLE IF NOT EXISTS ai_answers ("
+        "  id         INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  sort_order INTEGER NOT NULL DEFAULT 0,"
+        "  prompt     TEXT    NOT NULL DEFAULT '',"
+        "  reply_md   TEXT    NOT NULL DEFAULT '',"
+        "  created    INTEGER NOT NULL DEFAULT 0"
         ");";
     char* err = nullptr;
     if (sqlite3_exec(s_db, schema, NULL, NULL, &err) != SQLITE_OK) {
@@ -336,7 +344,64 @@ bool NeProfiles_SetStrSetting(const char* key, const std::string& value)
     return ok;
 }
 
-// ── Encrypted (secret) string settings ────────────────────────────────────────
+// ── AI answer history (conversation persistence for the AI window) ────────────
+bool NeProfiles_AiAnswersAppend(const std::wstring& prompt, const std::wstring& replyMd)
+{
+    if (!s_db) return false;
+    // Next sort_order = current max + 1 (keeps insertion order stable).
+    int nextOrder = 0;
+    {
+        sqlite3_stmt* q = nullptr;
+        if (sqlite3_prepare_v2(s_db, "SELECT COALESCE(MAX(sort_order),-1)+1 FROM ai_answers",
+                               -1, &q, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(q) == SQLITE_ROW) nextOrder = sqlite3_column_int(q, 0);
+            sqlite3_finalize(q);
+        }
+    }
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(s_db,
+        "INSERT INTO ai_answers(sort_order,prompt,reply_md,created) VALUES(?,?,?,?)",
+        -1, &stmt, nullptr) != SQLITE_OK)
+        return false;
+    std::string p = Np_W2U(prompt);
+    std::string r = Np_W2U(replyMd);
+    sqlite3_bind_int (stmt, 1, nextOrder);
+    sqlite3_bind_text(stmt, 2, p.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 3, r.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 4, (int64_t)time(nullptr));
+    bool ok = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+    return ok;
+}
+
+bool NeProfiles_AiAnswersLoad(std::vector<NeAiAnswerRow>& out)
+{
+    out.clear();
+    if (!s_db) return false;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(s_db,
+        "SELECT prompt, reply_md FROM ai_answers ORDER BY sort_order, id",
+        -1, &stmt, nullptr) != SQLITE_OK)
+        return false;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        NeAiAnswerRow row;
+        const char* p = (const char*)sqlite3_column_text(stmt, 0);
+        const char* r = (const char*)sqlite3_column_text(stmt, 1);
+        row.prompt  = p ? Np_U2W(p) : L"";
+        row.replyMd = r ? Np_U2W(r) : L"";
+        out.push_back(std::move(row));
+    }
+    sqlite3_finalize(stmt);
+    return true;
+}
+
+bool NeProfiles_AiAnswersClear()
+{
+    if (!s_db) return false;
+    return sqlite3_exec(s_db, "DELETE FROM ai_answers", NULL, NULL, NULL) == SQLITE_OK;
+}
+
+
 // The ciphertext bytes are stored as a lowercase hex string in the same
 // key/value settings table, so secrets never appear in plaintext in the DB.
 static std::string Np_BytesToHex(const std::vector<BYTE>& bytes)

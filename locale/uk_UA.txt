@@ -84,6 +84,8 @@ BTN_NO  = Ні
 BTN_SEND = Надіслати
 BTN_STOP = Зупинити
 BTN_COPY = Копіювати
+BTN_PREV = Попередня
+BTN_NEXT = Наступна
 BTN_CLEAR = Очистити
 
 AI_MENU_CLOUD = Хмара

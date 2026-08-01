@@ -492,3 +492,50 @@ v2026.08.01.08 - Query-box paste (Ctrl+V) safety + no multi-line prompt truncati
     RichEdit reports the length with single-CR line breaks but GetWindowText emits
     CRLF, so a multi-line prompt overflowed inLen+1 and was cut off. Buffer is now
     sized inLen*2+2 (worst-case CRLF expansion) and resized to the returned count.
+
+
+v2026.08.01.10 - Accumulating answers (DB-persisted) + live cloud model list + menu move
+  - LIVE CLOUD MODEL LIST: Ai_CloudModelCandidates() now prefers a live list
+    fetched from ollama.com/api/tags (NeAiClient_ListCloudModels: WinHTTP GET,
+    WINHTTP_FLAG_SECURE, Authorization: Bearer <stored key>, parses "name"
+    fields). Retired models are simply absent from that list and new ones are
+    present, so the Model menu self-updates. Fetched in the BACKGROUND on window
+    open + Ne_ShowAiWindow reuse (Ai_RefreshCloudModelsAsync spawns a thread);
+    on success it posts WM_AI_CLOUDMODELS_READY (WM_APP+76) with a new
+    std::vector<std::wstring>*; the handler stores it in s_cloudModelsLive and
+    calls Ai_RefreshUi (rebuilds the menu). Names normalised to the app's
+    "-cloud" suffix. No API key / offline -> falls back to the curated list.
+    NOTE: the retired->replacement mapping is docs-only (no API), so no
+    replacement-suggestion UI; hiding retired + showing new is done purely by the
+    live list. Local models left untouched (per user).
+  - MENU: "Check local models" (IDM_AI_CHECK_MODELS) moved from the Cloud menu to
+    the Model menu, BETWEEN the Local and Cloud model groups, with a MF_SEPARATOR
+    above and below it.
+  - CONVERSATION HISTORY (accumulate + persist): answers are no longer wiped on
+    each send. st->conversation = vector<pair<prompt,replyMd>>; each turn also
+    persisted to the DB (ne_profiles ai_answers table; NeProfiles_AiAnswersAppend/
+    Load/Clear). On window open (WM_CREATE) the table is loaded and rendered, so
+    answers survive restarts until Clear.
+      * Renderer split: Ai_AppendFirstCodeBlockReply -> Ai_AppendMarkdownBlocks
+        (NO AiCopyCode_Clear inside) so it can render many turns into one hLog;
+        Ai_RenderConversation calls AiCopyCode_Clear ONCE then loops the turns:
+        records the turn's char offset in st->turnAnchors, appends a green "You:"
+        head + prompt + blue "Ollama:" label + Ai_AppendMarkdownBlocks(replyMd),
+        with a "────" divider (kSep, gray) between turns. Everything lives in the
+        single answer RichEdit hLog (code cells are inline RTF tables); the legacy
+        answerBlocks/Ai_LayoutAnswerHost path is unused.
+      * Ai_CommitLiveReply: on completion push {lastPrompt, liveReply}, append to
+        DB, Ai_RenderConversation. Called from Ai_FinalizeLiveReply AND the
+        WM_AI_SEND_COMPLETE finish path (both guarded by liveTypingFinalRendered).
+      * Ai_DoSend renders the existing conversation (NOT Ai_ClearRenderedAnswer)
+        before streaming, so previous answers stay visible; the raw stream is
+        appended below and replaced by the rendered turn on commit.
+      * IDM_AI_LOG_CLEAR clears st->conversation + turnAnchors + NeProfiles_
+        AiAnswersClear() + the pane.
+  - PREV/NEXT NAV: buttons[5]->buttons[7]; new IDC_AI_PREV_BTN (1962) / IDC_AI_
+    NEXT_BTN (1963); Ai_ApplyButtons order Send,Stop,Copy,Prev,Next,Clear,Close
+    (Prev/Next BETWEEN Copy and Clear). WM_CREATE btnHwnds[7]; hClear=btnHwnds[5],
+    hClose=btnHwnds[6]. WM_SIZE already lays buttons out generically by buttonCount.
+    Handlers step st->navTurn and Ai_ScrollToTurn(idx): EM_LINEFROMCHAR(anchor) ->
+    EM_LINESCROLL(0, line-firstVisible) + msb_sync. Locale: BTN_PREV / BTN_NEXT
+    added to all locale/*.txt (se_NO left English).

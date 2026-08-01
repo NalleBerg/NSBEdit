@@ -7,7 +7,7 @@ I want the name in active tab to be color: rgb(59, 125,59)
 
 *  When I press [esc] to remove
 
-Ollama: qwen3-coder:480b was retired at 2026-07-15 00:00:00 -0700 PDT (ref: ec2cb9ce-6022-4567-bca1-aea95e6d73a4)
+* Ollama: qwen3-coder:480b was retired at 2026-07-15 00:00:00 -0700 PDT (ref: ec2cb9ce-6022-4567-bca1-aea95e6d73a4)
 The cloud modeels must be updated when the AI ia opened. Any retired models must not show, and new models must show.
 The same goes for local models. even if I have copy and can use it I want it to change color if the
 online model is retired and maybe suggest an update to the new one if it is a new one to download thet 
@@ -23,8 +23,8 @@ to answer. Also a separator beetween each answer.
 Search is no good as it cannot find and replace probably because the highlighting is off and it can only
 search on singlee words.
 
-Can we teach ollama to return correct line numbers from the file, and instruct him to always return linee
-numbers where the removed code is (beginning/end line) and then where to add the new code by line number
+Can we teach Ollama to return correct line numbers from the file, and instruct him to always return linee
+numbers where the code to remove code is (beginning/end line) and then where to add the new code by line number
 
 
 

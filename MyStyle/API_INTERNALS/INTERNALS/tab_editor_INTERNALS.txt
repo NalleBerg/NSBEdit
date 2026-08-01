@@ -54,4 +54,15 @@ Integration points in NSBEdit.cpp:
 Notes:
   - Toolbar and status bar always operate on NeTabs_GetActiveEdit / active doc.
   - External file-change detection uses per-tab disk stamps.
+
+Tab strip painting (ne_tabs.cpp NeTabs_TabProc WM_PAINT) — v2026.08.01.10:
+  - BOTH light and dark modes are now CUSTOM-painted (light mode no longer calls
+    the system tab proc). A single mode-aware palette; the active tab uses a
+    standout background, a blue top accent, and a BOLD GREEN label so the current
+    page stands out: rgb(59,125,59) in light mode, rgb(126,211,133) in dark.
+    Inactive labels are muted grey. WM_ERASEBKGND fills the strip in both modes.
+  - CRITICAL: TabCtrl_SetCurSel only invalidates the changed tabs, which with
+    custom paint leaves the PREVIOUS active tab still drawn green. NeTabs_SetActive
+    (and the drag-reorder path) therefore call InvalidateRect(hTab, NULL, FALSE)
+    to repaint the WHOLE strip so exactly one tab shows the active styling.
 ================================================================================

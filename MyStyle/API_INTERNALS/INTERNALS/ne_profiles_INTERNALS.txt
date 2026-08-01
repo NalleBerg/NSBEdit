@@ -41,6 +41,8 @@ RELATED:
     - profiles
     - settings
     - session_tabs
+    - ai_answers   (AI window conversation history: sort_order, prompt, reply_md,
+                    created; NeProfiles_AiAnswersAppend/Load/Clear)
 
   The schema is created with CREATE TABLE IF NOT EXISTS so a new empty database
   can be initialized safely.

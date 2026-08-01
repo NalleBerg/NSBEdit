@@ -56,6 +56,8 @@ BTN_CLOSE       = Sluiten
 BTN_SEND        = Verzenden
 BTN_STOP        = Stoppen
 BTN_COPY        = Kopiëren
+BTN_PREV        = Vorige
+BTN_NEXT        = Volgende
 BTN_CLEAR       = Leegmaken
 
 # ── Status Bar ────────────────────────────────────────────────────────────────

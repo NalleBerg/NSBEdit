@@ -49,6 +49,8 @@ BTN_NO    = nej
 BTN_SEND  = Skicka
 BTN_STOP  = Stoppa
 BTN_COPY  = Kopiera
+BTN_PREV  = Föregående
+BTN_NEXT  = Nästa
 BTN_CLEAR = Rensa
 
 # ── AI UI ─────────────────────────────────────────────────────────────────────

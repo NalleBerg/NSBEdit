@@ -35,6 +35,12 @@ void NeAiClient_SetCloudApiKey(const std::wstring& key);
 // the bearer token).  Returns true only on HTTP 200.
 bool NeAiClient_ValidateCloudApiKey(const std::wstring& key);
 
+// Lists the models currently available via Ollama Cloud (GET
+// https://ollama.com/api/tags with the stored API key). The returned list is
+// authoritative: retired models are absent and newly-released ones are present.
+// Returns false when no API key is set or the request fails.
+bool NeAiClient_ListCloudModels(std::vector<std::wstring>& outModels);
+
 bool NeAiClient_ListOllamaModels(std::vector<std::wstring>& outModels);
 typedef void (*NeAiPullProgressFn)(void* context, const std::wstring& status,
 	unsigned long long completed, unsigned long long total);

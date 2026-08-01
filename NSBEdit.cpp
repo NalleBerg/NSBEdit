@@ -8170,9 +8170,13 @@ static bool Ne_HasFormatting(HWND hEdit)
     if (cf.dwEffects & (CFE_BOLD|CFE_ITALIC|CFE_UNDERLINE|CFE_STRIKEOUT|
                         CFE_SUBSCRIPT|CFE_SUPERSCRIPT))         return true;
 
-    // Non-auto colour or background colour.
-    if (!(cf.dwEffects & CFE_AUTOCOLOR))                        return true;
-    if (!(cf.dwEffects & CFE_AUTOBACKCOLOR))                    return true;
+    // Non-auto colour is deliberately NOT treated as formatting here: the
+    // plain-text look applies a single uniform theme text colour to every new
+    // tab, and colour is never written to a plain-text file anyway. A UNIFORM
+    // colour is ignored; a colour the user applied to only PART of the document
+    // still clears the CFM_COLOR / CFM_BACKCOLOR mask bits above (mixed) and is
+    // reported. This keeps a brand-new, non-converted file from falsely being
+    // seen as “formatted” and prompting to strip on save.
 
     // Mixed or non-default font size (240 half-pts = 12pt in RichEdit CHARFORMAT).
     if (!(cf.dwMask & CFM_SIZE))                                return true;
@@ -9068,7 +9072,13 @@ static bool Ne_SaveAs(HWND hwnd)
     ofn.lpstrFilter = filtSave.c_str();
     ofn.lpstrFile   = path;
     ofn.nMaxFile    = MAX_PATH;
-    ofn.lpstrDefExt = L"rtf";
+    // A new, non-converted document is plain text: default it to .txt and
+    // preselect the Text filter. Only a document that is actually RTF (converted
+    // via Convert → Add formatting, or an opened .rtf) defaults to .rtf.
+    // FILTER_SAVEAS order is 1=RTF, 2=Text, 3=All.
+    bool docIsRtf = Ne_DocIsRtf(doc);
+    ofn.lpstrDefExt  = docIsRtf ? L"rtf" : L"txt";
+    ofn.nFilterIndex = docIsRtf ? 1 : 2;
     ofn.Flags       = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
     ofn.lpstrTitle  = Ls(L"DLG_SAVEAS");
     if (!GetSaveFileNameW(&ofn)) return false;
@@ -9732,6 +9742,16 @@ static void Ne_SessionRestore(HWND hwnd)
                             ShowWindow(docE->hSci, SW_SHOW);
                         }
                     }
+                }
+                // Plain-text RichEdit tab (not a Scintilla tab): apply the same
+                // dark plain-text look as Ctrl+N so a restored empty untitled tab
+                // comes back with the black text area instead of the default
+                // white background. Suppress EN_CHANGE so this format change does
+                // not mark the pristine tab as modified.
+                if (!docE->hSci && docE->hEdit) {
+                    docE->suppressChange = true;
+                    Ne_ApplyPlainTextLook(docE->hEdit);
+                    docE->suppressChange = false;
                 }
                 docE->wordWrap = t.wordWrap;
                 if (docE->hSci && IsWindowVisible(docE->hSci))

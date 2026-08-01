@@ -220,32 +220,35 @@ static void NeTabs_DrawDragIndicator(HWND hwnd)
 static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg) {
-    case WM_ERASEBKGND:
-        if (s_darkMode) {
-            RECT r; GetClientRect(hwnd, &r);
-            HBRUSH hbr = CreateSolidBrush(RGB(25, 26, 27));
-            FillRect((HDC)wParam, &r, hbr);
-            DeleteObject(hbr);
-            return 1;
-        }
-        break;
+    case WM_ERASEBKGND: {
+        // Both modes now custom-paint the whole strip in WM_PAINT; fill here too
+        // so there is no flicker of the native background before the paint.
+        RECT r; GetClientRect(hwnd, &r);
+        HBRUSH hbr = CreateSolidBrush(s_darkMode ? RGB(25, 26, 27) : RGB(238, 238, 240));
+        FillRect((HDC)wParam, &r, hbr);
+        DeleteObject(hbr);
+        return 1;
+    }
     case WM_PAINT: {
-        if (!s_darkMode) {
-            // Light mode: let the system draw, then overlay × glyphs.
-            LRESULT r = CallWindowProcW(g_tabs.tabPrevProc, hwnd, msg, wParam, lParam);
-            NeTabs_DrawCloseGlyphs(hwnd);
-            NeTabs_DrawDragIndicator(hwnd);
-            if (g_tabs.hBtnNew && IsWindowVisible(g_tabs.hBtnNew))
-                RedrawWindow(g_tabs.hBtnNew, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW);
-            return r;
-        }
-        // ── Dark mode: fully custom paint ────────────────────────────────────
+        // ── Custom paint for BOTH light and dark modes ───────────────────────
+        // A flat, mode-aware palette. The active tab uses a standout background,
+        // a blue top accent, and a GREEN label so the current page is easy to
+        // spot (lighter green in dark mode for contrast).
+        const bool dark = s_darkMode;
+        const COLORREF cStrip        = dark ? RGB(25, 26, 27)  : RGB(238, 238, 240);
+        const COLORREF cInact        = dark ? RGB(30, 31, 33)  : RGB(226, 226, 229);
+        const COLORREF cActive       = dark ? RGB(42, 44, 47)  : RGB(255, 255, 255);
+        const COLORREF cBorder       = dark ? RGB(58, 60, 63)  : RGB(196, 196, 200);
+        const COLORREF cAccent       = RGB(0, 120, 212);
+        const COLORREF cTxtActive    = dark ? RGB(126, 211, 133) : RGB(59, 125, 59);
+        const COLORREF cTxtInactive  = dark ? RGB(125, 125, 130) : RGB(90, 90, 95);
+
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
         RECT rcClient; GetClientRect(hwnd, &rcClient);
 
-        // Fill entire tab-control area with dark chrome colour.
-        HBRUSH hbgBrush = CreateSolidBrush(RGB(25, 26, 27));
+        // Fill entire tab-control area with the strip colour.
+        HBRUSH hbgBrush = CreateSolidBrush(cStrip);
         FillRect(hdc, &rcClient, hbgBrush);
         DeleteObject(hbgBrush);
 
@@ -255,6 +258,16 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         HFONT hfOld = (HFONT)SelectObject(hdc, hf);
         SetBkMode(hdc, TRANSPARENT);
 
+        // Bold variant of the tab font for the active label (extra emphasis).
+        HFONT hfBold = NULL;
+        {
+            LOGFONTW lf = {};
+            if (GetObjectW(hf, sizeof(lf), &lf)) {
+                lf.lfWeight = FW_BOLD;
+                hfBold = CreateFontIndirectW(&lf);
+            }
+        }
+
         int n = (int)g_tabs.docs.size();
         for (int i = 0; i < n; ++i) {
             RECT ir = {};
@@ -262,12 +275,12 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             bool active = (i == g_tabs.activeIndex);
 
             // Tab background.
-            HBRUSH hTbr = CreateSolidBrush(active ? RGB(42, 44, 47) : RGB(30, 31, 33));
+            HBRUSH hTbr = CreateSolidBrush(active ? cActive : cInact);
             FillRect(hdc, &ir, hTbr);
             DeleteObject(hTbr);
 
             // Tab border (top + sides).
-            HPEN hpBord = CreatePen(PS_SOLID, 1, RGB(58, 60, 63));
+            HPEN hpBord = CreatePen(PS_SOLID, 1, cBorder);
             HPEN hpOld  = (HPEN)SelectObject(hdc, hpBord);
             MoveToEx(hdc, ir.left,      ir.top,  NULL);
             LineTo  (hdc, ir.right - 1, ir.top);
@@ -281,7 +294,7 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
 
             // Active tab: Windows-blue top accent line.
             if (active) {
-                HPEN hpAcc  = CreatePen(PS_SOLID, S(2), RGB(0, 120, 212));
+                HPEN hpAcc  = CreatePen(PS_SOLID, S(2), cAccent);
                 HPEN hpOldA = (HPEN)SelectObject(hdc, hpAcc);
                 MoveToEx(hdc, ir.left + 1,  ir.top + 1, NULL);
                 LineTo  (hdc, ir.right - 1, ir.top + 1);
@@ -295,15 +308,19 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             if (g_tabs.docs[i].modified) dispTxt += L"* ";
             dispTxt += NeTabs_BaseName(g_tabs.docs[i].path, g_tabs.untitled);
 
-            SetTextColor(hdc, active ? RGB(230, 230, 235) : RGB(125, 125, 130));
+            HFONT hfPrev = NULL;
+            if (active && hfBold) hfPrev = (HFONT)SelectObject(hdc, hfBold);
+            SetTextColor(hdc, active ? cTxtActive : cTxtInactive);
             RECT rcTxt = ir;
             rcTxt.left  += S(6);
             rcTxt.right -= S(18); // leave room for the × close glyph
             DrawTextW(hdc, dispTxt.c_str(), -1, &rcTxt,
                       DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_END_ELLIPSIS);
+            if (active && hfPrev) SelectObject(hdc, hfPrev);
         }
 
         SelectObject(hdc, hfOld);
+        if (hfBold) DeleteObject(hfBold);
         EndPaint(hwnd, &ps);
 
         NeTabs_DrawCloseGlyphs(hwnd);
@@ -438,6 +455,7 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
                     TabCtrl_InsertItem(hwnd, i, &ti);
                 }
                 TabCtrl_SetCurSel(hwnd, ai);
+                InvalidateRect(hwnd, NULL, FALSE); // full repaint so active green is correct
                 NeTabs_RepositionBtnNew();
             }
             return 0;
@@ -588,6 +606,10 @@ bool NeTabs_SetActive(HWND hwndParent, int index)
     if (index < 0 || index >= (int)g_tabs.docs.size()) return false;
     g_tabs.activeIndex = index;
     TabCtrl_SetCurSel(g_tabs.hTab, index);
+    // Repaint the WHOLE strip: with custom painting, TabCtrl_SetCurSel only
+    // invalidates the changed tabs, which would leave the previously-active tab
+    // still showing the active (green) styling.
+    InvalidateRect(g_tabs.hTab, NULL, FALSE);
     NeTabs_ShowOnlyActive();
     HWND focusTarget = g_tabs.docs[index].hSci ? g_tabs.docs[index].hSci : g_tabs.docs[index].hEdit;
     SetFocus(focusTarget);
