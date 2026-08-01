@@ -512,10 +512,12 @@ v2026.08.01.10 - Accumulating answers (DB-persisted) + live cloud model list + m
     the Model menu, BETWEEN the Local and Cloud model groups, with a MF_SEPARATOR
     above and below it.
   - CONVERSATION HISTORY (accumulate + persist): answers are no longer wiped on
-    each send. st->conversation = vector<pair<prompt,replyMd>>; each turn also
-    persisted to the DB (ne_profiles ai_answers table; NeProfiles_AiAnswersAppend/
-    Load/Clear). On window open (WM_CREATE) the table is loaded and rendered, so
-    answers survive restarts until Clear.
+    each send. st->conversation = vector<AiConversationTurn>{prompt, replyMd,
+    images} (images = vector<string> of base64 PNG attached to that query); each
+    turn also persisted to the DB (ne_profiles ai_answers table; NeProfiles_
+    AiAnswersAppend/Load/Clear, including the images column). On window open
+    (WM_CREATE) the table is loaded and rendered, so answers survive restarts
+    until Clear.
       * Renderer split: Ai_AppendFirstCodeBlockReply -> Ai_AppendMarkdownBlocks
         (NO AiCopyCode_Clear inside) so it can render many turns into one hLog;
         Ai_RenderConversation calls AiCopyCode_Clear ONCE then loops the turns:
@@ -539,3 +541,35 @@ v2026.08.01.10 - Accumulating answers (DB-persisted) + live cloud model list + m
     Handlers step st->navTurn and Ai_ScrollToTurn(idx): EM_LINEFROMCHAR(anchor) ->
     EM_LINESCROLL(0, line-firstVisible) + msb_sync. Locale: BTN_PREV / BTN_NEXT
     added to all locale/*.txt (se_NO left English).
+  - MULTIMODAL IMAGES (paste image into the query): the AI query supports pasting
+    an image, rendering it inline in the text flow, sending it to Ollama, and
+    persisting it with the turn. No new strings were needed.
+      * Clipboard capture: Ai_CaptureClipboardImagePng(HWND) reads the clipboard
+        image (prefer CF_BITMAP via Gdiplus::Bitmap::FromHBITMAP for correct
+        orientation, else a packed CF_DIB -> Gdiplus::Bitmap(BITMAPINFO*, bits))
+        and re-encodes it to PNG bytes via the GDI+ PNG encoder
+        (Ai_GetPngEncoderClsid + Bitmap::Save to an IStream on HGlobal). GDI+ is
+        started globally in NSBEdit WinMain, so no per-window GdiplusStartup.
+      * Base64: Ai_Base64Encode/Decode (local helpers). Base64 is JSON- and
+        TEXT-safe, so images ride the request and the DB with no escaping.
+      * Inline display: Ai_InsertInlinePng / Ai_AppendInlinePng build an RTF
+        \pict\pngblip with picw/pich from the PNG IHDR (Ai_PngDimensions) and
+        picwgoal/pichgoal capped to ~420 px wide (1 px ~ 15 twips), then
+        EM_STREAMIN SF_RTF|SFF_SELECTION (same pict pattern as NSBEdit's
+        Ne_InsertImage). Ai_RtfStreamInCb is the EDITSTREAM callback.
+      * WM_PASTE (Ai_InputSubclassProc): if CF_DIB/CF_BITMAP is present, capture ->
+        push base64 into st->pendingImages -> insert inline pict into the input
+        box -> return 0. Otherwise the existing sanitized-text paste path runs.
+      * Send: Ai_DoSend moves st->pendingImages into st->lastImages (cleared from
+        pending) and echoes them live above "Ollama:"; Ai_StartSendWorker takes an
+        images param -> AiSendWorkItem.images -> NeAiClient_AskOllamaStream(...,
+        images) which (and Ai_CloudAskStream) inject ",\"images\":[b64,...]" via
+        Ai_BuildImagesJson. The chunked map-reduce (big-file) path does NOT send
+        images. Ai_CommitLiveReply stores lastImages in the new turn + DB.
+      * Redisplay: Ai_RenderConversation decodes each turn's base64 and
+        Ai_AppendInlinePng's it after the prompt echo, before the "Ollama:" label.
+      * IDM_AI_LOG_CLEAR also clears st->pendingImages.
+      * Model note: text-only models (qwen3-coder etc.) ignore the images array;
+        a vision model (llava, llama3.2-vision, qwen2.5vl) is required to actually
+        read the picture. The plumbing is model-agnostic. Hover/full-size preview
+        is deferred (not implemented).

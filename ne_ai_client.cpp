@@ -752,9 +752,27 @@ bool NeAiClient_ListCloudModels(std::vector<std::wstring>& outModels)
 // the bearer API key.  Mirrors the local curl path's NDJSON handling: append
 // "response" tokens, and use "thinking" ONLY when a line has no "response" (so
 // reasoning models don't double every token).  Honours the shared Stop flag.
+// Build the JSON ",\"images\":[...]" fragment from base64-encoded images.
+// Returns an empty string when there are no images. Base64 is JSON-safe, so the
+// values need no escaping.
+static std::string Ai_BuildImagesJson(const std::vector<std::string>& images)
+{
+    if (images.empty()) return {};
+    std::string j = ",\"images\":[";
+    for (size_t i = 0; i < images.size(); ++i) {
+        if (i) j += ",";
+        j += "\"";
+        j += images[i];
+        j += "\"";
+    }
+    j += "]";
+    return j;
+}
+
 static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& prompt,
     const std::wstring& apiKey, void* context, NeAiOllamaChunkFn onChunk,
-    std::wstring& outReply, std::wstring& outError, int numCtx)
+    std::wstring& outReply, std::wstring& outError, int numCtx,
+    const std::vector<std::string>& images)
 {
     outReply.clear();
     outError.clear();
@@ -764,7 +782,8 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
         Ai_EscapeJson(Ai_WideToUtf8(model)) +
         "\",\"prompt\":\"" +
         Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
-        "\",\"stream\":true,\"think\":false"
+        "\"" + Ai_BuildImagesJson(images) +
+        ",\"stream\":true,\"think\":false"
         ",\"options\":{\"num_ctx\":" + std::to_string(ctx) + "}}";
 
     HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
@@ -868,7 +887,7 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
 
 bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& prompt,
     void* context, NeAiOllamaChunkFn onChunk, std::wstring& outReply, std::wstring& outError,
-    int numCtx)
+    int numCtx, const std::vector<std::string>& images)
 {
     outReply.clear();
     outError.clear();
@@ -880,7 +899,7 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
     {
         std::wstring apiKey = Ai_GetCloudApiKey();
         if (!apiKey.empty() && model.find(L"-cloud") != std::wstring::npos) {
-            return Ai_CloudAskStream(model, prompt, apiKey, context, onChunk, outReply, outError, numCtx);
+            return Ai_CloudAskStream(model, prompt, apiKey, context, onChunk, outReply, outError, numCtx, images);
         }
     }
 
@@ -900,7 +919,8 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
         Ai_EscapeJson(Ai_WideToUtf8(model.empty() ? L"qwen3-coder" : model)) +
         "\",\"prompt\":\"" +
         Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
-        "\",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\""
+        "\"" + Ai_BuildImagesJson(images) +
+        ",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\""
         ",\"options\":{\"num_ctx\":" + std::to_string(ctx) + "}}";
 
     std::string responseBody;

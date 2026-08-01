@@ -97,6 +97,226 @@ struct AiDialogData {
     AiButtonSpec buttons[7];
 };
 
+// ── Image helpers: clipboard image → PNG, base64/inline-RTF for the AI query ──
+
+// Standard base64 encode of raw bytes (used for the Ollama images[] array and
+// for persisting pasted images in the DB). Base64 is JSON- and TEXT-safe.
+static std::string Ai_Base64Encode(const unsigned char* data, size_t len)
+{
+    static const char tbl[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    out.reserve(((len + 2) / 3) * 4);
+    size_t i = 0;
+    for (; i + 3 <= len; i += 3) {
+        unsigned n = ((unsigned)data[i] << 16) | ((unsigned)data[i + 1] << 8) | data[i + 2];
+        out += tbl[(n >> 18) & 63];
+        out += tbl[(n >> 12) & 63];
+        out += tbl[(n >> 6) & 63];
+        out += tbl[n & 63];
+    }
+    if (i < len) {
+        unsigned n = (unsigned)data[i] << 16;
+        bool two = (i + 1 < len);
+        if (two) n |= (unsigned)data[i + 1] << 8;
+        out += tbl[(n >> 18) & 63];
+        out += tbl[(n >> 12) & 63];
+        out += two ? tbl[(n >> 6) & 63] : '=';
+        out += '=';
+    }
+    return out;
+}
+static std::string Ai_Base64Encode(const std::string& s) {
+    return Ai_Base64Encode((const unsigned char*)s.data(), s.size());
+}
+
+// Base64 decode back to raw bytes (used to redisplay images loaded from the DB).
+static std::string Ai_Base64Decode(const std::string& in)
+{
+    auto val = [](char c) -> int {
+        if (c >= 'A' && c <= 'Z') return c - 'A';
+        if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+        if (c >= '0' && c <= '9') return c - '0' + 52;
+        if (c == '+') return 62;
+        if (c == '/') return 63;
+        return -1;
+    };
+    std::string out;
+    int buf = 0, bits = 0;
+    for (char c : in) {
+        if (c == '=') break;
+        int v = val(c);
+        if (v < 0) continue;
+        buf = (buf << 6) | v;
+        bits += 6;
+        if (bits >= 8) { bits -= 8; out += (char)((buf >> bits) & 0xFF); }
+    }
+    return out;
+}
+
+// Locate the GDI+ PNG encoder CLSID.
+static bool Ai_GetPngEncoderClsid(CLSID* clsid)
+{
+    UINT num = 0, size = 0;
+    Gdiplus::GetImageEncodersSize(&num, &size);
+    if (size == 0) return false;
+    std::vector<unsigned char> buf(size);
+    Gdiplus::ImageCodecInfo* codecs = (Gdiplus::ImageCodecInfo*)buf.data();
+    if (Gdiplus::GetImageEncoders(num, size, codecs) != Gdiplus::Ok) return false;
+    for (UINT i = 0; i < num; ++i) {
+        if (codecs[i].MimeType && wcscmp(codecs[i].MimeType, L"image/png") == 0) {
+            *clsid = codecs[i].Clsid;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Grab the current clipboard image and re-encode it as PNG bytes. Returns an
+// empty string when there is no image or the encode fails.
+static std::string Ai_CaptureClipboardImagePng(HWND owner)
+{
+    std::string png;
+    if (!IsClipboardFormatAvailable(CF_DIB) && !IsClipboardFormatAvailable(CF_BITMAP))
+        return png;
+    if (!OpenClipboard(owner)) return png;
+
+    Gdiplus::Bitmap* bmp = nullptr;
+
+    // Prefer CF_BITMAP (a DDB): FromHBITMAP gives correct top-down orientation.
+    if (HANDLE hbm = GetClipboardData(CF_BITMAP)) {
+        bmp = Gdiplus::Bitmap::FromHBITMAP((HBITMAP)hbm, NULL);
+        if (bmp && bmp->GetLastStatus() != Gdiplus::Ok) { delete bmp; bmp = nullptr; }
+    }
+    // Fall back to a packed CF_DIB.
+    if (!bmp) {
+        if (HANDLE hDib = GetClipboardData(CF_DIB)) {
+            if (void* p = GlobalLock(hDib)) {
+                BITMAPINFO* bi = (BITMAPINFO*)p;
+                BITMAPINFOHEADER* bih = &bi->bmiHeader;
+                DWORD clrUsed = bih->biClrUsed;
+                if (clrUsed == 0 && bih->biBitCount <= 8) clrUsed = 1u << bih->biBitCount;
+                size_t paletteBytes = 0;
+                if (bih->biBitCount <= 8) paletteBytes = (size_t)clrUsed * sizeof(RGBQUAD);
+                else if (bih->biCompression == BI_BITFIELDS) paletteBytes = 3 * sizeof(DWORD);
+                unsigned char* bits = (unsigned char*)p + bih->biSize + paletteBytes;
+                bmp = new Gdiplus::Bitmap(bi, bits);
+                if (bmp && bmp->GetLastStatus() != Gdiplus::Ok) { delete bmp; bmp = nullptr; }
+                GlobalUnlock(hDib);
+            }
+        }
+    }
+    CloseClipboard();
+    if (!bmp) return png;
+
+    CLSID pngClsid;
+    if (Ai_GetPngEncoderClsid(&pngClsid)) {
+        IStream* stream = NULL;
+        if (CreateStreamOnHGlobal(NULL, TRUE, &stream) == S_OK && stream) {
+            if (bmp->Save(stream, &pngClsid, NULL) == Gdiplus::Ok) {
+                HGLOBAL hg = NULL;
+                if (GetHGlobalFromStream(stream, &hg) == S_OK && hg) {
+                    SIZE_T sz = GlobalSize(hg);
+                    if (void* mem = GlobalLock(hg)) {
+                        if (sz) png.assign((const char*)mem, (size_t)sz);
+                        GlobalUnlock(hg);
+                    }
+                }
+            }
+            stream->Release();
+        }
+    }
+    delete bmp;
+    return png;
+}
+
+// Read a PNG's pixel dimensions from its IHDR chunk.
+static void Ai_PngDimensions(const std::string& png, int& w, int& h)
+{
+    w = 0; h = 0;
+    if (png.size() >= 24 && (unsigned char)png[0] == 0x89 &&
+        png[1] == 'P' && png[2] == 'N' && png[3] == 'G') {
+        auto rd = [&](size_t off) -> unsigned {
+            return ((unsigned)(unsigned char)png[off] << 24) |
+                   ((unsigned)(unsigned char)png[off + 1] << 16) |
+                   ((unsigned)(unsigned char)png[off + 2] << 8) |
+                   ((unsigned)(unsigned char)png[off + 3]);
+        };
+        w = (int)rd(16);
+        h = (int)rd(20);
+    }
+}
+
+// EM_STREAMIN callback that feeds a std::string RTF buffer into a RichEdit.
+struct AiRtfStreamBuf { const std::string* s; size_t pos; };
+static DWORD CALLBACK Ai_RtfStreamInCb(DWORD_PTR cookie, LPBYTE buff, LONG cb, LONG* pcb)
+{
+    AiRtfStreamBuf* b = (AiRtfStreamBuf*)cookie;
+    size_t remain = b->s->size() - b->pos;
+    LONG n = (LONG)((size_t)cb < remain ? (size_t)cb : remain);
+    if (n > 0) { memcpy(buff, b->s->data() + b->pos, (size_t)n); b->pos += (size_t)n; }
+    *pcb = n;
+    return 0;
+}
+
+// Insert a PNG image inline (in the text flow) at the current selection of a
+// RichEdit, as an RTF \pict. The display size is capped so the image is big
+// enough to read but not overwhelming.
+static void Ai_InsertInlinePng(HWND hEdit, const std::string& png)
+{
+    if (!hEdit || png.empty()) return;
+    int w = 0, h = 0;
+    Ai_PngDimensions(png, w, h);
+    if (w <= 0) w = 320;
+    if (h <= 0) h = 240;
+
+    // Twips at 96 dpi: 1 px ≈ 15 twips. Cap the width to ~420 px.
+    int goalW = w * 15;
+    int goalH = h * 15;
+    const int kMaxW = 420 * 15;
+    if (goalW > kMaxW) { goalH = (int)((long long)kMaxW * h / w); goalW = kMaxW; }
+
+    static const char hx[] = "0123456789ABCDEF";
+    std::string hex;
+    hex.reserve(png.size() * 2 + png.size() / 64 + 2);
+    for (size_t i = 0; i < png.size(); ++i) {
+        unsigned char b = (unsigned char)png[i];
+        hex += hx[(b >> 4) & 0xF];
+        hex += hx[b & 0xF];
+        if ((i + 1) % 64 == 0) hex += '\n';
+    }
+
+    std::string snippet = "{\\rtf1\\ansi {\\pict\\pngblip";
+    snippet += "\\picw"     + std::to_string(w);
+    snippet += "\\pich"     + std::to_string(h);
+    snippet += "\\picwgoal" + std::to_string(goalW);
+    snippet += "\\pichgoal" + std::to_string(goalH);
+    snippet += "\r\n" + hex + "}}";
+
+    AiRtfStreamBuf sb = { &snippet, 0 };
+    EDITSTREAM es = {};
+    es.dwCookie = (DWORD_PTR)&sb;
+    es.pfnCallback = Ai_RtfStreamInCb;
+    SendMessageW(hEdit, EM_STREAMIN, SF_RTF | SFF_SELECTION, (LPARAM)&es);
+}
+
+// Append a PNG image inline at the very end of a RichEdit's text.
+static void Ai_AppendInlinePng(HWND hEdit, const std::string& png)
+{
+    if (!hEdit || png.empty()) return;
+    int len = GetWindowTextLengthW(hEdit);
+    SendMessageW(hEdit, EM_SETSEL, (WPARAM)len, (LPARAM)len);
+    Ai_InsertInlinePng(hEdit, png);
+}
+
+// One turn of the accumulated conversation: the user's prompt, the raw markdown
+// reply, and any images (base64-encoded PNG) the user attached to that query.
+struct AiConversationTurn {
+    std::wstring prompt;
+    std::wstring replyMd;
+    std::vector<std::string> images;
+};
+
 struct AiWindowState {
     HWND hHeader = NULL;
     HWND hLog = NULL;
@@ -138,6 +358,8 @@ struct AiWindowState {
     bool chunkedActive = false;   // batch map-reduce running: spinner shows real batch %
     bool sendCanceled = false;    // Stop pressed: ignore the worker's completion post
     std::wstring lastPrompt;      // raw prompt of the in-flight send, restored on Stop
+    std::vector<std::string> pendingImages; // base64 PNG images pasted into the current input
+    std::vector<std::string> lastImages;    // images of the in-flight send, restored on Stop
     SpinnerDialog* spinner = NULL;
     std::wstring answerCopyText;
     std::vector<HWND> answerBlocks;
@@ -151,7 +373,7 @@ struct AiWindowState {
     // whole conversation is re-rendered into hLog on each new answer, separated
     // by dividers. turnAnchors holds the char offset in hLog where each turn's
     // "You:" line begins, for the Prev/Next navigation buttons.
-    std::vector<std::pair<std::wstring, std::wstring>> conversation;
+    std::vector<AiConversationTurn> conversation;
     std::vector<int> turnAnchors;
     int navTurn = -1;
 };
@@ -176,6 +398,8 @@ struct AiSendWorkItem {
     std::wstring fallback;
     std::wstring prompt;
     int answerStart = 0;
+    // Base64-encoded PNG images attached to this query (multimodal send).
+    std::vector<std::string> images;
     // When mapChunks is non-empty the worker runs a chunked map-reduce over a
     // large file: each chunk is analysed, then reduceHeader + notes + prompt is
     // streamed as the final answer.
@@ -1795,8 +2019,9 @@ static void Ai_RenderConversation(HWND hwnd)
 
     std::wstring copyAll;
     for (size_t i = 0; i < st->conversation.size(); ++i) {
-        const std::wstring& prompt  = st->conversation[i].first;
-        const std::wstring& replyMd = st->conversation[i].second;
+        const AiConversationTurn& turn = st->conversation[i];
+        const std::wstring& prompt  = turn.prompt;
+        const std::wstring& replyMd = turn.replyMd;
 
         if (i > 0) {
             Ai_AppendRichRun(hLog, L"\r\n", nullptr, &kNormal, false);
@@ -1807,7 +2032,15 @@ static void Ai_RenderConversation(HWND hwnd)
         st->turnAnchors.push_back(GetWindowTextLengthW(hLog));
 
         Ai_AppendRichRun(hLog, youLabel, &kYou, &kNormal, false);
-        Ai_AppendRichRun(hLog, prompt + L"\r\n\r\n", &kNormal, &kNormal, false);
+        Ai_AppendRichRun(hLog, prompt + L"\r\n", &kNormal, &kNormal, false);
+        for (const std::string& b64 : turn.images) {
+            std::string png = Ai_Base64Decode(b64);
+            if (!png.empty()) {
+                Ai_AppendInlinePng(hLog, png);
+                Ai_AppendRichRun(hLog, L"\r\n", &kNormal, &kNormal, false);
+            }
+        }
+        Ai_AppendRichRun(hLog, L"\r\n", &kNormal, &kNormal, false);
         Ai_AppendRichRun(hLog, ollamaLabel + L"\r\n", &kOllama, &kNormal, false);
 
         std::wstring md = replyMd;
@@ -1839,8 +2072,12 @@ static bool Ai_CommitLiveReply(HWND hwnd)
 {
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (!st || st->liveReply.empty()) return false;
-    st->conversation.emplace_back(st->lastPrompt, st->liveReply);
-    NeProfiles_AiAnswersAppend(st->lastPrompt, st->liveReply);
+    AiConversationTurn turn;
+    turn.prompt  = st->lastPrompt;
+    turn.replyMd = st->liveReply;
+    turn.images  = st->lastImages;
+    st->conversation.push_back(turn);
+    NeProfiles_AiAnswersAppend(st->lastPrompt, st->liveReply, st->lastImages);
     Ai_RenderConversation(hwnd);
     return true;
 }
@@ -2558,7 +2795,8 @@ static void Ai_PromptAndSetApiKey(HWND hwnd, AiWindowState* st)
 }
 
 static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback, int answerStart,
-                               std::vector<std::wstring> mapChunks = {}, std::wstring reduceHeader = {})
+                               std::vector<std::wstring> mapChunks = {}, std::wstring reduceHeader = {},
+                               std::vector<std::string> images = {})
 {
     AiSendWorkItem work;
     work.hwnd = hwnd;
@@ -2568,6 +2806,7 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
     work.answerStart = answerStart;
     work.mapChunks = std::move(mapChunks);
     work.reduceHeader = std::move(reduceHeader);
+    work.images = std::move(images);
 
     std::thread([work = std::move(work)]() mutable {
         auto* result = new AiSendResult();
@@ -2680,7 +2919,7 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
         chunkInfo.hwnd = work.hwnd;
         chunkInfo.answerStart = work.answerStart;
 
-        if (NeAiClient_AskOllamaStream(work.model, formattedPrompt, &chunkInfo, Ai_StreamChunkCallback, result->reply, result->error)) {
+        if (NeAiClient_AskOllamaStream(work.model, formattedPrompt, &chunkInfo, Ai_StreamChunkCallback, result->reply, result->error, 0, work.images)) {
             result->ok = true;
         } else {
             bool modelMissing = !result->error.empty() &&
@@ -2691,7 +2930,7 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
                 result->usedFallback = true;
                 std::wstring fallbackError;
                 chunkInfo.streamed = false;
-                if (NeAiClient_AskOllamaStream(work.fallback, formattedPrompt, &chunkInfo, Ai_StreamChunkCallback, result->reply, fallbackError)) {
+                if (NeAiClient_AskOllamaStream(work.fallback, formattedPrompt, &chunkInfo, Ai_StreamChunkCallback, result->reply, fallbackError, 0, work.images)) {
                     result->ok = true;
                     result->error.clear();
                 } else {
@@ -3005,6 +3244,21 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
         return 0;
     }
     if (msg == WM_PASTE) {
+        // Image on the clipboard → capture it as PNG, remember it for the next
+        // send (multimodal query), and drop it inline into the query box so the
+        // user can see what will be sent.
+        if (st && (IsClipboardFormatAvailable(CF_DIB) || IsClipboardFormatAvailable(CF_BITMAP))) {
+            std::string png = Ai_CaptureClipboardImagePng(hwnd);
+            if (!png.empty()) {
+                st->pendingImages.push_back(Ai_Base64Encode(png));
+                s_aiInputPasting = true;
+                Ai_InsertInlinePng(hwnd, png);
+                s_aiInputPasting = false;
+                if (st->hInputSb) msb_notify_content_changed(st->hInputSb);
+                SendMessageW(hwnd, EM_SCROLLCARET, 0, 0);
+                return 0;
+            }
+        }
         // Read the clipboard text ourselves and insert it with EM_REPLACESEL
         // instead of relying on EM_PASTESPECIAL. EM_PASTESPECIAL crashes the
         // control on some multi-line plain-text payloads that originate outside
@@ -4153,9 +4407,11 @@ static void Ai_DoSend(HWND hwnd)
             prompt = std::move(buf);
         }
     }
-    if (prompt.empty()) return;
+    if (prompt.empty() && st->pendingImages.empty()) return;
 
     st->lastPrompt = prompt;
+    st->lastImages = st->pendingImages;
+    st->pendingImages.clear();
     st->sendCanceled = false;
     NeAiClient_ResetCancel();
 
@@ -4207,6 +4463,13 @@ static void Ai_DoSend(HWND hwnd)
         st->historyDraft.clear();
         st->historyIndex = -1;
         Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+        for (const std::string& b64 : st->lastImages) {
+            std::string png = Ai_Base64Decode(b64);
+            if (!png.empty()) {
+                Ai_AppendInlinePng(hLog, png);
+                Ai_AppendRichRun(hLog, L"\r\n", nullptr);
+            }
+        }
         Ai_AppendRichRun(hLog, L"Ollama:\r\n", nullptr);
     }
 
@@ -4251,7 +4514,7 @@ static void Ai_DoSend(HWND hwnd)
         AiSendWorkItem work;
         work.answerStart = st->replyBaseStart;
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, work.answerStart,
-                           chunkPlan.mapChunks, chunkPlan.reduceHeader);
+                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages);
     } else {
         st->replyBaseStart = 0;
         st->liveReply.clear();
@@ -4265,7 +4528,7 @@ static void Ai_DoSend(HWND hwnd)
         Ai_StopLiveTypingTimer(hwnd);
         Ai_StopLiveTypingStartDelayTimer(hwnd);
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, 0,
-                           chunkPlan.mapChunks, chunkPlan.reduceHeader);
+                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages);
     }
 }
 
@@ -4458,7 +4721,13 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             std::vector<NeAiAnswerRow> rows;
             if (NeProfiles_AiAnswersLoad(rows) && !rows.empty()) {
                 st->conversation.reserve(rows.size());
-                for (auto& r : rows) st->conversation.emplace_back(r.prompt, r.replyMd);
+                for (auto& r : rows) {
+                    AiConversationTurn turn;
+                    turn.prompt  = r.prompt;
+                    turn.replyMd = r.replyMd;
+                    turn.images  = r.images;
+                    st->conversation.push_back(std::move(turn));
+                }
                 Ai_RenderConversation(hwnd);
             }
         }
@@ -4645,6 +4914,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 st->conversation.clear();
                 st->turnAnchors.clear();
                 st->navTurn = -1;
+                st->pendingImages.clear();
                 NeProfiles_AiAnswersClear();
                 if (st->hLog && IsWindow(st->hLog)) {
                     SetWindowTextW(st->hLog, L"");

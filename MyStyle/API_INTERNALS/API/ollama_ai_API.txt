@@ -150,6 +150,23 @@
       - the probe should stay quick and non-blocking from the caller's view
       - the function should not mutate application state
 
+  bool NeAiClient_AskOllamaStream(model, prompt, context, onChunk,
+                                  outReply, outError,
+                                  numCtx = 0,
+                                  images = {})
+
+    Streams a reply from Ollama's /api/generate, invoking onChunk(context, text)
+    for each token as it arrives and accumulating the full text into outReply.
+    Routes "-cloud" models (with an API key set) to https://ollama.com over
+    WinHTTP; otherwise talks to the local daemon over curl.
+
+    images (optional): a vector<string> of RAW base64-encoded image bytes (PNG),
+    emitted into the request JSON as "images":[...] so a multimodal model can see
+    them. Empty by default, so text-only callers are unchanged. Base64 needs no
+    escaping (it is JSON-safe). Text-only models ignore the array; a vision model
+    (llava, llama3.2-vision, qwen2.5vl, ...) is required to read the picture.
+    NeAiClient_AskOllama (the non-streaming wrapper) forwards to this function.
+
 ================================================================================
 5. INTEGRATION RULES
 ================================================================================

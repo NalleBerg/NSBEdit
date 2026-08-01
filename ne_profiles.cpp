@@ -201,6 +201,7 @@ bool NeProfiles_Init()
         "  sort_order INTEGER NOT NULL DEFAULT 0,"
         "  prompt     TEXT    NOT NULL DEFAULT '',"
         "  reply_md   TEXT    NOT NULL DEFAULT '',"
+        "  images     TEXT    NOT NULL DEFAULT '',"
         "  created    INTEGER NOT NULL DEFAULT 0"
         ");";
     char* err = nullptr;
@@ -258,6 +259,10 @@ bool NeProfiles_Init()
     // Migration: add per-tab spell language (ignored if already exists).
     sqlite3_exec(s_db,
         "ALTER TABLE session_tabs ADD COLUMN spell_lang TEXT NOT NULL DEFAULT ''",
+        NULL, NULL, NULL);
+    // Migration: add images column to ai_answers (ignored if already exists).
+    sqlite3_exec(s_db,
+        "ALTER TABLE ai_answers ADD COLUMN images TEXT NOT NULL DEFAULT ''",
         NULL, NULL, NULL);
     return true;
 }
@@ -345,7 +350,8 @@ bool NeProfiles_SetStrSetting(const char* key, const std::string& value)
 }
 
 // ── AI answer history (conversation persistence for the AI window) ────────────
-bool NeProfiles_AiAnswersAppend(const std::wstring& prompt, const std::wstring& replyMd)
+bool NeProfiles_AiAnswersAppend(const std::wstring& prompt, const std::wstring& replyMd,
+                                const std::vector<std::string>& images)
 {
     if (!s_db) return false;
     // Next sort_order = current max + 1 (keeps insertion order stable).
@@ -360,15 +366,22 @@ bool NeProfiles_AiAnswersAppend(const std::wstring& prompt, const std::wstring& 
     }
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(s_db,
-        "INSERT INTO ai_answers(sort_order,prompt,reply_md,created) VALUES(?,?,?,?)",
+        "INSERT INTO ai_answers(sort_order,prompt,reply_md,images,created) VALUES(?,?,?,?,?)",
         -1, &stmt, nullptr) != SQLITE_OK)
         return false;
     std::string p = Np_W2U(prompt);
     std::string r = Np_W2U(replyMd);
+    // Images are base64 (newline-free), so join them with '\n' as one TEXT blob.
+    std::string img;
+    for (size_t i = 0; i < images.size(); ++i) {
+        if (i) img += '\n';
+        img += images[i];
+    }
     sqlite3_bind_int (stmt, 1, nextOrder);
     sqlite3_bind_text(stmt, 2, p.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_text(stmt, 3, r.c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_int64(stmt, 4, (int64_t)time(nullptr));
+    sqlite3_bind_text(stmt, 4, img.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(stmt, 5, (int64_t)time(nullptr));
     bool ok = (sqlite3_step(stmt) == SQLITE_DONE);
     sqlite3_finalize(stmt);
     return ok;
@@ -380,15 +393,28 @@ bool NeProfiles_AiAnswersLoad(std::vector<NeAiAnswerRow>& out)
     if (!s_db) return false;
     sqlite3_stmt* stmt = nullptr;
     if (sqlite3_prepare_v2(s_db,
-        "SELECT prompt, reply_md FROM ai_answers ORDER BY sort_order, id",
+        "SELECT prompt, reply_md, images FROM ai_answers ORDER BY sort_order, id",
         -1, &stmt, nullptr) != SQLITE_OK)
         return false;
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         NeAiAnswerRow row;
         const char* p = (const char*)sqlite3_column_text(stmt, 0);
         const char* r = (const char*)sqlite3_column_text(stmt, 1);
+        const char* g = (const char*)sqlite3_column_text(stmt, 2);
         row.prompt  = p ? Np_U2W(p) : L"";
         row.replyMd = r ? Np_U2W(r) : L"";
+        if (g && *g) {
+            std::string all = g;
+            size_t start = 0;
+            while (start <= all.size()) {
+                size_t nl = all.find('\n', start);
+                std::string one = (nl == std::string::npos)
+                    ? all.substr(start) : all.substr(start, nl - start);
+                if (!one.empty()) row.images.push_back(one);
+                if (nl == std::string::npos) break;
+                start = nl + 1;
+            }
+        }
         out.push_back(std::move(row));
     }
     sqlite3_finalize(stmt);

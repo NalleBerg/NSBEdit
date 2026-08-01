@@ -49,7 +49,7 @@ bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
 	NeAiPullProgressFn onProgress, std::wstring& outError);
 bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& prompt,
 	void* context, NeAiOllamaChunkFn onChunk, std::wstring& outReply, std::wstring& outError,
-	int numCtx = 0);
+	int numCtx = 0, const std::vector<std::string>& images = std::vector<std::string>());
 bool NeAiClient_AskOllama(const std::wstring& model, const std::wstring& prompt,
 	std::wstring& outReply, std::wstring& outError, int numCtx = 0);
 

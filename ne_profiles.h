@@ -49,8 +49,9 @@ bool NeProfiles_SetSecretSetting(const char* key, const std::wstring& value);
 
 // ── AI answer history (conversation persistence for the AI window) ────────────
 // One stored conversation turn: the user's prompt and the raw markdown reply.
-struct NeAiAnswerRow { std::wstring prompt; std::wstring replyMd; };
-bool NeProfiles_AiAnswersAppend(const std::wstring& prompt, const std::wstring& replyMd);
+struct NeAiAnswerRow { std::wstring prompt; std::wstring replyMd; std::vector<std::string> images; };
+bool NeProfiles_AiAnswersAppend(const std::wstring& prompt, const std::wstring& replyMd,
+                                const std::vector<std::string>& images = std::vector<std::string>());
 bool NeProfiles_AiAnswersLoad(std::vector<NeAiAnswerRow>& out);
 bool NeProfiles_AiAnswersClear();
 
