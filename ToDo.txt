@@ -2,10 +2,10 @@
 * Copy/paste problem from CLI
 * Copy/paste weird color when pasting from Editor to Ai-query
 * Auto save shall be to DB and NOT set the file as saved - only save-to file should do that
-ensure there is NO rtf-code in new file, as it now asks if you want to strip it when I save the file
+* ensure there is NO rtf-code in new file, as it now asks if you want to strip it when I save the file
 I want the name in active tab to be color: rgb(59, 125,59)
 
-* When I press [esc] to remove
+*  When I press [esc] to remove
 
 Ollama: qwen3-coder:480b was retired at 2026-07-15 00:00:00 -0700 PDT (ref: ec2cb9ce-6022-4567-bca1-aea95e6d73a4)
 The cloud modeels must be updated when the AI ia opened. Any retired models must not show, and new models must show.
@@ -23,7 +23,7 @@ to answer. Also a separator beetween each answer.
 Search is no good as it cannot find and replace probably because the highlighting is off and it can only
 search on singlee words.
 
-Can we teach ollama to reeturn correct line numbers from the file, and instruct him to always return linee
+Can we teach ollama to return correct line numbers from the file, and instruct him to always return linee
 numbers where the removed code is (beginning/end line) and then where to add the new code by line number
 
 

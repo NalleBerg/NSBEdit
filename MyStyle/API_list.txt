@@ -238,7 +238,16 @@
                                                 IDM_CONV_TO_PLAIN (false).
                                                 NE_TIMER_SESSION (id 10)
                                                 SetTimer 10 s autosave in WM_CREATE; WM_TIMER
-                                                handler calls Ne_SessionSave. WM_CLOSE also
+                                                handler calls Ne_SessionSave ONLY. Autosave is
+                                                DB-only: it conserves the live tab content to
+                                                session_tabs for crash/restart recovery and does
+                                                NOT write the document's real file or clear
+                                                doc->modified (the status line stays Unsaved).
+                                                Only an explicit save (Ctrl+S / Save / Save As /
+                                                Save All) writes the file on disk and sets
+                                                modified=false. The former file-writing autosave
+                                                (Ne_AutoSaveTabs + Ne_QuietWriteDocToPath) was
+                                                removed. WM_CLOSE also
                                                 calls Ne_SessionSave before Ne_CloseAllTabsForExit.
                                                 wWinMain calls Ne_SessionRestore after
                                                 UpdateWindow when installed + no cmd-line arg +
@@ -678,7 +687,11 @@
                                                 WS_EX_NOACTIVATE popup; Scintilla HWND
                                                 subclassed while visible. pendingAccept
                                                 flag swallows stray WM_CHAR after Tab/
-                                                Enter. g_acInserting flag prevents re-
+                                                Enter; pendingDismiss does the same for
+                                                Esc — defer the dismiss until the 0x1B
+                                                WM_CHAR is swallowed, otherwise Scintilla
+                                                inserts a literal ESC glyph once the
+                                                subclass has been removed. g_acInserting flag prevents re-
                                                 entry during SCI_REPLACESEL insertion.
                                                 Mouse click acceptance guarded by
                                                 WM_MOUSEACTIVATE + WM_KILLFOCUS check.

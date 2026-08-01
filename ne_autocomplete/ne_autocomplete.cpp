@@ -40,7 +40,8 @@ struct NeAcState {
     int      itemH      = 0;      // height of one row in pixels
     NeAcAcceptFn onAccept;
     WNDPROC  sciOldProc = NULL;   // original Scintilla WndProc
-    bool     pendingAccept = false; // WM_KEYDOWN consumed; swallow next WM_CHAR then accept
+    bool     pendingAccept  = false; // WM_KEYDOWN consumed; swallow next WM_CHAR then accept
+    bool     pendingDismiss = false; // Esc keydown consumed; swallow next WM_CHAR then dismiss
 };
 
 static NeAcState g_ac;
@@ -65,6 +66,7 @@ static void Ac_EnsureVisible(int idx)
 static void Ac_Dismiss()
 {
     g_ac.pendingAccept = false;
+    g_ac.pendingDismiss = false;
     if (g_ac.hSci && g_ac.sciOldProc) {
         SetWindowLongPtrW(g_ac.hSci, GWLP_WNDPROC, (LONG_PTR)g_ac.sciOldProc);
         g_ac.sciOldProc = NULL;
@@ -107,6 +109,15 @@ static LRESULT CALLBACK AcSciSubclassProc(HWND hwnd, UINT msg,
         Ac_Accept(g_ac.selIdx);
         return 0; // swallow the '\t' or '\r' — never reaches Scintilla
     }
+    // Escape: WM_KEYDOWN was consumed; swallow the ESC WM_CHAR (0x1B) that
+    // TranslateMessage queued, THEN dismiss. If we had dismissed on the keydown,
+    // the subclass would already be removed when this 0x1B arrived and Scintilla
+    // would insert a literal ESC glyph into the document.
+    if (msg == WM_CHAR && g_ac.pendingDismiss) {
+        g_ac.pendingDismiss = false;
+        Ac_Dismiss();
+        return 0; // swallow the 0x1B — never reaches Scintilla
+    }
 
     if (msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN) {
         // Tab / Enter: consume the keydown, set flag to swallow the WM_CHAR next
@@ -115,7 +126,14 @@ static LRESULT CALLBACK AcSciSubclassProc(HWND hwnd, UINT msg,
             return 0;
         }
 
-        // Up / Down / Escape
+        // Escape: consume the keydown and defer dismissal until the WM_CHAR is
+        // swallowed (see the WM_CHAR handler above).
+        if (wParam == VK_ESCAPE && g_ac.hWnd) {
+            g_ac.pendingDismiss = true;
+            return 0;
+        }
+
+        // Up / Down
         if (NeAutoComplete_HandleKey(wParam)) return 0;
 
         // Backspace / Delete: dismiss popup, pass key to Scintilla normally
