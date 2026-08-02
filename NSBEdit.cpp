@@ -1947,6 +1947,21 @@ static bool Ne_DocIsRtf(NeTabDoc* doc);                // defined later; used by
 static LRESULT CALLBACK Ne_RichWrapSubclassProc(
     HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, UINT_PTR uid, DWORD_PTR /*data*/)
 {
+    // Right-click while text is selected must keep that selection so the
+    // context-menu Cut/Copy stay enabled. A default RichEdit right-click that
+    // lands outside the selection moves the caret and clears it, greying out
+    // Cut/Copy even though the user just selected text. Intercept it and raise
+    // the context menu ourselves with the selection still intact (mirrors the
+    // Scintilla subclass).
+    if (msg == WM_RBUTTONDOWN) {
+        CHARRANGE cr = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&cr);
+        if (cr.cpMin != cr.cpMax) {
+            POINT pt; GetCursorPos(&pt);
+            SendMessageW(GetParent(hwnd), WM_CONTEXTMENU, (WPARAM)hwnd,
+                         MAKELPARAM((WORD)pt.x, (WORD)pt.y));
+            return 0;
+        }
+    }
     // Plain-text and code documents must stay plain all the way through: when
     // pasting into a non-RTF document, take only the Unicode text off the
     // clipboard and drop any RTF (colours, fonts) that rich sources such as the
@@ -14677,12 +14692,32 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         }
         // ── Edit menu ─────────────────────────────────────────────────────────
-        if (wmId == IDM_UNDO)      { if (hEdit) SendMessageW(hEdit, WM_UNDO, 0, 0);                  SetFocus(hEdit); return 0; }
-        if (wmId == IDM_REDO)      { if (hEdit) SendMessageW(hEdit, EM_REDO, 0, 0);                  SetFocus(hEdit); return 0; }
-        if (wmId == IDM_CUT)       { if (hEdit) SendMessageW(hEdit, WM_CUT,  0, 0);                  SetFocus(hEdit); return 0; }
-        if (wmId == IDM_COPY)      { if (hEdit) SendMessageW(hEdit, WM_COPY, 0, 0);                  SetFocus(hEdit); return 0; }
-        if (wmId == IDM_PASTE)     { if (hEdit) SendMessageW(hEdit, WM_PASTE, 0, 0);                 SetFocus(hEdit); return 0; }
-        if (wmId == IDM_SELECTALL) { if (hEdit) SendMessageW(hEdit, EM_SETSEL, 0, -1);               SetFocus(hEdit); return 0; }
+        // Route clipboard/undo commands to the ACTIVE editor. NeTabs_GetActiveEdit
+        // always returns the RichEdit companion, so on a Scintilla (code) tab the
+        // real editor is doc->hSci — targeting hEdit would operate on the hidden,
+        // empty RichEdit (right-click Copy/Cut greyed, Paste landing in the wrong
+        // control). WM_CUT/COPY/PASTE/UNDO work on both; Redo/Select-All differ.
+        if (wmId == IDM_UNDO || wmId == IDM_REDO || wmId == IDM_CUT ||
+            wmId == IDM_COPY || wmId == IDM_PASTE || wmId == IDM_SELECTALL) {
+            NeTabDoc* edDoc = NeTabs_GetActiveDoc(hwnd);
+            HWND hSciAct = edDoc ? edDoc->hSci : NULL;
+            HWND hAct = hSciAct ? hSciAct : hEdit;
+            if (hAct) {
+                switch (wmId) {
+                    case IDM_UNDO:  SendMessageW(hAct, WM_UNDO, 0, 0); break;
+                    case IDM_REDO:  SendMessageW(hAct, hSciAct ? SCI_REDO : EM_REDO, 0, 0); break;
+                    case IDM_CUT:   SendMessageW(hAct, WM_CUT,  0, 0); break;
+                    case IDM_COPY:  SendMessageW(hAct, WM_COPY, 0, 0); break;
+                    case IDM_PASTE: SendMessageW(hAct, WM_PASTE, 0, 0); break;
+                    case IDM_SELECTALL:
+                        if (hSciAct) SendMessageW(hAct, SCI_SELECTALL, 0, 0);
+                        else         SendMessageW(hAct, EM_SETSEL, 0, -1);
+                        break;
+                }
+                SetFocus(hAct);
+            }
+            return 0;
+        }
         if (wmId == IDM_PREFS)     { Ne_ShowPrefsDialog(hwnd); return 0; }
         // ── Help menu ─────────────────────────────────────────────────────────
         if (wmId == IDM_SHORTCUTS)   { Ne_ShowShortcuts(hwnd); return 0; }
@@ -15269,7 +15304,14 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         HWND hEdit = NeTabs_GetActiveEdit(hwnd);
         NeTabDoc* ctxSciDoc = NULL;
         { NeTabDoc* d = NeTabs_GetActiveDoc(hwnd);
-          if (d && d->hSci == hSrc) ctxSciDoc = d; }
+          // Treat this as a Scintilla context whenever the active tab is a
+          // code/Scintilla tab and the click came from its Scintilla view OR its
+          // hidden RichEdit companion.  Matching only hSrc==d->hSci missed
+          // FTP-opened tabs, whose WM_CONTEXTMENU reports the RichEdit as the
+          // source; that dropped into the RichEdit branch, read the empty hidden
+          // control and greyed out Cut/Copy despite a live selection.
+          if (d && d->hSci && (hSrc == d->hSci || hSrc == hEdit))
+              ctxSciDoc = d; }
 
         HWND hTab  = NeTabs_GetTabHwnd(hwnd);
 
@@ -15741,10 +15783,25 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 
         // ── Edit popup ────────────────────────────────────────────────────────
         if (GetMenuState(hPop, IDM_UNDO, MF_BYCOMMAND) != (UINT)-1) {
-            CHARRANGE cr = {}; SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
-            bool hasSel  = (cr.cpMin != cr.cpMax);
-            bool canUndo = SendMessageW(hEdit, EM_CANUNDO, 0, 0) != 0;
-            bool canRedo = SendMessageW(hEdit, EM_CANREDO, 0, 0) != 0;
+            // Read selection / undo state from the ACTIVE editor. On a Scintilla
+            // (code) tab the real editor is doc->hSci; hEdit is the hidden, empty
+            // RichEdit companion, so using it here greyed Cut/Copy on code and
+            // FTP tabs even with a live selection. This popup handler fires for
+            // both the menu-bar Edit menu and the right-click context menu.
+            NeTabDoc* edDoc = NeTabs_GetActiveDoc(hwnd);
+            bool hasSel, canUndo, canRedo;
+            if (edDoc && edDoc->hSci) {
+                Sci_Position ss = SendMessageW(edDoc->hSci, SCI_GETSELECTIONSTART, 0, 0);
+                Sci_Position se = SendMessageW(edDoc->hSci, SCI_GETSELECTIONEND,   0, 0);
+                hasSel  = (ss != se);
+                canUndo = SendMessageW(edDoc->hSci, SCI_CANUNDO, 0, 0) != 0;
+                canRedo = SendMessageW(edDoc->hSci, SCI_CANREDO, 0, 0) != 0;
+            } else {
+                CHARRANGE cr = {}; SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+                hasSel  = (cr.cpMin != cr.cpMax);
+                canUndo = SendMessageW(hEdit, EM_CANUNDO, 0, 0) != 0;
+                canRedo = SendMessageW(hEdit, EM_CANREDO, 0, 0) != 0;
+            }
             EnableMenuItem(hPop, IDM_UNDO,  MF_BYCOMMAND | (canUndo ? MF_ENABLED : MF_GRAYED));
             EnableMenuItem(hPop, IDM_REDO,  MF_BYCOMMAND | (canRedo ? MF_ENABLED : MF_GRAYED));
             EnableMenuItem(hPop, IDM_CUT,   MF_BYCOMMAND | (hasSel  ? MF_ENABLED : MF_GRAYED));

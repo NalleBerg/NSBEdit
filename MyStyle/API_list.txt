@@ -51,6 +51,16 @@
                                                 WM_INITMENUPOPUP),
                                                 right-click context menu (WM_CONTEXTMENU),
                                                 Help menu (Keyboard Shortcuts/About).
+                                                CRITICAL: NeTabs_GetActiveEdit() always returns
+                                                doc->hEdit (RichEdit) even on a Scintilla/code
+                                                tab (hSci is the real editor). Edit + context-menu
+                                                clipboard/undo commands and the WM_INITMENUPOPUP
+                                                greying MUST target/read doc->hSci when present,
+                                                else Cut/Copy/Paste operate on the hidden empty
+                                                RichEdit (right-click Copy greyed, Paste lands in
+                                                the wrong control) — most visible on FTP-opened
+                                                code tabs. Redo/SelectAll differ: SCI_REDO /
+                                                SCI_SELECTALL vs EM_REDO / EM_SETSEL.
                                                 Ctrl+F is intercepted in the main
                                                 message loop so it works from the
                                                 editor as a shortcut, not only from
