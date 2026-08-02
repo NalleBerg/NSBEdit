@@ -374,4 +374,27 @@ empty buffer overwrote the real file. Three layers now prevent this:
    exists and is non-empty (GetFileAttributesExW size > 0), show a confirm
    dialog (MSG_SAVE_EMPTY_OVERWRITE, default No) — only an explicit Yes writes
    the empty file. Covers Ctrl+S, Save As and FTP save (all route through here).
+4. Session ownership (s_sessionOwned, declared before Ne_SessionSave): launching
+   NSBEdit with a command-line file (double-click / association) SKIPS
+   Ne_SessionRestore and shows only that tab; the autosave/close Ne_SessionSave
+   then DELETE+INSERTs session_tabs and would wipe the real multi-tab session.
+   Guard: wWinMain sets s_sessionOwned = true ONLY when it restored the session
+   (no cmd-line file AND NeSession_HasData) OR there was none to restore
+   (installed && !HasData). Ne_SessionSave returns early if !s_sessionOwned, so a
+   file-launch beside an existing session never overwrites it — the tabs
+   (incl. unsaved) return on the next normal launch. Only writer of session_tabs
+   is Ne_SessionSave; NeSession_Clear is unused; the write is atomic (BEGIN/COMMIT).
+5. Tab type by handle, NOT visibility (Ne_SessionSave): t.isSciTab and the
+   content branch must use doc->hSci != nullptr (ne_tabs.h: hSci==NULL => RichEdit),
+   NOT IsWindowVisible(doc->hSci). Only the ACTIVE tab's editor is visible, so the
+   old visibility test misclassified every inactive Scintilla (code/plain) tab as
+   RichEdit and saved its content from the hidden, empty hEdit -> background code
+   and FTP-code tabs were stored as a ~168-byte empty RTF and restored blank.
+   Ne_SciGetText / Ne_StreamOut and the SCI_* state reads work on hidden windows.
+6. FTP restore keeps unsaved edits (Ne_SessionRestore FTP branch): after a
+   successful download, if t.wasModified && !t.content.empty() -> loadContent(t)
+   (restore cached edits, mark modified) and DELETE the temp download; only a
+   CLEAN FTP tab loads the fresh server copy. The old code compared bytes and only
+   kept edits when the remote had ALSO changed, so an edited FTP file whose server
+   copy was unchanged silently reloaded the server version and lost the edits.
 ================================================================================

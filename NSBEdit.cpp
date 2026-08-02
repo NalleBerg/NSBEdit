@@ -600,6 +600,12 @@ static bool g_darkEditor = false;  // persisted as "dark_editor": dark Scintilla
 static int  g_localeId   = 0;      // persisted as "locale_id" in DB (0 = en_GB)
 static NeAiBootstrapConfig g_aiBootstrap;
 
+// True only when THIS process is the legitimate owner of the saved session
+// (it restored the session at startup, or there was none to restore). A launch
+// that opened a command-line file while a saved multi-tab session existed does
+// NOT own it, so autosave/close must not overwrite (and destroy) that session.
+static bool s_sessionOwned = false;
+
 static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
 {
     auto sci = [hSci](UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
@@ -9375,6 +9381,13 @@ static void Ne_SessionSave(HWND hwnd)
 {
     if (!NeProfiles_IsInstalled()) return;
 
+    // Do NOT overwrite the saved session unless this process owns it (it either
+    // restored the session at startup, or there was none). Prevents a launch
+    // that opened a command-line file — which skips restore and shows only that
+    // one tab — from clobbering the real multi-tab session, including unsaved
+    // tabs, that is still on disk from the previous normal run.
+    if (!s_sessionOwned) return;
+
     const int count     = NeTabs_GetCount(hwnd);
     const int activeIdx = NeTabs_GetActiveIndex(hwnd);
 
@@ -9412,7 +9425,11 @@ static void Ne_SessionSave(HWND hwnd)
 
         // Per-tab editor state: type, word-wrap, caret position, scroll line, spell language.
         t.spellLang = doc->spellLang;
-        t.isSciTab = (doc->hSci && IsWindowVisible(doc->hSci));
+        // A tab is Scintilla iff doc->hSci exists (ne_tabs.h: NULL = RichEdit).
+        // Do NOT test IsWindowVisible — only the ACTIVE tab's editor is visible,
+        // so hidden background tabs would be misclassified as RichEdit and saved
+        // from the wrong (empty) control, losing their content on restore.
+        t.isSciTab = (doc->hSci != nullptr);
         if (t.isSciTab) {
             t.wordWrap   = (SendMessageW(doc->hSci, SCI_GETWRAPMODE, 0, 0) != SC_WRAP_NONE);
             t.caretPos   = (int)SendMessageW(doc->hSci, SCI_GETCURRENTPOS, 0, 0);
@@ -9432,7 +9449,7 @@ static void Ne_SessionSave(HWND hwnd)
         // was lost and could be saved back over the real file.  Keeping a copy
         // of every tab's content in the DB means the last-known text is always
         // recoverable on restore, even for clean, saved files.
-        if (doc->hSci && IsWindowVisible(doc->hSci)) {
+        if (doc->hSci) {
             std::string utf8 = Ne_SciGetText(doc->hSci);
             if (!utf8.empty()) {
                 t.content.assign(utf8.begin(), utf8.end());
@@ -9633,44 +9650,21 @@ static void Ne_SessionRestore(HWND hwnd)
                 SetCursor(LoadCursorW(NULL, IDC_ARROW));
 
                 if (dlOk) {
-                    // Check whether the remote file changed since the session
-                    // by comparing the downloaded bytes directly against the
-                    // cached content BLOB.  Only warn when the file had unsaved
-                    // edits in the previous session — for clean tabs the BLOB is
-                    // just a cache and encoding differences (CRLF vs LF etc.)
-                    // would cause false positives.
-                    bool remoteChanged = false;
+                    // If the tab had UNSAVED edits, ALWAYS restore the cached
+                    // edited content — never discard the user's work in favour of
+                    // the server copy.  (Previously, an edited FTP tab whose
+                    // remote copy was unchanged reloaded the fresh download and
+                    // silently lost the local edits.)  Clean tabs load the fresh
+                    // download so they reflect the current server file.
                     if (t.wasModified && !t.content.empty()) {
-                        HANDLE hf = CreateFileW(localPath.c_str(), GENERIC_READ,
-                                                FILE_SHARE_READ, NULL,
-                                                OPEN_EXISTING, 0, NULL);
-                        if (hf != INVALID_HANDLE_VALUE) {
-                            LARGE_INTEGER sz = {};
-                            GetFileSizeEx(hf, &sz);
-                            if ((size_t)sz.QuadPart != t.content.size()) {
-                                remoteChanged = true;
-                            } else if (sz.QuadPart > 0) {
-                                std::vector<uint8_t> disk(t.content.size());
-                                DWORD rd = 0;
-                                ReadFile(hf, disk.data(), (DWORD)disk.size(), &rd, NULL);
-                                remoteChanged = (rd != disk.size() || disk != t.content);
-                            }
-                            CloseHandle(hf);
-                        }
-                    }
-
-                    if (remoteChanged) {
-                        // Remote changed while we had unsaved edits — silently
-                        // restore our cached edits (user can reload from server
-                        // manually if they want the server version).
                         DeleteFileW(localPath.c_str());
-                        loadContent(t);
+                        loadContent(t);   // restores edits + FTP fields, marks modified
                         if (t.isActive) savedActiveTabIdx = NeTabs_GetActiveIndex(hwnd);
                         Ne_UpdateToolbarMode(hwnd);
                         continue;
                     }
 
-                    // Load the fresh download (or non-changed remote file).
+                    // Clean tab — load the fresh server download.
                     Ne_LoadPathIntoEditor(hwnd, localPath);
                     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
                     if (doc) {
@@ -16168,8 +16162,18 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     UpdateWindow(s_hwndMain);
 
     // ── Restore last session (installed version only, no command-line file) ───
-    if ((!lpCmdLine || !*lpCmdLine) && NeProfiles_IsInstalled() && NeSession_HasData())
+    bool sessInstalled = NeProfiles_IsInstalled();
+    bool sessCmdFile   = (lpCmdLine && *lpCmdLine);
+    bool sessHadData   = sessInstalled && NeSession_HasData();
+    if (!sessCmdFile && sessHadData) {
         Ne_SessionRestore(s_hwndMain);
+        s_sessionOwned = true;             // we restored it → we own it
+    } else if (sessInstalled && !sessHadData) {
+        s_sessionOwned = true;             // no saved session yet → this run owns a fresh one
+    }
+    // else: launched with a file while a saved session exists — do NOT restore
+    // and do NOT own it, so autosave/close cannot overwrite the user's other
+    // tabs (including unsaved ones); they return on the next normal launch.
 
     // If spell marking was on, scan all restored tabs now.
     if (s_spellMarkActive) {

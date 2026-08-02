@@ -259,6 +259,12 @@
                                                 wWinMain calls Ne_SessionRestore after
                                                 UpdateWindow when installed + no cmd-line arg +
                                                 NeSession_HasData().
+                                                Ownership guard s_sessionOwned: true only if this
+                                                run restored the session (no cmd-line + HasData) or
+                                                there was none (installed + !HasData). Ne_SessionSave
+                                                returns early if !owned, so a file-launch beside an
+                                                existing session can't clobber it (tabs return next
+                                                normal launch).
                                                 Window geometry persistence: Ne_SaveWindowPlacement
                                                 (HWND,prefix) / Ne_RestoreWindowPlacement(HWND,
                                                 prefix) store size/pos/maximized in settings keys
