@@ -52,6 +52,9 @@ AI_LOG_API_KEY_CLEARED = API-nøgle ryddet.
 AI_MENU_OPEN_PROVIDER = Åbn Ollama-websted
 AI_MENU_SEND_PROMPT = Send prompt
 AI_MENU_CLEAR_LOG = Ryd log
+AI_CLEAR_CONFIRM_TITLE = Ryd samtale
+AI_CLEAR_CONFIRM_MSG = Vil du rydde hele AI-samtalen?\n\nDette fjerner alle spørgsmål og svar fra loggen og kan ikke fortrydes.
+MSG_SAVE_EMPTY_OVERWRITE = Editoren er tom, men filen på disken er ikke:\n\n%s\n\nHvis du gemmer nu, slettes alt i filen. Dette kan ske efter en mislykket sessionsgendannelse.\n\nGem alligevel, og tøm filen?
 AI_MENU_COPY_ANSWER = Kopiér svar
 AI_MENU_ABOUT_WINDOW = Om dette vindue
 AI_MENU_MODEL = Model
@@ -184,7 +187,8 @@ BTN_DONT_SAVE     = Gem ikke
 BTN_CANCEL        = Annullér
 DLG_DISCARD_CHANGES = Kassér ændringer
 MSG_DISCARD_AND_RELOAD = Du har ikke-gemte ændringer i denne fil.\n\nKassér dem og genindlæs filen?
-BTN_OK            = OKBTN_CONTINUE      = Fortsæt
+BTN_OK            = OK
+BTN_CONTINUE      = Fortsæt
 DLG_CONV_TO_PLAIN = Fjern formatering
 DLG_FILE_CHANGED        = Filen er ændret på disken
 MSG_FILE_CHANGED_PROMPT = "%s" blev ændret af et andet program, mens NSBEdit ikke var i fokus.\n\nGenindlæs fra disken?
@@ -283,6 +287,7 @@ DLG_FIND            = Find / Erstat
 DLG_FIND_WHAT       = Find:
 DLG_REPL_WITH       = Erstat med:
 BTN_FIND_NEXT       = Find næste
+BTN_FIND            = Find
 BTN_CLOSE           = Luk
 BTN_REPLACE         = Erstat
 BTN_REPLACE_ALL     = Erstat alle
@@ -600,25 +605,25 @@ BTN_CHOOSE          = Vælg…
 MENU_RECENT       = Seneste &filer
 MENU_RECENT_EMPTY = (Ingen)
 # -- Session restore -------------------------------------------------------
-DLG_SESSION_RESTORE         = Restore Session
-MSG_SESSION_FILE_MISSING    = The file "%s" could not be found on disk.
+DLG_SESSION_RESTORE         = Gendan session
+MSG_SESSION_FILE_MISSING    = Filen "%s" kunne ikke findes på disken.
 
 A cached version from your last session is available.
-BTN_OPEN_CACHED             = Open Cached
-BTN_SKIP                    = Skip
-MSG_SESSION_FILE_GONE       = The file "%s" could not be found and no cached version is available.
-MSG_SESSION_FTP_FAIL        = Could not reconnect to "%s" for the file "%s".
+BTN_OPEN_CACHED             = Åbn cachelagret
+BTN_SKIP                    = Spring over
+MSG_SESSION_FILE_GONE       = Filen "%s" kunne ikke findes, og der er ingen cachelagret version tilgængelig.
+MSG_SESSION_FTP_FAIL        = Kunne ikke oprette forbindelse til "%s" igen for filen "%s".
 
 A cached version from your last session is available.
-MSG_SESSION_FTP_FAIL_NC     = Could not reconnect to "%s" for the file "%s".
+MSG_SESSION_FTP_FAIL_NC     = Kunne ikke oprette forbindelse til "%s" igen for filen "%s".
 
 No cached version is available.
-MSG_SESSION_REMOTE_CHANGED  = The remote file "%s" on server "%s" has been modified by another program since your last session.
+MSG_SESSION_REMOTE_CHANGED  = Fjernfilen "%s" på serveren "%s" er blevet ændret af et andet program siden din sidste session.
 
 Reload the latest version from the server, or keep your locally cached version?
-BTN_RELOAD_REMOTE           = Reload from Server
-BTN_KEEP_LOCAL              = Keep Local
-MSG_SESSION_DISK_CHANGED  = The file "%s" on disk has been modified by another program since your last session.
+BTN_RELOAD_REMOTE           = Genindlæs fra server
+BTN_KEEP_LOCAL              = Behold lokal
+MSG_SESSION_DISK_CHANGED  = Filen "%s" på disken er blevet ændret af et andet program siden din sidste session.
 
 Reload the latest version from disk, or keep your locally cached version?
 
@@ -632,3 +637,11 @@ BTN_COMPARE               = Sammenlign
 MSG_COMPARE_SAME          = De to faner har identisk indhold.
 MSG_COMPARE_SELECT_TWO    = Åbn mindst to faner for at sammenligne.
 MSG_COMPARE_TOO_LARGE     = Filer er for store til sammenligning (maks. 3 000 linjer hver).
+
+# ── Completion (was English fallback) ─────────────────────────────────────────
+MENU_REGEX_GUIDE  = &Regex-guide
+AI_TIME_USED = Tid brugt:
+AI_LAST_QUERY_USED = Sidste forespørgsel brugte:
+AI_WAIT_TITLE = Vent venligst
+SCF_RELOAD_FILE   = Genindlæs fil
+SCD_RELOAD_FILE   = Genindlæs den aktuelle fil fra disk eller FTP og kassér lokale ændringer

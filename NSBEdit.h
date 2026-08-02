@@ -30,3 +30,8 @@ std::vector<NsbCodeStyleRun> NsbAi_HighlightCode(const std::wstring& code,
 // `password` to mask the field (e.g. for an API key).  Implemented in NSBEdit.cpp.
 bool Ne_ShowInputDialog(HWND parent, const wchar_t* title, const wchar_t* prompt,
                         std::wstring& out, const std::wstring& initialValue, bool password);
+
+// Styled modal Yes/No confirmation (owner-draw buttons, DPI-aware).  Returns
+// true when the user chooses Yes.  Shared so other modules (e.g. the AI panel)
+// use the same look instead of a bare MessageBox.  Implemented in NSBEdit.cpp.
+bool Ne_ShowConfirmDialog(HWND parent, const wchar_t* title, const wchar_t* message);

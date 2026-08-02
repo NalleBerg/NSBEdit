@@ -196,3 +196,24 @@ raw structure glyphs in unrelated callers (e.g. Compare Tabs line splitting).
   Ne_SciGetText          Scintilla → UTF-8 text (caller converts to wide)
   Ne_UpdateFindCount     refresh the "n / total" label
   NeHighlight_*          RichEdit colour highlight module (search_highlight_API.txt)
+
+================================================================================
+SEARCH ON FIND NEXT ONLY  +  Find / Find Next button label  (2026-08)
+================================================================================
+No search-while-typing. EN_CHANGE on the Find box no longer calls Ne_DoFindNext;
+it calls Ne_ClearFindResults() (clears highlights + s_findMatches +
+s_findAllTabMatches + s_findCachedNeedle, then Ne_UpdateFindCount). Search runs
+ONLY on Find Next / Enter (IDOK / IDC_NE_DLG_FIND_NEXT) via Ne_DoFindNext.
+Toggling any option checkbox (Match case, Whole word, Regex, All tabs, Backwards)
+also just calls Ne_ClearFindResults() — the new option applies on the next
+explicit Find. This fixed Whole word / options not taking effect until retype.
+
+Button label: buttons[0] (IDC_NE_DLG_FIND_NEXT) is created with text Ls("BTN_FIND")
+but width measured on Ls("BTN_FIND_NEXT") so it never resizes. Ne_UpdateFindCount
+is the single choke point that drives the label: hasMatch = allTabs ?
+!s_findAllTabMatches.empty() : !s_findMatches.empty(); buttons[0].text =
+Ls(hasMatch ? "BTN_FIND_NEXT" : "BTN_FIND"); InvalidateRect the button. So the
+label reads "Find" until the first match is highlighted, then "Find Next", and
+reverts to "Find" whenever results are cleared (typing / option toggle).
+s_findBtnDD forward-declared up with the other find statics so Ne_UpdateFindCount
+can reach it. New locale key: BTN_FIND.

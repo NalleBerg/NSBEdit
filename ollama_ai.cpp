@@ -4911,6 +4911,15 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         case IDM_AI_LOG_CLEAR:
             if (st) {
+                // Confirm before wiping the conversation — but only when there is
+                // actually something to clear.
+                bool hasContent = !st->conversation.empty() ||
+                    (st->hLog && IsWindow(st->hLog) && GetWindowTextLengthW(st->hLog) > 0);
+                if (hasContent &&
+                    !Ne_ShowConfirmDialog(hwnd, Ne_Ls(L"AI_CLEAR_CONFIRM_TITLE"),
+                                          Ne_Ls(L"AI_CLEAR_CONFIRM_MSG"))) {
+                    return 0;
+                }
                 st->conversation.clear();
                 st->turnAnchors.clear();
                 st->navTurn = -1;

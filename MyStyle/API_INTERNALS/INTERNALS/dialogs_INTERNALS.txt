@@ -778,3 +778,14 @@
   \par).  An UPDATE migration in InitDb patches any existing dialog_defaults
   row that still contains the old pattern.
 ================================================================================
+Ne_ShowConfirmDialog (NSBEdit.cpp, exported via NSBEdit.h)  (2026-08)
+  Shared owner-draw Yes/No confirm = thin wrapper over Ne_ShowChoiceDialog
+  (No=Blue, Yes=Red, default No). Returns true on Yes. Lets other modules reuse
+  the styled dialog instead of MessageBox — e.g. the AI panel Clear button
+  (ollama_ai.cpp IDM_AI_LOG_CLEAR) asks before wiping the conversation
+  (AI_CLEAR_CONFIRM_TITLE / AI_CLEAR_CONFIRM_MSG), only when there is content.
+  Also used by the empty-overwrite save guard path (MSG_SAVE_EMPTY_OVERWRITE).
+  Northern Sami (se_NO) locale retired: removed from Ne_RebuildLocaleMenu,
+  Ne_LoadLocale switch, IDR_LOCALE_SE_NO, the .rc entry and locale/se_NO.txt;
+  a stale saved locale_id==14 resets to 0 (English).
+================================================================================

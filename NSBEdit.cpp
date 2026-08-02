@@ -95,7 +95,6 @@
 #define IDR_LOCALE_PT_PT    23
 #define IDR_LOCALE_NL_NL    24
 #define IDR_LOCALE_NL_BE    25
-#define IDR_LOCALE_SE_NO    26
 
 // Convert menu
 #define IDM_CONV_TO_PLAIN   120
@@ -1631,7 +1630,6 @@ static void Ne_LoadLocale()
         case 11: resId = IDR_LOCALE_PT_PT; break;
         case 12: resId = IDR_LOCALE_NL_NL; break;
         case 13: resId = IDR_LOCALE_NL_BE; break;
-        case 14: resId = IDR_LOCALE_SE_NO; break;
         default: resId = IDR_LOCALE_EN_GB; break;
     }
     auto loadResource = [&](int id) {
@@ -3312,6 +3310,18 @@ static int Ne_ShowChoiceDialog(HWND parent, const wchar_t* title, const std::wst
     return dd.result;
 }
 
+// Public owner-draw Yes/No confirmation.  Returns true when the user chose Yes.
+// Exposed via NSBEdit.h so other modules share the same styled dialog.
+bool Ne_ShowConfirmDialog(HWND parent, const wchar_t* title, const wchar_t* message)
+{
+    NeDialogButtonSpec btns[2] = {
+        { IDNO,  Ls(L"BTN_NO"),  NeBtnTone::Blue, IDI_INFORMATION, 0 },
+        { IDYES, Ls(L"BTN_YES"), NeBtnTone::Red,  IDI_WARNING,     0 },
+    };
+    return Ne_ShowChoiceDialog(parent, title, message ? message : L"",
+                               btns, 2, IDNO) == IDYES;
+}
+
 static bool Ne_CheckExternalFileChangeOnFocus(HWND hwnd)
 {
     // Never fire while a file-open operation is in progress (the old stamp is
@@ -3673,6 +3683,7 @@ static std::vector<NeHighlightRange> s_findMatches;  // all match ranges
 // All-tabs search state (used when IDC_NE_DLG_ALL_TABS is checked).
 struct NeAllTabMatch { int tabIndex; int start; int end; };
 static std::vector<NeAllTabMatch> s_findAllTabMatches;
+static NeDialogData s_findBtnDD;  // Find/Replace dialog buttons (fwd decl)
 static int                        s_findAllTabActiveIdx = -1;
 static std::wstring Ne_GetSelectedText(HWND hEdit)
 {
@@ -3744,6 +3755,14 @@ static void Ne_UpdateFindCount()
                        s_findHL.activeIdx + 1, (int)s_findMatches.size());
             SetWindowTextW(hCount, buf);
         }
+    }
+
+    // Drive the Find button label: "Find" until a match is found, then "Find Next".
+    if (s_findBtnDD.buttonCount >= 1) {
+        bool hasMatch = allTabs ? !s_findAllTabMatches.empty() : !s_findMatches.empty();
+        s_findBtnDD.buttons[0].text = Ls(hasMatch ? L"BTN_FIND_NEXT" : L"BTN_FIND");
+        HWND hBtn = GetDlgItem(s_hwndFind, IDC_NE_DLG_FIND_NEXT);
+        if (hBtn) InvalidateRect(hBtn, NULL, TRUE);
     }
 }
 
@@ -4390,7 +4409,18 @@ static void Ne_DoReplace(HWND dlg, bool all)
     }
 }
 
-static NeDialogData s_findBtnDD;
+// Clear all find highlights/results without searching.  Search runs only on an
+// explicit Find Next / Enter, so this is used whenever the needle or options
+// change to drop stale highlights and reset the button label back to "Find".
+static void Ne_ClearFindResults()
+{
+    if (s_hwndFindEdit) NeHighlight_Clear(s_hwndFindEdit, s_findHL);
+    s_findMatches.clear();
+    s_findAllTabMatches.clear();
+    s_findAllTabActiveIdx = -1;
+    s_findCachedNeedle.clear();
+    Ne_UpdateFindCount();
+}
 
 static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
 {
@@ -4403,7 +4433,7 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
         if (id == IDC_NE_DLG_REPLACE)        { Ne_DoReplace(h, false);  return 0; }
         if (id == IDC_NE_DLG_REPLACE_ALL)    { Ne_DoReplace(h, true);   return 0; }
         if (id == IDC_NE_DLG_FIND_WHAT && HIWORD(w) == EN_CHANGE && !s_findDlgBuilding) {
-            Ne_DoFindNext(h, true);
+            Ne_ClearFindResults();   // no search-while-typing; wait for Find Next / Enter
             return 0;
         }
         // Regex checkbox toggled — grey out MatchCase and WholeWord.
@@ -4413,7 +4443,8 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
             EnableWindow(GetDlgItem(h, IDC_NE_DLG_WHOLEWORD), !on);
             InvalidateRect(GetDlgItem(h, IDC_NE_DLG_MATCHCASE), NULL, TRUE);
             InvalidateRect(GetDlgItem(h, IDC_NE_DLG_WHOLEWORD), NULL, TRUE);
-            s_findCachedNeedle.clear();  // force rescan with new mode
+            s_findCachedNeedle.clear();  // force rescan with new options
+            Ne_ClearFindResults();       // no auto-search; wait for Find Next
             return 0;
         }
         // All-tabs checkbox toggled — disable Replace when on (can't replace across tabs).
@@ -4422,6 +4453,15 @@ static LRESULT CALLBACK Ne_FindDlgProc(HWND h, UINT m, WPARAM w, LPARAM l)
             EnableWindow(GetDlgItem(h, IDC_NE_DLG_REPLACE),     !on);
             EnableWindow(GetDlgItem(h, IDC_NE_DLG_REPLACE_ALL), !on);
             s_findCachedNeedle.clear();  // force rescan on next Find Next
+            Ne_ClearFindResults();       // no auto-search; wait for Find Next
+            return 0;
+        }
+        // Match case / Whole word / Backwards toggled — drop stale highlights;
+        // search runs on the next explicit Find Next / Enter.
+        if ((id == IDC_NE_DLG_MATCHCASE || id == IDC_NE_DLG_WHOLEWORD ||
+             id == IDC_NE_DLG_BACKWARDS) && HIWORD(w) == BN_CLICKED) {
+            s_findCachedNeedle.clear();
+            Ne_ClearFindResults();
             return 0;
         }
         break;
@@ -4587,7 +4627,7 @@ static void Ne_ShowFindDialog(HWND parent, HWND hEdit)
     HICON hIconCheck = NULL, hIconClose = NULL;
     ExtractIconExW(L"shell32.dll", 294, NULL, &hIconCheck, 1);
     ExtractIconExW(L"shell32.dll", 131, NULL, &hIconClose,  1);
-    s_findBtnDD.buttons[0] = { IDC_NE_DLG_FIND_NEXT,  Ls(L"BTN_FIND_NEXT"),   NeBtnTone::Green, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_FIND_NEXT")),   NULL       };
+    s_findBtnDD.buttons[0] = { IDC_NE_DLG_FIND_NEXT,  Ls(L"BTN_FIND"),        NeBtnTone::Green, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_FIND_NEXT")),   NULL       };
     s_findBtnDD.buttons[1] = { IDC_NE_DLG_REPLACE,    Ls(L"BTN_REPLACE"),     NeBtnTone::Blue,  IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_REPLACE")),     hIconCheck };
     s_findBtnDD.buttons[2] = { IDC_NE_DLG_REPLACE_ALL,Ls(L"BTN_REPLACE_ALL"), NeBtnTone::Blue,  IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"BTN_REPLACE_ALL")), hIconCheck };
     s_findBtnDD.buttons[3] = { IDCANCEL,               Ls(L"BTN_CLOSE"),       NeBtnTone::Red,   IDI_ERROR,       Ne_MeasureButtonWidth(Ls(L"BTN_CLOSE")),       hIconClose };
@@ -8931,6 +8971,31 @@ static bool Ne_SaveToPath(HWND hwnd, const std::wstring& path)
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
     if (!doc) return false;
 
+    // ── Empty-over-non-empty data-loss guard ─────────────────────────────────
+    // Last line of defence behind the session autosave: never silently overwrite
+    // a non-empty file on disk with an empty buffer.  If a tab ever ends up empty
+    // (bad restore, glitch), a plain Ctrl+S must not wipe the real file without
+    // an explicit confirmation.
+    if (Ne_TabIsEmpty(doc)) {
+        WIN32_FILE_ATTRIBUTE_DATA fad;
+        if (GetFileAttributesExW(path.c_str(), GetFileExInfoStandard, &fad) &&
+            !(fad.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            long long diskSz = ((long long)fad.nFileSizeHigh << 32) | fad.nFileSizeLow;
+            if (diskSz > 0) {
+                wchar_t msg[MAX_PATH + 256];
+                swprintf_s(msg, _countof(msg),
+                           Ls(L"MSG_SAVE_EMPTY_OVERWRITE"), path.c_str());
+                NeDialogButtonSpec btns[2] = {
+                    { IDNO,  Ls(L"BTN_CANCEL"), NeBtnTone::Blue, IDI_INFORMATION, 0 },
+                    { IDYES, Ls(L"BTN_SAVE"),   NeBtnTone::Red,  IDI_WARNING,     0 },
+                };
+                int r = Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SAVE_CHANGES"),
+                                            msg, btns, 2, IDNO);
+                if (r != IDYES) return false;
+            }
+        }
+    }
+
     // ── Scintilla tab: save UTF-8 directly ───────────────────────────────────
     if (doc->hSci) {
         std::string utf8 = Ne_SciGetText(doc->hSci);
@@ -9360,22 +9425,24 @@ static void Ne_SessionSave(HWND hwnd)
             t.scrollLine = (int)SendMessageW(doc->hEdit, EM_GETFIRSTVISIBLELINE, 0, 0);
         }
 
-        // Store content for modified tabs and FTP tabs (remote may be unreachable
-        // on restore).  Clean local-file tabs are reloaded from disk.
-        bool needContent = doc->modified || doc->isFtpFile;
-        if (needContent) {
-            if (doc->hSci && IsWindowVisible(doc->hSci)) {
-                std::string utf8 = Ne_SciGetText(doc->hSci);
-                if (!utf8.empty()) {
-                    t.content.assign(utf8.begin(), utf8.end());
-                    t.contentIsRtf = false;
-                }
-            } else if (doc->hEdit) {
-                std::string rtf = Ne_StreamOut(doc->hEdit, true);
-                if (!rtf.empty()) {
-                    t.content.assign(rtf.begin(), rtf.end());
-                    t.contentIsRtf = true;
-                }
+        // Store content for EVERY open tab — the session DB doubles as an
+        // autosave/backup store.  Previously only modified/FTP tabs were cached
+        // and clean local tabs were reloaded from disk on restore; if that disk
+        // read ever came back empty (glitch, external truncation), the buffer
+        // was lost and could be saved back over the real file.  Keeping a copy
+        // of every tab's content in the DB means the last-known text is always
+        // recoverable on restore, even for clean, saved files.
+        if (doc->hSci && IsWindowVisible(doc->hSci)) {
+            std::string utf8 = Ne_SciGetText(doc->hSci);
+            if (!utf8.empty()) {
+                t.content.assign(utf8.begin(), utf8.end());
+                t.contentIsRtf = false;
+            }
+        } else if (doc->hEdit) {
+            std::string rtf = Ne_StreamOut(doc->hEdit, true);
+            if (!rtf.empty()) {
+                t.content.assign(rtf.begin(), rtf.end());
+                t.contentIsRtf = true;
             }
         }
 
@@ -9701,6 +9768,18 @@ static void Ne_SessionRestore(HWND hwnd)
                                         Ls(L"MSG_OPEN_ERR"), &btn, 1, IDOK);
                     closeFailedTab();
                     continue;
+                }
+                // Crash / data-loss guard: the file loaded as EMPTY but the
+                // session DB still holds a non-empty autosave copy.  That means
+                // the on-disk file was truncated or the read glitched — the exact
+                // failure that previously let an empty buffer be saved back over
+                // real data.  Recover the last-known content from the DB;
+                // loadContent() marks the tab modified so it can never be
+                // silently written back empty.
+                {
+                    NeTabDoc* docL = NeTabs_GetActiveDoc(hwnd);
+                    if (docL && Ne_TabIsEmpty(docL) && !t.content.empty())
+                        loadContent(t);
                 }
                 Ne_MruAdd(t.localPath);
                 if (!t.spellLang.empty()) {
@@ -10588,8 +10667,6 @@ static void Ne_RebuildLocaleMenu(HWND hwnd)
         RemoveMenu(s_hLocaleMenu, 0, MF_BYPOSITION);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 4,
                     L"Dansk",                 false, g_localeId == 4  ? g_hLocaleMenuIcon : NULL);
-    Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 14,
-                    L"Davvis\u00e1megiella",  false, g_localeId == 14 ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 6,
                     L"Deutsch",               false, g_localeId == 6  ? g_hLocaleMenuIcon : NULL);
     Ne_AppendMenuOD(s_hLocaleMenu, MF_STRING, IDM_LOCALE_BASE + 10,
@@ -16011,6 +16088,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     {
         int locVal = 0;
         NeProfiles_GetIntSetting("locale_id",  0, locVal);  g_localeId   = locVal;
+        if (g_localeId == 14) g_localeId = 0;  // retired Northern Sami → English
         int dkVal  = 0;
         NeProfiles_GetIntSetting("dark_mode",  0, dkVal);   g_darkMode   = (dkVal != 0);
         int dkEdVal = 0;

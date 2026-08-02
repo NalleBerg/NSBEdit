@@ -357,3 +357,21 @@ Page teardown  (SwitchPage cleanup, before s_hTreeView = NULL)
     destroyed.
 
 ================================================================================
+DATA-LOSS GUARDS  (session DB autosave + empty-load recovery + save guard, 2026-08)
+================================================================================
+Root incident: a tab restored EMPTY (glitched read), user hit Save on exit, the
+empty buffer overwrote the real file. Three layers now prevent this:
+
+1. Ne_SessionSave (NSBEdit.cpp): stores the content BLOB for EVERY open tab
+   (previously only doc->modified || doc->isFtpFile). The session DB doubles as
+   an autosave/backup — Scintilla UTF-8 or RichEdit RTF. Runs on NE_TIMER_SESSION
+   (10 s) and WM_CLOSE. DB-only: does NOT write the real file or clear modified.
+2. Ne_SessionRestore clean-tab branch: after Ne_LoadPathIntoEditor, if the tab
+   loads empty (Ne_TabIsEmpty) BUT t.content (DB BLOB) is non-empty, call
+   loadContent(t) to recover the last-known text and mark it modified so it is
+   never silently written back empty.
+3. Ne_SaveToPath: at the top, if Ne_TabIsEmpty(doc) AND the target file on disk
+   exists and is non-empty (GetFileAttributesExW size > 0), show a confirm
+   dialog (MSG_SAVE_EMPTY_OVERWRITE, default No) — only an explicit Yes writes
+   the empty file. Covers Ctrl+S, Save As and FTP save (all route through here).
+================================================================================

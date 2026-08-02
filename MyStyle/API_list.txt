@@ -191,8 +191,9 @@
                                                 Control ID range: 201–230.
                                                 IDM range: 101–136 (core), 600+ (langs), 700+ (FTP profiles).
                                                 Session restore: Ne_SessionSave(HWND) snapshots
-                                                all tabs (incl. content BLOB for modified/FTP/
-                                                untitled) into session_tabs via NeSession_Save.
+                                                all tabs into session_tabs via NeSession_Save.
+                                                Content BLOB now stored for EVERY tab (DB =
+                                                autosave/backup), not just modified/FTP.
                                                 Per-tab state captured: t.isSciTab (hSci &&
                                                 IsWindowVisible), t.wordWrap (SCI_GETWRAPMODE
                                                 or doc->wordWrap for RichEdit), t.caretPos
@@ -211,6 +212,12 @@
                                                 every tab silently: FTP unreachable → load from
                                                 BLOB cache; disk-changed → silently keep cache;
                                                 local file missing → load from BLOB; no dialogs.
+                                                Empty-load recovery: a clean file that loads EMPTY
+                                                while its BLOB is non-empty is restored from the
+                                                BLOB and marked modified (never saved back empty).
+                                                Save guard: Ne_SaveToPath refuses to overwrite a
+                                                non-empty disk file with an empty buffer without
+                                                confirm (MSG_SAVE_EMPTY_OVERWRITE).
                                                 Plain-text RichEdit tabs restore with the same
                                                 black background / light text as Ctrl+N.
                                                 Colour fixup for non-.rtf RichEdit tabs on
