@@ -11,216 +11,637 @@ MENU_NEW        = &Nieuw\tCtrl+N
 MENU_OPEN       = &Openen...\tCtrl+O
 MENU_SAVE       = &Opslaan\tCtrl+S
 MENU_SAVEAS     = Opslaan &als...\tCtrl+Shift+S
-MENU_SAVE_ALL   = Alles opslaan\tCtrl+Shift+A
+MENU_SAVE_ALL   = Alles &opslaan\tCtrl+Shift+A
 MENU_PRINT      = &Afdrukken...\tCtrl+P
-MENU_EXPORT_PDF = Exporteren als PDF...\tCtrl+Shift+P
+MENU_EXPORT_PDF = &Exporteren als PDF...\tCtrl+Shift+P
 MENU_EXIT       = &Afsluiten\tCtrl+W
-MENU_EDIT       = &Bewerken
-MENU_UNDO       = &Ongedaan maken\tCtrl+Z
-MENU_REDO       = &Opnieuw\tCtrl+Y
-MENU_CUT        = &Knippen\tCtrl+X
-MENU_COPY       = &Kopiëren\tCtrl+C
-MENU_PASTE      = &Plakken\tCtrl+V
-MENU_SELECTALL  = Alles selecteren\tCtrl+A
-MENU_FIND       = &Zoeken / Vervangen...\tCtrl+F
-MENU_GOTO       = Ga naar &regel...\tCtrl+G
-MENU_BOOKMARK   = &Bladwijzer in-/uitschakelen\tF2
-MENU_BOOKMARK_NEXT = Naar bladwijzer gaan\tCtrl+F2
-MENU_PREFS      = &Voorkeuren...
-PREF_TITLE      = Voorkeuren
+MENU_EDIT         = &Bewerken
+MENU_UNDO         = &Ongedaan maken\tCtrl+Z
+MENU_REDO         = &Opnieuw\tCtrl+Y
+MENU_CUT          = &Knippen\tCtrl+X
+MENU_COPY         = &Kopi\u00EBren\tCtrl+C
+MENU_PASTE        = &Plakken\tCtrl+V
+MENU_SELECTALL    = Alles &selecteren\tCtrl+A
+MENU_FIND         = &Zoeken / Vervangen...\tCtrl+F
+MENU_GOTO         = &Ga naar regel...\tCtrl+G
+MENU_BOOKMARK     = Bladwijzer &in-/uitschakelen\tF2
+MENU_BOOKMARK_NEXT = &Naar bladwijzer gaan\tCtrl+F2
+MENU_PREFS        = &Voorkeuren...
+PREF_TITLE        = Voorkeuren
 PREF_SEC_APPEARANCE = Uiterlijk
-PREF_DARK_MODE  = Donker thema
-PREF_LIGHT_MODE = Licht thema
-PREF_SEC_EDITOR = Editorachtergrond
-PREF_EDITOR_LIGHT_BG   = Licht achtergrond voor platte tekst en code
+PREF_DARK_MODE         = Donkere modus
+PREF_LIGHT_MODE        = Lichte modus
+PREF_SEC_EDITOR        = Editorachtergrond
+PREF_EDITOR_LIGHT_BG   = Lichte achtergrond voor platte tekst en code
 PREF_EDITOR_DARK_BG    = Donkere achtergrond voor platte tekst en code
 MENU_HELP       = &Help
 MENU_SHORTCUTS  = &Sneltoetsen...\tF1
+MENU_REGEX_GUIDE = &Regex-gids
 MENU_ABOUT      = &Over NSBEdit
-MENU_RECENT     = Recente bestanden
-MENU_RECENT_EMPTY = Geen recente bestanden
-
-# ── Dialogs ───────────────────────────────────────────────────────────────────
-DLG_OPEN_TITLE  = Bestand openen
-DLG_SAVE_TITLE  = Bestand opslaan
-DLG_SAVE_OVERWRITE = Bestand %s bestaat al. Overschrijven?
-DLG_SAVE_FAILED = Kan bestand niet opslaan: %s
-DLG_OPEN_FAILED = Kan bestand niet openen: %s
-
-# ── Buttons ───────────────────────────────────────────────────────────────────
-BTN_OK          = OK
-BTN_CANCEL      = Annuleren
-BTN_YES         = Ja
-BTN_NO          = Nee
-BTN_CLOSE       = Sluiten
-BTN_SEND        = Verzenden
-BTN_STOP        = Stoppen
-BTN_COPY        = Kopiëren
-BTN_PREV        = Vorige
-BTN_NEXT        = Volgende
-BTN_CLEAR       = Leegmaken
-
-# ── Status Bar ────────────────────────────────────────────────────────────────
-STATUS_LINE     = Regel %d
-STATUS_COL      = Kolom %d
-STATUS_SEL      = Geselecteerd %d teken(s)
-STATUS_MODIFIED = Aangepast
-STATUS_READONLY = Alleen-lezen
-
-# ── File Types ────────────────────────────────────────────────────────────────
-FILETYPE_RTF    = RTF-documenten
-FILETYPE_TXT    = Tekstbestanden
-FILETYPE_HTML   = HTML-bestanden
-FILETYPE_CSS    = CSS-bestanden
-FILETYPE_JS     = JavaScript-bestanden
-FILETYPE_PHP    = PHP-bestanden
-FILETYPE_PY     = Python-scripts
-FILETYPE_XML    = XML-bestanden
-FILETYPE_JSON   = JSON-bestanden
-
-# ── Spell Checker ─────────────────────────────────────────────────────────────
-SPELL_CHECKER_ERROR = Fout bij spellingscontrole: %s
-SPELL_WORD_MISSPELLED = Woord niet correct gespeld
-SPELL_SUGGESTIONS = Suggesties:
-SPELL_ADD_TO_DICT = Toevoegen aan woordenboek
-SPELL_IGNORE_ONCE = Eén keer negeren
-SPELL_IGNORE_ALL  = Alles negeren
-
-# ── Encoding ──────────────────────────────────────────────────────────────────
-ENCODING_UTF8   = UTF-8
-ENCODING_UTF16LE= UTF-16 (little endian)
-ENCODING_ANSI   = ANSI
-ENCODING_WIN1252= Windows-1252
-ENCODING_ISO8859_1 = ISO-8859-1
-
-# ── AI Menu ───────────────────────────────────────────────────────────────────
-AI_MENU_CLOUD           = Cloud
-AI_MENU_LOCAL_ONLY      = Alleen lokaal
-AI_MENU_CLOUD_SUBSCRIPTION = Cloud-abonnement
-AI_MENU_SIGN_IN         = Aanmelden bij Ollama
-AI_MENU_SIGN_OUT        = Afmelden
-AI_MENU_ADD_API_KEY     = API-sleutel toevoegen...
-AI_MENU_OPEN_PROVIDER   = Ollama-webpagina openen
-AI_MENU_SEND_PROMPT     = Prompt verzenden
-AI_MENU_CLEAR_LOG       = Log wissen
+BTN_AI          = AI
+TIP_AI          = Vraag Ollama A.I.
+AI_WAKING_OLLAMA = Bezig met Ollama, even geduld!
+AI_THINKING_STATUS = AI denkt... Gebruikte tijd: %s
+MENU_AI_CHECK_MODELS = Controleer lokale modellen
+AI_MODEL_CHECK_TITLE = Controleer lokale modellen
+AI_MODEL_CHECK_START = Lokale modellen controleren...
+AI_MODEL_CHECK_NO_MODELS = Er zijn geen lokale modellen gevonden.
+AI_MODEL_CHECKING_MODEL = Model %s controleren...
+AI_MODEL_DOWNLOADING_MODEL = Update downloaden voor model %s...
+AI_MODEL_UPTODATE_MODEL = Model %s is up-to-date ✓
+AI_MODEL_CHECK_FAILED_SIMPLE = Model %s kon niet worden gecontroleerd.
+AI_MODEL_CHECK_FAILED = Model %s kon niet worden gecontroleerd:
+AI_MODEL_CHECK_ALL_DONE = Alle modellen zijn nu up-to-date! ✓
+AI_MODEL_CHECK_FINISHED_ERROR = Modelcontrole is met fouten beëindigd.
+AI_SUMMARY_LOCALHOST = Ollama op localhost
+AI_SUMMARY_CURRENT = Huidig:
+AI_ROLE_AGENT = Agent
+AI_ROLE_SUGGEST = Stel voor
+AI_SUMMARY_CLOUD = Cloud:
+AI_MODE_CLOUD_SUBSCRIPTION = Cloudabonnement
+AI_MODE_LOCAL_ONLY = Alleen lokaal
+AI_SUMMARY_ACCOUNT = Account:
+AI_SIGNED_IN = aangemeld
+AI_NOT_SIGNED_IN = niet aangemeld
+AI_WINDOW_TITLE_PREFIX = NSBEdit AI -
+AI_STATUS_CLOUD = Cloud:
+AI_STATUS_SIGNIN = Aanmelden:
+AI_STATUS_CURRENT = Huidig:
+AI_TIME_USED = Gebruikte tijd:
+AI_LAST_QUERY_USED = Laatste query gebruikt:
+AI_WAIT_TITLE = Even geduld
+BTN_YES = ja
+BTN_NO = nee
+BTN_SEND = Verzenden
+BTN_STOP = Stoppen
+BTN_COPY = Kopiëren
+BTN_PREV = Vorige
+BTN_NEXT = Volgende
+BTN_CLEAR = Wissen
+AI_MENU_CLOUD = Cloud
+AI_MENU_LOCAL_ONLY = Alleen lokaal
+AI_MENU_CLOUD_SUBSCRIPTION = Cloudabonnement
+AI_MENU_SIGN_IN = Aanmelden bij Ollama
+AI_MENU_SIGN_OUT = Afmelden
+AI_MENU_ADD_API_KEY = API-sleutel toevoegen...
+AI_MENU_OPEN_PROVIDER = Ollama-website openen
+AI_MENU_SEND_PROMPT = Prompt verzenden
+AI_MENU_CLEAR_LOG = Log wissen
 AI_CLEAR_CONFIRM_TITLE = Gesprek wissen
-AI_CLEAR_CONFIRM_MSG = Het volledige AI-gesprek wissen?\n\nHiermee worden alle vragen en antwoorden uit het logboek verwijderd en dit kan niet ongedaan gemaakt worden.
-MSG_SAVE_EMPTY_OVERWRITE = De editor is leeg, maar het bestand op schijf niet:\n\n%s\n\nAls je nu opslaat, wordt alles in het bestand gewist. Dit kan gebeuren na een mislukt sessieherstel.\n\nToch opslaan en het bestand leegmaken?
-AI_MENU_COPY_ANSWER     = Antwoord kopiëren
-AI_MENU_ABOUT_WINDOW    = Over dit venster
-AI_MENU_MODEL           = Model
-AI_MENU_LOG             = Log
-AI_MENU_HELP            = Help
-AI_APIKEY_TITLE         = Ollama cloud API-sleutel
-AI_APIKEY_PROMPT        = Voer uw ollama.com API-sleutel in:
-AI_TIP_ADD_API_KEY      = Voer uw ollama.com API-sleutel in om direct gebruik te maken van cloudmodellen.\nMet een sleutel hoeft u de browser niet te openen om aan te melden.\nDe sleutel wordt enkel op deze pc versleuteld opgeslagen — nooit gedeeld.
-AI_LOG_API_KEY_OK       = API-sleutel geaccepteerd — ingelogd bij Ollama cloud.
-AI_LOG_API_KEY_BAD      = De API-sleutel werd niet geaccepteerd. Controleer de sleutel en probeer opnieuw.
-AI_LOG_API_KEY_CLEARED  = API-sleutel gewist.
-AI_WINDOW_TITLE_PREFIX  = NSBEdit AI -
-AI_STATUS_CLOUD         = Cloud:
-AI_STATUS_SIGNIN        = Aanmelden:
-AI_STATUS_CURRENT       = Huidig:
-AI_SUMMARY_LOCALHOST    = Ollama op localhost
-AI_SUMMARY_CURRENT      = Huidig:
-AI_ROLE_AGENT           = Agent
-AI_ROLE_SUGGEST         = Suggestie
-AI_SUMMARY_CLOUD        = Cloud:
-AI_MODE_CLOUD_SUBSCRIPTION = Cloud-abonnement
-AI_MODE_LOCAL_ONLY      = Alleen lokaal
-AI_SUMMARY_ACCOUNT      = Account:
-AI_SIGNED_IN            = ingelogd
-AI_NOT_SIGNED_IN        = niet ingelogd
-AI_LOG_WINDOW_OPENED    = AI-venster geopend.
-AI_LOG_CLOUD_NEEDS_SIGNIN = Cloud-modus geselecteerd, maar u bent nog niet aangemeld.
-AI_LOG_CLOUD_MODEL_SELECTED = Geselecteerd cloudmodel:
-AI_LOG_CLOUD_SENDING = Verzenden naar Ollama-cloud...
-AI_MENU_LOCAL_HEADER    = Lokaal:
-AI_MENU_CLOUD_HEADER    = Cloud
-AI_LOG_OPENED_SIGNUP    = Ollama-aanmeld- / abonnementspagina geopend.
-AI_LOG_CLOUD_NOT_USED_YET = Cloud-modus geselecteerd; lokale Ollama wordt nog niet gebruikt in deze pad.
-AI_LOG_CLOUD_SUGGEST_SELECTED = Cloud-suggestietoestand geselecteerd.
-AI_LOG_CLOUD_AGENT_SELECTED = Cloud-agenttoestand geselecteerd.
-AI_LOG_MODEL_SWITCHED_SUGGESTION = Model gewisseld naar suggestietoestand.
-AI_LOG_MODEL_SWITCHED_AGENT = Model gewisseld naar agenttoestand.
-AI_LOG_CLOUD_LOCAL_ONLY = Cloud-modus gewisseld naar alleen lokaal.
-AI_LOG_CLOUD_SUB_SELECTED = Cloud-abonnementstoestand geselecteerd.
+AI_CLEAR_CONFIRM_MSG = Het hele AI-gesprek wissen?\n\nHiermee worden alle vragen en antwoorden uit het log verwijderd en dit kan niet ongedaan worden gemaakt.
+AI_MENU_COPY_ANSWER = Antwoord kopiëren
+AI_MENU_ABOUT_WINDOW = Over dit venster
+AI_MENU_MODEL = Model
+AI_MENU_LOG = Log
+AI_MENU_HELP = Help
+AI_LOG_USER_PREFIX = Jij:
+AI_LOG_CLOUD_NEEDS_SIGNIN = Cloudmodus is geselecteerd, maar u bent nog niet aangemeld.
+# ── AI cloud ──────────────────────────────────────────────
+AI_LOG_CLOUD_MODEL_SELECTED = Cloudmodel geselecteerd:
+AI_LOG_CLOUD_SENDING = Verzenden naar Ollama cloud...
+AI_MENU_LOCAL_HEADER = Lokaal:
+AI_MENU_CLOUD_HEADER = Cloud
+AI_LOG_OPENED_SIGNUP = Ollama-aanmeld-/abonnementspagina geopend.
+AI_LOG_CLOUD_NOT_USED_YET = Cloudmodus is geselecteerd; lokale Ollama wordt in dit pad nog niet gebruikt.
+AI_LOG_WINDOW_OPENED = AI-venster geopend.
+AI_LOG_CLOUD_SUGGEST_SELECTED = Cloudsuggestiemodus geselecteerd.
+AI_LOG_CLOUD_AGENT_SELECTED = Cloudagentmodus geselecteerd.
+AI_LOG_MODEL_SWITCHED_SUGGESTION = Model overgeschakeld naar suggestiemodus.
+AI_LOG_MODEL_SWITCHED_AGENT = Model overgeschakeld naar agentmodus.
+AI_LOG_CLOUD_LOCAL_ONLY = Cloudmodus overgeschakeld naar alleen lokaal.
+AI_LOG_CLOUD_SUB_SELECTED = Cloudabonnementsmodus geselecteerd.
 AI_LOG_SIGNED_OUT_LOCALLY = Lokaal afgemeld.
-AI_LOG_ABOUT_WINDOW     = Dit is het AI-shell-venster. Volledige Ollama-chatverbindingen volgen.
-AI_LOG_RETRY_FALLBACK   = Ollama: geselecteerd model niet gevonden, probeert opnieuw met fallback-model.
-AI_LOG_OLLAMA_PREFIX    = Ollama:
-AI_LOG_NO_RESPONSE      = Geen antwoord.
-AI_LOG_STOPPED          = Verzoek gestopt. Voeg meer details toe en verzend opnieuw.
-AI_LOG_RENDER_FAILED    = Ollama: weergave van antwoord mislukt onverwacht.
-AI_COPY_CODE_LABEL      = Code kopiëren
+# ── AI cloud API key ──────────────────────────────────────
+AI_APIKEY_TITLE = Ollama cloud API-sleutel
+AI_APIKEY_PROMPT = Plak uw ollama.com API-sleutel:
+AI_TIP_ADD_API_KEY = Plak uw ollama.com API-sleutel om cloudmodellen direct te gebruiken.\nMet een sleutel hoeft u NIET de browser te openen om aan te melden.\nDe sleutel wordt alleen op deze pc versleuteld opgeslagen — nooit gedeeld.
+AI_LOG_API_KEY_OK = API-sleutel geaccepteerd — aangemeld bij Ollama cloud.
+AI_LOG_API_KEY_BAD = API-sleutel is niet geaccepteerd. Controleer de sleutel en probeer het opnieuw.
+AI_LOG_API_KEY_CLEARED = API-sleutel gewist.
+AI_LOG_ABOUT_WINDOW = Dit is het AI-shellvenster. Volledige Ollama-chatfunctionaliteit volgt nog.
+AI_LOG_RETRY_FALLBACK = Ollama: geselecteerd model niet gevonden, opnieuw proberen met terugvalmodel.
+AI_LOG_OLLAMA_PREFIX = Ollama:
+AI_LOG_NO_RESPONSE = Geen antwoord.
+AI_LOG_STOPPED = Verzoek gestopt. Voeg meer details toe en verzend opnieuw.
+AI_LOG_RENDER_FAILED = Ollama: weergave van antwoord onverwacht mislukt.
+AI_COPY_CODE_LABEL = Code kopiëren
 
-# ── Regex Guide ───────────────────────────────────────────────────────────────
-REGEX_GUIDE_TITLE = Regex-handleiding
+REGEX_GUIDE_TITLE = Regex-gids
 REGEX_GUIDE_LABEL = Bevat
-REGEX_GUIDE_NOTE = Ctrl+F focust het zoekveld. De zoekactie update terwijl u typt.
-REGEX_GUIDE_SEARCH = Zoek in handleiding
-REGEX_GUIDE_CLEAR = Zoekactie wissen
+REGEX_GUIDE_NOTE = Ctrl+F richt het zoekvak. Zoeken werkt terwijl u typt.
 
-# ── Messages ──────────────────────────────────────────────────────────────────
-MSG_PROFILE_DELETE_CONFIRM = Profiel '%s' verwijderen? — Dit kan niet ongedaan gemaakt worden.
-MSG_FILE_CHANGED_ON_DISK    = Bestand is gewijzigd op schijf. Herladen?
-MSG_FILE_DELETED            = Bestand is verwijderd.
-MSG_NO_RECENT_FILES         = Geen recente bestanden
-MSG_SPELLING_CHECK_COMPLETE = Spellingcontrole voltooid
+REGEX_GUIDE_TEXT = T|Regex-referentiegids\nS|Een kleine leergids voor NSBEdit's ECMAScript-regexzoekopdracht\nB|Doorzoek de gids met gewone tekst. Typ in het vak hierboven of druk op Ctrl+F om naar een onderwerp te springen.\nB|Voorbeelden blijven kort genoeg om te onthouden en gedetailleerd genoeg om te gebruiken.\n\nH|1. Wat een regex doet\nB|Een reguliere expressie is een compacte beschrijving van tekst die u wilt vinden.\nB|In plaats van één exacte tekenreeks te matchen, kan een regex veel verwante tekenreeksen matchen.\nB|NSBEdit gebruikt std::wregex met ECMAScript-syntaxis, dus de onderstaande voorbeelden volgen die stijl.\nC|error\nB|Dat matcht het woord error waar het ook verschijnt.\n\nH|2. Letterlijke tekens en escaping\nB|De meeste letters en cijfers betekenen zichzelf.\nB|Sommige leestekens zijn speciaal en moeten worden geëscaped met een backslash.\nC|\\.    een letterlijke punt\nC|\\?    een letterlijk vraagteken\nC|\\(    een letterlijk openingshaakje\nC|\\\\   een letterlijke backslash\nB|Als u de exacte tekst C:\\Temp wilt matchen, vergeet dan niet elke backslash in de regex te escapen.\n\nH|3. Karakterklassen\nB|Karakterklassen beschrijven één teken uit een verzameling.\nC|[abc]     een van a, b of c\nC|[^abc]    alles behalve a, b of c\nC|[a-z]     een bereik\nC|[0-9A-F]  hexadecimale cijfers\nC|[._-]     een paar leestekens\nB|Binnen een klasse betekent het koppelteken meestal een bereik, dus plaats het vooraan of achteraan als u een letterlijk koppelteken wilt.\nC|[-_.]     letterlijk koppelteken, underscore of punt\n\nH|4. Steno-klassen\nB|Steno-klassen zijn de snelste manier om veelvoorkomende tekstvormen te beschrijven.\nC|\\d    cijfer\nC|\\D    alles wat geen cijfer is\nC|\\w    letter, cijfer of underscore\nC|\\W    alles wat geen woordteken is\nC|\\s    witruimte\nC|\\S    alles wat geen witruimte is\nC|.      elk teken behalve een regeleinde\nB|Een punt is breed; een stenoklasse is meestal specifieker en veiliger.\n\nH|5. Ankers en grenzen\nB|Ankers matchen geen tekens. Ze matchen posities.\nC|^      begin van de doorzochte tekst\nC|$      einde van de doorzochte tekst\nC|\\b    woordgrens\nC|\\B    geen woordgrens\nB|Gebruik ankers wanneer u een volledige regel, een woord aan het begin of een woord aan het einde wilt.\nC|^TODO\nB|Dat vindt regels of tekenreeksen die beginnen met TODO.\nC|\\bfix\\b\nB|Dat vindt het woord fix, maar niet woorden zoals prefix of fixture.\n\nH|6. Herhaling\nB|Kwantoren geven aan hoe vaak het vorige token mag herhalen.\nC|*      nul of meer\nC|+      een of meer\nC|?      optioneel / nul of een\nC|{n}     exact n keer\nC|{n,}    n of meer keer\nC|{n,m}   tussen n en m keer\nB|Kwantoren zijn standaard gulzig, dus ze proberen zoveel mogelijk te consumeren voordat ze terugkeren.\nC|\\d+\nB|Dat vindt een of meer cijfers.\nC|\\s+\nB|Dat vindt een of meer witruimtetekens.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Dat is een veelvoorkomend identificatiepatroon: één startteken, dan nul of meer vervolgtekens.\n\nH|7. Groepering en alternatie\nB|Haakjes groeperen delen van het patroon zodat u ze kunt herhalen of onthouden.\nC|(abc)       een groep vastleggen\nC|(?:abc)     groep zonder vastlegging\nC|a|b|c       links of rechts matchen\nB|Vastleggende groepen worden van links naar rechts genummerd.\nC|(first)-(second)\nB|De eerste groep wordt $1, de tweede wordt $2 bij vervangingen.\nC|(cat|dog|fox)\nB|Alternatie is handig wanneer één veld een paar bekende woorden kan bevatten.\nC|(?:https?|ftp)://\nB|Een niet-vastleggende groep behoudt de structuur maar slaat een vastleggingsslot over.\n\nH|8. Praktische patronen\nB|Deze voorbeelden zijn klein genoeg om aan te passen en groot genoeg om nuttig te zijn.\nC|TODO|FIXME\nB|Vind een van beide tags in notities, opmerkingen of bronbestanden.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Een eenvoudig e-mailvormig patroon. Het is geen volledige RFC-validator, maar het is nuttig voor ruwe zoekopdrachten.\nC|\"[^\"]*\"\nB|Vind geciteerde tekst op één regel.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Vind een ISO-datum zoals 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Vind eenvoudige identificatie-achtige namen die beginnen met een hoofdletter.\nC|^\\s*$\nB|Vind lege regels of regels die alleen spaties bevatten.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Vind hexadecimale getallen zoals 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Vind een eenvoudig geheel getal of decimaal getal.\n\nH|9. Vervangingsideeën\nB|Wanneer u vervangt, kunt u met vastleggingsgroepen de delen hergebruiken die u heeft gematcht.\nC|Zoeken:    ([A-Za-z]+) ([A-Za-z]+)\nC|Vervangen: $2, $1\nB|Dat wisselt twee woorden om, dus Jan Jansen wordt Jansen, Jan.\nC|Zoeken:    (\\d{4})-(\\d{2})-(\\d{2})\nC|Vervangen: $3/$2/$1\nB|Dat maakt van 2026-06-15 15/06/2026.\nC|Zoeken:    ^(.*)$\nC|Vervangen: [$1]\nB|Dat plaatst elke volledige regel tussen vierkante haakjes.\n\nH|10. Veelvoorkomende fouten\nB|De meeste fouten zijn klein: een ontbrekende escape, een gulzige kwantor of een anker op de verkeerde plaats.\nC|.txt\nB|Dit is geen letterlijke punt en t x t; de punt betekent elk teken. Gebruik \\.txt als u een letterlijke extensie wilt.\nC|(abc\nB|Niet-gesloten groepen zijn een syntaxisfout.\nC|foo\\bar\nB|Een enkele backslash begint meestal een escape, dus verdubbel deze wanneer u een letterlijke nodig hebt.\nC|^word$\nB|Dat matcht alleen een volledige regel die exact word bevat.\n\nH|11. Hoe te denken tijdens het zoeken\nB|Stel uzelf drie vragen: wat moet aanwezig zijn, wat kan variëren en waar moet de match stoppen?\nB|Als het antwoord 'elk teken' is, gebruik dan een klasse of een punt. Als het antwoord 'het begin of einde' is, gebruik dan ankers.\nB|Als het antwoord 'herhaal dit deel' is, plaats het dan in een groep voordat u een kwantor toevoegt.\nB|Als u twijfelt, zoek dan eerst met een kleiner patroon en breid het stuk voor stuk uit.\n\nH|12. Opmerkingen voor NSBEdit\nB|De regex-zoekopdracht van de editor gebruikt de standaardbibliotheekengine, dus geef de voorkeur aan draagbare ECMAScript-syntaxis.\nB|Het doorzoeken van deze gids is letterlijk, niet op regex gebaseerd, dus u kunt springen naar gewone woorden of fragmenten.\nB|Als u snel een onderwerp wilt, druk dan op Ctrl+F en typ een woord uit de sectie die u zoekt.\nB|De zoekregel is opzettelijk eenvoudig: geen dialoog, geen regex-modus, gewoon de snelst mogelijke onderwerpzoeker.\n\nH|13. Probeer deze zoekopdrachten\nC|cijfer\nC|vastleggen\nC|grens\nC|vervangen\nC|gulzig\nC|anker\nC|letterlijk\nC|escape\nC|patroon
 
-# ── Preferences ───────────────────────────────────────────────────────────────
-PREF_SEC_GENERAL        = Algemeen
-PREF_AUTO_SAVE          = Automatisch opslaan
-PREF_AUTO_SAVE_INTERVAL = Interval (seconden)
-PREF_BACKUP             = Back-up maken bij opslaan
-PREF_SHOW_LINE_NUMBERS  = Regelnrs tonen
-PREF_WORD_WRAP          = Woordomloop inschakelen
-PREF_SPELL_CHECK        = Spellingscontrole activeren
-PREF_MARK_MISPELLED     = Foutieve woorden markeren
-PREF_LANGUAGE           = Taal
-MENU_LANGUAGE           = &Taal
-MENU_GUI_LANG           = GUI-taal
+# NSBEdit locale file — nl_BE.txt (Nederlands/Vlaams)
 
-# ── FTP/SFTP ──────────────────────────────────────────────────────────────────
-FTP_CONNECT_ERROR       = FTP verbinding mislukt: %s
-FTP_LOGIN_ERROR         = FTP login mislukt: %s
-FTP_FILE_NOT_FOUND      = Bestand niet gevonden op server
-FTP_UPLOAD_FAILED       = Upload naar server mislukt
-FTP_DOWNLOAD_FAILED     = Download van server mislukt
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = Con&verteren
+MENU_CONV_TO_PLAIN  = Opmaak verwijderen — opslaan als platte tekst
+MENU_CONV_TO_RTF    = &Opmaak toevoegen — RTF maken
+MENU_CONV_TO_HTML5  = Exporteren als &HTML 5...
+MSG_HTML5_ERR       = HTML-conversie mislukt.
+MSG_HTML5_SAVE_ERR  = Kan HTML-bestand niet schrijven.
+DLG_SAVE_HTML5      = Opslaan als HTML 5
+MENU_ENCODING       = &Codering
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (systeem)
+MENU_ENC_WIN1252    = Windows-1252 (West-Europees)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
 
-# ── Conversion ────────────────────────────────────────────────────────────────
-CONV_TO_PLAIN           = Converteren naar platte tekst
-CONV_TO_RTF             = Converteren naar RTF
-CONV_TO_HTML5           = Converteren naar HTML5
-ENC_UTF8                = UTF-8
-ENC_UTF16LE             = UTF-16 (little endian)
-ENC_ANSI                = ANSI
-ENC_WIN1252             = Windows-1252
-ENC_ISO8859_1           = ISO-8859-1
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = Rich text
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Platte tekst
 
-# ── About Dialog ──────────────────────────────────────────────────────────────
-ABOUT_TITLE             = Over NSBEdit
-ABOUT_VERSION           = Versie %s
-ABOUT_EDITION           = Editie: 2
-ABOUT_COPYRIGHT         = Copyright © 2026 NSBEdit Team
-ABOUT_LICENSE           = Licentie: MIT
-ABOUT_WEBSITE           = Website:
-ABOUT_GITHUB            = GitHub:
-ABOUT_AUTHOR            = Auteur:
-ABOUT_CONTRIBUTORS      = Medewerkers:
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Het verwijderen van RTF-opmaak verwijdert alle vetgedrukte, cursieve, kleur- en andere rich text-effecten.\n\nDoorgaan en opslaan als platte tekst?
+MSG_ENC_LOSSY   = Sommige tekens kunnen niet worden weergegeven in de gekozen codering en worden vervangen door "?" of iets dergelijks.\n\nDoorgaan?
+MSG_DEL_PLAIN_FILE = Het document is opgeslagen als een RTF-bestand.\n\nHet oorspronkelijke platte tekstbestand verwijderen?
 
-# ── Toolbar Tips ──────────────────────────────────────────────────────────────
-TIP_NEW                 = Nieuw bestand
-TIP_OPEN                = Bestand openen
-TIP_SAVE                = Huidig bestand opslaan
-TIP_SAVE_AS             = Bestand opslaan als...
-TIP_UNDO                = Ongedaan maken
-TIP_REDO                = Opnieuw
-TIP_CUT                 = Knippen
-TIP_COPY                = Kopiëren
-TIP_PASTE               = Plakken
-TIP_FIND                = Zoeken
-TIP_REPLACE             = Vervangen
-TIP_GOTO_LINE           = Ga naar regel
-TIP_BOOKMARK            = Bladwijzer in-/uitschakelen
-TIP_AI                  = Ollama KI vragen
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Alle ondersteunde bestanden|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.sh;*.bash;*.zsh;*.ksh;*.csh;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF-bestanden (*.rtf)|*.rtf|Tekstbestanden (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Config (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Shell / Bash (*.sh)|*.sh;*.bash;*.zsh;*.ksh;*.csh;*|Batch (*.bat;*.cmd)|*.bat;*.cmd|Alle bestanden (*.*)|*.*
+FILTER_SAVEAS = RTF-bestanden (*.rtf)|*.rtf|Tekstbestanden (*.txt)|*.txt|Alle bestanden (*.*)|*.*
+FILTER_IMAGE  = Afbeeldingsbestanden|*.png;*.jpg;*.jpeg|PNG-bestanden (*.png)|*.png|JPEG-bestanden (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Openen
+DLG_SAVEAS = Opslaan als
+DLG_IMAGE  = Afbeelding invoegen
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Kan bestand niet openen.
+MSG_SAVE_ERR      = Kan bestand niet opslaan.
+MSG_HAS_FORMATTING = Dit document bevat opmaak (vet, kleuren, lettergroottes, enz.) die niet kan worden opgeslagen in een platte tekstbestand.\n\nKlik Ja om op te slaan als platte tekst en alle opmaak te verwijderen.\nKlik Nee om in plaats daarvan op te slaan als RTF (het bestand krijgt dan de extensie .rtf).\nKlik Annuleren om terug te gaan zonder op te slaan.
+MSG_IMG_OPEN_ERR  = Kan afbeeldingsbestand niet openen.
+MSG_IMG_FMT_ERR   = Niet-ondersteund formaat. Gebruik PNG of JPEG.
+MSG_SAVE_PROMPT   = Wijzigingen opslaan in "%s"?
+MSG_SAVE_EMPTY_OVERWRITE = De editor is leeg, maar het bestand op schijf niet:\n\n%s\n\nOpslaan zal alles wissen wat momenteel in het bestand staat. Dit kan gebeuren na een slechte sessieherstel.\n\nToch opslaan en het bestand leegmaken?
+DLG_SAVE_CHANGES  = Wijzigingen opslaan
+BTN_SAVE          = Opslaan
+BTN_DONT_SAVE     = Niet opslaan
+BTN_CANCEL        = Annuleren
+DLG_DISCARD_CHANGES = Wijzigingen negeren
+MSG_DISCARD_AND_RELOAD = U hebt niet-opgeslagen wijzigingen in dit bestand.\n\nDeze negeren en het bestand opnieuw laden?
+BTN_OK            = OK
+BTN_CONTINUE      = Doorgaan
+DLG_CONV_TO_PLAIN = Opmaak verwijderen
+
+DLG_FILE_CHANGED        = Bestand gewijzigd op schijf
+MSG_FILE_CHANGED_PROMPT = "%s" is gewijzigd door een ander programma terwijl NSBEdit geen focus had.\n\nOpnieuw laden van schijf?
+BTN_RELOAD              = Opnieuw laden
+BTN_KEEP                = Huidige behouden
+
+TAB_CTX_NEW_TAB         = Nieuw tabblad
+TAB_CTX_CLOSE_TAB       = Tabblad sluiten
+
+# ── Status bar ────────────────────────────────────────────────────────────────────────────────
+SB_WORDS                = Woorden
+SB_CHARS                = Tekens
+SB_SAVED                = Opgeslagen
+SB_UNSAVED              = Niet opgeslagen
+SB_LN                   = Rg
+SB_COL                  = Kol
+SB_LINES                = Regels
+MENU_SPELLING           = &Spelling
+MENU_SPELL_MARK         = &Foutief gespelde woorden markeren
+MENU_SPELL_CHECK        = &Spellingcontrole...\tF7
+MENU_SPELL_LANGUAGE     = &Taal
+DLG_SPELL_TITLE         = Spellingcontrole
+DLG_SPELL_MISSPELLED    = Foutief gespeld woord:
+DLG_SPELL_SUGGESTIONS   = Suggesties:
+DLG_SPELL_NOTFOUND      = Spellingcontrole voltooid - geen fouten gevonden
+BTN_SPELL_IGNORE        = Negeren
+BTN_SPELL_IGNOREALL     = Alles negeren
+BTN_SPELL_ADD           = Aan woordenboek toevoegen
+BTN_SPELL_CHANGE        = Wijzigen
+BTN_SPELL_CHANGEALL     = Alles wijzigen
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Vet  (Ctrl+B)
+TIP_ITALIC      = Cursief  (Ctrl+I)
+TIP_UNDERLINE   = Onderstrepen  (Ctrl+U)
+TIP_STRIKE      = Doorhalen
+TIP_SUBSCRIPT   = Subscript  (bv. H₂O)
+TIP_SUPERSCRIPT = Superscript  (bv. m²)
+TIP_FONTFACE    = Lettertype
+TIP_FONTSIZE    = Lettergrootte (pt)
+TIP_COLOR       = Tekstkleur
+TIP_HIGHLIGHT   = Markeringskleur
+TIP_ALIGN_L     = Links uitlijnen
+TIP_ALIGN_C     = Centreren
+TIP_ALIGN_R     = Rechts uitlijnen
+TIP_ALIGN_J     = Uitvullen
+TIP_BULLET      = Opsommingstekens
+TIP_NUMBERED    = Genummerde lijst
+TIP_IMAGE       = Afbeelding invoegen  (PNG / JPEG)
+TIP_INDENT_IN   = Inspringing vergroten
+TIP_INDENT_OUT  = Inspringing verkleinen
+TIP_LINESPACE   = Regelafstand...
+TIP_FIND        = Zoeken / Vervangen  (Ctrl+F)
+TIP_LINK        = Hyperlink invoegen
+TIP_TABLE       = Tabeleigenschappen...
+TIP_TABLE_DROP  = Tabel invoegen (kies grootte)
+TIP_HLINE       = Horizontale lijn invoegen
+TIP_CLEARFMT    = Alle opmaak wissen
+TIP_PRINT_BTN   = Afdrukken...  (Ctrl+P)
+TIP_ZOOM        = Zoomen
+TIP_WORDWRAP    = Woordterugloop in-/uitschakelen
+TIP_CASE        = Hoofdlettergebruik wijzigen  (HOOFDLETTERS / kleine letters / Titel)
+TIP_LINENUM     = Regelnummers in-/uitschakelen
+TIP_PARSPACE    = Alinea-afstand...
+TIP_SAVE        = Opslaan  (Ctrl+S)
+TIP_SAVE_FTP    = Opslaan op FTP-server
+TIP_PREVIEW     = Voorbeeld online.
+TIP_LANG_UI     = GUI-taal
+TIP_COMMENT     = Geselecteerde regels van/naar commentaar
+MENU_GUI_LANG   = GUI-taal
+MENU_LANGUAGE   = &Taal
+LANG_PLAIN_TEXT = Platte tekst
+LANG_UI_DANISH    = Deens
+LANG_UI_ENGLISH   = Engels
+LANG_UI_FINNISH   = Fins
+LANG_UI_FRENCH    = Frans
+LANG_UI_GERMAN    = Duits
+LANG_UI_SPANISH   = Spaans
+LANG_UI_GREEK     = Grieks
+LANG_UI_PORTUGUESE = Portugees
+LANG_UI_DUTCH      = Nederlands
+LANG_UI_FLEMISH    = Vlaams
+LANG_UI_SAMI       = Noord-Samisch
+LANG_UI_SWEDISH   = Zweeds
+LANG_UI_UKRAINIAN = Oekraïens
+LANG_UI_ICELANDIC = Íslenska
+LANG_UI_NORWEGIAN = Norsk (bokmål)
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF-bestanden (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Exporteren als PDF
+MSG_PDF_ERR      = Kan PDF niet exporteren. Zorg ervoor dat "Microsoft Print to PDF" is geïnstalleerd (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Zoeken / Vervangen
+DLG_FIND_WHAT       = Zoeken:
+DLG_REPL_WITH       = Vervangen met:
+BTN_FIND_NEXT       = Volgende zoeken
+BTN_FIND            = Zoeken
+BTN_CLOSE           = Sluiten
+BTN_REPLACE         = Vervangen
+BTN_REPLACE_ALL     = Alles vervangen
+CHK_MATCHCASE       = Hoofdlettergevoelig
+CHK_WHOLEWORD       = Hele woord
+CHK_REGEX           = Regex
+CHK_ALL_TABS        = Alle open tabbladen
+CHK_BACKWARDS        = Terugwaarts zoeken
+MSG_FIND_NOT_FOUND  = Tekst niet gevonden.
+MSG_REGEX_ERR       = Ongeldige reguliere expressie.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Hyperlink invoegen
+DLG_LINK_URL    = URL:
+DLG_LINK_TEXT   = Weergavetekst:
+LINK_TIP_CTRL   = [Ctrl]+Klik om in browser te openen
+MSG_LINK_BAD_URL = Voer een geldige URL in.
+
+Een URL moet beginnen met een erkend schema zoals:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Tabel invoegen
+DLG_TABLE_ROWS  = Rijen:
+DLG_TABLE_COLS  = Kolommen:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Tabelgrootte selecteren
+
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Tabeleigenschappen
+DLG_TABLE_INSERT    = Tabel invoegen
+TBLP_ROWS           = Rijen:
+TBLP_COLS           = Kolommen:
+TBLP_CELLW          = Kolombreedte:
+TBLP_BORDERW        = Randbreedte:
+TBLP_UNIT_HP        = half-pt
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Celopvulling boven:
+TBLP_PAD_BOTTOM     = Celopvulling onder:
+TBLP_PAD_LEFT       = Celopvulling links:
+TBLP_PAD_RIGHT      = Celopvulling rechts:
+TBLP_ROWH           = Rijhoogte (0=auto):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Tabeluitlijning
+TBLP_ALIGN_L        = Links
+TBLP_ALIGN_C        = Gecentreerd
+TBLP_ALIGN_R        = Rechts
+BTN_APPLY           = Toepassen
+CTX_TABLE_PROPS     = Tabeleigenschappen...
+TBLP_MODE_ALTER     = Huidige tabel wijzigen
+TBLP_MODE_NESTED    = Tabel in huidige cel
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Regelafstand
+RDO_LINESPACE_S  = Enkel
+RDO_LINESPACE_15 = 1,5 regel
+RDO_LINESPACE_D  = Dubbel
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Alinea-afstand
+DLG_PARSPACE_BEF = Ruimte ervoor (pt):
+DLG_PARSPACE_AFT = Ruimte erna (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Sneltoetsen
+SHORTCUTS_COL1   = Sneltoets
+SHORTCUTS_COL2   = Functie
+SHORTCUTS_COL3   = Beschrijving
+SHORTCUTS_BTN_CLOSE = Sluiten
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Vet
+SCF_ITALIC        = Cursief
+SCF_UNDERLINE     = Onderstrepen
+SCF_UNDO          = Ongedaan maken
+SCF_REDO          = Opnieuw
+SCF_CUT           = Knippen
+SCF_COPY          = Kopiëren
+SCF_PASTE         = Plakken
+SCF_SELECT_ALL    = Alles selecteren
+SCF_SAVE          = Opslaan
+SCF_SAVE_AS       = Opslaan als
+SCF_SAVE_ALL      = Alles opslaan
+SCF_NEW           = Nieuw
+SCF_OPEN          = Openen
+SCF_PRINT         = Afdrukken
+SCF_EXPORT_PDF    = Exporteren als PDF
+SCF_PREVIEW       = Online voorbeeld
+SCF_GO_START      = Naar begin
+SCF_GO_END        = Naar einde
+SCF_WORD_LEFT     = Woord links
+SCF_WORD_RIGHT    = Woord rechts
+SCF_EXTEND_SEL    = Selectie uitbreiden
+SCF_SEL_WORD      = Woord selecteren
+SCF_INSERT_DATETIME = Datum/tijd invoegen
+SCF_RELOAD_FILE   = Bestand herladen
+SCF_COL_SEL       = Kolomselectie
+SCF_ZOOM_IN       = Inzoomen
+SCF_ZOOM_OUT      = Uitzoomen
+SCF_RESET_ZOOM    = Zoom resetten
+SCF_EXIT          = Afsluiten
+SCF_SHORTCUTS     = Sneltoetsen
+SCF_ABOUT         = Over
+SCF_CLOSE_DLG     = Dialoog sluiten
+SCF_NEW_LINE      = Nieuwe regel
+SCF_INDENT        = Inspringen
+SCF_DELETE        = Verwijderen
+SCF_BACKSPACE     = Backspace
+SCF_DEL_WORD_R    = Woord rechts verwijderen
+SCF_DEL_WORD_L    = Woord links verwijderen
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Vet in-/uitschakelen op selectie
+SCD_ITALIC        = Cursief in-/uitschakelen op selectie
+SCD_UNDERLINE     = Onderstrepen in-/uitschakelen op selectie
+SCD_UNDO          = Laatste wijziging ongedaan maken
+SCD_REDO          = Laatste ongedaan gemaakte wijziging opnieuw uitvoeren
+SCD_CUT           = Selectie knippen naar klembord
+SCD_COPY          = Selectie kopiëren naar klembord
+SCD_PASTE         = Plakken van klembord
+SCD_SELECT_ALL    = Hele document selecteren
+SCD_SAVE          = Huidig bestand opslaan
+SCD_SAVE_AS       = Opslaan als nieuw bestand
+SCD_SAVE_ALL      = Alle open tabbladen opslaan
+SCD_NEW           = Nieuw leeg document maken
+SCD_OPEN          = Bestand openen
+SCD_PRINT         = Document afdrukken
+SCD_EXPORT_PDF    = Document exporteren als PDF-bestand
+SCD_PREVIEW       = FTP-gekoppeld bestand uploaden en bekijken in browser
+SCD_GO_START      = Cursor naar begin van document verplaatsen
+SCD_GO_END        = Cursor naar einde van document verplaatsen
+SCD_WORD_LEFT     = Cursor één woord naar links verplaatsen
+SCD_WORD_RIGHT    = Cursor één woord naar rechts verplaatsen
+SCD_EXTEND_SEL    = Tekstselectie met één teken uitbreiden
+SCD_SEL_WORD      = Selectie met één woord tegelijk uitbreiden
+SCD_INSERT_DATETIME = Huidige datum en tijd invoegen op cursorpositie
+SCD_RELOAD_FILE   = Huidig bestand herladen van schijf of FTP, lokale wijzigingen negeren
+SCD_COL_SEL       = Rechthoekige/kolomselectie starten (slepen)
+SCD_COL_SEL_KB    = Rechthoekige selectie uitbreiden met toetsenbord
+SCD_ZOOM_IN       = Zoomniveau verhogen
+SCD_ZOOM_OUT      = Zoomniveau verlagen
+SCD_RESET_ZOOM    = Zoom resetten naar 100% / standaard
+SCD_MNU_NEW       = Bestandsmenu → Nieuw
+SCD_MNU_OPEN      = Bestandsmenu → Openen
+SCD_MNU_SAVE      = Bestandsmenu → Opslaan
+SCD_MNU_SAVE_AS   = Bestandsmenu → Opslaan als
+SCD_MNU_PRINT     = Bestandsmenu → Afdrukken
+SCD_MNU_EXPORT_PDF = Bestandsmenu → Exporteren als PDF
+SCD_EXIT_APP      = Document sluiten (app afsluiten)
+SCD_MNU_EXIT      = Bestandsmenu → Afsluiten
+SCD_MNU_UNDO      = Bewerkingsmenu → Ongedaan maken
+SCD_MNU_REDO      = Bewerkingsmenu → Opnieuw
+SCD_MNU_CUT       = Bewerkingsmenu → Knippen
+SCD_MNU_COPY      = Bewerkingsmenu → Kopiëren
+SCD_MNU_PASTE     = Bewerkingsmenu → Plakken
+SCD_MNU_SELECT_ALL = Bewerkingsmenu → Alles selecteren
+SCD_MNU_SHORTCUTS = Helpmenu → Sneltoetsen
+SCD_MNU_ABOUT     = Helpmenu → Over NSBEdit
+SCD_SHOW_SHORTCUTS = Deze sneltoetsenlijst tonen
+SCD_CLOSE_DLG     = Huidig dialoogvenster sluiten
+SCD_NEW_LINE      = Nieuwe alinea invoegen
+SCD_INDENT        = Tabulatorteken invoegen
+SCD_DELETE        = Teken rechts verwijderen
+SCD_BACKSPACE     = Teken links verwijderen
+SCD_DEL_WORD_R    = Woord rechts van cursor verwijderen
+SCD_DEL_WORD_L    = Woord links van cursor verwijderen
+SCF_GOTO_LINE     = Naar regel gaan
+SCF_BOOKMARK_TOGGLE = Bladwijzer in-/uitschakelen
+SCF_BOOKMARK_NEXT = Naar bladwijzer gaan
+SCF_BOOKMARK_PREV = Vorige bladwijzer
+SCD_GOTO_LINE     = Dialoog 'Naar regel gaan' openen
+SCD_BOOKMARK_TOGGLE = Bladwijzer instellen of wissen op huidige regel
+SCD_BOOKMARK_NEXT = Naar volgende bladwijzer springen
+SCD_BOOKMARK_PREV = Naar vorige bladwijzer springen
+DLG_GOTO_TITLE    = Naar regel gaan
+DLG_GOTO_PROMPT   = Regelnummer:
+
+# NSBEdit locale file — nl_BE.txt (Nederlands/Vlaams)
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Over NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF-kladblok en programmeereditor voor Windows\n\n
+ABOUT_PUBLISHED   = Gepubliceerd: 
+ABOUT_VERSION     = Versie: 
+ABOUT_EDITION     = Editie: 
+ABOUT_EDITION_VALUE = 3\n
+ABOUT_SEC_RTF     = ✏  Rich Text-bewerking\n
+ABOUT_DESC_RTF    = •  Vet, cursief, onderstreept, doorstreept, superscript/subscript.\n•  Lettertype, grootte, kleur en markering; volledige alinea-opmaak.\n•  Tabellen, opsommingstekens en genummerde lijsten, afbeeldingen, hyperlinks, horizontale lijnen.\n•  Exporteren als PDF of HTML 5.\n\n
+ABOUT_SEC_CODE    = ⌨  Codebewerking en syntaxiskleuring\n
+ABOUT_DESC_CODE   = •  25 talen: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL en meer.\n•  Typeahead-autocomplete, automatisch sluiten van paren, automatisch inspringen, slim uitspringen.\n•  Regelcommentaar (//, #, --) en HTML-blokcommentaar (<!-- -->) in-/uitschakelen.\n\n
+ABOUT_SEC_FTP     = ⚡  FTP en extern bewerken\n
+ABOUT_DESC_FTP    = •  Direct opslaan naar FTP- en SFTP-servers.\n•  Externe bestanden bladeren, hernoemen en beheren.\n•  Live voorbeeld in browser via configureerbare web-URL-root.\n\n
+ABOUT_LICENSE     = Gelicentieerd onder de GNU General Public License v2.\n
+ABOUT_BTN_LICENSE = Licentie bekijken
+ABOUT_BTN_CREDITS = Credits
+ABOUT_BTN_CLOSE   = Sluiten
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Credits
+CREDITS_SCINTILLA  = Scintilla is een gratis, open-source codebewerkingscomponent van Neil Hodgson. NSBEdit gebruikt Scintilla voor syntaxiskleuring bij codebewerking.\n\n
+CREDITS_LEXILLA    = Lexilla is een bibliotheek met lexers voor Scintilla, ook van Neil Hodgson. NSBEdit gebruikt Lexilla om syntaxiskleuring te bieden voor meer dan 20 programmeertalen.\n\n
+CREDITS_GDI_PLUS   = GDI+ maakt deel uit van het Windows-platform SDK. NSBEdit gebruikt het om het NSBEdit-logo in het Over-venster weer te geven.\n
+CREDITS_MINGW      = Het MinGW-W64-project biedt een complete runtime-omgeving voor GCC- en LLVM/Clang-toolchains op Windows. NSBEdit is gecompileerd met MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite is een kleine, snelle, zelfstandige SQL-database-engine in het publieke domein. NSBEdit gebruikt de SQLite-amalgamatie om FTP/SFTP-verbindingsprofielen op te slaan.\n\n
+CREDITS_CURL       = libcurl is een gratis, open-source URL-overdrachtbibliotheek van Daniel Stenberg. libssh2 is een open-source SSH2-protocolbibliotheek. NSBEdit gebruikt beide om FTP- en SFTP-bestandsoverdracht te implementeren voor extern bewerken.\n\n
+CREDITS_RTF2HTML   = rtf2html is een open-source RTF-naar-HTML-conversiebibliotheek van Valentyn Lavrinenko. NSBEdit gebruikt het om Rich Text-documenten te exporteren als HTML5. Gelicentieerd onder de GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+CREDITS_CMARK_GFM  = cmark-gfm is een uitgebreide CommonMark-parser met GitHub Flavored Markdown-ondersteuning. NSBEdit migreert de Markdown-renderer van de AI-weergave naar cmark-gfm, zodat het antwoordvenster geen eigen markdown-regels meer hoeft te verzinnen in RichEdit. Gelicentieerd onder de BSD 2-Clause License.\n\n
+CREDITS_OLLAMA     = Ollama is een open-source lokale AI-runtime. NSBEdit gebruikt het voor optionele lokale AI-suggesties en agentmodus.\n\n
+
+# ── Project (AI-werkruimte) ────────────────────────────────────────────────────
+MENU_PROJECT         = Project
+PROJECT_ADD          = Project toevoegen...
+PROJECT_REMOVE       = Huidig project verwijderen
+PROJECT_NONE         = (Geen project)
+PROJECT_PICK_TITLE   = Selecteer de projecthoofdmap
+PROJECT_REMOVE_TITLE = Project verwijderen
+PROJECT_REMOVE_CONFIRM = Dit project uit de lijst verwijderen?
+
+AI_PROGRESS_READING  = Batch lezen
+AI_PROGRESS_SYNTH    = Antwoord synthetiseren
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Site toevoegen...
+FTP_DISCONNECT       = Verbreken
+FTP_CLOSE_CONN_MENU  = Verbinding sluiten
+FTP_CLOSE_CONN_PROMPT = Selecteer een verbinding om te sluiten:
+FTP_BROWSE           = Bestanden bladeren...
+FTP_DLG_SITE_ADD     = FTP/SFTP-site toevoegen
+FTP_DLG_SITE_EDIT    = FTP/SFTP-site bewerken
+FTP_FRIENDLY_NAME    = Vriendelijke naam:
+FTP_PROTOCOL         = Protocol:
+FTP_HOST             = Server:
+FTP_PORT             = Poort:
+FTP_USERNAME         = Gebruikersnaam:
+FTP_PASSWORD         = Wachtwoord:
+FTP_REMEMBER_PWD     = Wachtwoord onthouden
+FTP_INITIAL_PATH     = Beginmap:
+FTP_WEB_URL          = Web-URL-root:
+FTP_HELP_TITLE       = FTP/SFTP-profiel — Veldenhandleiding
+FTP_SAVE             = Profiel opslaan
+FTP_DELETE           = Profiel verwijderen
+MSG_PROFILE_DELETE_CONFIRM = Profiel "%s" verwijderen?\n\nDit kan niet ongedaan worden gemaakt.
+FTP_DLG_BROWSER      = FTP-browser
+FTP_COL_NAME         = Naam
+FTP_COL_SIZE         = Grootte
+FTP_COL_PERMS        = Rechten
+FTP_CTX_OPEN         = Openen / Downloaden
+FTP_CTX_CHMOD        = Rechten...
+FTP_CTX_NEW_FILE     = Nieuw bestand...
+FTP_CTX_NEW_DIR      = Nieuwe map...
+FTP_INPUT_FILENAME   = Bestandsnaam:
+FTP_INPUT_DIRNAME    = Mapnaam:
+FTP_CTX_DELETE       = Verwijderen
+FTP_CTX_RENAME       = Hernoemen...
+FTP_INPUT_RENAME     = Nieuwe naam:
+FTP_DLG_CHMOD        = Rechten wijzigen (chmod)
+FTP_CHMOD_OWNER      = Eigenaar
+FTP_CHMOD_GROUP      = Groep
+FTP_CHMOD_OTHER      = Anderen
+FTP_CHMOD_READ       = l
+FTP_CHMOD_WRITE      = s
+FTP_CHMOD_EXEC       = u
+FTP_CHMOD_OCTAL      = Octaal:
+FTP_CHMOD_APPLY      = Toepassen
+FTP_CONN_FAILED      = Verbinding mislukt
+FTP_STATUS           = Verbonden:
+FTP_NOT_CONNECTED    = Maak verbinding met een of meer profielen voordat u naar FTP opslaat.
+FTP_PICK_PROFILE     = Selecteer een profiel om naar op te slaan:
+FTP_PW_PROMPT        = Wachtwoord invoeren
+FTP_PW_FOR           = Wachtwoord voor
+MSG_FTP_UPLOAD_OK    = Bestand opgeslagen en succesvol geüpload.
+MSG_FTP_UPLOAD_FAIL  = Uploaden mislukt.
+MENU_SAVE_TO_FTP     = Opslaan naar FTP...
+MENU_PREVIEW_FTP     = Online voorbeeld bekijken.
+FTP_PREVIEW_LOCKED   = Tabblad is vergrendeld terwijl voorbeeld actief is.
+FTP_PREVIEW_URL      = Voorbeeld-URL:
+BTN_OPEN_BROWSER     = Openen in browser
+BTN_OPEN_BROWSER_TIP = Sneltoets: [Enter] om in browser te openen.
+BTN_REVERT           = Terugdraaien en sluiten
+BTN_REVERT_TIP       = Sneltoets: [Esc] om terug te draaien en dit venster te sluiten.
+FTP_PREVIEW_UP_FAIL  = Uploaden mislukt:
+FTP_PREVIEW_REV_FAIL = Terugdraaien mislukt:
+BTN_SAVE_BACKUP      = Lokaal back-up opslaan...
+BTN_CLOSE_ANYWAY     = Sluiten zonder terug te draaien
+FTP_SAVE_BROWSER     = Opslaan naar FTP — kies bestemming
+FTP_FILENAME_PROMPT  = Bestandsnaam:
+FTP_SAVE_HERE        = Hier opslaan
+FTP_SAVE_TO          = Opgeslagen naar FTP
+FTP_SAVED_OK         = Bestand succesvol geüpload. Verbinding blijft open.
+MSG_FTP_DELETE_WARN  = "%s" van server verwijderen?\n\nDit kan niet ongedaan worden gemaakt.
+MSG_FTP_CHMOD_OK     = Rechten bijgewerkt.
+MSG_FTP_DELETE_FAIL  = Verwijderen mislukt.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Horizontale lijn invoegen
+DLG_HRUL_PROPS      = Eigenschappen horizontale lijn
+HRP_STYLE           = Stijl:
+HRP_THICKNESS       = Dikte (pt):
+HRP_SPACE_ABOVE     = Ruimte boven (pt):
+HRP_SPACE_BELOW     = Ruimte onder (pt):
+HRP_WIDTH_PCT       = Breedte (%):
+HRP_ALIGNMENT       = Uitlijning:
+HRP_START_COLOUR    = Startkleur:
+HRP_END_COLOUR      = Eindkleur (verloop):
+HRP_ALIGN_L         = Links
+HRP_ALIGN_C         = Centreren
+HRP_ALIGN_R         = Rechts
+HRP_STYLE_SINGLE    = Enkel dun
+HRP_STYLE_THICK     = Dik
+HRP_STYLE_DOUBLE    = Dubbel
+HRP_STYLE_DOTTED    = Gestippeld
+HRP_STYLE_DASHED    = Gestreept
+HRP_STYLE_HAIRLINE  = Haarlijn
+BTN_CHOOSE          = Kiezen…
+
+MENU_RECENT       = &Recente bestanden
+MENU_RECENT_EMPTY = (Geen)
+# -- Session restore -------------------------------------------------------
+DLG_SESSION_RESTORE         = Sessie herstellen
+MSG_SESSION_FILE_MISSING    = Het bestand "%s" kon niet op schijf worden gevonden.
+
+Er is een cacheversie van uw laatste sessie beschikbaar.
+BTN_OPEN_CACHED             = Cache openen
+BTN_SKIP                    = Overslaan
+MSG_SESSION_FILE_GONE       = Het bestand "%s" kon niet worden gevonden en er is geen cacheversie beschikbaar.
+MSG_SESSION_FTP_FAIL        = Kon geen verbinding maken met "%s" voor het bestand "%s".
+
+Er is een cacheversie van uw laatste sessie beschikbaar.
+MSG_SESSION_FTP_FAIL_NC     = Kon geen verbinding maken met "%s" voor het bestand "%s".
+
+Er is geen cacheversie beschikbaar.
+MSG_SESSION_REMOTE_CHANGED  = Het externe bestand "%s" op server "%s" is gewijzigd door een ander programma sinds uw laatste sessie.
+
+De nieuwste versie van de server laden, of uw lokaal gecachte versie behouden?
+BTN_RELOAD_REMOTE           = Herladen van server
+BTN_KEEP_LOCAL              = Lokaal behouden
+MSG_SESSION_DISK_CHANGED  = Het bestand "%s" op schijf is gewijzigd door een ander programma sinds uw laatste sessie.
+
+De nieuwste versie van schijf laden, of uw lokaal gecachte versie behouden?
+
+// ── Compare Tabs ─────────────────────────────────────────────────────────────
+MENU_COMPARE_TABS         = &Tabbladen vergelijken…
+MENU_INSERT_DATETIME      = &Datum/tijd invoegen	Shift+F5
+DLG_COMPARE_TITLE         = Tabbladen vergelijken
+DLG_COMPARE_LABEL_A       = Tabblad A:
+DLG_COMPARE_LABEL_B       = Tabblad B:
+BTN_COMPARE               = Vergelijken
+MSG_COMPARE_SAME          = De twee tabbladen hebben identieke inhoud.
+MSG_COMPARE_SELECT_TWO    = Open ten minste twee tabbladen om te vergelijken.
+MSG_COMPARE_TOO_LARGE     = Bestanden zijn te groot om te vergelijken (maximaal 3 000 regels elk).
+

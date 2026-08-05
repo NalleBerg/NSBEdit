@@ -1,10 +1,15 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 2 August 2026 &mdash; 2026.08.02.11 (11:06)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 05 August 2026 &mdash; 05.08.2026 (10:18)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
 
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.08.05.10 (Fix: all languages now translated)</span></h3>
+<p><strong>Fix: all languages now translated (05.08.2026 10:18):</strong></p>
+<ul>
+<li><strong>i18n - all languages now translated:</strong> The <code>locale/</code> folder now contains complete translations for all supported languages. Every <code>MessageBoxW</code>, <code>OPENFILENAMEW</code> filter/title, menu string, tooltip, and dialog string is fully localised. No untranslated keys remain. The <code>Ls(key)</code> function always returns a meaningful localised string; fallback to the key itself no longer occurs for any shipped locale.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.08.02.11 (Fix: right-click Cut/Copy/Paste now work on code and FTP tabs)</span></h3>
-<p><strong>Fix: right-click Cut/Copy/Paste now work on code and FTP tabs (02.08.2026, 11:06):</strong></p>
+<p><strong>Fix: right-click Cut/Copy/Paste now work on code and FTP tabs (05.08.2026 10:18):</strong></p>
 <ul>
 <li><strong>Fix: right-click Cut / Copy / Paste on code (Scintilla) and FTP tabs:</strong> on a code tab &mdash; most visibly an FTP-opened file such as a <code>.php</code> &mdash; right-clicking a selection showed <strong>Cut</strong> and <strong>Copy</strong> greyed out, and right-click <strong>Paste</strong> dropped the text into the wrong place in the wrong colour, even though <strong>Ctrl+C / Ctrl+X / Ctrl+V</strong> worked fine. Two separate causes: (1)&nbsp;the Edit and context-menu commands were sent to each tab&rsquo;s hidden <strong>RichEdit</strong> companion instead of the visible <strong>Scintilla</strong> editor, so they operated on an empty control; and (2)&nbsp;the <code>WM_INITMENUPOPUP</code> handler that greys menu items recomputed the enabled state from that same empty RichEdit, so it re-greyed <strong>Cut/Copy</strong> the instant the menu opened &mdash; overriding the correct state. Both the menu-bar <strong>Edit</strong> menu and the right-click menu now read selection / undo-redo state from, and route Cut/Copy/Paste/Undo/Redo/Select-All to, the tab&rsquo;s real editor (Scintilla for code/FTP tabs, RichEdit for RTF). RTF tabs are unchanged.</li>
 </ul>

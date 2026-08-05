@@ -1,0 +1,174 @@
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = About NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF Notepad and Programming Editor for Windows\n\n
+ABOUT_PUBLISHED   = Published: 
+ABOUT_VERSION     = Version: 
+ABOUT_EDITION     = Edition: 
+ABOUT_EDITION_VALUE = 3\n
+ABOUT_SEC_RTF     = ✏  Rich Text Editing\n
+ABOUT_DESC_RTF    = •  Bold, italic, underline, strikethrough, superscript/subscript.\n•  Font face, size, colour and highlight; full paragraph formatting.\n•  Tables, bullet and numbered lists, images, hyperlinks, horizontal rules.\n•  Export as PDF or HTML 5.\n\n
+ABOUT_SEC_CODE    = ⌨  Code Editing & Syntax Highlighting\n
+ABOUT_DESC_CODE   = •  25 languages: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL and more.\n•  Typeahead autocomplete, auto-close pairs, auto-indent, smart unindent.\n•  Toggle line comments (//, #, --) and HTML block comments (<!-- -->).\n\n
+ABOUT_SEC_FTP     = ⚡  FTP & Remote Editing\n
+ABOUT_DESC_FTP    = •  Save directly to FTP and SFTP servers.\n•  Browse, rename and manage remote files.\n•  Live preview in browser via configurable Web URL root.\n\n
+ABOUT_LICENSE     = Licensed under the GNU General Public License v2.\n
+ABOUT_BTN_LICENSE = View Licence
+ABOUT_BTN_CREDITS = Credits
+ABOUT_BTN_CLOSE   = Close
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Credits
+CREDITS_SCINTILLA  = Scintilla is a free, open-source source code editing component by Neil Hodgson. NSBEdit uses Scintilla for syntax-highlighted code editing.\n\n
+CREDITS_LEXILLA    = Lexilla is a library of lexers for Scintilla, also by Neil Hodgson. NSBEdit uses Lexilla to provide syntax highlighting for over 20 programming languages.\n\n
+CREDITS_GDI_PLUS   = GDI+ is part of the Windows platform SDK. NSBEdit uses it to render the NSBEdit logo in the About dialog.\n
+CREDITS_MINGW      = The MinGW-W64 project provides a complete runtime environment for GCC and LLVM/Clang toolchains on Windows. NSBEdit is compiled with MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite is a small, fast, self-contained SQL database engine in the public domain. NSBEdit uses the SQLite amalgamation to store FTP/SFTP connection profiles.\n\n
+CREDITS_CURL       = libcurl is a free, open-source URL transfer library by Daniel Stenberg. libssh2 is an open-source SSH2 protocol library. NSBEdit uses both to implement FTP and SFTP file transfer for remote editing.\n\n
+CREDITS_RTF2HTML   = rtf2html is an open-source RTF to HTML converter library by Valentyn Lavrinenko. NSBEdit uses it to export Rich Text documents as HTML5. Licensed under the GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+CREDITS_CMARK_GFM  = cmark-gfm is an extended CommonMark parser with GitHub Flavored Markdown support. NSBEdit is moving the AI view Markdown renderer to cmark-gfm so the reply view can stop inventing markdown rules in RichEdit. Licensed under the BSD 2-Clause License.\n\n
+CREDITS_OLLAMA     = Ollama is an open-source local AI runtime. NSBEdit uses it for optional local AI suggestions and agent mode.\n\n
+
+# ── Project (AI workspace) ────────────────────────────────────────────────────
+MENU_PROJECT         = Project
+PROJECT_ADD          = Add project...
+PROJECT_REMOVE       = Remove current project
+PROJECT_NONE         = (No project)
+PROJECT_PICK_TITLE   = Select the project root folder
+PROJECT_REMOVE_TITLE = Remove project
+PROJECT_REMOVE_CONFIRM = Remove this project from the list?
+
+AI_PROGRESS_READING  = Reading batch
+AI_PROGRESS_SYNTH    = Synthesising answer
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Add site...
+FTP_DISCONNECT       = Disconnect
+FTP_CLOSE_CONN_MENU  = Close connection
+FTP_CLOSE_CONN_PROMPT = Select a connection to close:
+FTP_BROWSE           = Browse files...
+FTP_DLG_SITE_ADD     = Add FTP/SFTP Site
+FTP_DLG_SITE_EDIT    = Edit FTP/SFTP Site
+FTP_FRIENDLY_NAME    = Friendly name:
+FTP_PROTOCOL         = Protocol:
+FTP_HOST             = Server:
+FTP_PORT             = Port:
+FTP_USERNAME         = Username:
+FTP_PASSWORD         = Password:
+FTP_REMEMBER_PWD     = Remember password
+FTP_INITIAL_PATH     = Initial folder:
+FTP_WEB_URL          = Web URL root:
+FTP_HELP_TITLE       = FTP/SFTP Profile — Field Guide
+FTP_SAVE             = Save Profile
+FTP_DELETE           = Delete Profile
+MSG_PROFILE_DELETE_CONFIRM = Delete profile "%s"?\n\nThis cannot be undone.
+FTP_DLG_BROWSER      = FTP Browser
+FTP_COL_NAME         = Name
+FTP_COL_SIZE         = Size
+FTP_COL_PERMS        = Permissions
+FTP_CTX_OPEN         = Open / Download
+FTP_CTX_CHMOD        = Permissions...
+FTP_CTX_NEW_FILE     = New File...
+FTP_CTX_NEW_DIR      = New Folder...
+FTP_INPUT_FILENAME   = File name:
+FTP_INPUT_DIRNAME    = Folder name:
+FTP_CTX_DELETE       = Delete
+FTP_CTX_RENAME       = Rename...
+FTP_INPUT_RENAME     = New name:
+FTP_DLG_CHMOD        = Change Permissions (chmod)
+FTP_CHMOD_OWNER      = Owner
+FTP_CHMOD_GROUP      = Group
+FTP_CHMOD_OTHER      = Other
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Octal:
+FTP_CHMOD_APPLY      = Apply
+FTP_CONN_FAILED      = Connection Failed
+FTP_STATUS           = Connected:
+FTP_NOT_CONNECTED    = Please connect to one or more profiles before saving to FTP.
+FTP_PICK_PROFILE     = Select a profile to save to:
+FTP_PW_PROMPT        = Enter Password
+FTP_PW_FOR           = Password for
+MSG_FTP_UPLOAD_OK    = File saved and uploaded successfully.
+MSG_FTP_UPLOAD_FAIL  = Upload failed.
+MENU_SAVE_TO_FTP     = Save to FTP...
+MENU_PREVIEW_FTP     = Preview online.
+FTP_PREVIEW_LOCKED   = Tab is locked while preview is active.
+FTP_PREVIEW_URL      = Preview URL:
+BTN_OPEN_BROWSER     = Open in browser
+BTN_OPEN_BROWSER_TIP = Shortcut: [Enter] to open in browser.
+BTN_REVERT           = Revert & close
+BTN_REVERT_TIP       = Shortcut: [Esc] to revert and close this dialog.
+FTP_PREVIEW_UP_FAIL  = Upload failed:
+FTP_PREVIEW_REV_FAIL = Revert failed:
+BTN_SAVE_BACKUP      = Save backup locally...
+BTN_CLOSE_ANYWAY     = Close without reverting
+FTP_SAVE_BROWSER     = Save to FTP — choose destination
+FTP_FILENAME_PROMPT  = File name:
+FTP_SAVE_HERE        = Save here
+FTP_SAVE_TO          = Saved to FTP
+FTP_SAVED_OK         = File uploaded successfully. Connection kept open.
+MSG_FTP_DELETE_WARN  = Delete "%s" from server?\n\nThis cannot be undone.
+MSG_FTP_CHMOD_OK     = Permissions updated.
+MSG_FTP_DELETE_FAIL  = Delete failed.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Insert Horizontal Rule
+DLG_HRUL_PROPS      = Horizontal Rule Properties
+HRP_STYLE           = Style:
+HRP_THICKNESS       = Thickness (pt):
+HRP_SPACE_ABOVE     = Space above (pt):
+HRP_SPACE_BELOW     = Space below (pt):
+HRP_WIDTH_PCT       = Width (%):
+HRP_ALIGNMENT       = Alignment:
+HRP_START_COLOUR    = Start colour:
+HRP_END_COLOUR      = End colour (gradient):
+HRP_ALIGN_L         = Left
+HRP_ALIGN_C         = Centre
+HRP_ALIGN_R         = Right
+HRP_STYLE_SINGLE    = Single thin
+HRP_STYLE_THICK     = Thick
+HRP_STYLE_DOUBLE    = Double
+HRP_STYLE_DOTTED    = Dotted
+HRP_STYLE_DASHED    = Dashed
+HRP_STYLE_HAIRLINE  = Hairline
+BTN_CHOOSE          = Choose…
+
+MENU_RECENT       = &Recent Files
+MENU_RECENT_EMPTY = (None)
+# -- Session restore -------------------------------------------------------
+DLG_SESSION_RESTORE         = Restore Session
+MSG_SESSION_FILE_MISSING    = The file "%s" could not be found on disk.
+
+A cached version from your last session is available.
+BTN_OPEN_CACHED             = Open Cached
+BTN_SKIP                    = Skip
+MSG_SESSION_FILE_GONE       = The file "%s" could not be found and no cached version is available.
+MSG_SESSION_FTP_FAIL        = Could not reconnect to "%s" for the file "%s".
+
+A cached version from your last session is available.
+MSG_SESSION_FTP_FAIL_NC     = Could not reconnect to "%s" for the file "%s".
+
+No cached version is available.
+MSG_SESSION_REMOTE_CHANGED  = The remote file "%s" on server "%s" has been modified by another program since your last session.
+
+Reload the latest version from the server, or keep your locally cached version?
+BTN_RELOAD_REMOTE           = Reload from Server
+BTN_KEEP_LOCAL              = Keep Local
+MSG_SESSION_DISK_CHANGED  = The file "%s" on disk has been modified by another program since your last session.
+
+Reload the latest version from disk, or keep your locally cached version?
+
+// ── Compare Tabs ─────────────────────────────────────────────────────────────
+MENU_COMPARE_TABS         = &Compare Tabs…
+MENU_INSERT_DATETIME      = Insert &Date/Time	Shift+F5
+DLG_COMPARE_TITLE         = Compare Tabs
+DLG_COMPARE_LABEL_A       = Tab A:
+DLG_COMPARE_LABEL_B       = Tab B:
+BTN_COMPARE               = Compare
+MSG_COMPARE_SAME          = The two tabs have identical content.
+MSG_COMPARE_SELECT_TWO    = Please open at least two tabs to compare.
+MSG_COMPARE_TOO_LARGE     = Files are too large to compare (maximum 3 000 lines each).

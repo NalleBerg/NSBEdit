@@ -1,4 +1,9 @@
 # Changelog
+
+## v2026.08.05.10 (Fix: right-click Cut/Copy/Paste now work on code and FTP tabs) -  05.08.2026 10:18
+- **i18n — all languages now translated:** The Icelandic locale (`is_IS`) has been completed. All supported languages (en_GB, no_nb, is_IS) are now fully translated. Every user-facing string in `MessageBoxW`, file dialogs, menus, tooltips, and other UI elements is localised. The `Ls(key)` function no longer falls back to the raw key for any shipped locale.
+
+
 ## v2026.08.02.11 (Fix: right-click Cut/Copy/Paste now work on code and FTP tabs) - 02.08.2026 11:06
 
 - **Fix: right-click Cut / Copy / Paste on code (Scintilla) and FTP tabs**: on a code tab — most visibly an FTP-opened file such as a `.php` — right-clicking a selection showed **Cut** and **Copy** greyed out, and right-click **Paste** dropped the text into the wrong place in the wrong colour, even though **Ctrl+C / Ctrl+X / Ctrl+V** worked fine. Two separate causes: (1) the Edit and context-menu commands were sent to each tab's hidden **RichEdit** companion instead of the visible **Scintilla** editor, so they operated on an empty control; and (2) the `WM_INITMENUPOPUP` handler that greys menu items recomputed the enabled state from that same empty RichEdit, so it re-greyed **Cut/Copy** the instant the menu opened — overriding the correct state. Both the menu-bar **Edit** menu and the right-click menu now read selection / undo-redo state from, and route Cut/Copy/Paste/Undo/Redo/Select-All to, the tab's real editor (Scintilla for code/FTP tabs, RichEdit for RTF). RTF tabs are unchanged.

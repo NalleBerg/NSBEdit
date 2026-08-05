@@ -1,137 +1,662 @@
 
 # NSBEdit locale file — is_IS (Íslenska)
-
-BTN_AI          = AI
-TIP_AI          = Spyrja Ollama um KI.
-AI_WAKING_OLLAMA = Spyr Ollama, vinsamlega bíðið!
-AI_THINKING_STATUS = AI er að hugsa... Notað tími: %s
-MENU_AI_CHECK_MODELS = Athuga staðbundnar models
-AI_MODEL_CHECK_TITLE = Athuga staðbundnar models
-AI_MODEL_CHECK_START = Athuga staðbundnar models...
-AI_MODEL_CHECK_NO_MODELS = Engar staðbundnar models fundust.
-AI_MODEL_CHECKING_MODEL = Athuga model %s...
-AI_MODEL_DOWNLOADING_MODEL = Sækir uppfærslu fyrir model %s...
-AI_MODEL_UPTODATE_MODEL = Model %s er uppá dagsetningu ✓
-AI_MODEL_CHECK_FAILED_SIMPLE = Gat ekki athugað model %s.
-AI_MODEL_CHECK_FAILED = Gat ekki athugað model %s:
-AI_MODEL_CHECK_ALL_DONE = Allar models eru núna uppá dagsetningu! ✓
-AI_MODEL_CHECK_FINISHED_ERROR = Athugun á models lokið með villum.
-AI_SUMMARY_LOCALHOST = Ollama á localhost
-AI_SUMMARY_CURRENT = Núverandi:
-AI_ROLE_AGENT = Agent
-AI_ROLE_SUGGEST = TILLAGA
-AI_SUMMARY_CLOUD = Ský:
-AI_MODE_CLOUD_SUBSCRIPTION = Ský áskrift
-AI_MODE_LOCAL_ONLY = Einungis staðbundin
-AI_SUMMARY_ACCOUNT = Reikningur:
-AI_SIGNED_IN = innskráður
-AI_NOT_SIGNED_IN = ekki innskráður
-AI_WINDOW_TITLE_PREFIX = NSBEdit AI -
-AI_STATUS_CLOUD = Ský:
-AI_STATUS_SIGNIN = Innskráning:
-AI_STATUS_CURRENT = Núverandi:
-BTN_YES = já
-BTN_NO = nei
-BTN_SEND = Senda
-BTN_STOP = Hætta
-BTN_COPY = Afrita
-BTN_PREV = Fyrri
-BTN_NEXT = Næsta
-BTN_CLEAR = Hreinsa
-AI_MENU_CLOUD = Ský
-AI_MENU_LOCAL_ONLY = Einungis staðbundin
-AI_MENU_CLOUD_SUBSCRIPTION = Ský áskrift
-AI_MENU_SIGN_IN = Skrá inn í Ollama
-AI_MENU_SIGN_OUT = Skrá út
-AI_MENU_ADD_API_KEY = Bæta við API lykli…
-AI_APIKEY_TITLE = Ollama ský API lykill
-AI_APIKEY_PROMPT = Settu inn API lykilinn þinn frá ollama.com:
-AI_TIP_ADD_API_KEY = Settu inn API lykilinn þinn frá ollama.com til að nota ský models beint.\nMeð lykli þarf ekki að opna vafrann til að skrá inn.\nLykillinn er aðeins geymdur dulkóðaður á þessari tölvu — deilt aldrei.
-AI_LOG_API_KEY_OK = API lykill samþykktur — innskráður í Ollama ský.
-AI_LOG_API_KEY_BAD = API lykillinn var ekki samþykktur. Athugaðu lykilinn og reyndu aftur.
-AI_LOG_API_KEY_CLEARED = API lykill hreinsaður.
-AI_MENU_OPEN_PROVIDER = Opna Ollama vefsíðu
-AI_MENU_SEND_PROMPT = Senda prompt
-AI_MENU_CLEAR_LOG = Hreinsa atvikaskrá
-AI_CLEAR_CONFIRM_TITLE = Hreinsa samtal
-AI_CLEAR_CONFIRM_MSG = Hreinsa allt AI-samtalið?\n\nÞetta fjarlægir allar spurningar og svör úr atvikaskránni og er ekki hægt að afturkalla.
-MSG_SAVE_EMPTY_OVERWRITE = Ritillinn er tómur en skráin á diski er það ekki:\n\n%s\n\nEf þú vistar núna eyðist allt sem er í skránni. Þetta getur gerst eftir misheppnaða endurheimt setu.\n\nVista samt og tæma skrána?
-AI_MENU_COPY_ANSWER = Afrita svar
-AI_MENU_ABOUT_WINDOW = Um þetta glugga
-AI_MENU_MODEL = Model
-AI_MENU_LOG = Atvikaskrá
-AI_MENU_HELP = Hjálp
-AI_LOG_USER_PREFIX = Þú:
-AI_LOG_CLOUD_NEEDS_SIGNIN = Ský stilling valin, en þú ert ekki innskráður enn.
-# ── AI ský ────────────────────────────────────────────────
-AI_LOG_CLOUD_MODEL_SELECTED = Valinn ský model:
-AI_LOG_CLOUD_SENDING = Sendi til Ollama skýi…
-AI_MENU_LOCAL_HEADER = Staðbundin:
-AI_MENU_CLOUD_HEADER = Ský
-AI_LOG_OPENED_SIGNUP = Opnaði Ollama innskráning/áskriftarsíðu.
-AI_LOG_CLOUD_NOT_USED_YET = Ský stilling valin; staðbundin Ollama er ekki notað í þessu flæði enn.
-AI_LOG_WINDOW_OPENED = AI gluggi opnaður.
-AI_LOG_CLOUD_SUGGEST_SELECTED = Ský tillögustilling valin.
-AI_LOG_CLOUD_AGENT_SELECTED = Ský agent stilling valin.
-AI_LOG_MODEL_SWITCHED_SUGGESTION = Model skipt í tillögustillingu.
-AI_LOG_MODEL_SWITCHED_AGENT = Model skipt í agent stillingu.
-AI_LOG_CLOUD_LOCAL_ONLY = Ský stilling skift í einungis staðbundin.
-AI_LOG_CLOUD_SUB_SELECTED = Ský áskrift stilling valin.
-AI_LOG_SIGNED_OUT_LOCALLY = Útskráður staðbundið.
-AI_LOG_ABOUT_WINDOW = Þetta er AI skel gluggi. Fullar Ollama spjall tengingar fylgja.
-AI_LOG_RETRY_FALLBACK = Ollama: valinn model fannst ekki, reyni aftur með fallback model.
-AI_LOG_OLLAMA_PREFIX = Ollama:
-AI_LOG_NO_RESPONSE = Ekkert svar.
-AI_LOG_STOPPED = Fyrirspurn stöðvuð. Bættu við fleiri upplýsingum og sendu aftur.
-AI_LOG_RENDER_FAILED = Ollama: svar birting mistókst óvart.
-AI_COPY_CODE_LABEL = Afrita kóða
-
-# NSBEdit locale file — is_IS (Íslenska)
 # Format:  KEY = value
 # Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
 # About-dialog strings that go into RichEdit use \n for line breaks.
 
 # ── Application ──────────────────────────────────────────────────────────────
 APP_NAME = NSBEdit
-UNTITLED = án titils
+UNTITLED = Untitled
 
 # ── Menus ─────────────────────────────────────────────────────────────────────
-MENU_FILE       = Skrár
-MENU_NEW        = Ný\tCtrl+N
-MENU_OPEN       = Opna...\tCtrl+O
-MENU_SAVE       = Vista\tCtrl+S
-MENU_SAVEAS     = Vista sem...\tCtrl+Shift+S
-MENU_SAVE_ALL   = Vista allt\tCtrl+Shift+A
-MENU_PRINT      = Prenta...\tCtrl+P
-MENU_EXPORT_PDF = Flytja út sem PDF...\tCtrl+Shift+P
-MENU_EXIT       = Hætta\tCtrl+W
-MENU_EDIT         = Breyta
-MENU_UNDO         = Angra\tCtrl+Z
-MENU_REDO         = Endurkalla\tCtrl+Y
-MENU_CUT          = Klippa\tCtrl+X
-MENU_COPY         = Afrita\tCtrl+C
-MENU_PASTE        = Líma\tCtrl+V
-MENU_SELECTALL    = Velja allt\tCtrl+A
-MENU_FIND         = Finna / Skipta...\tCtrl+F
-MENU_GOTO         = Fara á línu...\tCtrl+G
-MENU_BOOKMARK     = Bókamerki af/á\tF2
-MENU_BOOKMARK_NEXT = Fara til bókamerki\tCtrl+F2
-MENU_PREFS        = Stillingar...
+MENU_FILE       = &Skrá
+MENU_NEW        = &Ný skrá\tCtrl+N
+MENU_OPEN       = &Opna...\tCtrl+O
+MENU_SAVE       = &Vista\tCtrl+S
+MENU_SAVEAS     = Vista &sem...\tCtrl+Shift+S
+MENU_SAVE_ALL   = Vista &allar\tCtrl+Shift+A
+MENU_PRINT      = &Prenta...\tCtrl+P
+MENU_EXPORT_PDF = &Flytja út sem PDF...\tCtrl+Shift+P
+MENU_EXIT       = &Hætta\tCtrl+W
+MENU_EDIT         = &Breyta
+MENU_UNDO         = &Afturkalla\tCtrl+Z
+MENU_REDO         = &Endurtaka\tCtrl+Y
+MENU_CUT          = &Klippa\tCtrl+X
+MENU_COPY         = &Afrita\tCtrl+C
+MENU_PASTE        = &Líma\tCtrl+V
+MENU_SELECTALL    = &Velja allt\tCtrl+A
+MENU_FIND         = &Leita / Skipta út...\tCtrl+F
+MENU_GOTO         = &Fara á línu...\tCtrl+G
+MENU_BOOKMARK     = &Bókamerki á/af\tF2
+MENU_BOOKMARK_NEXT = &Fara á bókamerki\tCtrl+F2
+MENU_PREFS        = &Stillingar...
 PREF_TITLE        = Stillingar
-PREF_SEC_APPEARANCE = Framsetning
-PREF_DARK_MODE         = Myrkur þema
-PREF_LIGHT_MODE        = Ljós þema
-PREF_SEC_EDITOR        = Ritill bakgrunnur
-PREF_EDITOR_LIGHT_BG   = Ljós bakgrunnur fyrir hreinn texta og kóða
-PREF_EDITOR_DARK_BG    = Myrkur bakgrunnur fyrir hreinn texta og kóða
-MENU_HELP       = Hjálp
-MENU_SHORTCUTS  = Flýtilyklar...\tF1
-MENU_ABOUT      = Um NSBEdit
+PREF_SEC_APPEARANCE = Útlit
+PREF_DARK_MODE         = Dökkt ham
+PREF_LIGHT_MODE        = Ljóst ham
+PREF_SEC_EDITOR        = Bakgrunnur ritils
+PREF_EDITOR_LIGHT_BG   = Ljós bakgrunnur fyrir texta og kóða
+PREF_EDITOR_DARK_BG    = Dökkur bakgrunnur fyrir texta og kóða
+MENU_HELP       = &Hjálp
+MENU_SHORTCUTS  = &Flýtilyklar...\tF1
+MENU_REGEX_GUIDE = &Regex leiðarvísir
+MENU_ABOUT      = &Um NSBEdit
 BTN_AI          = AI
-TIP_AI          = Spyrja Ollama um KI.
-REGEX_GUIDE_TITLE = Regex leiðbeiningar
+TIP_AI          = Spyrja Ollama A.I.
+AI_WAKING_OLLAMA = Spyr Ollama, vinsamlegast bíðið!
+AI_THINKING_STATUS = AI er að hugsa... Tími notaður: %s
+MENU_AI_CHECK_MODELS = Athuga staðværar gerðir
+AI_MODEL_CHECK_TITLE = Athuga staðværar gerðir
+AI_MODEL_CHECK_START = Athuga staðværar gerðir...
+AI_MODEL_CHECK_NO_MODELS = Engar staðværar gerðir fundust.
+AI_MODEL_CHECKING_MODEL = Athuga gerð %s...
+AI_MODEL_DOWNLOADING_MODEL = Sæki uppfærslu á gerð %s...
+AI_MODEL_UPTODATE_MODEL = Gerð %s er uppfærð ✓
+AI_MODEL_CHECK_FAILED_SIMPLE = Ekki tókst að athuga gerð %s.
+AI_MODEL_CHECK_FAILED = Ekki tókst að athuga gerð %s:
+AI_MODEL_CHECK_ALL_DONE = Allar gerðir eru nú uppfærðar! ✓
+AI_MODEL_CHECK_FINISHED_ERROR = Athugun á gerðum lauk með villum.
+AI_SUMMARY_LOCALHOST = Ollama á staðværum vefþjóni
+AI_SUMMARY_CURRENT = Núverandi:
+AI_ROLE_AGENT = Umboðsmaður
+AI_ROLE_SUGGEST = Leggja til
+AI_SUMMARY_CLOUD = Ský:
+AI_MODE_CLOUD_SUBSCRIPTION = Skýáskrift
+AI_MODE_LOCAL_ONLY = Aðeins staðvært
+AI_SUMMARY_ACCOUNT = Aðgangur:
+AI_SIGNED_IN = innskráður
+AI_NOT_SIGNED_IN = ekki innskráður
+AI_WINDOW_TITLE_PREFIX = NSBEdit AI -
+AI_STATUS_CLOUD = Ský:
+AI_STATUS_SIGNIN = Innskráning:
+AI_STATUS_CURRENT = Núverandi:
+AI_TIME_USED = Tími notaður:
+AI_LAST_QUERY_USED = Síðasta fyrirspurn notaði:
+AI_WAIT_TITLE = Vinsamlegast bíðið
+BTN_YES = já
+BTN_NO = nei
+BTN_SEND = Senda
+BTN_STOP = Stöðva
+BTN_COPY = Afrita
+BTN_PREV = Fyrri
+BTN_NEXT = Næsta
+BTN_CLEAR = Hreinsa
+AI_MENU_CLOUD = Ský
+AI_MENU_LOCAL_ONLY = Aðeins staðvært
+AI_MENU_CLOUD_SUBSCRIPTION = Skýáskrift
+AI_MENU_SIGN_IN = Skrá inn á Ollama
+AI_MENU_SIGN_OUT = Skrá út
+AI_MENU_ADD_API_KEY = Bæta við API lykli…
+AI_MENU_OPEN_PROVIDER = Opna Ollama vefsíðu
+AI_MENU_SEND_PROMPT = Senda fyrirspurn
+AI_MENU_CLEAR_LOG = Hreinsa annál
+AI_CLEAR_CONFIRM_TITLE = Hreinsa samtal
+AI_CLEAR_CONFIRM_MSG = Hreinsa allt AI samtalið?\n\nÞetta fjarlægir allar spurningar og svör úr annálnum og ekki er hægt að afturkalla.
+AI_MENU_COPY_ANSWER = Afrita svar
+AI_MENU_ABOUT_WINDOW = Um þennan glugga
+AI_MENU_MODEL = Gerð
+AI_MENU_LOG = Annáll
+AI_MENU_HELP = Hjálp
+AI_LOG_USER_PREFIX = Þú:
+AI_LOG_CLOUD_NEEDS_SIGNIN = Skýhamur er valinn, en þú ert ekki innskráður ennþá.
+# ── AI cloud ──────────────────────────────────────────────
+AI_LOG_CLOUD_MODEL_SELECTED = Skýgerð valin:
+AI_LOG_CLOUD_SENDING = Sendi til Ollama skýs…
+AI_MENU_LOCAL_HEADER = Staðvært:
+AI_MENU_CLOUD_HEADER = Ský
+AI_LOG_OPENED_SIGNUP = Opnaði Ollama innskráningar-/áskriftarsíðu.
+AI_LOG_CLOUD_NOT_USED_YET = Skýhamur er valinn; staðvært Ollama er ekki notað í þessari leið ennþá.
+AI_LOG_WINDOW_OPENED = AI gluggi opnaður.
+AI_LOG_CLOUD_SUGGEST_SELECTED = Skýtillöguhamur valinn.
+AI_LOG_CLOUD_AGENT_SELECTED = Skýumboðshamur valinn.
+AI_LOG_MODEL_SWITCHED_SUGGESTION = Gerð skipt yfir í tillöguham.
+AI_LOG_MODEL_SWITCHED_AGENT = Gerð skipt yfir í umboðsham.
+AI_LOG_CLOUD_LOCAL_ONLY = Skýhamur skipt yfir í aðeins staðvært.
+AI_LOG_CLOUD_SUB_SELECTED = Skýáskriftarhamur valinn.
+AI_LOG_SIGNED_OUT_LOCALLY = Skráð út staðbundið.
+# ── AI cloud API key ──────────────────────────────────────
+AI_APIKEY_TITLE = Ollama ský API lykill
+AI_APIKEY_PROMPT = Límdu ollama.com API lykilinn þinn:
+AI_TIP_ADD_API_KEY = Límdu ollama.com API lykilinn þinn til að nota skýgerðir beint.\nMeð lykli þarftu EKKI að opna vafrann til að skrá þig inn.\nLykillinn er geymdur dulkóðaður á þessari tölvu eingöngu — aldrei deilt.
+AI_LOG_API_KEY_OK = API lykill samþykktur — innskráður í Ollama ský.
+AI_LOG_API_KEY_BAD = API lykill var ekki samþykktur. Athugaðu lykilinn og reyndu aftur.
+AI_LOG_API_KEY_CLEARED = API lykill hreinsaður.
+AI_LOG_ABOUT_WINDOW = Þetta er AI skelglugginn. Full Ollama spjalltenging mun fylgja.
+AI_LOG_RETRY_FALLBACK = Ollama: valin gerð fannst ekki, reyni aftur með varagerð.
+AI_LOG_OLLAMA_PREFIX = Ollama:
+AI_LOG_NO_RESPONSE = Ekkert svar.
+AI_LOG_STOPPED = Beiðni stöðvuð. Bættu við nánari upplýsingum og sendu aftur.
+AI_LOG_RENDER_FAILED = Ollama: birting svars mistókst óvænt.
+AI_COPY_CODE_LABEL = Afrita kóða
+
+REGEX_GUIDE_TITLE = Regex leiðarvísir
 REGEX_GUIDE_LABEL = Inniheldur
-REGEX_GUIDE_NOTE = Ctrl+F fokuserar leitarsvæðið. Leitin uppfærir á meðan þú skrifar.
-REGEX_GUIDE_SEARCH = Leita í leiðbeiningum
+REGEX_GUIDE_NOTE = Ctrl+F einbeitir leitarreitnum. Leit uppfærist eftir því sem þú skrifar.
+
+# ── Regex Guide ──────────────────────────────────────────────────────────────
+REGEX_GUIDE_TEXT = T|Regex viðmiðunarhandbók\nS|Lítil kennsluhandbók fyrir ECMAScript regex leit í NSBEdit\nB|Leitaðu í handbókinni með venjulegum texta. Skrifaðu í reitinn hér fyrir ofan eða ýttu á Ctrl+F til að hoppa á umfjöllunarefni.\nB|Dæmin eru nógu stutt til að muna og nógu ítarleg til að nota.\n\nH|1. Hvað regex gerir\nB|Regluleg segð er þétt lýsing á texta sem þú vilt finna.\nB|Í stað þess að passa nákvæmlega einn streng getur regex passað marga tengda strengi.\nB|NSBEdit notar std::wregex með ECMAScript setningafræði, svo dæmin hér að neðan fylgja þeim stíl.\nC|error\nB|Það passar orðið error hvar sem það birtist.\n\nH|2. Bókstafir og flótti\nB|Flestir bókstafir og tölur tákna sjálf sig.\nB|Sum greinarmerki eru sérstök, svo þau verður að flýja með bakslagi.\nC|\\.    punktur bókstaflega\nC|\\?    spurningarmerki bókstaflega\nC|\\(    svigi bókstaflega\nC|\\\\   bakslag bókstaflega\nB|Ef þú vilt passa nákvæmlega textann C:\\Temp, mundu að flýja hvert bakslag í regex-inu.\n\nH|3. Stafaklasar\nB|Stafaklasar lýsa einum staf úr mengi.\nC|[abc]     einn af a, b, eða c\nC|[^abc]    allt nema a, b, eða c\nC|[a-z]     bil\nC|[0-9A-F]  sextándatölustafir\nC|[._-]     nokkur greinarmerki\nB|Innan klasa þýðir bandstrik venjulega bil, svo settu það fremst eða aftast ef þú vilt bókstaflegt bandstrik.\nC|[-_.]     bókstaflegt bandstrik, undirstrik, eða punktur\n\nH|4. Styttingarklasar\nB|Styttingarklasar eru fljótlegasta leiðin til að lýsa algengum textaformum.\nC|\\d    tölustafur\nC|\\D    allt sem er ekki tölustafur\nC|\\w    bókstafur, tölustafur, eða undirstrik\nC|\\W    allt sem er ekki orðstafur\nC|\\s    bilbil\nC|\\S    allt sem er ekki bilbil\nC|.      hvaða staf sem er nema línuskil\nB|Punktur er víður; styttingarklasi er venjulega nákvæmari og öruggari.\n\nH|5. Akkeri og mörk\nB|Akkeri passa ekki stafi. Þau passa staðsetningar.\nC|^      upphaf leitaðs texta\nC|$      endir leitaðs texta\nC|\\b    orðamörk\nC|\\B    ekki orðamörk\nB|Notaðu akkeri þegar þú vilt heila línu, orð í upphafi, eða orð í enda.\nC|^TODO\nB|Það finnur línur eða strengi sem byrja á TODO.\nC|\\bfix\\b\nB|Það finnur orðið fix, en ekki orð eins og prefix eða fixture.\n\nH|6. Endurtekning\nB|Magnarar segja hversu oft fyrri táknið má endurtaka.\nC|*      núll eða fleiri\nC|+      einn eða fleiri\nC|?      valfrjálst / núll eða einn\nC|{n}     nákvæmlega n sinnum\nC|{n,}    n eða fleiri sinnum\nC|{n,m}   á milli n og m sinnum\nB|Magnarar eru gráðugir sjálfgefið, svo þeir reyna að eyða eins miklu og þeir geta áður en þeir bakreka.\nC|\\d+\nB|Það finnur einn eða fleiri tölustafi.\nC|\\s+\nB|Það finnur eitt eða fleiri bilbil.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Þetta er algengt auðkennismynstur: einn byrjunarstafur, síðan núll eða fleiri framhaldsstafir.\n\nH|7. Hópun og víxlun\nB|Svigar hópa hluta mynstrsins svo þú getir endurtekið þá eða munað þá.\nC|(abc)       fanga hóp\nC|(?:abc)     hópa án föngunar\nC|a|b|c       passa vinstri eða hægri\nB|Fangandi hópar verða númeraðir frá vinstri til hægri.\nC|(first)-(second)\nB|Fyrsti hópurinn verður $1, annar hópurinn verður $2 í skiptingum.\nC|(cat|dog|fox)\nB|Víxlun er gagnleg þegar eitt svæði getur innihaldið nokkur þekkt orð.\nC|(?:https?|ftp)://\nB|Hópur án föngunar heldur uppbyggingu en sleppir föngunarstað.\n\nH|8. Hagnýt mynstur\nB|Þessi dæmi eru nógu lítil til að aðlaga og nógu stór til að vera gagnleg.\nC|TODO|FIXME\nB|Finndu hvort tveggja merki í glósum, athugasemdum, eða frumkóða.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Einfalt tölvupóstlaga mynstur. Það er ekki fullgildur RFC staðfestir, en það er gagnlegt fyrir grófar leitir.\nC|\"[^\"]*\"\nB|Finndu texta í gæsalöppum á einni línu.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Finndu ISO-stíl dagsetningu eins og 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Finndu einföld auðkennisnöfn sem byrja á hástaf.\nC|^\\s*$\nB|Finndu auðar línur eða línur sem innihalda aðeins bil.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Finndu sextándatölur eins og 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Finndu einfalda heiltölu eða aukastafstölu.\n\nH|9. Skiptingarhugmyndir\nB|Þegar þú skiptir út, leyfa fangahópar þér að endurnýta þá hluta sem þú passaðir.\nC|Finndu:    ([A-Za-z]+) ([A-Za-z]+)\nC|Skiptu út: $2, $1\nB|Það skiptir á tveimur orðum, svo John Smith verður Smith, John.\nC|Finndu:    (\\d{4})-(\\d{2})-(\\d{2})\nC|Skiptu út: $3/$2/$1\nB|Það breytir 2026-06-15 í 15/06/2026.\nC|Finndu:    ^(.*)$\nC|Skiptu út: [$1]\nB|Það vefur hverja heila línu í hornklofa.\n\nH|10. Algeng mistök\nB|Flest mistök eru lítil: vantar flótta, gráðugur magnari, eða akkeri á röngum stað.\nC|.txt\nB|Þetta er ekki bókstaflegur punktur og t x t; punkturinn þýðir hvaða staf sem er. Notaðu \\.txt ef þú vilt bókstaflega viðbót.\nC|(abc\nB|Ólokaðir hópar eru setningafræðivilla.\nC|foo\\bar\nB|Eitt bakslag byrjar venjulega flótta, svo tvöfaldaðu það þegar þú þarft bókstaflegt.\nC|^word$\nB|Það passar aðeins heila línu sem inniheldur nákvæmlega word.\n\nH|11. Hvernig á að hugsa á meðan leitað er\nB|Spyrðu sjálfan þig þriggja spurninga: hvað verður að vera til staðar, hvað getur verið breytilegt, og hvar ætti leitin að stoppa?\nB|Ef svarið er \"hvaða staf sem er\", notaðu klasa eða punkt. Ef svarið er \"upphaf eða endir\", notaðu akkeri.\nB|Ef svarið er \"endurtaktu þennan hluta\", settu hann í hóp áður en þú bætir við magnara.\nB|Ef þú ert óviss, leitaðu með minna mynstri fyrst og stækkaðu það eitt stykki í einu.\n\nH|12. Athugasemdir fyrir NSBEdit\nB|Regex leit ritilsins notar staðlaða bókasafnsvélina, svo kjósa ætti flytjanlega ECMAScript setningafræði.\nB|Innihaldsleit í þessari handbók er bókstafleg, ekki regex-byggð, svo þú getur hoppað með venjulegum orðum eða brotum.\nB|Ef þú vilt umfjöllunarefni fljótt, ýttu á Ctrl+F og skrifaðu orð úr kaflanum sem þú vilt.\nB|Leitarlínan er vísvitandi látlaus: engin gluggi, ekkert regex ham, bara fljótlegasta leiðin til að finna umfjöllunarefni.\n\nH|13. Prófaðu þessar leitir\nC|tölustafur\nC|fanga\nC|mörk\nC|skipta\nC|gráðugur\nC|akkeri\nC|bókstaflegur\nC|flótti\nC|mynstur
+
+
+# NSBEdit locale file — is_IS (Íslenska)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── Regex Guide ──────────────────────────────────────────────────────────────
+REGEX_GUIDE_SEARCH = Leita í leiðbeiningartexta
 REGEX_GUIDE_CLEAR = Hreinsa leit
-REGEX_GUIDE_TEXT = T|Regex tilvísunarleiðbeiningar\nS|Lítil læringarleiðbeining fyrir NSBEdit ECMAScript regex leit\nB|Leitaðu í leiðbeiningum með venjulegum texta. Skrifaðu í svæðinu að ofan, eða ýttu á Ctrl+F til að fara í efni.\nB|Dæmin eru stutt nóg til að minna og nákvæm nóg til að nota.\n\nH|1. Hvað regex gerir\nB|Regluleg segð er konsk útskýring á texta sem þú vilt finna.\nB|Í staðin fyrir að passa við einn nákvæman streng getur regex passað við margar tengdar strengi.\nB|NSBEdit notar std::wregex með ECMAScript syntaxis, svo dæmin að neðan fylgja þessari stíl.\nC|error\nB|Finna orðið error, hvar sem það kemur.\n\nH|2. Literaler og escaping\nB|Flest bókstafir og tölur betra bara sjálf.\nB|Sumar táknmál eru sérstakar og verða að escape-a með backslash.\nC|\\.    bókstafleg punktur\nC|\\?    bókstaflegt spurningamerki\nC|\\(    bókstafleg opnun parantekis\nC|\\\\   bókstafleg backslash\nB|Ef þú vilt passa við nákvæma textann C:\\Temp, gakktu úr skugga um að skrifa hvern backslash tvöfaldan í regex.\n\nH|3. Stafatölur\nB|Stafatölur lýsa einum staf úr hóp.\nC|[abc]     ein af a, b eða c\nC|[^abc]    allt nema a, b eða c\nC|[a-z]     bil\nC|[0-9A-F]  hex tölur\nC|[._-]     nokkrar táknmál\nB|Innan í klasanum betra bindestrik stafinn venjulega bil, svo settu hann fyrst eða síðast ef þú vilt hafa bókstaflega bindestrik.\nC|[-_.]     bókstaflegt bindestrik, undirstrik eða punktur\n\nH|4. Skammstafanir\nB|Skammstafanir eru hraðasta leiðin til að lýsa algengum textaformum.\nC|\\d    tala\nC|\\D    allt sem ekki er tala\nC|\\w    bókstafur, tala eða undirstrik\nC|\\W    allt sem ekki er orðstafur\nC|\\s    bil\nC|\\S    allt sem ekki er bil\nC|.      hver staf nema línu skil\nB|Punktur er breitt; skammstöfun klasar eru venjulega meira sérstakar og öruggari.\n\nH|5. Anchor og grænsir\nB|Anchor passa ekki staf. Þeir passa við staðsetningu.\nC|^      upphaf textans sem leitað er eftir\nC|$      enda textans sem leitað er eftir\nC|\\b    orðsgrensa\nC|\\B    ekki orðsgrensa\nB|Nota anchor þegar þú vilt hafa heila línu, orð í upphafi eða orð í enda.\nC|^TODO\nB|Finna línum eða strengi sem byrja á TODO.\nC|\\bfix\\b\nB|Finna orðið fix, en ekki orð eins og prefix eða fixture.\n\nH|6. Endurtekningar\nB|Kvantaðar sega hversu margar sinnum fyrri tóki má endurtekinn.\nC|*      núll eða fleiri\nC|+      ein eða fleiri\nC|?      valfrjálst / núll eða ein\nC|{n}     nákvæmlega n sinnum\nC|{n,}    n eða fleiri sinnum\nC|{n,m}   milli n og m sinnum\nB|Kvantaðar eru sjálfgefnar gráður, svo þær reyna að spisa mest sem hægt er áður en backtracking.\nC|\\d+\nB|Finna einn eða fleiri tölur.\nC|\\s+\nB|Finna einn eða fleiri bil.\nC|[A-Za-z_][A-Za-z0-9_]*\nB|Þetta er algengt auðkenni mynstur: einn byrjunarstafur og svo núll eða fleiri áfram stafir.\n\nH|7. Hópur og val\nB|Parantekis hópa hluti af mynstri, svo þú getur endurtekið þá eða geymt þá.\nC|(abc)       sækir hóp\nC|(?:abc)     hóp án capture\nC|a|b|c       passar vinstra eða hægra\nB|Capture hópar eru númeruð frá vinstri til hægri.\nC|(first)-(second)\nB|Fyrsti hópur er $1 og annar $2 í skiptingum.\nC|(cat|dog|fox)\nB|Val er nýtist þegar reitur getur bara innihaldið nokkrar þekkt orð.\nC|(?:https?|ftp)://\nB|Hópur án capture beheldur strukturina, en notar ekki capture pláss.\n\nH|8. Praktísk mynstur\nB|Þessi dæmi eru stutt nóg til að sýna og stór nóg til að vera nýt.\nC|TODO|FIXME\nB|Finna eða tag í minnismörk, athugasemdir eða kóðaskrár.\nC|\\b\\w+@\\w+\\.\\w+\\b\nB|Einfalt e-mail mynstur. Það er ekki full RFC sannprófun, en nýtist fyrir hraðleit.\nC|\"[^\"]*\"\nB|Finna texta innan gæsalita á einni línu.\nC|\\b\\d{4}-\\d{2}-\\d{2}\\b\nB|Finna ISO líkan dagsetningu eins og 2026-06-15.\nC|\\b[A-Z][A-Za-z0-9_]*\\b\nB|Finna einfaldar auðkenni mynstur, sem byrja á hástaf.\nC|^\\s*$\nB|Finna tóma línur eða línur sem innihalda einungis bil.\nC|\\b0x[0-9A-Fa-f]+\\b\nB|Finna hex tölur eins og 0x1A2B.\nC|\\b[+-]?\\d+(?:\\.\\d+)?\\b\nB|Finna einfaldan heiltölu eða dálk. 
+
+# ── Convert menu ─────────────────────────────────────────────────────────────
+MENU_CONVERT        = &Umbreyta
+MENU_CONV_TO_PLAIN  = Fjarlægja snið — vista sem hreinan texta
+MENU_CONV_TO_RTF    = Bæta við &sniði — búa til RTF
+MENU_CONV_TO_HTML5  = Flytja út sem &HTML 5...
+MSG_HTML5_ERR       = HTML umbreyting mistókst.
+MSG_HTML5_SAVE_ERR  = Gat ekki skrifað HTML skrá.
+DLG_SAVE_HTML5      = Vista sem HTML 5
+MENU_ENCODING       = &Kóðun
+MENU_ENC_UTF8       = UTF-8
+MENU_ENC_UTF16LE    = UTF-16 LE
+MENU_ENC_ANSI       = ANSI (kerfi)
+MENU_ENC_WIN1252    = Windows-1252 (vestræn)
+MENU_ENC_ISO8859_1  = ISO 8859-1 (Latin-1)
+
+# ── Encoding labels shown in status bar ──────────────────────────────────────
+ENC_RICHTEXT    = Auðugur texti
+ENC_UTF8        = UTF-8
+ENC_UTF16LE     = UTF-16 LE
+ENC_ANSI        = ANSI
+ENC_WIN1252     = Windows-1252
+ENC_ISO8859_1   = ISO 8859-1
+ENC_UNKNOWN     = Hreinn texti
+
+# ── Convert messages ─────────────────────────────────────────────────────────
+MSG_CONV_LOSSY  = Fjarlæging RTF-sniðs mun eyða öllu feitletri, skáletri, litum og öðrum auðugum textaáhrifum.\n\nHalda áfram og vista sem hreinan texta?
+MSG_ENC_LOSSY   = Sumir stafir gætu ekki verið táknaðir í völdu kóðuninni og verða skipt út fyrir "?" eða því líkt.\n\nHalda áfram?
+MSG_DEL_PLAIN_FILE = Skjalið hefur verið vistað sem RTF skrá.\n\nEyða upprunalegu hreintextaskránni?
+
+# ── File-dialog filters (pairs separated by |, converted to \0 at runtime) ───
+FILTER_OPEN   = Allar studdar skrár|*.rtf;*.txt;*.text;*.log;*.bat;*.cmd;*.sh;*.bash;*.zsh;*.ksh;*.csh;*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl;*.cs;*.css;*.scss;*.less;*.html;*.htm;*.xhtml;*.shtml;*.ini;*.cfg;*.conf;*.properties;*.editorconfig;*.java;*.js;*.mjs;*.cjs;*.json;*.jsonc;*.geojson;*.lua;*.makefile;*.mak;*.mk;*.md;*.markdown;*.pas;*.pp;*.dpr;*.lpr;*.pl;*.pm;*.pod;*.php;*.php3;*.php4;*.php5;*.phtml;*.ps1;*.psm1;*.psd1;*.py;*.pyw;*.pyi;*.rb;*.rbw;*.gemspec;*.rs;*.sql;*.ts;*.tsx;*.vbs;*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx;*.yaml;*.yml|RTF skrár (*.rtf)|*.rtf|Textaskrár (*.txt;*.log)|*.txt;*.text;*.log|C / C++ (*.c;*.cpp;*.h;*.hpp)|*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx;*.inl|C# (*.cs)|*.cs|CSS / SCSS / LESS (*.css)|*.css;*.scss;*.less|HTML (*.html;*.htm)|*.html;*.htm;*.xhtml;*.shtml|INI / Config (*.ini;*.cfg)|*.ini;*.cfg;*.conf;*.properties;*.editorconfig|Java (*.java)|*.java|JavaScript (*.js)|*.js;*.mjs;*.cjs|JSON (*.json)|*.json;*.jsonc;*.geojson|Lua (*.lua)|*.lua|Makefile|makefile;*.mak;*.mk|Markdown (*.md)|*.md;*.markdown|Pascal (*.pas)|*.pas;*.pp;*.dpr;*.lpr|Perl (*.pl;*.pm)|*.pl;*.pm;*.pod|PHP (*.php)|*.php;*.php3;*.php4;*.php5;*.phtml|PowerShell (*.ps1)|*.ps1;*.psm1;*.psd1|Python (*.py)|*.py;*.pyw;*.pyi|Ruby (*.rb)|*.rb;*.rbw;*.gemspec|Rust (*.rs)|*.rs|SQL (*.sql)|*.sql|TypeScript (*.ts)|*.ts;*.tsx|VBScript (*.vbs)|*.vbs|XML (*.xml)|*.xml;*.xsl;*.xslt;*.xsd;*.svg;*.plist;*.resx|YAML (*.yaml;*.yml)|*.yaml;*.yml|Shell / Bash (*.sh)|*.sh;*.bash;*.zsh;*.ksh;*.csh;*|Batch (*.bat;*.cmd)|*.bat;*.cmd|Allar skrár (*.*)|*.*
+FILTER_SAVEAS = RTF skrár (*.rtf)|*.rtf|Textaskrár (*.txt)|*.txt|Allar skrár (*.*)|*.*
+FILTER_IMAGE  = Myndaskrár|*.png;*.jpg;*.jpeg|PNG skrár (*.png)|*.png|JPEG skrár (*.jpg;*.jpeg)|*.jpg;*.jpeg
+
+# ── File-dialog titles ────────────────────────────────────────────────────────
+DLG_OPEN   = Opna
+DLG_SAVEAS = Vista sem
+DLG_IMAGE  = Setja inn mynd
+
+# ── Message boxes ─────────────────────────────────────────────────────────────
+MSG_OPEN_ERR      = Gat ekki opnað skrá.
+MSG_SAVE_ERR      = Gat ekki vistað skrá.
+MSG_HAS_FORMATTING = Þetta skjal inniheldur snið (feitletur, skáletur, litir, leturstærðir o.s.frv.) sem ekki er hægt að geyma í hreintextaskrá.\n\nSmelltu á Já til að vista sem hreinan texta og farga öllu sniði.\nSmelltu á Nei til að vista sem RTF í staðinn (skráin verður endurnefnd með .rtf viðskeyti).\nSmelltu á Hætta við til að fara til baka án þess að vista.
+MSG_IMG_OPEN_ERR  = Gat ekki opnað myndskrá.
+MSG_IMG_FMT_ERR   = Óstudd skráarsnið. Vinsamlegast notaðu PNG eða JPEG.
+MSG_SAVE_PROMPT   = Vista breytingar á "%s"?
+MSG_SAVE_EMPTY_OVERWRITE = Ritillinn er tómur, en skráin á disknum er það ekki:\n\n%s\n\nVistun núna mun eyða öllu sem er í skránni. Þetta getur gerst eftir slæma lotuendurheimt.\n\nVista samt og tæma skrána?
+DLG_SAVE_CHANGES  = Vista breytingar
+BTN_SAVE          = Vista
+BTN_DONT_SAVE     = Ekki vista
+BTN_CANCEL        = Hætta við
+DLG_DISCARD_CHANGES = Farga breytingum
+MSG_DISCARD_AND_RELOAD = Þú hefur óvistaðar breytingar í þessari skrá.\n\nFarga þeim og hlaða aftur?
+BTN_OK            = Í lagi
+BTN_CONTINUE      = Halda áfram
+DLG_CONV_TO_PLAIN = Fjarlægja snið
+
+DLG_FILE_CHANGED        = Skrá breytt á disk
+MSG_FILE_CHANGED_PROMPT = "%s" var breytt af öðru forriti meðan NSBEdit hafði ekki fókus.\n\nHlaða aftur af disk?
+BTN_RELOAD              = Hlaða aftur
+BTN_KEEP                = Halda núverandi
+
+TAB_CTX_NEW_TAB         = Nýr flipi
+TAB_CTX_CLOSE_TAB       = Loka flipa
+
+# ── Status bar ────────────────────────────────────────────────────────────────
+SB_WORDS                = Orð
+SB_CHARS                = Stafir
+SB_SAVED                = Vistað
+SB_UNSAVED              = Óvistað
+SB_LN                   = Ln
+SB_COL                  = Dál
+SB_LINES                = Línur
+MENU_SPELLING           = S&tafsetning
+MENU_SPELL_MARK         = &Merkja rangt stafsetta orð
+MENU_SPELL_CHECK        = &Stafsetning...\tF7
+MENU_SPELL_LANGUAGE     = &Tungumál
+DLG_SPELL_TITLE         = Stafsetning
+DLG_SPELL_MISSPELLED    = Rangt stafsett orð:
+DLG_SPELL_SUGGESTIONS   = Tillögur:
+DLG_SPELL_NOTFOUND      = Stafsetningu lokið - engar villur fundust
+BTN_SPELL_IGNORE        = Hunsa
+BTN_SPELL_IGNOREALL     = Hunsa allt
+BTN_SPELL_ADD           = Bæta við orðabók
+BTN_SPELL_CHANGE        = Breyta
+BTN_SPELL_CHANGEALL     = Breyta öllu
+
+# ── Toolbar tooltips ──────────────────────────────────────────────────────────
+TIP_BOLD        = Feitletrað  (Ctrl+B)
+TIP_ITALIC      = Skáletrað  (Ctrl+I)
+TIP_UNDERLINE   = Undirstrikað  (Ctrl+U)
+TIP_STRIKE      = Yfirstrikað
+TIP_SUBSCRIPT   = Neðanskrift  (t.d. H₂O)
+TIP_SUPERSCRIPT = Uppskrift  (t.d. m²)
+TIP_FONTFACE    = Letur
+TIP_FONTSIZE    = Leturstærð (pt)
+TIP_COLOR       = Leturlitur
+TIP_HIGHLIGHT   = Áherslulitur
+TIP_ALIGN_L     = Vinstri jöfnun
+TIP_ALIGN_C     = Miðjujöfnun
+TIP_ALIGN_R     = Hægri jöfnun
+TIP_ALIGN_J     = Jafna báðum megin
+TIP_BULLET      = Punktalisti
+TIP_NUMBERED    = Númeraður listi
+TIP_IMAGE       = Setja inn mynd  (PNG / JPEG)
+TIP_INDENT_IN   = Auka inndrátt
+TIP_INDENT_OUT  = Minnka inndrátt
+TIP_LINESPACE   = Línubil...
+TIP_FIND        = Leita / Skipta út  (Ctrl+F)
+TIP_LINK        = Setja inn tengil
+TIP_TABLE       = Töflueiginleikar...
+TIP_TABLE_DROP  = Setja inn töflu (veldu stærð)
+TIP_HLINE       = Setja inn lárétta línu
+TIP_CLEARFMT    = Hreinsa allt snið
+TIP_PRINT_BTN   = Prenta...  (Ctrl+P)
+TIP_ZOOM        = Aðdráttur
+TIP_WORDWRAP    = Víxla orðaskiptingu
+TIP_CASE        = Víxla há/lágstöfum  (UPPER / lower / Title)
+TIP_LINENUM     = Víxla línunúmerum
+TIP_PARSPACE    = Málsgreinabil...
+TIP_SAVE        = Vista  (Ctrl+S)
+TIP_SAVE_FTP    = Vista á FTP-þjón
+TIP_PREVIEW     = Forskoða á netinu.
+TIP_LANG_UI     = Tungumál viðmóts
+TIP_COMMENT     = Athugasemd / Fjarlægja athugasemd á völdum línum
+MENU_GUI_LANG   = Viðm.tungumál
+MENU_LANGUAGE   = &Tungumál
+LANG_PLAIN_TEXT = Hreinn texti
+LANG_UI_DANISH    = Danska
+LANG_UI_ENGLISH   = Enska
+LANG_UI_FINNISH   = Finnska
+LANG_UI_FRENCH    = Franska
+LANG_UI_GERMAN    = Þýska
+LANG_UI_SPANISH   = Spænska
+LANG_UI_GREEK     = Gríska
+LANG_UI_PORTUGUESE = Portúgalska
+LANG_UI_DUTCH      = Hollenska
+LANG_UI_FLEMISH    = Flæmska
+LANG_UI_SAMI       = Norðursamíska
+LANG_UI_SWEDISH   = Sænska
+LANG_UI_UKRAINIAN = Úkraínska
+LANG_UI_ICELANDIC = Íslenska
+LANG_UI_NORWEGIAN = Norska (bokmål)
+
+# ── Export PDF ───────────────────────────────────────────────────────────────
+FILTER_PDF       = PDF skrár (*.pdf)|*.pdf
+DLG_EXPORT_PDF   = Flytja út sem PDF
+MSG_PDF_ERR      = Gat ekki flutt út sem PDF. Gakktu úr skugga um að "Microsoft Print to PDF" sé uppsett (Windows 10+).
+
+# ── Find / Replace dialog ─────────────────────────────────────────────────────
+DLG_FIND            = Leita / Skipta út
+DLG_FIND_WHAT       = Leita að:
+DLG_REPL_WITH       = Skipta út fyrir:
+BTN_FIND_NEXT       = Leita að næsta
+BTN_FIND            = Leita
+BTN_CLOSE           = Loka
+BTN_REPLACE         = Skipta út
+BTN_REPLACE_ALL     = Skipta út öllu
+CHK_MATCHCASE       = Passa há/lágstafi
+CHK_WHOLEWORD       = Heilt orð
+CHK_REGEX           = Regluleg segð
+CHK_ALL_TABS        = Allir opnir flipar
+CHK_BACKWARDS        = Leita afturábak
+MSG_FIND_NOT_FOUND  = Texti fannst ekki.
+MSG_REGEX_ERR       = Ógild regluleg segð.
+
+# ── Insert Link dialog ────────────────────────────────────────────────────────
+DLG_LINK        = Setja inn tengil
+DLG_LINK_URL    = Vefslóð:
+DLG_LINK_TEXT   = Sýnilegur texti:
+LINK_TIP_CTRL   = [Ctrl]+Smelltu til að opna í vafra
+MSG_LINK_BAD_URL = Vinsamlegast sláðu inn gilda vefslóð.
+
+Vefslóð verður að byrja á viðurkenndu forskeyti eins og:
+https://  http://  ftp://  mailto:  file://
+
+# ── Insert Table dialog ───────────────────────────────────────────────────────
+DLG_TABLE       = Setja inn töflu
+DLG_TABLE_ROWS  = Raðir:
+DLG_TABLE_COLS  = Dálkar:
+TABLE_PICKER_FMT  = %d × %d
+TABLE_PICKER_HINT = Veldu töflustærð
+
+
+# ── Table Properties dialog ───────────────────────────────────────────────────
+DLG_TABLE_PROPS     = Eiginleikar töflu
+DLG_TABLE_INSERT    = Setja inn töflu
+TBLP_ROWS           = Raðir:
+TBLP_COLS           = Dálkar:
+TBLP_CELLW          = Breidd dálks:
+TBLP_BORDERW        = Breidd ramma:
+TBLP_UNIT_HP        = hálfur punktur
+TBLP_UNIT_MM        = mm
+TBLP_UNIT_PT        = pt
+TBLP_PAD_TOP        = Púði að ofan:
+TBLP_PAD_BOTTOM     = Púði að neðan:
+TBLP_PAD_LEFT       = Púði vinstra megin:
+TBLP_PAD_RIGHT      = Púði hægra megin:
+TBLP_ROWH           = Hæð raðar (0=sjálfvirkt):
+TBLP_ROWH_UNIT      = pt
+TBLP_ALIGN          = Jöfnun töflu
+TBLP_ALIGN_L        = Vinstri
+TBLP_ALIGN_C        = Miðja
+TBLP_ALIGN_R        = Hægri
+BTN_APPLY           = Nota
+CTX_TABLE_PROPS     = Eiginleikar töflu...
+TBLP_MODE_ALTER     = Breyta núverandi töflu
+TBLP_MODE_NESTED    = Tafla í núverandi reit
+
+# ── Line Spacing dialog ───────────────────────────────────────────────────────
+DLG_LINESPACE    = Línubil
+RDO_LINESPACE_S  = Einfalt
+RDO_LINESPACE_15 = 1,5 lína
+RDO_LINESPACE_D  = Tvöfalt
+
+# ── Paragraph Spacing dialog ──────────────────────────────────────────────────
+DLG_PARSPACE     = Málsgreinabil
+DLG_PARSPACE_BEF = Bil fyrir (pt):
+DLG_PARSPACE_AFT = Bil eftir (pt):
+
+# ── Keyboard Shortcuts dialog ─────────────────────────────────────────────────
+SHORTCUTS_TITLE  = Flýtilyklar
+SHORTCUTS_COL1   = Flýtilykill
+SHORTCUTS_COL2   = Aðgerð
+SHORTCUTS_COL3   = Lýsing
+SHORTCUTS_BTN_CLOSE = Loka
+
+# ── Keyboard Shortcuts — function column ─────────────────────────────────────
+SCF_BOLD          = Feitletra
+SCF_ITALIC        = Skáletra
+SCF_UNDERLINE     = Undirstrika
+SCF_UNDO          = Afturkalla
+SCF_REDO          = Endurtaka
+SCF_CUT           = Klippa
+SCF_COPY          = Afrita
+SCF_PASTE         = Líma
+SCF_SELECT_ALL    = Velja allt
+SCF_SAVE          = Vista
+SCF_SAVE_AS       = Vista sem
+SCF_SAVE_ALL      = Vista allar
+SCF_NEW           = Ný
+SCF_OPEN          = Opna
+SCF_PRINT         = Prenta
+SCF_EXPORT_PDF    = Flytja út sem PDF
+SCF_PREVIEW       = Forskoða á netinu
+SCF_GO_START      = Fara í byrjun
+SCF_GO_END        = Fara í enda
+SCF_WORD_LEFT     = Orði til vinstri
+SCF_WORD_RIGHT    = Orði til hægri
+SCF_EXTEND_SEL    = Lengja val
+SCF_SEL_WORD      = Velja orð
+SCF_INSERT_DATETIME = Setja inn dagsetningu/tíma
+SCF_RELOAD_FILE   = Endurhlaða skrá
+SCF_COL_SEL       = Dálkval
+SCF_ZOOM_IN       = Þysja inn
+SCF_ZOOM_OUT      = Þysja út
+SCF_RESET_ZOOM    = Endurstilla þysjun
+SCF_EXIT          = Hætta
+SCF_SHORTCUTS     = Flýtilyklar
+SCF_ABOUT         = Um
+SCF_CLOSE_DLG     = Loka glugga
+SCF_NEW_LINE      = Ný lína
+SCF_INDENT        = Inndráttur
+SCF_DELETE        = Eyða
+SCF_BACKSPACE     = Bakstafur
+SCF_DEL_WORD_R    = Eyða orði til hægri
+SCF_DEL_WORD_L    = Eyða orði til vinstri
+
+# ── Keyboard Shortcuts — description column ──────────────────────────────────
+SCD_BOLD          = Kveikja/slökkva á feitletrun á vali
+SCD_ITALIC        = Kveikja/slökkva á skáletrun á vali
+SCD_UNDERLINE     = Kveikja/slökkva á undirstrikun á vali
+SCD_UNDO          = Afturkalla síðustu breytingu
+SCD_REDO          = Endurtaka síðustu afturkölluðu breytingu
+SCD_CUT           = Klippa valið á klippispjald
+SCD_COPY          = Afrita valið á klippispjald
+SCD_PASTE         = Líma af klippispjaldi
+SCD_SELECT_ALL    = Velja allt skjalið
+SCD_SAVE          = Vista núverandi skrá
+SCD_SAVE_AS       = Vista í nýja skrá
+SCD_SAVE_ALL      = Vista alla opna flipa
+SCD_NEW           = Búa til nýtt tómt skjal
+SCD_OPEN          = Opna skrá
+SCD_PRINT         = Prenta skjalið
+SCD_EXPORT_PDF    = Flytja skjalið út sem PDF skrá
+SCD_PREVIEW       = Hlaða upp og forskoða FTP-tengdu skrána í vafra
+SCD_GO_START      = Færa bendil í byrjun skjals
+SCD_GO_END        = Færa bendil í enda skjals
+SCD_WORD_LEFT     = Færa bendil einu orði til vinstri
+SCD_WORD_RIGHT    = Færa bendil einu orði til hægri
+SCD_EXTEND_SEL    = Lengja textaval um einn staf
+SCD_SEL_WORD      = Lengja val um eitt orð í einu
+SCD_INSERT_DATETIME = Setja inn núverandi dagsetningu og tíma við bendil
+SCD_RELOAD_FILE   = Endurhlaða núverandi skrá af diski eða FTP, sleppa staðværum breytingum
+SCD_COL_SEL       = Hefja rétthyrnt/dálkval (dragðu)
+SCD_COL_SEL_KB    = Lengja rétthyrnt val með lyklaborði
+SCD_ZOOM_IN       = Auka þysjunarstig
+SCD_ZOOM_OUT      = Minnka þysjunarstig
+SCD_RESET_ZOOM    = Endurstilla þysjun í 100% / sjálfgefið
+SCD_MNU_NEW       = Skráarvalmynd → Ný
+SCD_MNU_OPEN      = Skráarvalmynd → Opna
+SCD_MNU_SAVE      = Skráarvalmynd → Vista
+SCD_MNU_SAVE_AS   = Skráarvalmynd → Vista sem
+SCD_MNU_PRINT     = Skráarvalmynd → Prenta
+SCD_MNU_EXPORT_PDF = Skráarvalmynd → Flytja út sem PDF
+SCD_EXIT_APP      = Loka skjalinu (hætta úr forriti)
+SCD_MNU_EXIT      = Skráarvalmynd → Hætta
+SCD_MNU_UNDO      = Breytivalmynd → Afturkalla
+SCD_MNU_REDO      = Breytivalmynd → Endurtaka
+SCD_MNU_CUT       = Breytivalmynd → Klippa
+SCD_MNU_COPY      = Breytivalmynd → Afrita
+SCD_MNU_PASTE     = Breytivalmynd → Líma
+SCD_MNU_SELECT_ALL = Breytivalmynd → Velja allt
+SCD_MNU_SHORTCUTS = Hjálparvalmynd → Flýtilyklar
+SCD_MNU_ABOUT     = Hjálparvalmynd → Um NSBEdit
+SCD_SHOW_SHORTCUTS = Sýna þennan flýtilykla lista
+SCD_CLOSE_DLG     = Loka núverandi glugga
+SCD_NEW_LINE      = Setja inn nýja málsgrein
+SCD_INDENT        = Setja inn tab-staf
+SCD_DELETE        = Eyða stafnum til hægri
+SCD_BACKSPACE     = Eyða stafnum til vinstri
+SCD_DEL_WORD_R    = Eyða orði til hægri við bendil
+SCD_DEL_WORD_L    = Eyða orði til vinstri við bendil
+SCF_GOTO_LINE     = Fara á línu
+SCF_BOOKMARK_TOGGLE = Kveikja/slökkva á bókamerki
+SCF_BOOKMARK_NEXT = Fara á bókamerki
+SCF_BOOKMARK_PREV = Fyrra bókamerki
+SCD_GOTO_LINE     = Opna Fara á línu glugga
+SCD_BOOKMARK_TOGGLE = Setja eða fjarlægja bókamerki á núverandi línu
+SCD_BOOKMARK_NEXT = Stökkva á næsta bókamerki
+SCD_BOOKMARK_PREV = Stökkva á fyrra bókamerki
+DLG_GOTO_TITLE    = Fara á línu
+DLG_GOTO_PROMPT   = Línunúmer:
+
+# NSBEdit locale file — is_IS (Íslenska)
+# Format:  KEY = value
+# Escape sequences in values:  \n = CR+LF (Win32 line ending),  \t = tab,  \\ = backslash
+# About-dialog strings that go into RichEdit use \n for line breaks.
+
+# ── About dialog ──────────────────────────────────────────────────────────────
+# Trailing \n produces CR+LF in the RichEdit control.
+ABOUT_TITLE       = Um NSBEdit
+ABOUT_APP_NAME    = NSBEdit\n
+ABOUT_SUBTITLE    = RTF ritvinnslu- og forritunarritill fyrir Windows\n\n
+ABOUT_PUBLISHED   = Útgefið: 
+ABOUT_VERSION     = Útgáfa: 
+ABOUT_EDITION     = Útgáfa: 
+ABOUT_EDITION_VALUE = 3\n
+ABOUT_SEC_RTF     = ✏  Ritvinnsla í RTF\n
+ABOUT_DESC_RTF    = •  Feitletrað, skáletrað, undirstrikað, yfirstrikað, uppskrift/niðurskrift.\n•  Leturgerð, leturstærð, litur og áherslulitur; málsgreinasnið að fullu.\n•  Töflur, punktalistar og númeraðir listar, myndir, tenglar, láréttar línur.\n•  Flytja út sem PDF eða HTML 5.\n\n
+ABOUT_SEC_CODE    = ⌨  Kóðaritlun og málfræðilitun\n
+ABOUT_DESC_CODE   = •  25 tungumál: PHP, Python, JavaScript, HTML, CSS, C/C++, SQL og fleiri.\n•  Sjálfvirk kláralisti, sjálfvirk lokun sviga, sjálfvirk inndráttur, snjall afturköllun inndráttar.\n•  Víxla línuathugasemdum (//, #, --) og HTML blokkathugasemdum (<!-- -->).\n\n
+ABOUT_SEC_FTP     = ⚡  FTP og fjartengingar\n
+ABOUT_DESC_FTP    = •  Vista beint á FTP og SFTP þjóna.\n•  Skoða, endurnefna og stjórna fjarskrám.\n•  Lifandi forskoðun í vafra með stillanlegri vefslóð.\n\n
+ABOUT_LICENSE     = Leyfi samkvæmt GNU General Public License v2.\n
+ABOUT_BTN_LICENSE = Skoða leyfi
+ABOUT_BTN_CREDITS = Þakkir
+ABOUT_BTN_CLOSE   = Loka
+
+# ── Credits dialog ────────────────────────────────────────────────────────────
+CREDITS_TITLE      = Þakkir
+CREDITS_SCINTILLA  = Scintilla er ókeypis, opinn hugbúnaður fyrir kóðaritlun eftir Neil Hodgson. NSBEdit notar Scintilla fyrir málfræðilitaða kóðaritlun.\n\n
+CREDITS_LEXILLA    = Lexilla er safn af málfræðigreinum fyrir Scintilla, einnig eftir Neil Hodgson. NSBEdit notar Lexilla til að veita málfræðilitun fyrir yfir 20 forritunarmál.\n\n
+CREDITS_GDI_PLUS   = GDI+ er hluti af Windows þróunarpakkanum. NSBEdit notar það til að birta NSBEdit merkið í Um-glugganum.\n
+CREDITS_MINGW      = MinGW-W64 verkefnið veitir fullkomið keyrsluumhverfi fyrir GCC og LLVM/Clang verkfæraketjur á Windows. NSBEdit er þýtt með MinGW-W64 GCC 15.2.0.\n\n
+CREDITS_SQLITE     = SQLite er lítill, hraður, sjálfstæður SQL gagnagrunnur í almenningseign. NSBEdit notar SQLite samsafnið til að geyma FTP/SFTP tengingar.\n\n
+CREDITS_CURL       = libcurl er ókeypis, opinn hugbúnaður fyrir skráaflutning eftir Daniel Stenberg. libssh2 er opinn SSH2 samskiptaregluhugbúnaður. NSBEdit notar báða til að framkvæma FTP og SFTP skráaflutning fyrir fjartengda ritun.\n\n
+CREDITS_RTF2HTML   = rtf2html er opinn RTF-til-HTML breytir eftir Valentyn Lavrinenko. NSBEdit notar það til að flytja út RTF skjöl sem HTML5. Leyfi: GNU Lesser General Public License v2.1 (LGPLv2.1).\n\n
+CREDITS_CMARK_GFM  = cmark-gfm er útvíkkuð CommonMark þáttun með GitHub Flavored Markdown stuðningi. NSBEdit er að færa Markdown birtingu AI-svæðisins yfir í cmark-gfm svo svarsvæðið hætti að finna upp markdown reglur í RichEdit. Leyfi: BSD 2-Clause License.\n\n
+CREDITS_OLLAMA     = Ollama er opinn staðvær AI keyrsluforrit. NSBEdit notar það fyrir valfrjálsar staðværar AI tillögur og sjálfvirkan ham.\n\n
+
+# ── Project (AI workspace) ────────────────────────────────────────────────────
+MENU_PROJECT         = Verkefni
+PROJECT_ADD          = Bæta við verkefni...
+PROJECT_REMOVE       = Fjarlægja núverandi verkefni
+PROJECT_NONE         = (Ekkert verkefni)
+PROJECT_PICK_TITLE   = Veldu rót verkefnis
+PROJECT_REMOVE_TITLE = Fjarlægja verkefni
+PROJECT_REMOVE_CONFIRM = Fjarlægja þetta verkefni af listanum?
+
+AI_PROGRESS_READING  = Les runu
+AI_PROGRESS_SYNTH    = Smíða svar
+
+# ── FTP / SFTP ────────────────────────────────────────────────────────────────
+MENU_FTP             = FTP
+FTP_ADD_SITE         = Bæta við stað...
+FTP_DISCONNECT       = Aftengja
+FTP_CLOSE_CONN_MENU  = Loka tengingu
+FTP_CLOSE_CONN_PROMPT = Veldu tengingu til að loka:
+FTP_BROWSE           = Skoða skrár...
+FTP_DLG_SITE_ADD     = Bæta við FTP/SFTP stað
+FTP_DLG_SITE_EDIT    = Breyta FTP/SFTP stað
+FTP_FRIENDLY_NAME    = Vinalegt heiti:
+FTP_PROTOCOL         = Samskiptaregla:
+FTP_HOST             = Þjónn:
+FTP_PORT             = Gátt:
+FTP_USERNAME         = Notandanafn:
+FTP_PASSWORD         = Lykilorð:
+FTP_REMEMBER_PWD     = Muna lykilorð
+FTP_INITIAL_PATH     = Upphafsmappa:
+FTP_WEB_URL          = Vefslóð rót:
+FTP_HELP_TITLE       = FTP/SFTP snið — Leiðbeiningar
+FTP_SAVE             = Vista snið
+FTP_DELETE           = Eyða sniði
+MSG_PROFILE_DELETE_CONFIRM = Eyða sniði "%s"?\n\nÞetta verður ekki aftur tekið.
+FTP_DLG_BROWSER      = FTP vafri
+FTP_COL_NAME         = Heiti
+FTP_COL_SIZE         = Stærð
+FTP_COL_PERMS        = Réttindi
+FTP_CTX_OPEN         = Opna / Sækja
+FTP_CTX_CHMOD        = Réttindi...
+FTP_CTX_NEW_FILE     = Ný skrá...
+FTP_CTX_NEW_DIR      = Ný mappa...
+FTP_INPUT_FILENAME   = Skráarheiti:
+FTP_INPUT_DIRNAME    = Möppuheiti:
+FTP_CTX_DELETE       = Eyða
+FTP_CTX_RENAME       = Endurnefna...
+FTP_INPUT_RENAME     = Nýtt heiti:
+FTP_DLG_CHMOD        = Breyta réttindum (chmod)
+FTP_CHMOD_OWNER      = Eigandi
+FTP_CHMOD_GROUP      = Hópur
+FTP_CHMOD_OTHER      = Aðrir
+FTP_CHMOD_READ       = r
+FTP_CHMOD_WRITE      = w
+FTP_CHMOD_EXEC       = x
+FTP_CHMOD_OCTAL      = Áttunda:
+FTP_CHMOD_APPLY      = Nota
+FTP_CONN_FAILED      = Tenging mistókst
+FTP_STATUS           = Tengt:
+FTP_NOT_CONNECTED    = Vinsamlegast tengdu við eitt eða fleiri snið áður en þú vistar á FTP.
+FTP_PICK_PROFILE     = Veldu snið til að vista á:
+FTP_PW_PROMPT        = Sláðu inn lykilorð
+FTP_PW_FOR           = Lykilorð fyrir
+MSG_FTP_UPLOAD_OK    = Skrá vistuð og hlaðið upp.
+MSG_FTP_UPLOAD_FAIL  = Upphleðsla mistókst.
+MENU_SAVE_TO_FTP     = Vista á FTP...
+MENU_PREVIEW_FTP     = Forskoða á netinu.
+FTP_PREVIEW_LOCKED   = Flipi er læstur meðan forskoðun er virk.
+FTP_PREVIEW_URL      = Forskoðunarslóð:
+BTN_OPEN_BROWSER     = Opna í vafra
+BTN_OPEN_BROWSER_TIP = Flýtilykill: [Enter] til að opna í vafra.
+BTN_REVERT           = Snúa aftur og loka
+BTN_REVERT_TIP       = Flýtilykill: [Esc] til að snúa aftur og loka þessum glugga.
+FTP_PREVIEW_UP_FAIL  = Upphleðsla mistókst:
+FTP_PREVIEW_REV_FAIL  = Afturköllun mistókst:
+BTN_SAVE_BACKUP      = Vista öryggisafrit staðbundið...
+BTN_CLOSE_ANYWAY     = Loka án afturköllunar
+FTP_SAVE_BROWSER     = Vista á FTP — veldu áfangastað
+FTP_FILENAME_PROMPT  = Skráarheiti:
+FTP_SAVE_HERE        = Vista hér
+FTP_SAVE_TO          = Vistað á FTP
+FTP_SAVED_OK         = Skrá hlaðið upp. Tenging haldin.
+MSG_FTP_DELETE_WARN  = Eyða "%s" af þjóni?\n\nÞetta verður ekki aftur tekið.
+MSG_FTP_CHMOD_OK     = Réttindum breytt.
+MSG_FTP_DELETE_FAIL  = Eyðing mistókst.
+
+# ── Horizontal Rule dialog ────────────────────────────────────────────────────
+DLG_HRUL_INSERT     = Setja inn lárétta línu
+DLG_HRUL_PROPS      = Eiginleikar láréttrar línu
+HRP_STYLE           = Stíll:
+HRP_THICKNESS       = Þykkt (pt):
+HRP_SPACE_ABOVE     = Bil fyrir ofan (pt):
+HRP_SPACE_BELOW     = Bil fyrir neðan (pt):
+HRP_WIDTH_PCT       = Breidd (%):
+HRP_ALIGNMENT       = Jöfnun:
+HRP_START_COLOUR    = Upphafslitur:
+HRP_END_COLOUR      = Endalitur (hallalitur):
+HRP_ALIGN_L         = Vinstri
+HRP_ALIGN_C         = Miðja
+HRP_ALIGN_R         = Hægri
+HRP_STYLE_SINGLE    = Ein þunn
+HRP_STYLE_THICK     = Þykk
+HRP_STYLE_DOUBLE    = Tvöföld
+HRP_STYLE_DOTTED    = Dótluð
+HRP_STYLE_DASHED    = Striklínu
+HRP_STYLE_HAIRLINE  = Hárlínu
+BTN_CHOOSE          = Veldu…
+
+MENU_RECENT       = &Nýlegar skrár
+MENU_RECENT_EMPTY = (Engar)
+# -- Session restore -------------------------------------------------------
+DLG_SESSION_RESTORE         = Endurheimta setu
+MSG_SESSION_FILE_MISSING    = Skráin "%s" fannst ekki á disknum.
+
+Afrit úr síðustu setu er tiltækt.
+BTN_OPEN_CACHED             = Opna afrit
+BTN_SKIP                    = Sleppa
+MSG_SESSION_FILE_GONE       = Skráin "%s" fannst ekki og ekkert afrit er tiltækt.
+MSG_SESSION_FTP_FAIL        = Ekki tókst að tengjast aftur við "%s" fyrir skrána "%s".
+
+Afrit úr síðustu setu er tiltækt.
+MSG_SESSION_FTP_FAIL_NC     = Ekki tókst að tengjast aftur við "%s" fyrir skrána "%s".
+
+Ekkert afrit er tiltækt.
+MSG_SESSION_REMOTE_CHANGED  = Fjarskráin "%s" á þjóni "%s" hefur verið breytt af öðru forriti síðan í síðustu setu.
+
+Hlaða nýjustu útgáfunni af þjóni, eða halda staðbundnu afriti?
+BTN_RELOAD_REMOTE           = Hlaða af þjóni
+BTN_KEEP_LOCAL              = Halda staðbundnu
+MSG_SESSION_DISK_CHANGED  = Skráin "%s" á disknum hefur verið breytt af öðru forriti síðan í síðustu setu.
+
+Hlaða nýjustu útgáfunni af disknum, eða halda staðbundnu afriti?
+
+// ── Compare Tabs ─────────────────────────────────────────────────────────────
+MENU_COMPARE_TABS         = &Bera saman flipa…
+MENU_INSERT_DATETIME      = Setja inn dagsetningu/tíma	Shift+F5
+DLG_COMPARE_TITLE         = Bera saman flipa
+DLG_COMPARE_LABEL_A       = Flipi A:
+DLG_COMPARE_LABEL_B       = Flipi B:
+BTN_COMPARE               = Bera saman
+MSG_COMPARE_SAME          = Fliparnir tveir hafa sama innihald.
+MSG_COMPARE_SELECT_TWO    = Vinsamlegast opnaðu að minnsta kosti tvo flipa til að bera saman.
+MSG_COMPARE_TOO_LARGE     = Skrár eru of stórar til að bera saman (hámark 3 000 línur hvor).
+

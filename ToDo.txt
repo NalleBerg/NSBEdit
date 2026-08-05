@@ -1,1 +1,1 @@
-Then we will look at the search - it turns out if i write a phrase and click Whole word, it still shows me as Containing. 
+Fikse søk i regex guide
