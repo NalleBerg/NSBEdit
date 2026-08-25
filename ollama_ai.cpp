@@ -3177,6 +3177,84 @@ static bool Ai_DrawMenuItem(HWND hwnd, const DRAWITEMSTRUCT* dis)
     return true;
 }
 
+// True for characters that must never reach the query RichEdit: invisible or
+// format/control code points that a Windows console (CMD/PowerShell/Windows
+// Terminal) can place on the clipboard.  Some of these — notably an UNPAIRED
+// UTF-16 surrogate — make RichEdit hang and then crash a moment later.  Valid
+// surrogate PAIRS are handled by the caller and must not be stripped here.
+static bool Ai_IsStripPasteChar(wchar_t c)
+{
+    if (c == 0x7F) return true;                       // DEL
+    if (c >= 0x80  && c <= 0x9F) return true;         // C1 controls
+    if (c >= 0x200B && c <= 0x200F) return true;      // zero-width + LRM/RLM
+    if (c == 0x2028 || c == 0x2029) return true;      // line / paragraph separators
+    if (c >= 0x202A && c <= 0x202E) return true;      // bidi embedding/override
+    if (c == 0x2060) return true;                     // word joiner
+    if (c >= 0x2066 && c <= 0x2069) return true;      // bidi isolates
+    if (c == 0xFEFF) return true;                     // BOM / zero-width no-break space
+    if (c >= 0xFFF9 && c <= 0xFFFB) return true;      // interlinear annotation
+    return false;
+}
+
+// Normalise arbitrary clipboard text (often a Windows console selection) into
+// clean, insertable plain text.  Console payloads carry invisible/ill-formed
+// code units that destabilise the query RichEdit; this repairs them and keeps
+// only genuine readable characters so a paste can never crash the control.
+static std::wstring Ai_CleanPasteText(const std::wstring& raw)
+{
+    if (raw.empty()) return std::wstring();
+
+    // 1) UTF-8 round-trip: any unpaired surrogate or other ill-formed unit is
+    //    replaced with U+FFFD, guaranteeing valid UTF-16 for the filter below.
+    std::wstring norm;
+    int n8 = WideCharToMultiByte(CP_UTF8, 0, raw.c_str(), (int)raw.size(), nullptr, 0, nullptr, nullptr);
+    if (n8 > 0) {
+        std::string u8((size_t)n8, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, raw.c_str(), (int)raw.size(), &u8[0], n8, nullptr, nullptr);
+        int nw = MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), (int)u8.size(), nullptr, 0);
+        if (nw > 0) {
+            norm.resize((size_t)nw);
+            MultiByteToWideChar(CP_UTF8, 0, u8.c_str(), (int)u8.size(), &norm[0], nw);
+        }
+    }
+    if (norm.empty()) norm = raw;   // conversion failed → fall back to the raw text
+
+    // 2) Whitelist: keep tab, collapse CRLF/CR/LF to the bare CR RichEdit uses,
+    //    and keep only real characters — dropping controls, format/bidi marks,
+    //    private-use and noncharacter code points.  Language letters such as
+    //    ØÆÅøæå are ordinary code points and pass through untouched.
+    std::wstring clean;
+    clean.reserve(norm.size());
+    for (size_t i = 0; i < norm.size(); ++i) {
+        wchar_t c = norm[i];
+        if (c == L'\r') { clean.push_back(L'\r'); if (i + 1 < norm.size() && norm[i + 1] == L'\n') ++i; continue; }
+        if (c == L'\n') { clean.push_back(L'\r'); continue; }
+        if (c == L'\t') { clean.push_back(L'\t'); continue; }
+        if (c < 0x20) continue;                       // C0 controls
+        if (c == 0x7F) continue;                      // DEL
+        if (c >= 0x80 && c <= 0x9F) continue;         // C1 controls
+        if (c == 0xA0) { clean.push_back(L' '); continue; }   // NBSP → normal space
+        if (c >= 0xD800 && c <= 0xDBFF) {             // high surrogate
+            if (i + 1 < norm.size() && norm[i + 1] >= 0xDC00 && norm[i + 1] <= 0xDFFF) {
+                unsigned cp = 0x10000u + (((unsigned)(c - 0xD800)) << 10) + (unsigned)(norm[i + 1] - 0xDC00);
+                bool nonchar = (cp & 0xFFFE) == 0xFFFE;
+                bool priv    = cp >= 0xF0000u;        // planes 15-16 private use
+                if (!nonchar && !priv) { clean.push_back(c); clean.push_back(norm[i + 1]); }
+                ++i;
+            }
+            continue;                                 // lone high surrogate → dropped
+        }
+        if (c >= 0xDC00 && c <= 0xDFFF) continue;     // lone low surrogate
+        if (Ai_IsStripPasteChar(c)) continue;         // zero-width / bidi / BOM …
+        if (c >= 0xE000 && c <= 0xF8FF) continue;     // BMP private use
+        if (c >= 0xFDD0 && c <= 0xFDEF) continue;     // noncharacters
+        if ((c & 0xFFFE) == 0xFFFE) continue;         // U+FFFE / U+FFFF
+        clean.push_back(c);
+    }
+    return clean;
+}
+
+
 static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR dwRefData)
 {
@@ -3243,6 +3321,47 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
         // Swallow the Esc WM_CHAR so the RichEdit doesn't beep after we handle it.
         return 0;
     }
+    if (msg == WM_COPY || msg == WM_CUT) {
+        // The query box is a plain input, but RichEdit's built-in copy/cut export
+        // rich text.  That made Ctrl+C, Ctrl+X and the right-click menu disagree
+        // with our plain-text paste, so the same content behaved differently
+        // depending on how it was copied.  Export PLAIN text here so every
+        // copy/cut/paste combination is identical.
+        CHARRANGE cr = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&cr);
+        if (cr.cpMin == cr.cpMax) return 0;             // nothing selected
+        std::wstring sel((size_t)(cr.cpMax - cr.cpMin) + 1, L'\0');
+        LRESULT got = SendMessageW(hwnd, EM_GETSELTEXT, 0, (LPARAM)&sel[0]);
+        sel.resize((size_t)(got < 0 ? 0 : got));
+        // RichEdit reports line breaks as bare CR; give the clipboard CRLF.
+        std::wstring out;
+        out.reserve(sel.size() + 8);
+        for (wchar_t c : sel) {
+            if (c == L'\n') continue;
+            if (c == L'\r') out += L"\r\n";
+            else out.push_back(c);
+        }
+        if (OpenClipboard(hwnd)) {
+            EmptyClipboard();
+            size_t bytes = (out.size() + 1) * sizeof(wchar_t);
+            if (HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, bytes)) {
+                if (void* p = GlobalLock(hMem)) {
+                    memcpy(p, out.c_str(), bytes);
+                    GlobalUnlock(hMem);
+                    SetClipboardData(CF_UNICODETEXT, hMem);
+                } else {
+                    GlobalFree(hMem);
+                }
+            }
+            CloseClipboard();
+        }
+        if (msg == WM_CUT) {
+            s_aiInputPasting = true;
+            SendMessageW(hwnd, EM_REPLACESEL, TRUE, (LPARAM)L"");
+            s_aiInputPasting = false;
+            if (st && st->hInputSb) msb_notify_content_changed(st->hInputSb);
+        }
+        return 0;
+    }
     if (msg == WM_PASTE) {
         // Image on the clipboard → capture it as PNG, remember it for the next
         // send (multimodal query), and drop it inline into the query box so the
@@ -3272,7 +3391,12 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
         if (OpenClipboard(hwnd)) {
             if (HANDLE hUni = GetClipboardData(CF_UNICODETEXT)) {
                 if (const wchar_t* p = (const wchar_t*)GlobalLock(hUni)) {
-                    text.assign(p);
+                    // Bound by the allocation: a non-NUL-terminated console block
+                    // would otherwise be read past its end and crash.
+                    size_t maxChars = GlobalSize(hUni) / sizeof(wchar_t);
+                    size_t n = 0;
+                    while (n < maxChars && p[n] != L'\0') ++n;
+                    text.assign(p, n);
                     GlobalUnlock(hUni);
                     haveText = true;
                 }
@@ -3280,8 +3404,9 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
                 if (const char* pa = (const char*)GlobalLock(hAnsi)) {
                     int need = MultiByteToWideChar(CP_ACP, 0, pa, -1, NULL, 0);
                     if (need > 1) {
-                        text.resize((size_t)need - 1);
+                        text.resize((size_t)need);
                         MultiByteToWideChar(CP_ACP, 0, pa, -1, &text[0], need);
+                        if (!text.empty() && text.back() == L'\0') text.pop_back();
                     }
                     GlobalUnlock(hAnsi);
                     haveText = true;
@@ -3290,23 +3415,9 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
             CloseClipboard();
         }
         if (haveText) {
-            // Sanitize: drop embedded NULs and collapse CRLF/CR/LF to the plain
-            // CR that RichEdit uses internally for paragraph breaks.
-            std::wstring clean;
-            clean.reserve(text.size());
-            for (size_t i = 0; i < text.size(); ++i) {
-                wchar_t c = text[i];
-                if (c == L'\0') continue;
-                if (c == L'\r') {
-                    clean.push_back(L'\r');
-                    if (i + 1 < text.size() && text[i + 1] == L'\n') ++i;
-                    continue;
-                }
-                if (c == L'\n') { clean.push_back(L'\r'); continue; }
-                if (c == L'\t') { clean.push_back(c); continue; }
-                if (c < 0x20) continue; // drop other C0 controls (ESC, BEL, BS, FF, VT…)
-                clean.push_back(c);
-            }
+            // Repair ill-formed units and strip every control/format/invisible
+            // code point a console selection may carry, so the insert is safe.
+            std::wstring clean = Ai_CleanPasteText(text);
             CHARRANGE before = {}; SendMessageW(hwnd, EM_EXGETSEL, 0, (LPARAM)&before);
             s_aiInputPasting = true;
             SendMessageW(hwnd, EM_REPLACESEL, TRUE, (LPARAM)clean.c_str());
@@ -3507,6 +3618,10 @@ static std::vector<std::wstring> Ai_ExtractFileRefs(const std::wstring& prompt)
         else tok += ch;
     }
     flush();
+    // A real query names a few files; a large paste (e.g. console output) can
+    // yield thousands of path-like tokens.  Each ref later drives disk scans +
+    // typo correction, so cap the count to keep Send from freezing/crashing.
+    if (refs.size() > 40) refs.resize(40);
     return refs;
 }
 
@@ -3598,8 +3713,15 @@ static bool Ai_ResolveRef(const std::wstring& root, const std::wstring& ref,
     if (isAbsolute) {
         std::wstring rootLow = Ai_LowerW(root);
         std::wstring normLow = Ai_LowerW(norm);
-        if (normLow.compare(0, rootLow.size(), rootLow) == 0)
-            norm = norm.substr(root.size() + (root.back() == L'\\' ? 0 : 1)); // make relative
+        if (normLow.compare(0, rootLow.size(), rootLow) == 0) {
+            // Make the path relative to the root.  When the reference IS the root
+            // itself (a console prompt like "PS …\Project>" pastes exactly that),
+            // there is no file part — substr(root.size()+1) would run past the end
+            // and throw std::out_of_range, crashing the app.  Treat it as no file.
+            size_t cut = root.size() + (root.back() == L'\\' ? 0 : 1);
+            if (cut >= norm.size()) return false;
+            norm = norm.substr(cut);
+        }
         else
             return false; // outside project — handled by one-off access later
         hasSep = norm.find(L'\\') != std::wstring::npos;
@@ -3709,6 +3831,11 @@ static std::vector<std::wstring> Ai_ExtractPatternTokens(const std::wstring& pro
         else cur += ch;
     }
     flush();
+    // Each returned token is later expanded into a glob/regex and matched against
+    // every project file; an unbounded token list from a large paste would make
+    // that O(tokens × files) work freeze then crash the app on Send.  A genuine
+    // file/pattern query never needs this many tokens.
+    if (toks.size() > 64) toks.resize(64);
     return toks;
 }
 
@@ -4070,6 +4197,12 @@ static bool Ai_RegexSearchSnippets(const std::vector<NeProjectFile>& files,
 // Build a "suggestion mode" project-context block for the active project, if any.
 // Runs on the UI thread (SQLite handle is single-threaded) before the send worker
 // is spawned.  Returns an empty string when no project is active.
+// Upper bound on the project-file walk done on the UI thread for every send.
+// The walk is synchronous, so an unbounded root (e.g. one holding a vcpkg /
+// node_modules tree) would freeze the window; this caps the worst case while
+// still covering any realistic source project.
+static constexpr int kAiMaxProjectFiles = 20000;
+
 static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
 {
     int64_t pid = NeProjects_GetActiveId();
@@ -4078,7 +4211,7 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
     if (!NeProjects_GetById(pid, proj) || proj.rootPath.empty()) return L"";
 
     std::vector<NeProjectFile> files;
-    NeProjects_CollectFiles(proj.rootPath, files);
+    NeProjects_CollectFiles(proj.rootPath, files, kAiMaxProjectFiles);
 
     // Expand every reference the user made — plain names (with typo correction),
     // directories, glob wildcards, explicit regex — plus any DB knowledge records,
@@ -4091,6 +4224,7 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
         for (const auto& it : items)
             requested.push_back({ it.rel, it.full, it.body, it.isDoc });
     }
+
 
     // Tokenize the prompt into lowercase words (>= 3 chars) for relevance ranking.
     std::vector<std::wstring> tokens;
@@ -4160,16 +4294,24 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
                 if (da != db) return da < db;
                 return Ai_LowerW(*a) < Ai_LowerW(*b);
             });
-        // Cap only as a hard safety limit (~32k entries) — effectively "all files".
-        const int kMaxListed = 32000;
+        // Bound the listing by BOTH an entry count and a character budget so a
+        // project with large vendored trees (curl/, scintilla_src/, third_party/…)
+        // can never explode the prompt past the model's context window — the whole
+        // listing used to reach ~800k chars and the cloud now rejects it outright.
+        // Shallow-first ordering means the developer's own files are listed first
+        // and the deep library files are what get dropped when the budget runs out.
+        const int    kMaxListed      = 2000;    // hard entry cap
+        const size_t kListingBudget  = 24000;   // wide chars (~6k tokens)
+        size_t listChars = 0;
         int listed = 0;
         for (const std::wstring* p : listing) {
-            if (listed >= kMaxListed) break;
+            if (listed >= kMaxListed || listChars >= kListingBudget) break;
             ctx += L"  " + *p + L"\r\n";
+            listChars += p->size() + 4;   // "  " + path + "\r\n"
             ++listed;
         }
-        if ((int)listing.size() > kMaxListed)
-            ctx += L"  ... (" + std::to_wstring((int)listing.size() - kMaxListed) + L" more)\r\n";
+        if (listed < (int)listing.size())
+            ctx += L"  ... (" + std::to_wstring((int)listing.size() - listed) + L" more)\r\n";
     }
     ctx += L"\r\n";
 
@@ -4227,6 +4369,7 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
     std::wstring regexBlock;
     bool haveRegex = Ai_RegexSearchSnippets(files, Ai_ExtractContentRegexes(userPrompt), regexBlock);
 
+
     // Code search: grep the project for symbols/terms in the prompt and include
     // matching snippets (a function can be captured without reading whole files).
     // When snippets are found they replace the broad whole-file relevance dump.
@@ -4235,6 +4378,7 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
     std::wstring snippetBlock;
     bool haveSnippets = Ai_SearchSnippets(files, Ai_ExtractSearchTerms(userPrompt),
                                           refLower, snippetBlock);
+
 
     if (!haveSnippets && !haveRegex) {
         // Relevant files fill whatever budget remains.
@@ -4279,7 +4423,7 @@ static AiChunkPlan Ai_PlanBigFileChunks(const std::wstring& userPrompt)
     if (!NeProjects_GetById(pid, proj) || proj.rootPath.empty()) return plan;
 
     std::vector<NeProjectFile> files;
-    NeProjects_CollectFiles(proj.rootPath, files);
+    NeProjects_CollectFiles(proj.rootPath, files, kAiMaxProjectFiles);
 
     // Expand all references (plain/dir/glob/regex) + DB docs into concrete items.
     bool bulk = false;
@@ -4498,6 +4642,7 @@ static void Ai_DoSend(HWND hwnd)
         std::wstring projectCtx = Ai_BuildProjectContext(prompt);
         promptForModel = projectCtx.empty() ? prompt : (projectCtx + prompt);
     }
+
     if (hLog) {
         st->replyBaseStart = GetWindowTextLengthW(hLog);
         st->historyDraft = L"";

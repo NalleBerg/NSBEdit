@@ -126,7 +126,7 @@ if (-not $SkipPush) {
     }
     
     # Commit
-    git commit -m $commitMsg
+    git commit -m "$commitMsg"
     if ($LASTEXITCODE -ne 0) {
         Write-Host "git commit failed." -ForegroundColor Red
         exit 1

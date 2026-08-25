@@ -573,3 +573,51 @@ v2026.08.01.10 - Accumulating answers (DB-persisted) + live cloud model list + m
         a vision model (llava, llama3.2-vision, qwen2.5vl) is required to actually
         read the picture. The plumbing is model-agnostic. Hover/full-size preview
         is deferred (not implemented).
+
+
+v2026.08.25.15 - Project-context robustness: cloud "prompt too long", Send freeze,
+                 Send crash on pasted console output; plain-text copy/cut
+  - CLOUD "PROMPT TOO LONG": Ollama Cloud now ENFORCES the model context limit
+    (131072 tokens) it used to silently truncate. Ai_BuildProjectContext's file
+    LISTING was effectively unbounded (kMaxListed 32000 ~= "all files"), reaching
+    ~800k chars on a project with big vendored trees -> cloud rejects with
+    "prompt is too long: <n>". FIX: the listing is bounded by BOTH an entry cap
+    (kMaxListed 2000) AND a char budget (kListingBudget 24000 wchars), shallow-
+    first so developer files list before vendored ones. (Supersedes the old
+    "cap 32000 / listing 80" notes above.) Content budgets unchanged (12000).
+  - SEND FREEZE (local + cloud): Ai_BuildProjectContext / Ai_PlanBigFileChunks call
+    NeProjects_CollectFiles -> Prj_Walk on the UI THREAD every send. A project
+    holding a dependency cache (e.g. vcpkg ~100k files) froze the window. FIX:
+    Prj_SkipDir (ne_projects.cpp) now also skips vcpkg / buildtrees / installed /
+    .conan / .cargo (alongside node_modules/vendor/packages), and both AI call
+    sites pass kAiMaxProjectFiles = 20000 to bound the walk. The walk still runs
+    on the UI thread; if a clean project is ever slow, move the walk/grep off it
+    (mind SQLite THREADSAFE=0: NeProjects_GetById + CollectDocs must stay on UI).
+  - SEND CRASH on pasted CLI text (THE reported ~2s-after-Send crash): a pasted
+    PowerShell prompt line "PS C:\...\Project>" trims to EXACTLY the active
+    project root. Ai_ResolveRef made an absolute in-root path relative with
+    norm.substr(root.size()+1) - when the ref EQUALS the root that offset is past
+    the end -> std::out_of_range -> uncaught -> std::terminate. FIX: bound the
+    cut (`size_t cut = root.size()+(root.back()=='\\'?0:1); if (cut>=norm.size())
+    return false;`). Diagnosed with a temporary Ai_Trace() (flushed %TEMP%\
+    nsb_ai_trace.txt, one line per send stage) - since removed.
+  - HARDENING (not the crash cause, but prevents O(tokens x files) blowups on huge
+    pastes): Ai_ExtractPatternTokens capped to 64 tokens, Ai_ExtractFileRefs to
+    40 refs. Real file/pattern queries never exceed these.
+  - PASTE SANITISER (Ai_InputSubclassProc WM_PASTE): clipboard text now goes
+    through Ai_CleanPasteText - a UTF-8 round-trip (repairs ill-formed/unpaired
+    UTF-16) then a WHITELIST that keeps tab, CR (CRLF/CR/LF collapsed), NBSP->space
+    and real characters (Nordic letters kept) while dropping C0/C1/DEL, zero-width/
+    bidi/BOM (Ai_IsStripPasteChar), private-use, noncharacters and lone surrogates.
+    The CF_UNICODETEXT read is bounded by GlobalSize (no read past a non-NUL-
+    terminated console block); the CF_TEXT/ANSI fallback off-by-one is fixed.
+  - PLAIN-TEXT COPY/CUT: WM_COPY/WM_CUT are intercepted in Ai_InputSubclassProc
+    (EM_EXGETSEL + EM_GETSELTEXT -> plain CF_UNICODETEXT, bare CR -> CRLF; cut
+    also EM_REPLACESEL "" under s_aiInputPasting). Paste was already plain, so now
+    Ctrl+C/Ctrl+X/right-click Copy/Cut and Ctrl+V all behave identically.
+  - SELF-HEAL ACTIVE PROJECT: NeProjects_GetActiveId() now verifies the stored
+    project's root still exists (GetFileAttributesW) and, if it was moved/deleted,
+    clears active_project (=0) and returns 0 - so a dead selection no longer walks
+    a missing path (and benefits every caller: BuildProjectContext, PlanBigFile,
+    the Project menu).
+

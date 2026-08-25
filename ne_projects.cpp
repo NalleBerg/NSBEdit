@@ -144,6 +144,19 @@ int64_t NeProjects_GetActiveId()
 {
     int v = 0;
     NeProfiles_GetIntSetting("active_project", 0, v);
+    if (v <= 0) return 0;
+
+    // Self-heal a stale selection: if the active project's root was moved or
+    // deleted, forget it so callers don't try to walk a path that's gone.
+    NeProject proj;
+    if (NeProjects_GetById((int64_t)v, proj)) {
+        DWORD attr = proj.rootPath.empty() ? INVALID_FILE_ATTRIBUTES
+                                           : GetFileAttributesW(proj.rootPath.c_str());
+        if (attr == INVALID_FILE_ATTRIBUTES || !(attr & FILE_ATTRIBUTE_DIRECTORY)) {
+            NeProfiles_SetIntSetting("active_project", 0);
+            return 0;
+        }
+    }
     return (int64_t)v;
 }
 
@@ -243,7 +256,11 @@ static bool Prj_SkipDir(const wchar_t* name)
     static const wchar_t* skip[] = {
         L".git", L".svn", L".hg", L".vs", L".vscode", L".idea", L".cache",
         L"node_modules", L"__pycache__", L"bin", L"obj", L"build", L"builds",
-        L"dist", L"out", L"target", L"vendor", L"packages", L".gradle", L".next"
+        L"dist", L"out", L"target", L"vendor", L"packages", L".gradle", L".next",
+        // Dependency-manager caches: huge (vcpkg alone is ~100k files) and never
+        // part of the developer's own source — walking them froze the AI context
+        // build, which runs on the UI thread on every send.
+        L"vcpkg", L"buildtrees", L"installed", L".conan", L".cargo"
     };
     std::wstring low = Prj_Lower(name);
     for (auto s : skip) if (low == s) return true;

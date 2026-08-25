@@ -3,7 +3,7 @@
 
 # ── Application ──────────────────────────────────────────────────────────────
 APP_NAME = NSBEdit
-UNTITLED = Uten navn
+UNTITLED = Uten navn 
 
 # ── Menus ─────────────────────────────────────────────────────────────────────
 MENU_FILE       = &Filer
@@ -51,7 +51,7 @@ BTN_PREV        = Forrige
 BTN_NEXT        = Neste
 BTN_CLEAR       = Tøm
 BTN_AI          = KI
-TIP_AI          = Spør Ollama om KI.
+TIP_AI          = Spør Ollama KI.
 
 # ── RTF editing ────────────────────────────────────────────────────────────────
 RTF_BOLD        = Fett
@@ -105,7 +105,7 @@ ABOUT_SEC_FTP   = ⚡  FTP og ekstern redigering\n
 ABOUT_DESC_FTP  = •  Lagre direkte til FTP- og SFTP-servere.\n•  Bla gjennom, gi nytt navn og administrer eksterne filer.\n•  Live forhåndsvisning i nettleser via konfigurerbar Web-URL-rot.\n\n
 
 # ── AI ────────────────────────────────────────────────────────────────────────
-AI_WAKING_OLLAMA = Spørger Ollama, vent venligst!
+AI_WAKING_OLLAMA = Spør Ollama, venligst vent!
 AI_THINKING_STATUS = KI tenker... Brukt tid: %s
 MENU_AI_CHECK_MODELS = Kontroller lokale modeller
 AI_MODEL_CHECK_TITLE = Kontroller lokale modeller

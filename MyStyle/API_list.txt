@@ -786,12 +786,19 @@
                                                 ne_profiles.cpp; a `projects` table holds
                                                 id/name/root_path and the active project id
                                                 lives in the settings table (survives
-                                                restart). NeProjects_CollectFiles walks the
+                                                restart). NeProjects_GetActiveId self-heals a
+                                                stale selection: if the active project's root
+                                                no longer exists it clears active_project and
+                                                returns 0. NeProjects_CollectFiles walks the
                                                 root following OS symlinks/junctions (cycle-
                                                 guarded via GetFinalPathNameByHandleW),
-                                                skipping heavy dirs and build-log/scratch
-                                                files; NeProjects_ReadTextFile does a best-
-                                                effort UTF-16/UTF-8/ANSI read. The Project
+                                                skipping heavy dirs — including dependency
+                                                caches vcpkg/buildtrees/installed/.conan/.cargo
+                                                alongside node_modules/vendor/packages — and
+                                                build-log/scratch files; the AI call sites cap
+                                                the walk at 20000 files so a send never freezes
+                                                on a huge tree. NeProjects_ReadTextFile does a
+                                                best-effort UTF-16/UTF-8/ANSI read. The Project
                                                 menu in NSBEdit.cpp adds/removes/selects
                                                 projects (check-tick on the active one).
                                                 A generic `project_docs` table (id/project_id/
