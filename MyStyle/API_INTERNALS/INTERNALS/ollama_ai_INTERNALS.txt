@@ -621,3 +621,25 @@ v2026.08.25.15 - Project-context robustness: cloud "prompt too long", Send freez
     a missing path (and benefits every caller: BuildProjectContext, PlanBigFile,
     the Project menu).
 
+
+v2026.08.26.08 - Query-history navigation both ways + query box auto-focus
+  - QUERY HISTORY (s_aiInputHistory, st->historyIndex/historyDraft): Ai_HistoryBrowse
+    was already bidirectional but the DOWN key was gated on the FIRST line
+    (line<=0), so it never returned down through multi-line entries. Ai_InputSubclassProc
+    now gates by EDGE: VK_UP crosses to the OLDER query only when the caret is on the
+    first line (EM_LINEFROMCHAR(selStart)<=0); VK_DOWN crosses to the NEWER query only
+    when on the last line (EM_LINEFROMCHAR(selEnd) >= EM_LINEFROMCHAR(GetWindowTextLength)),
+    and only while browsing (historyIndex>=0) so a fresh draft is never left on Down.
+    Past the newest entry Down restores st->historyDraft. VK_PRIOR/VK_NEXT (Page Up/Down)
+    step one entry per press regardless of caret line (PageDown gated on historyIndex>=0).
+  - CARET PLACEMENT: Ai_HistorySetInput(hwnd, text, bool caretAtTop=false). Older entry
+    -> caret at BOTTOM (false), newer -> TOP (true), so holding a key keeps moving the
+    same direction through multi-line text. Ai_HistoryBrowse sets caretTop = (direction>0
+    and stepping to an existing newer entry); draft restore uses bottom.
+  - QUERY BOX AUTO-FOCUS: WM_SETFOCUS now SetFocus(GetDlgItem(hwnd, IDC_AI_INPUT)) after
+    Ai_RefreshUi, and Ne_ShowAiWindow's reuse path SetFocus's the input after
+    SetForegroundWindow. So the caret is ready in the query box whenever the AI window
+    gains focus (open/reopen/Alt-Tab/click) without a manual click. (WM_SETFOCUS on the
+    frame only fires when the frame itself gets focus, so clicking the answer pane is
+    unaffected.)
+

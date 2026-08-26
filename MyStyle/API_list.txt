@@ -859,7 +859,12 @@
                                                 control width via EM_SETTARGETDEVICE(NULL,0)
                                                 so there is no sideways scroll bar. Enter
                                                 sends the prompt, Shift+Enter inserts a
-                                                newline, code prompts are nudged into
+                                                newline, Up/Down browse the query history
+                                                (crossing to the older/newer query past the
+                                                first/last line) and Page Up/Down step it one
+                                                query at a time; the query box also takes
+                                                keyboard focus whenever the AI window is
+                                                focused, code prompts are nudged into
                                                 descriptive begin/end code markers when the
                                                 prompt is code-related, and markdown fence
                                                 lines are ignored in that path, and

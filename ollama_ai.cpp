@@ -738,13 +738,15 @@ static int Ai_ButtonIndexById(const AiDialogData* dd, int id)
     return -1;
 }
 
-static void Ai_HistorySetInput(HWND hwnd, const std::wstring& text)
+static void Ai_HistorySetInput(HWND hwnd, const std::wstring& text, bool caretAtTop = false)
 {
     HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
     if (!hInput) return;
     SetWindowTextW(hInput, text.c_str());
-    int len = (int)GetWindowTextLengthW(hInput);
-    SendMessageW(hInput, EM_SETSEL, (WPARAM)len, (LPARAM)len);
+    // Enter an OLDER query from the bottom and a NEWER one from the top, so
+    // holding Up/Down keeps moving in the same direction through the text.
+    int pos = caretAtTop ? 0 : (int)GetWindowTextLengthW(hInput);
+    SendMessageW(hInput, EM_SETSEL, (WPARAM)pos, (LPARAM)pos);
     SendMessageW(hInput, EM_SCROLLCARET, 0, 0);
 }
 
@@ -768,6 +770,7 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
 {
     if (!st || s_aiInputHistory.empty()) return false;
 
+    bool caretTop = false;   // older entry → caret at bottom; newer → top
     if (st->historyIndex < 0) {
         HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
         std::wstring current;
@@ -790,6 +793,7 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
     } else {
         if (st->historyIndex + 1 < (int)s_aiInputHistory.size()) {
             ++st->historyIndex;
+            caretTop = true;
         } else {
             st->historyIndex = -1;
             Ai_HistorySetInput(hwnd, st->historyDraft);
@@ -798,7 +802,7 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
     }
 
     if (st->historyIndex >= 0 && st->historyIndex < (int)s_aiInputHistory.size()) {
-        Ai_HistorySetInput(hwnd, s_aiInputHistory[(size_t)st->historyIndex]);
+        Ai_HistorySetInput(hwnd, s_aiInputHistory[(size_t)st->historyIndex], caretTop);
         return true;
     }
 
@@ -3265,6 +3269,8 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
         DWORD selEnd = 0;
         SendMessageW(hwnd, EM_GETSEL, (WPARAM)&selStart, (LPARAM)&selEnd);
         int line = (int)SendMessageW(hwnd, EM_LINEFROMCHAR, (WPARAM)selStart, 0);
+        // On the first line, Up crosses into the previous (older) query; otherwise
+        // it just moves the caret up a line within the current text.
         if (line <= 0 && Ai_HistoryBrowse((HWND)dwRefData, st, -1)) {
             return 0;
         }
@@ -3273,8 +3279,23 @@ static LRESULT CALLBACK Ai_InputSubclassProc(HWND hwnd, UINT msg, WPARAM wParam,
         DWORD selStart = 0;
         DWORD selEnd = 0;
         SendMessageW(hwnd, EM_GETSEL, (WPARAM)&selStart, (LPARAM)&selEnd);
-        int line = (int)SendMessageW(hwnd, EM_LINEFROMCHAR, (WPARAM)selStart, 0);
-        if (st->historyIndex >= 0 && line <= 0 && Ai_HistoryBrowse((HWND)dwRefData, st, +1)) {
+        int caretLine = (int)SendMessageW(hwnd, EM_LINEFROMCHAR, (WPARAM)selEnd, 0);
+        int lastLine  = (int)SendMessageW(hwnd, EM_LINEFROMCHAR, (WPARAM)GetWindowTextLengthW(hwnd), 0);
+        // On the last line, Down crosses into the next (newer) query — but only
+        // while already browsing history, so a fresh draft is never left on Down.
+        if (st->historyIndex >= 0 && caretLine >= lastLine && Ai_HistoryBrowse((HWND)dwRefData, st, +1)) {
+            return 0;
+        }
+    }
+    // Page Up / Page Down step through the query history one entry at a time,
+    // regardless of where the caret sits in the current text.
+    if (msg == WM_KEYDOWN && wParam == VK_PRIOR && st) {
+        if (Ai_HistoryBrowse((HWND)dwRefData, st, -1)) {
+            return 0;
+        }
+    }
+    if (msg == WM_KEYDOWN && wParam == VK_NEXT && st) {
+        if (st->historyIndex >= 0 && Ai_HistoryBrowse((HWND)dwRefData, st, +1)) {
             return 0;
         }
     }
@@ -5125,6 +5146,10 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         return 0;
     case WM_SETFOCUS:
         Ai_RefreshUi(hwnd);
+        // Put the caret straight in the query box so the user can type or paste
+        // the moment the AI window gets focus, without clicking it first.
+        if (HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT))
+            SetFocus(hInput);
         return 0;
     case WM_MOUSEWHEEL: {
         if (st && st->hAnswerHost && IsWindow(st->hAnswerHost)) {
@@ -5357,6 +5382,8 @@ void Ne_ShowAiWindow(HWND parent)
         Ai_RefreshCloudModelsAsync(s_hwndAiWindow); // refresh cloud model list on reopen
         ShowWindow(s_hwndAiWindow, SW_SHOW);
         SetForegroundWindow(s_hwndAiWindow);
+        if (HWND hInput = GetDlgItem(s_hwndAiWindow, IDC_AI_INPUT))
+            SetFocus(hInput);   // caret ready in the query box on reopen
         return;
     }
 
