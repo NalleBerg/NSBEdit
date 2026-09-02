@@ -50,6 +50,17 @@ Notes
   • The function suppresses redraw while it rewrites formatting to avoid visual
     flicker and selection jumping.
   • The match ranges are treated as half-open intervals [start, end).
+  • The built-in "scroll active range into view" step uses EM_SCROLLCARET after
+    selecting the active range. This is UNRELIABLE on a read-only RichEdit while
+    another control (e.g. an incremental-search edit box) holds the keyboard
+    focus — the caret exists but the control will not scroll. When the caller
+    needs a guaranteed jump to a match while focus lives elsewhere, do not rely
+    on this step: scroll explicitly by line delta instead —
+        LONG target = SendMessageW(hEdit, EM_EXLINEFROMCHAR, 0, charPos);
+        LONG first  = SendMessageW(hEdit, EM_GETFIRSTVISIBLELINE, 0, 0);
+        SendMessageW(hEdit, EM_LINESCROLL, 0, target - first);   // optionally - margin
+    Collapse the caret to the match start first so the highlight colours stay
+    visible (a live selection would override them).
 
 ────────────────────────────────────────────────────────────────────────────────
 void NeHighlight_SetActive(
@@ -110,3 +121,11 @@ user types. The intended flow is:
 This keeps the visible search experience consistent with the rest of NSBEdit:
 the active occurrence is easy to spot, while the remaining matches stay visible
 for mouse-based scanning.
+
+Dead-key input (Nordic/German layouts)
+  An incremental-search EDIT box that re-scans only on EN_CHANGE can miss
+  characters typed via a DEAD KEY (e.g. ^ ` ´ ¨), which only produce a character
+  after the next keystroke composes them. Subclass the search box and also
+  re-scan on WM_CHAR and WM_KEYUP (after DefSubclassProc has processed the
+  message), so whatever ends up left of the caret — including composed dead
+  keys — registers and re-runs the search/jump.

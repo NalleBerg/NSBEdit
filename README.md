@@ -3,7 +3,7 @@
 
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.08.26.08**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.09.02.08**
 
 
 ## Download
@@ -38,7 +38,7 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 - **Spell Check** — Windows built-in `ISpellChecker` COM API (Windows 8+); red squiggles under misspelled words in RTF documents stay aligned while zooming or changing font size; **right-click a squiggled word** for replacement suggestions plus Ignore / Add to Dictionary (click to fix in place); native spell-check dialog (F7) with suggestions listbox, Change / Change All / Ignore / Ignore All / Add to Dictionary; squiggles work identically on new, opened, and session-restored tabs; language submenu shows only installed spell checkers from the user's Windows language list
 - **Insert Date/Time** — F5 (or *Edit → Insert Date/Time*) inserts the current local date and time at the caret using the system locale format; works in both RTF and code tabs
 - **Find / Replace** — Ctrl+F opens the Find/Replace dialog; selected text in Scintilla/RichEdit pre-fills the search box; highlighted Scintilla text is treated like typed search text, with live hit count and first-match selection as you type; search across all open tabs simultaneously with the "All open tabs" checkbox; "Search backwards" checkbox; match counter (e.g. *16 / 3500*); Match case, Whole word, and Regex options; Replace and Replace All (disabled in multi-tab mode); dialog width adapts dynamically to any locale's text lengths
-- **Regex guide** — a floating Help window for regex syntax and examples, with live search-as-you-type, all-match highlighting, a clear button, and translated guide text
+- **Regex guide** — a floating Help window for regex syntax and examples, with live search-as-you-type that jumps to the first match on every keystroke (moving forward and backward as the term narrows or shortens), all-match highlighting, dead-key input support, a clear button, and translated guide text
 - **Status bar** — real-time word, character and line count; Saved/Unsaved indicator; encoding display; fully i18n (all labels localised)
 - Keyboard Shortcuts dialog (`F1`) — 44 shortcuts, bold/colour-coded
 - `Ctrl+W` to close tab / exit (with unsaved-change prompt)

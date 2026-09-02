@@ -133,6 +133,17 @@ API REFERENCE:
         (critical: entry windows are often too small to contain the tooltip table)
       - Tooltip is created on first call, reused on subsequent calls
       - Tooltip is topmost and non-activating (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW)
+      - PITFALL — hosting window must be OWNED by the main window: because this
+        tooltip is a shared TOPMOST window, showing it from a control that lives
+        on a SEPARATE top-level window can drop that window behind the app if the
+        window is UNOWNED (created with hWndParent = NULL). The window does not
+        close — it just falls in the z-order and looks "closed" while the app
+        keeps running; the very first hover after launch may work, then every
+        hover after hides it. Fix: create any secondary/tool window that shows
+        tooltips as OWNED by the main window (pass the parent HWND as hWndParent
+        in CreateWindowExW). An owned window always stays above its owner, so a
+        topmost tooltip can never push it behind the app. WS_EX_APPWINDOW still
+        keeps an owned window in the taskbar.
 
 ================================================================================
 

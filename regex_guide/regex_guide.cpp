@@ -279,6 +279,26 @@ static std::vector<NeHighlightRange> Guide_FindMatches(HWND hView, const std::ws
     return matches;
 }
 
+// Scroll the read-only view so the character at charPos is visible near the top.
+// EM_SCROLLCARET is unreliable while another control (the search box) holds focus,
+// so scroll explicitly by line delta instead.
+static void Guide_ScrollToChar(HWND hView, int charPos)
+{
+    if (!hView) {
+        return;
+    }
+    LONG targetLine  = (LONG)SendMessageW(hView, EM_EXLINEFROMCHAR, 0, (LPARAM)charPos);
+    LONG firstLine   = (LONG)SendMessageW(hView, EM_GETFIRSTVISIBLELINE, 0, 0);
+    LONG desiredTop  = targetLine - 2;   // keep a little context above the match
+    if (desiredTop < 0) {
+        desiredTop = 0;
+    }
+    LONG delta = desiredTop - firstLine;
+    if (delta != 0) {
+        SendMessageW(hView, EM_LINESCROLL, 0, delta);
+    }
+}
+
 static void Guide_UpdateSearch(GuideState* st)
 {
     if (!st || !st->hSearch || !st->hView) {
@@ -290,7 +310,7 @@ static void Guide_UpdateSearch(GuideState* st)
         NeHighlight_Clear(st->hView, st->searchHighlight);
         CHARRANGE sel = { 0, 0 };
         SendMessageW(st->hView, EM_EXSETSEL, 0, (LPARAM)&sel);
-        SendMessageW(st->hView, EM_SCROLLCARET, 0, 0);
+        Guide_ScrollToChar(st->hView, 0);
         return;
     }
 
@@ -299,12 +319,18 @@ static void Guide_UpdateSearch(GuideState* st)
         NeHighlight_Clear(st->hView, st->searchHighlight);
         CHARRANGE sel = { 0, 0 };
         SendMessageW(st->hView, EM_EXSETSEL, 0, (LPARAM)&sel);
-        SendMessageW(st->hView, EM_SCROLLCARET, 0, 0);
         return;
     }
 
     NeHighlight_SetAll(st->hView, matches, 0,
         RGB(30, 30, 30), NE_HL_BG_INACTIVE, NE_HL_BG_INACTIVE, st->searchHighlight);
+
+    // Jump to the first match. As letters arrive this can move either forward
+    // or backward, so the view follows the top-most match at every keystroke.
+    // Collapse the caret to the match start so the highlight colour stays visible.
+    CHARRANGE sel = { matches[0].start, matches[0].start };
+    SendMessageW(st->hView, EM_EXSETSEL, 0, (LPARAM)&sel);
+    Guide_ScrollToChar(st->hView, matches[0].start);
 }
 static void Guide_AppendStyledLine(HWND hView, LONG& pos, std::wstring& plainText,
     const wchar_t* text, const TextStyle& style, bool addBlankLine = false)
@@ -679,6 +705,17 @@ static LRESULT CALLBACK Guide_SearchSubclass(HWND hwnd, UINT msg, WPARAM wParam,
             return 0;
         }
     }
+
+    // Dead keys (e.g. ^ on Nordic layouts) only produce a character after the
+    // next keystroke composes it. Let the edit process the message first, then
+    // re-scan the box so whatever now sits left of the caret registers and the
+    // view jumps. WM_KEYUP covers the composing keystroke that finalises it.
+    if (msg == WM_CHAR || msg == WM_KEYUP) {
+        LRESULT r = DefSubclassProc(hwnd, msg, wParam, lParam);
+        Guide_UpdateSearch(st);
+        return r;
+    }
+
     return DefSubclassProc(hwnd, msg, wParam, lParam);
 }
 
@@ -934,10 +971,13 @@ HWND RegexGuide_Show(HWND parent, bool postQuitOnDestroy,
     if (x < 20) x = 20;
     if (y < 20) y = 20;
 
+    // Own the guide by its parent so a topmost tooltip (owned by the main window)
+    // can never push the guide behind the app and make it look "closed".
+    HWND owner = (parent && IsWindow(parent)) ? parent : NULL;
     HWND hwnd = CreateWindowExW(WS_EX_APPWINDOW | WS_EX_WINDOWEDGE, L"NsbRegexGuideClass",
         title ? title : L"Regex Reference Guide",
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
-        x, y, winW, winH, NULL, NULL, hi, &params);
+        x, y, winW, winH, owner, NULL, hi, &params);
     if (!hwnd) {
         return NULL;
     }
