@@ -656,3 +656,6 @@ MENU_REGEX_GUIDE  = &Οδηγός Regex
 BTN_CONTINUE      = Συνέχεια
 SCF_RELOAD_FILE   = Επαναφόρτωση αρχείου
 SCD_RELOAD_FILE   = Επαναφόρτωση του τρέχοντος αρχείου από τον δίσκο ή το FTP, απορρίπτοντας τις τοπικές αλλαγές
+
+# ── Added for completeness ──
+CREDITS_CMARK_GFM  = Το cmark-gfm είναι ένας εκτεταμένος αναλυτής CommonMark με υποστήριξη GitHub Flavored Markdown. Το NSBEdit μεταφέρει τον renderer Markdown της προβολής AI στο cmark-gfm, ώστε η προβολή απαντήσεων να σταματήσει να εφευρίσκει κανόνες markdown στο RichEdit. Αδειοδοτείται υπό την άδεια BSD 2-Clause.\n\n

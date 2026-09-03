@@ -20,6 +20,18 @@
 
   ollama_ai.h
     void Ne_ShowAiWindow(HWND parent);
+    bool NsbAi_StepZoomIfActive(HWND fromHwnd, int dir);
+      Zoom the AI window's query + answer RichEdit panes TOGETHER (same level),
+      via EM_SETZOOM(pct,100) on both, when fromHwnd's GA_ROOT is the AI window.
+      dir: +1 in, -1 out, 0 reset. Returns true when the AI window handled it.
+      The app has ONE message pump (the AI window is a secondary top-level window
+      on the same thread), so Ctrl +/-/0 and Ctrl+mouse-wheel are intercepted in
+      that main GetMessage loop and routed here FIRST; if this returns false the
+      editor zoom runs instead. Level persists in the "ai_zoom" int setting and is
+      re-applied on window create (Ai_ApplyZoom). Defined at GLOBAL scope even
+      though the state lives in the file's anonymous namespace — an anonymous-
+      namespace symbol is still reachable from a later global function in the same
+      translation unit, and global linkage is required for NSBEdit.cpp to call it.
 
   ne_ai_bootstrap.h
     struct NeAiBootstrapConfig

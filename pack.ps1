@@ -62,7 +62,10 @@ $zipDir = "$PSScriptRoot\zip"
 if (-not (Test-Path $zipDir)) { New-Item -ItemType Directory -Path $zipDir | Out-Null }
 $zipPath = "$zipDir\$zipName"
 
-Get-ChildItem -Path $zipDir -Directory | Remove-Item -Recurse -Force
+# Remove only the previous unzipped install folder(s) (named NSBEdit-<timestamp>)
+# so the loose install folder is refreshed each build. Any other folder you keep
+# in .\zip (e.g. Milestones) is left untouched.
+Get-ChildItem -Path $zipDir -Directory -Filter 'NSBEdit-*' | Remove-Item -Recurse -Force
 Copy-Item $stagingDir $zipDir -Recurse -Force
 Compress-Archive -Path (Join-Path $zipDir $folderName) -DestinationPath $zipPath -Force
 Remove-Item $stagingRoot -Recurse -Force

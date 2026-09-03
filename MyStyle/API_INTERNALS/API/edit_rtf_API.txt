@@ -502,3 +502,31 @@
   All 27 keys above are also present in locale/en_GB.txt.
 
 ================================================================================
+CLICKABLE URLs (auto-detect + Ctrl+Click open + localized tooltip)
+================================================================================
+
+  Plain typed/pasted/loaded URLs become live links only if you enable
+  auto-detection on the RichEdit:  SendMessage(hEdit, EM_AUTOURLDETECT, TRUE, 0)
+  at control creation (alongside EM_SETEVENTMASK ... | ENM_LINK). Without it only
+  manually inserted hyperlink FIELDS are live; a bare "https://..." does nothing.
+  Enabling it makes such runs CFE_LINK, so the hand cursor, EN_LINK and the tip
+  all start working.
+
+  Open on Ctrl+Click (not plain click, so text stays selectable):
+    - In the editor subclass WM_LBUTTONDOWN, if (GetKeyState(VK_CONTROL)<0) and the
+      cursor over the click is IDC_HAND, resolve the URL and ShellExecute it.
+    - Resolve in two steps: first parse an RTF hyperlink FIELD around the char
+      (EM_STREAMOUT SF_RTF|SFF_SELECTION of a small range, scrape the field), then
+      FALL BACK to the whitespace-delimited token around the char if it looks like
+      a URL (http/https/ftp/www/mailto). Auto-detected URLs have NO field, so the
+      token fallback is what makes them open.
+    - Prepend "https://" to a bare "www." target before ShellExecute, else it is
+      treated as a file and fails.
+
+  Tooltip = YOUR tooltip, and localized: on WM_MOUSEMOVE, call the base WNDPROC
+  first so RichEdit sets IDC_HAND over a link, then if GetCursor()==hand show
+  ShowMultilingualTooltip with two lines { url, Ls("LINK_TIP_CTRL") }. Keep the
+  Ctrl+Click hint in the locale (translate it in ALL locales). RichEdit shows no
+  built-in link tooltip, so there is no competing popup.
+
+================================================================================

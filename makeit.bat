@@ -156,7 +156,7 @@ echo.
 echo [STEP 6/6] Package  --  zip release  +  prune to 3 zips
 powershell -NoProfile -File ".\pack.ps1"
 @if !ERRORLEVEL! neq 0 ( echo [ERROR] pack.ps1 FAILED & exit /b 1 )
-powershell -NoProfile -Command "Get-ChildItem zip\*.zip | Sort-Object LastWriteTime -Descending | Select-Object -Skip 3 | Remove-Item -Force; Get-ChildItem zip\*.zip | Sort-Object LastWriteTime -Descending | ForEach-Object { Write-Output \"  kept: $($_.Name)\" }"
+powershell -NoProfile -Command "Get-ChildItem zip\*.zip -File | Sort-Object LastWriteTime -Descending | Select-Object -Skip 3 | Remove-Item -Force; Get-ChildItem zip\*.zip -File | Sort-Object LastWriteTime -Descending | ForEach-Object { Write-Output \"  kept: $($_.Name)\" }"
 echo [STEP_DONE 6/6]
 echo.
 

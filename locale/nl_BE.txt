@@ -645,3 +645,7 @@ MSG_COMPARE_SAME          = De twee tabbladen hebben identieke inhoud.
 MSG_COMPARE_SELECT_TWO    = Open ten minste twee tabbladen om te vergelijken.
 MSG_COMPARE_TOO_LARGE     = Bestanden zijn te groot om te vergelijken (maximaal 3 000 regels elk).
 
+# ── Added for completeness ──
+REGEX_GUIDE_SEARCH = Zoek in de gids
+REGEX_GUIDE_CLEAR = Zoekopdracht wissen
+

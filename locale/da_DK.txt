@@ -645,3 +645,6 @@ AI_LAST_QUERY_USED = Sidste forespørgsel brugte:
 AI_WAIT_TITLE = Vent venligst
 SCF_RELOAD_FILE   = Genindlæs fil
 SCD_RELOAD_FILE   = Genindlæs den aktuelle fil fra disk eller FTP og kassér lokale ændringer
+
+# ── Added for completeness ──
+CREDITS_CMARK_GFM  = cmark-gfm er en udvidet CommonMark-parser med understøttelse af GitHub Flavored Markdown. NSBEdit flytter Markdown-gengiveren i AI-visningen til cmark-gfm, så svarvisningen kan holde op med at opfinde markdown-regler i RichEdit. Licenseret under BSD 2-Clause-licensen.\n\n

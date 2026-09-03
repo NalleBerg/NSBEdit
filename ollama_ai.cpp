@@ -438,7 +438,27 @@ struct AiModelMenuItem {
 
 static HWND s_hwndAiWindow = NULL;
 static HFONT s_hAiMenuFont = NULL;
+
+// ── AI window zoom (query + answer panes together) ───────────────────────────
+static const int s_aiZoomSteps[] = { 75, 100, 125, 150, 175, 200, 250, 300 };
+static int s_aiZoom = 0;   // 0 = not loaded from settings yet; else a step %
+
+// Apply the current zoom % to both RichEdit panes so query and answer match.
+static void Ai_ApplyZoom(AiWindowState* st)
+{
+    if (!st) return;
+    if (s_aiZoom <= 0) {
+        NeProfiles_GetIntSetting("ai_zoom", 100, s_aiZoom);
+        if (s_aiZoom < 50 || s_aiZoom > 400) s_aiZoom = 100;
+    }
+    if (st->hLog)   SendMessageW(st->hLog,   EM_SETZOOM, (WPARAM)s_aiZoom, 100);
+    if (st->hInput) SendMessageW(st->hInput, EM_SETZOOM, (WPARAM)s_aiZoom, 100);
+    if (st->hLogSb)   { msb_notify_content_changed(st->hLogSb);   msb_sync(st->hLogSb); }
+    if (st->hInputSb) { msb_notify_content_changed(st->hInputSb); msb_sync(st->hInputSb); }
+}
+
 static std::vector<AiMenuItemData*> s_aiMenuItems;
+
 static std::vector<AiModelMenuItem> s_aiModelMenuItems;
 static UINT s_aiNextModelMenuId = IDM_AI_MODEL_DEFAULT;
 static std::vector<std::wstring> s_aiInputHistory;
@@ -4879,6 +4899,8 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         st->hCloseBtn = hClose;
         if (st->hStopBtn) EnableWindow(st->hStopBtn, FALSE);
 
+        Ai_ApplyZoom(st);   // restore the saved query/answer zoom level
+
         Ai_RefreshUi(hwnd);
         Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_WINDOW_OPENED"));
         // Load any persisted conversation history and render it. Accumulated
@@ -5372,6 +5394,32 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
 }
 
 } // namespace
+
+// Zoom the AI window's query + answer panes together when it (or one of its
+// controls) is the message target. dir: +1 in, -1 out, 0 reset. Returns true
+// when the AI window handled it. Defined at global scope (external linkage) so
+// the main message loop in NSBEdit.cpp can route Ctrl +/-/0 and Ctrl+wheel here;
+// it still sees the anonymous-namespace state above within this translation unit.
+bool NsbAi_StepZoomIfActive(HWND fromHwnd, int dir)
+{
+    if (!s_hwndAiWindow || !IsWindow(s_hwndAiWindow)) return false;
+    if (!fromHwnd || GetAncestor(fromHwnd, GA_ROOT) != s_hwndAiWindow) return false;
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(s_hwndAiWindow, GWLP_USERDATA);
+    if (!st) return false;
+
+    const int n = (int)(sizeof(s_aiZoomSteps) / sizeof(s_aiZoomSteps[0]));
+    if (s_aiZoom <= 0) { NeProfiles_GetIntSetting("ai_zoom", 100, s_aiZoom); }
+    int idx = 1;   // default = 100%
+    for (int i = 0; i < n; ++i) if (s_aiZoomSteps[i] == s_aiZoom) { idx = i; break; }
+    if      (dir > 0 && idx < n - 1) ++idx;
+    else if (dir < 0 && idx > 0)     --idx;
+    else if (dir == 0)               idx = 1;
+    s_aiZoom = s_aiZoomSteps[idx];
+
+    Ai_ApplyZoom(st);
+    NeProfiles_SetIntSetting("ai_zoom", s_aiZoom);
+    return true;
+}
 
 void Ne_ShowAiWindow(HWND parent)
 {

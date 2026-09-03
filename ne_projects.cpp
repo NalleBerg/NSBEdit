@@ -221,34 +221,59 @@ static std::wstring Prj_Lower(std::wstring s)
     return s;
 }
 
+// Returns false only for files that are almost certainly BINARY (by extension).
+// Everything else is treated as candidate text, so the AI can search whatever is
+// in the workspace — config files, dotfiles, .manifest, extensionless files, etc.
+// A final NUL-byte content check in NeProjects_ReadTextFile rejects any binary
+// that slips through with an unknown or missing extension.
 static bool Prj_IsTextFile(const wchar_t* name)
 {
-    // Bare build files with no extension.
+    std::wstring low = Prj_Lower(name);
+
+    // Known bare build files (kept explicit; they pass the block-list anyway).
     static const wchar_t* bare[] = {
         L"makefile", L"dockerfile", L"cmakelists.txt", L"rakefile", L"gemfile"
     };
-    std::wstring low = Prj_Lower(name);
     for (auto b : bare) if (low == b) return true;
 
     size_t dot = low.find_last_of(L'.');
-    if (dot == std::wstring::npos) return false;
+    if (dot == std::wstring::npos) return true;   // no extension → treat as text
     std::wstring ext = low.substr(dot + 1);
-    static const wchar_t* exts[] = {
-        L"c", L"cc", L"cpp", L"cxx", L"h", L"hh", L"hpp", L"hxx", L"inl",
-        L"cs", L"java", L"kt", L"kts", L"go", L"rs", L"swift", L"m", L"mm",
-        L"js", L"jsx", L"ts", L"tsx", L"mjs", L"cjs", L"vue", L"svelte",
-        L"py", L"rb", L"php", L"pl", L"pm", L"lua", L"sh", L"bash", L"zsh",
-        L"bat", L"cmd", L"ps1", L"psm1",
-        L"html", L"htm", L"css", L"scss", L"sass", L"less",
-        L"xml", L"json", L"jsonc", L"yaml", L"yml", L"toml", L"ini", L"cfg",
-        L"conf", L"properties", L"env",
-        L"md", L"markdown", L"txt", L"rst", L"tex",
-        L"sql", L"cmake", L"mk", L"gradle", L"vb", L"fs", L"fsx",
-        L"r", L"jl", L"dart", L"scala", L"groovy", L"clj", L"ex", L"exs",
-        L"gd", L"nim", L"zig", L"asm", L"s", L"rc"
+    static const wchar_t* binExt[] = {
+        // images
+        L"png", L"jpg", L"jpeg", L"gif", L"bmp", L"ico", L"cur", L"ani",
+        L"tif", L"tiff", L"webp", L"psd", L"xcf", L"pbm", L"pgm", L"ppm",
+        L"pnm", L"tga", L"heic", L"heif", L"jxl", L"avif", L"dds", L"svgz",
+        // audio
+        L"mp3", L"wav", L"ogg", L"oga", L"flac", L"aac", L"m4a", L"wma",
+        L"opus", L"mid", L"midi",
+        // video
+        L"mp4", L"m4v", L"avi", L"mov", L"mkv", L"webm", L"wmv", L"flv",
+        L"3gp", L"mpg", L"mpeg",
+        // archives
+        L"zip", L"gz", L"tgz", L"tar", L"7z", L"rar", L"bz2", L"xz", L"zst",
+        L"lz", L"lzma", L"cab", L"arj",
+        // executables / objects / libraries
+        L"exe", L"dll", L"so", L"dylib", L"o", L"obj", L"a", L"lib", L"res",
+        L"pdb", L"ilk", L"exp", L"bin", L"class", L"pyc", L"pyo", L"pyd",
+        L"wasm", L"elf", L"ko", L"ncb", L"sdf", L"suo",
+        // installers / disk images
+        L"msi", L"msix", L"appx", L"deb", L"rpm", L"dmg", L"pkg",
+        L"iso", L"img", L"vhd", L"vhdx",
+        // fonts
+        L"ttf", L"otf", L"ttc", L"woff", L"woff2", L"eot",
+        // binary documents
+        L"pdf", L"doc", L"docx", L"xls", L"xlsx", L"ppt", L"pptx",
+        L"odt", L"ods", L"odp",
+        // databases
+        L"db", L"sqlite", L"sqlite3", L"mdb", L"accdb",
+        // binary certificates / keystores
+        L"der", L"p12", L"pfx", L"jks", L"keystore",
+        // git / vcs binary
+        L"pack", L"idx"
     };
-    for (auto e : exts) if (ext == e) return true;
-    return false;
+    for (auto e : binExt) if (ext == e) return false;
+    return true;
 }
 
 static bool Prj_SkipDir(const wchar_t* name)
@@ -384,6 +409,9 @@ bool NeProjects_ReadTextFile(const std::wstring& fullPath, std::wstring& out, si
         out.assign(w, (got - 2) / 2);
         return true;
     }
+    // Binary guard: a NUL byte in a non-UTF-16 stream means this is not text.
+    // Catches binaries that reached here with an unknown or missing extension.
+    if (buf.find('\0') != std::string::npos) return false;
     // UTF-8 (strip BOM if present)
     size_t off = 0;
     if (got >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB &&

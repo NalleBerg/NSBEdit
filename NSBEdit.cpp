@@ -2053,6 +2053,11 @@ static void Ne_InstallWrapSubclass(HWND hEdit)
     // leaving the doc showing "Saved" and no misspelling squiggles.
     SendMessageW(hEdit, EM_SETEVENTMASK, 0,
                  ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
+    // Auto-detect plain URLs (typed, pasted, or loaded) so they become clickable
+    // links: the hand cursor + our localized Ctrl+Click tooltip + browser open all
+    // hang off the resulting CFE_LINK runs. Without this only manually inserted
+    // hyperlink fields were live.
+    SendMessageW(hEdit, EM_AUTOURLDETECT, TRUE, 0);
 }
 
 // ── Scintilla wrap indicator: draw ↵ at the end of each wrapped visual line ──
@@ -8442,6 +8447,68 @@ static std::wstring Ne_ExtractLinkUrlAt(HWND hEdit, LONG charIdx)
     return Ne_ParseHyperlinkFromRtf(rtf);
 }
 
+// Fallback for auto-detected URLs (EM_AUTOURLDETECT), which carry no RTF hyperlink
+// field: return the whitespace-delimited token around charIdx when it looks like a
+// URL, with trailing sentence punctuation trimmed.
+static std::wstring Ne_UrlTokenAt(HWND hEdit, LONG charIdx)
+{
+    int docLen = GetWindowTextLengthW(hEdit);
+    if (docLen <= 0 || charIdx < 0) return L"";
+    LONG lo = std::max(0L, charIdx - 1024);
+    LONG hi = std::min((LONG)docLen, charIdx + 1024);
+    if (hi <= lo) return L"";
+    std::wstring buf((size_t)(hi - lo) + 1, L'\0');
+    TEXTRANGEW tr = {};
+    tr.chrg.cpMin = lo; tr.chrg.cpMax = hi; tr.lpstrText = &buf[0];
+    SendMessageW(hEdit, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
+    buf.resize(wcslen(buf.c_str()));
+    if (buf.empty()) return L"";
+
+    auto isBreak = [](wchar_t c) {
+        return c == L' ' || c == L'\t' || c == L'\r' || c == L'\n' ||
+               c == L'"' || c == L'<'  || c == L'>'  || c == L'\0';
+    };
+    size_t k = (size_t)std::min((LONG)buf.size() - 1, std::max(0L, charIdx - lo));
+    if (isBreak(buf[k])) return L"";
+    size_t start = k, end = k;
+    while (start > 0 && !isBreak(buf[start - 1])) --start;
+    while (end + 1 < buf.size() && !isBreak(buf[end + 1])) ++end;
+    std::wstring tok = buf.substr(start, end - start + 1);
+    while (!tok.empty()) {
+        wchar_t c = tok.back();
+        if (c == L'.' || c == L',' || c == L';' || c == L':' || c == L')' ||
+            c == L']' || c == L'}' || c == L'!' || c == L'?' || c == L'\'')
+            tok.pop_back();
+        else break;
+    }
+    std::wstring low = tok;
+    for (auto& c : low) c = (wchar_t)towlower(c);
+    if (low.rfind(L"http://", 0) == 0 || low.rfind(L"https://", 0) == 0 ||
+        low.rfind(L"ftp://", 0) == 0  || low.rfind(L"www.", 0) == 0 ||
+        low.rfind(L"mailto:", 0) == 0)
+        return tok;
+    return L"";
+}
+
+// URL under charIdx: RTF hyperlink field first, then an auto-detected URL token.
+static std::wstring Ne_ResolveUrlAt(HWND hEdit, LONG charIdx)
+{
+    std::wstring url = Ne_ExtractLinkUrlAt(hEdit, charIdx);
+    if (url.empty()) url = Ne_UrlTokenAt(hEdit, charIdx);
+    return url;
+}
+
+// Open a URL in the default browser, prepending a scheme for bare www. links so
+// ShellExecute treats them as web addresses rather than files.
+static void Ne_OpenUrlInBrowser(const std::wstring& url)
+{
+    if (url.empty()) return;
+    std::wstring u = url, low = url;
+    for (auto& c : low) c = (wchar_t)towlower(c);
+    if (low.rfind(L"www.", 0) == 0) u = L"https://" + u;
+    ShellExecuteW(NULL, L"open", u.c_str(), NULL, NULL, SW_SHOWNORMAL);
+}
+
 // Custom message posted by the WM_CHAR '\r' handler to clear inherited HR paragraph
 // format AFTER RichEdit has fully committed the paragraph split.  EM_SETPARAFORMAT
 // called mid-WM_CHAR gets overwritten by RichEdit's internal state machine; calling it
@@ -8477,7 +8544,7 @@ static LRESULT CALLBACK Ne_EditCaretProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
             // Cursor just entered a link — extract URL and show two-line tooltip.
             POINT ptClient = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             LRESULT idx = SendMessageW(hwnd, EM_CHARFROMPOS, 0, (LPARAM)&ptClient);
-            std::wstring url = Ne_ExtractLinkUrlAt(hwnd, (LONG)idx);
+            std::wstring url = Ne_ResolveUrlAt(hwnd, (LONG)idx);
             POINT ptScreen; GetCursorPos(&ptScreen);
             std::vector<TooltipEntry> tips = {
                 { L"", url.empty() ? std::wstring(L"") : url },
@@ -8499,10 +8566,10 @@ static LRESULT CALLBACK Ne_EditCaretProc(HWND hwnd, UINT msg, WPARAM wParam, LPA
         if (GetCursor() == s_hHandC) {
             POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             LRESULT idx = SendMessageW(hwnd, EM_CHARFROMPOS, 0, (LPARAM)&pt);
-            std::wstring url = Ne_ExtractLinkUrlAt(hwnd, (LONG)idx);
+            std::wstring url = Ne_ResolveUrlAt(hwnd, (LONG)idx);
             if (!url.empty()) {
                 HideTooltip();
-                ShellExecuteW(NULL, L"open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+                Ne_OpenUrlInBrowser(url);
                 return 0;
             }
         }
@@ -15124,7 +15191,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             // Use RTF stream to get the real URL from the field instruction.
             if (el->msg == WM_LBUTTONDOWN && (GetKeyState(VK_CONTROL) & 0x8000)) {
                 HideTooltip();
-                std::wstring url = Ne_ExtractLinkUrlAt(nh->hwndFrom,
+                std::wstring url = Ne_ResolveUrlAt(nh->hwndFrom,
                                        (el->chrg.cpMin + el->chrg.cpMax) / 2);
                 if (url.empty()) {
                     // Fall back: try display text in case it IS the URL
@@ -15139,7 +15206,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     }
                 }
                 if (!url.empty())
-                    ShellExecuteW(NULL, L"open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+                    Ne_OpenUrlInBrowser(url);
                 return 1;
             }
             return 0;
@@ -15880,7 +15947,13 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // Ne_CheckExternalFileChangeOnFocus against spurious EN_SETFOCUS
         // notifications that arrive while another app (e.g. Opera) is active.
         s_appIsActive = (wParam != 0);
-        if (!s_appIsActive) s_deactivatedAt = GetTickCount();
+        if (!s_appIsActive) {
+            s_deactivatedAt = GetTickCount();
+            // Autosave the session the instant we lose focus. Switching away to
+            // run makeit.bat (which taskkill /F's us — bypassing the WM_CLOSE
+            // save) would otherwise lose edits newer than the last 10 s tick.
+            Ne_SessionSave(hwnd);
+        }
         return DefWindowProcW(hwnd, WM_ACTIVATEAPP, wParam, lParam);
     case WM_NCACTIVATE: {
         // DefWindowProc re-paints the NC area on activation changes; re-fill
@@ -16300,21 +16373,26 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
             }
             if (msg.wParam == 'F') { SendMessageW(s_hwndMain, WM_COMMAND, IDC_NE_FIND,      0); continue; }
             // Ctrl++ / Ctrl+- / Ctrl+0 — zoom in/out/reset (numpad and regular keys).
+            // The AI window zooms its own panes when it is the active window.
             if (msg.wParam == VK_ADD || msg.wParam == VK_OEM_PLUS) {
-                Ne_StepZoom(s_hwndMain, +1); continue;
+                if (!NsbAi_StepZoomIfActive(msg.hwnd, +1)) Ne_StepZoom(s_hwndMain, +1);
+                continue;
             }
             if (msg.wParam == VK_SUBTRACT || msg.wParam == VK_OEM_MINUS) {
-                Ne_StepZoom(s_hwndMain, -1); continue;
+                if (!NsbAi_StepZoomIfActive(msg.hwnd, -1)) Ne_StepZoom(s_hwndMain, -1);
+                continue;
             }
             if (msg.wParam == '0' || msg.wParam == VK_NUMPAD0) {
-                Ne_StepZoom(s_hwndMain, 0); continue;
+                if (!NsbAi_StepZoomIfActive(msg.hwnd, 0)) Ne_StepZoom(s_hwndMain, 0);
+                continue;
             }
         }
-        // Ctrl+WheelScroll — intercept for both RTF and Scintilla tabs.
+        // Ctrl+WheelScroll — intercept for the AI window, then RTF and Scintilla tabs.
         if (msg.message == WM_MOUSEWHEEL && (GET_KEYSTATE_WPARAM(msg.wParam) & MK_CONTROL)) {
+            int delta = GET_WHEEL_DELTA_WPARAM(msg.wParam);
+            if (NsbAi_StepZoomIfActive(msg.hwnd, delta > 0 ? +1 : -1)) continue;
             NeTabDoc* wdoc = NeTabs_GetActiveDoc(s_hwndMain);
             if (wdoc && (wdoc->hSci || wdoc->hEdit)) {
-                int delta = GET_WHEEL_DELTA_WPARAM(msg.wParam);
                 Ne_StepZoom(s_hwndMain, delta > 0 ? +1 : -1);
                 continue; // consume — don't pass to native RichEdit/Scintilla zoom handler
             }

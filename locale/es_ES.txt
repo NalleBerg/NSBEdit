@@ -307,7 +307,7 @@ MSG_REGEX_ERR       = Invalid regular expression.
 DLG_LINK        = Insert Hyperlink
 DLG_LINK_URL    = URL:
 DLG_LINK_TEXT   = Display text:
-LINK_TIP_CTRL   = [Ctrl]+Click to open in browser
+LINK_TIP_CTRL   = [Ctrl]+clic para abrir en el navegador
 MSG_LINK_BAD_URL = Please enter a valid URL.
 
 A URL must begin with a recognised scheme such as:

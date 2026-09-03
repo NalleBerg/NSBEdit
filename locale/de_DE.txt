@@ -648,3 +648,6 @@ MSG_COMPARE_TOO_LARGE     = Dateien zu groß für den Vergleich (max. 3 000 Zeil
 MENU_REGEX_GUIDE  = &Regex-Leitfaden
 SCF_RELOAD_FILE   = Datei neu laden
 SCD_RELOAD_FILE   = Aktuelle Datei von Datenträger oder FTP neu laden und lokale Änderungen verwerfen
+
+# ── Added for completeness ──
+CREDITS_CMARK_GFM  = cmark-gfm ist ein erweiterter CommonMark-Parser mit Unterstützung für GitHub Flavored Markdown. NSBEdit stellt den Markdown-Renderer der KI-Ansicht auf cmark-gfm um, damit die Antwortansicht keine Markdown-Regeln mehr in RichEdit erfindet. Lizenziert unter der BSD-2-Clause-Lizenz.\n\n
