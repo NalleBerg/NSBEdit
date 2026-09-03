@@ -253,6 +253,8 @@ enum class NeEncoding {
 
 // ── Timer IDs (main window) ───────────────────────────────────────────────────
 #define NE_TIMER_SESSION        10    // 10-second autosave of session state
+#define NE_TIMER_SESSION_SAVE   13    // debounced session save ~1.2s after edits stop
+#define NE_COPYDATA_OPENFILE  0x4E534201   // WM_COPYDATA tag: forward a file to open
 
 // ── Internal state ─────────────────────────────────────────────────────────────
 // ── Per-tab custom scrollbar handles (keyed by hEdit / hSci HWND) ────────────
@@ -605,6 +607,10 @@ static NeAiBootstrapConfig g_aiBootstrap;
 // that opened a command-line file while a saved multi-tab session existed does
 // NOT own it, so autosave/close must not overwrite (and destroy) that session.
 static bool s_sessionOwned = false;
+// Set during the close/exit teardown: once the final WM_CLOSE snapshot is taken,
+// tabs are destroyed one-by-one (with modal save prompts that pump messages), so
+// a stray autosave timer must NOT run and save a half-torn-down (fewer) tab set.
+static bool s_sessionFrozen = false;
 
 static void Ne_SetupScintillaStyle(HWND hSci, bool forceLight = false)
 {
@@ -9054,6 +9060,35 @@ static void Ne_Open(HWND hwnd)
     if (hEdit) SetFocus(hEdit);
 }
 
+// Open a file MERGED into the current tab set: activate it if already open,
+// otherwise add it as a new tab (reusing an empty untitled tab when present).
+// Shared by the command-line launch and the WM_COPYDATA forward from a second
+// instance, so a file-launch never replaces or hides the existing session.
+static void Ne_OpenFileMerged(HWND hwnd, const std::wstring& path)
+{
+    if (path.empty()) return;
+    int n = NeTabs_GetCount(hwnd);
+    for (int i = 0; i < n; ++i) {
+        NeTabDoc* d = NeTabs_GetDocByIndex(hwnd, i);
+        if (d && !d->path.empty() && _wcsicmp(d->path.c_str(), path.c_str()) == 0) {
+            NeTabs_SetActive(hwnd, i);
+            Ne_UpdateToolbarMode(hwnd);
+            HWND he = NeTabs_GetActiveEdit(hwnd);
+            if (he) SetFocus(he);
+            return;
+        }
+    }
+    NeTabDoc* existingDoc = NeTabs_GetActiveDoc(hwnd);
+    bool reuseTab = existingDoc && existingDoc->path.empty() &&
+                    Ne_TabIsEmpty(existingDoc) &&
+                    existingDoc->hEdit && !existingDoc->hSci;
+    if (!reuseTab) NeTabs_AddUntitled(hwnd);
+    if (Ne_LoadPathIntoEditor(hwnd, path)) Ne_MruAdd(path);
+    Ne_UpdateToolbarMode(hwnd);
+    HWND he = NeTabs_GetActiveEdit(hwnd);
+    if (he) SetFocus(he);
+}
+
 static bool Ne_SaveToPath(HWND hwnd, const std::wstring& path)
 {
     NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
@@ -9462,6 +9497,9 @@ static bool Ne_PromptSaveIfModified(HWND hwnd)
 static void Ne_SessionSave(HWND hwnd)
 {
     if (!NeProfiles_IsInstalled()) return;
+    // During close teardown the tab set is being destroyed — never save a
+    // partial session over the full snapshot taken at WM_CLOSE.
+    if (s_sessionFrozen) return;
 
     // Do NOT overwrite the saved session unless this process owns it (it either
     // restored the session at startup, or there was none). Prevents a launch
@@ -9838,21 +9876,26 @@ static void Ne_SessionRestore(HWND hwnd)
             } else {
                 // Tab was clean — load from disk.
                 if (!Ne_LoadPathIntoEditor(hwnd, t.localPath)) {
-                    NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"),
-                                              NeBtnTone::Red, IDI_ERROR, 0 };
-                    Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SESSION_RESTORE"),
-                                        Ls(L"MSG_OPEN_ERR"), &btn, 1, IDOK);
-                    closeFailedTab();
-                    continue;
-                }
-                // Crash / data-loss guard: the file loaded as EMPTY but the
-                // session DB still holds a non-empty autosave copy.  That means
-                // the on-disk file was truncated or the read glitched — the exact
-                // failure that previously let an empty buffer be saved back over
-                // real data.  Recover the last-known content from the DB;
-                // loadContent() marks the tab modified so it can never be
-                // silently written back empty.
-                {
+                    // Disk read failed. The crash guard must NOT drop the file:
+                    // if the DB holds a cached copy, keep the tab as a placeholder
+                    // with that content (marked modified). Only when there is
+                    // nothing cached to fall back on do we report and close.
+                    if (!t.content.empty()) {
+                        loadContent(t);
+                    } else {
+                        NeDialogButtonSpec btn = { IDOK, Ls(L"BTN_OK"),
+                                                  NeBtnTone::Red, IDI_ERROR, 0 };
+                        Ne_ShowChoiceDialog(hwnd, Ls(L"DLG_SESSION_RESTORE"),
+                                            Ls(L"MSG_OPEN_ERR"), &btn, 1, IDOK);
+                        closeFailedTab();
+                        continue;
+                    }
+                } else {
+                    // Loaded from disk OK. Crash / data-loss guard: the file
+                    // loaded as EMPTY but the session DB still holds a non-empty
+                    // autosave copy (truncated/glitched read). Recover the
+                    // last-known content; loadContent() marks the tab modified so
+                    // it can never be silently written back empty.
                     NeTabDoc* docL = NeTabs_GetActiveDoc(hwnd);
                     if (docL && Ne_TabIsEmpty(docL) && !t.content.empty())
                         loadContent(t);
@@ -14219,7 +14262,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         tp.pfnEditCreated = Ne_InstallWrapSubclass;
         NeTabs_Create(tp);
         NeTabs_SetDarkMode(hwnd, g_darkMode);
-        NeTabs_SetContextLabels(hwnd, Ls(L"TAB_CTX_NEW_TAB"), Ls(L"TAB_CTX_CLOSE_TAB"));
+        NeTabs_SetContextLabels(hwnd, Ls(L"TAB_CTX_NEW_TAB"), Ls(L"TAB_CTX_CLOSE_TAB"), Ls(L"TAB_CTX_COPY_PATH"));
         st->editX = pad; st->editW = cW - 2 * pad; st->editH = std::max(1, editH);
         NeTabs_SetRects(hwnd,
             pad, st->tabY, cW - 2 * pad, st->tabH,
@@ -15164,6 +15207,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     KillTimer(hwnd, NE_TIMER_SPELL);
                     SetTimer(hwnd, NE_TIMER_SPELL, 400, NULL);
                 }
+                // Debounced crash-guard session save: flush ~1.2s after edits pause
+                // so a crash loses at most a fraction of a second of typing.
+                KillTimer(hwnd, NE_TIMER_SESSION_SAVE);
+                SetTimer(hwnd, NE_TIMER_SESSION_SAVE, 1200, NULL);
             }
             if (wmEv == EN_VSCROLL) {
                 // Repaint line-number gutter on vertical scroll.
@@ -15287,6 +15334,14 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
                     Ne_UpdateTitle(hwnd);
                     Ne_UpdateStatusText(hwnd);
+                }
+            } else if (scn->nmhdr.code == SCN_MODIFIED) {
+                // Debounced crash-guard save on user-driven edits (typing, paste,
+                // delete, undo/redo). Programmatic changes (file load) are ignored.
+                if ((scn->modificationType & (SC_MOD_INSERTTEXT | SC_MOD_DELETETEXT)) &&
+                    (scn->modificationType & (SC_PERFORMED_USER | SC_PERFORMED_UNDO | SC_PERFORMED_REDO))) {
+                    KillTimer(hwnd, NE_TIMER_SESSION_SAVE);
+                    SetTimer(hwnd, NE_TIMER_SESSION_SAVE, 1200, NULL);
                 }
             } else if (scn->nmhdr.code == SCN_SAVEPOINTREACHED) {
                 NeTabDoc* docSci = NULL;
@@ -16033,6 +16088,12 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             // (Ctrl+S / Save) writes the file and marks the document saved.
             Ne_SessionSave(hwnd);
         }
+        if (wParam == NE_TIMER_SESSION_SAVE) {
+            // Debounced save: fires shortly after the user stops editing so the
+            // crash guard is at most a fraction of a second behind the buffer.
+            KillTimer(hwnd, NE_TIMER_SESSION_SAVE);
+            Ne_SessionSave(hwnd);
+        }
         if (wParam == NE_TIMER_SPELL) {
             KillTimer(hwnd, NE_TIMER_SPELL);
             NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
@@ -16041,11 +16102,37 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         return 0;
 
+    // ── WM_COPYDATA — a second instance forwarded a file to open ─────────────
+    case WM_COPYDATA: {
+        COPYDATASTRUCT* cds = (COPYDATASTRUCT*)lParam;
+        if (cds && cds->dwData == NE_COPYDATA_OPENFILE &&
+            cds->lpData && cds->cbData >= sizeof(wchar_t)) {
+            std::wstring path((const wchar_t*)cds->lpData, cds->cbData / sizeof(wchar_t));
+            while (!path.empty() && path.back() == L'\0') path.pop_back();
+            Ne_OpenFileMerged(hwnd, path);
+            if (IsIconic(hwnd)) ShowWindow(hwnd, SW_RESTORE);
+            SetForegroundWindow(hwnd);
+        }
+        return TRUE;
+    }
+
     // ── WM_CLOSE — prompt if modified ────────────────────────────────────────
     case WM_CLOSE:
         Ne_SaveWindowPlacement(hwnd, "main_win");  // capture final geometry (incl. maximized)
+        // Stop periodic/debounced autosaves, take one final FULL snapshot, then
+        // freeze saves: the close loop below destroys tabs (with modal prompts
+        // that pump messages) and a timer firing mid-teardown would otherwise
+        // overwrite this snapshot with a partial (fewer-tab) session.
+        KillTimer(hwnd, NE_TIMER_SESSION);
+        KillTimer(hwnd, NE_TIMER_SESSION_SAVE);
         Ne_SessionSave(hwnd);  // snapshot before any tab is destroyed
-        if (!Ne_CloseAllTabsForExit(hwnd)) return 0;
+        s_sessionFrozen = true;
+        if (!Ne_CloseAllTabsForExit(hwnd)) {
+            // User cancelled the close — resume normal autosave.
+            s_sessionFrozen = false;
+            if (NeProfiles_IsInstalled()) SetTimer(hwnd, NE_TIMER_SESSION, 10000, NULL);
+            return 0;
+        }
         s_mainClosing = true;  // block late teardown WM_SIZE from overwriting geometry
         DestroyWindow(hwnd);
         return 0;
@@ -16197,6 +16284,37 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     SetUnhandledExceptionFilter(Ne_UnhandledExceptionFilter);
     std::set_terminate(Ne_TerminateHandler);
     SetProcessDPIAware();
+
+    // ── Single instance ──────────────────────────────────────────────────────
+    // One running app owns the one shared session DB. A second launch (e.g.
+    // double-clicking a file) forwards that file to the running instance so it
+    // merges into the existing tabs, then exits — this keeps the crash-guard
+    // session coherent (two instances would otherwise overwrite each other).
+    HANDLE hSingle = CreateMutexW(NULL, TRUE, L"NSBEdit_SingleInstance_Nalle");
+    if (hSingle && GetLastError() == ERROR_ALREADY_EXISTS) {
+        HWND existing = FindWindowW(L"NSBEditWnd", NULL);
+        if (existing) {
+            std::wstring arg = lpCmdLine ? lpCmdLine : L"";
+            if (!arg.empty() && arg.front() == L'"') {
+                arg.erase(0, 1);
+                size_t q = arg.find(L'"');
+                if (q != std::wstring::npos) arg.erase(q);
+            }
+            if (!arg.empty()) {
+                COPYDATASTRUCT cds = {};
+                cds.dwData = NE_COPYDATA_OPENFILE;
+                cds.cbData = (DWORD)((arg.size() + 1) * sizeof(wchar_t));
+                cds.lpData = (PVOID)arg.c_str();
+                SendMessageW(existing, WM_COPYDATA, 0, (LPARAM)&cds);
+            }
+            if (IsIconic(existing)) ShowWindow(existing, SW_RESTORE);
+            SetForegroundWindow(existing);
+            return 0;   // handed off to the running instance
+        }
+        // Mutex held but no window yet (the first instance is still starting):
+        // fall through and run normally rather than dropping the launch.
+    }
+
     Ne_GdiplusInit();
     {
         HDC hdc = GetDC(NULL);
@@ -16253,18 +16371,16 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
         return 1;
     }
 
-    // If a file path was passed on the command line, open it.
+    // A file path passed on the command line is opened AFTER the session is
+    // restored (see below), so a file-launch merges into your existing tabs
+    // instead of replacing them. Capture and clean the path here.
+    std::wstring cmdFilePath;
     if (lpCmdLine && *lpCmdLine) {
-        std::wstring arg = lpCmdLine;
-        // Strip surrounding quotes if present.
-        if (!arg.empty() && arg.front() == L'"') {
-            arg.erase(0, 1);
-            size_t q = arg.find(L'"');
-            if (q != std::wstring::npos) arg.erase(q);
-        }
-        if (!arg.empty()) {
-            Ne_LoadPathIntoEditor(s_hwndMain, arg);
-            Ne_MruAdd(arg);
+        cmdFilePath = lpCmdLine;
+        if (!cmdFilePath.empty() && cmdFilePath.front() == L'"') {
+            cmdFilePath.erase(0, 1);
+            size_t q = cmdFilePath.find(L'"');
+            if (q != std::wstring::npos) cmdFilePath.erase(q);
         }
     }
 
@@ -16291,19 +16407,22 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     Ne_ApplyDarkFrame(s_hwndMain);
     UpdateWindow(s_hwndMain);
 
-    // ── Restore last session (installed version only, no command-line file) ───
+    // ── Restore last session ─────────────────────────────────────────────────
+    // The session DB is a crash guard: ALWAYS restore every previously-open tab
+    // (including unsaved ones), even when launched with a command-line file, so
+    // a file-launch merges into your session instead of hiding it. Owning the
+    // session is now safe because we restore first, so autosave can never reduce
+    // it to just the launched file (the old "double-click wiped my tabs" bug).
     bool sessInstalled = NeProfiles_IsInstalled();
-    bool sessCmdFile   = (lpCmdLine && *lpCmdLine);
     bool sessHadData   = sessInstalled && NeSession_HasData();
-    if (!sessCmdFile && sessHadData) {
+    if (sessHadData)
         Ne_SessionRestore(s_hwndMain);
-        s_sessionOwned = true;             // we restored it → we own it
-    } else if (sessInstalled && !sessHadData) {
-        s_sessionOwned = true;             // no saved session yet → this run owns a fresh one
-    }
-    // else: launched with a file while a saved session exists — do NOT restore
-    // and do NOT own it, so autosave/close cannot overwrite the user's other
-    // tabs (including unsaved ones); they return on the next normal launch.
+    if (sessInstalled)
+        s_sessionOwned = true;
+
+    // Now open the command-line file, merged into the restored session.
+    if (!cmdFilePath.empty())
+        Ne_OpenFileMerged(s_hwndMain, cmdFilePath);
 
     // If spell marking was on, scan all restored tabs now.
     if (s_spellMarkActive) {

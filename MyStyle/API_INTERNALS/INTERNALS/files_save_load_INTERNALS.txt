@@ -374,16 +374,19 @@ empty buffer overwrote the real file. Three layers now prevent this:
    exists and is non-empty (GetFileAttributesExW size > 0), show a confirm
    dialog (MSG_SAVE_EMPTY_OVERWRITE, default No) — only an explicit Yes writes
    the empty file. Covers Ctrl+S, Save As and FTP save (all route through here).
-4. Session ownership (s_sessionOwned, declared before Ne_SessionSave): launching
-   NSBEdit with a command-line file (double-click / association) SKIPS
-   Ne_SessionRestore and shows only that tab; the autosave/close Ne_SessionSave
-   then DELETE+INSERTs session_tabs and would wipe the real multi-tab session.
-   Guard: wWinMain sets s_sessionOwned = true ONLY when it restored the session
-   (no cmd-line file AND NeSession_HasData) OR there was none to restore
-   (installed && !HasData). Ne_SessionSave returns early if !s_sessionOwned, so a
-   file-launch beside an existing session never overwrites it — the tabs
-   (incl. unsaved) return on the next normal launch. Only writer of session_tabs
-   is Ne_SessionSave; NeSession_Clear is unused; the write is atomic (BEGIN/COMMIT).
+4. Session ownership + MERGE-on-file-launch (s_sessionOwned, declared before
+   Ne_SessionSave). The session DB is a CRASH GUARD, so a file-launch must never
+   hide or reduce it. wWinMain ALWAYS calls Ne_SessionRestore when NeSession_HasData
+   (regardless of a command-line file) and sets s_sessionOwned=true whenever
+   installed; the command-line file is opened AFTER restore via Ne_OpenFileMerged
+   (dedup by _wcsicmp on doc->path -> activate if already open, else reuse an empty
+   untitled / AddUntitled). Owning is safe because we restore BEFORE owning, so the
+   old CLOBBER bug (double-click a file -> autosave overwrote the multi-tab session
+   with one tab) cannot recur. Only writer of session_tabs is Ne_SessionSave; the
+   write is atomic (BEGIN/COMMIT).
+   [History: the previous fix set s_sessionOwned=false on a file-launch so it would
+   not clobber — but then that instance NEVER autosaved, so files opened in it were
+   lost on the next crash/reinstall. Merge-on-launch replaced that.]
 5. Tab type by handle, NOT visibility (Ne_SessionSave): t.isSciTab and the
    content branch must use doc->hSci != nullptr (ne_tabs.h: hSci==NULL => RichEdit),
    NOT IsWindowVisible(doc->hSci). Only the ACTIVE tab's editor is visible, so the
@@ -397,4 +400,31 @@ empty buffer overwrote the real file. Three layers now prevent this:
    CLEAN FTP tab loads the fresh server copy. The old code compared bytes and only
    kept edits when the remote had ALSO changed, so an edited FTP file whose server
    copy was unchanged silently reloaded the server version and lost the edits.
+7. Debounced save-on-edit: a short (~1.2 s) one-shot timer is (re)armed on every
+   user edit — RichEdit EN_CHANGE and Scintilla SCN_MODIFIED (guard the modType
+   with SC_MOD_INSERTTEXT|DELETETEXT & SC_PERFORMED_USER|UNDO|REDO so programmatic
+   loads don't arm it). On fire it kills itself and Ne_SessionSave. The 10 s timer,
+   the WM_ACTIVATEAPP-deactivate save, and the WM_CLOSE save remain as backstops.
+   A crash now costs at most a fraction of a second, not up to 10 s.
+8. FREEZE autosave during close teardown (CRITICAL): Ne_CloseAllTabsForExit shows
+   a modal "Save changes?" prompt per modified tab, and a modal PUMPS MESSAGES — so
+   a pending debounce/10 s timer can fire AFTER other tabs are already closed and
+   persist a one-tab session over the full snapshot. WM_CLOSE therefore: KillTimer
+   both session timers -> Ne_SessionSave (final FULL snapshot) -> set s_sessionFrozen
+   = true -> close tabs. Ne_SessionSave early-returns while s_sessionFrozen. On a
+   CANCELLED close, reset the flag and re-SetTimer the 10 s timer. Lesson: any
+   autosave reachable from a message-pumping modal MUST be frozen once teardown
+   begins, or it saves a half-destroyed tab set.
+9. Two-slot rolling backup (ne_session.cpp): before overwriting the live table,
+   NeSession_Save snapshots it into session_tabs_prev (DROP + CREATE ... AS SELECT,
+   only when live has rows so an empty write can't wipe the backup). NeSession_Load
+   falls back to session_tabs_prev only when session_tabs is EMPTY (a legit
+   close-down to fewer tabs must still restore fewer tabs — do NOT prefer the bigger
+   slot). NeSession_HasData counts both. This is a safety net; the real guarantee is
+   never writing a bad live slot (see 8).
+10. Single instance + file forwarding: wWinMain CreateMutexW; on ERROR_ALREADY_EXISTS,
+    FindWindowW(main class) and SendMessageW(WM_COPYDATA, {tag, wide path}) to the
+    running window, SetForegroundWindow, and exit. The running app's WM_COPYDATA
+    handler calls the same Ne_OpenFileMerged. One instance owns the one shared DB, so
+    two instances can't overwrite each other's session.
 ================================================================================

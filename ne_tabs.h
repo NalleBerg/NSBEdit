@@ -67,7 +67,7 @@ bool NeTabs_AddUntitled(HWND hwndParent);
 bool NeTabs_CloseTab(HWND hwndParent, int index);
 
 void NeTabs_SetUntitledLabel(HWND hwndParent, const wchar_t* untitledLabel);
-void NeTabs_SetContextLabels(HWND hwndParent, const wchar_t* newTab, const wchar_t* closeTab);
+void NeTabs_SetContextLabels(HWND hwndParent, const wchar_t* newTab, const wchar_t* closeTab, const wchar_t* copyPath = nullptr);
 
 // Show the tab right-click context menu at the given screen coords.
 // tabIndex: the tab under the cursor, or -1 if over empty space.

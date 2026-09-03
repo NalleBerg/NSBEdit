@@ -200,6 +200,7 @@ BTN_KEEP                = Manter Actual
 
 TAB_CTX_NEW_TAB         = Novo Separador
 TAB_CTX_CLOSE_TAB       = Fechar Separador
+TAB_CTX_COPY_PATH       = Copiar caminho
 
 # ── Barra de estado ────────────────────────────────────────────────────────────────────────────────
 SB_WORDS                = Palavras

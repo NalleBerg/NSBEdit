@@ -35,6 +35,23 @@ bool NeSession_Save(const std::vector<NeSessionTab>& tabs)
         return false;
     }
 
+    // Rolling backup: before overwriting the live session, snapshot the CURRENT
+    // rows into session_tabs_prev (previous-good slot). Only when the live table
+    // is non-empty, so an accidental empty write can never wipe the backup.
+    // CREATE ... AS SELECT auto-matches the live schema (survives column adds).
+    {
+        int liveRows = 0;
+        sqlite3_stmt* cst = nullptr;
+        if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM session_tabs", -1, &cst, nullptr) == SQLITE_OK) {
+            if (sqlite3_step(cst) == SQLITE_ROW) liveRows = sqlite3_column_int(cst, 0);
+            sqlite3_finalize(cst);
+        }
+        if (liveRows > 0) {
+            sqlite3_exec(db, "DROP TABLE IF EXISTS session_tabs_prev", NULL, NULL, NULL);
+            sqlite3_exec(db, "CREATE TABLE session_tabs_prev AS SELECT * FROM session_tabs", NULL, NULL, NULL);
+        }
+    }
+
     sqlite3_exec(db, "DELETE FROM session_tabs", NULL, NULL, NULL);
 
     const char* sql =
@@ -88,23 +105,22 @@ bool NeSession_Save(const std::vector<NeSessionTab>& tabs)
 }
 
 // ── NeSession_Load ────────────────────────────────────────────────────────────
-bool NeSession_Load(std::vector<NeSessionTab>& out)
+// Read all rows from the named session table into out. Returns rows appended.
+static bool Nse_LoadTable(sqlite3* db, const char* table, std::vector<NeSessionTab>& out)
 {
-    out.clear();
-    sqlite3* db = NeProfiles_GetDb();
-    if (!db) return false;
-
-    const char* sql =
+    std::string sql =
         "SELECT sort_order, local_path, is_ftp, ftp_profile_id,"
         "       ftp_remote_path, ftp_friendly,"
         "       content, content_is_rtf, is_active,"
         "       disk_time_lo, disk_time_hi, disk_size, was_modified,"
         "       word_wrap, is_sci_tab, caret_pos, scroll_line, spell_lang"
-        " FROM session_tabs ORDER BY sort_order";
+        " FROM ";
+    sql += table;
+    sql += " ORDER BY sort_order";
 
     sqlite3_stmt* stmt = nullptr;
-    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK)
-        return false;
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &stmt, nullptr) != SQLITE_OK)
+        return false;   // table may not exist (e.g. first run) — treat as empty
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         NeSessionTab t;
@@ -135,8 +151,21 @@ bool NeSession_Load(std::vector<NeSessionTab>& out)
         t.spellLang    = sl ? Nse_U2W(sl) : L"";
         out.push_back(std::move(t));
     }
-
     sqlite3_finalize(stmt);
+    return true;
+}
+
+bool NeSession_Load(std::vector<NeSessionTab>& out)
+{
+    out.clear();
+    sqlite3* db = NeProfiles_GetDb();
+    if (!db) return false;
+
+    Nse_LoadTable(db, "session_tabs", out);
+    // Rolling-backup fallback: if the live slot is empty (e.g. a bad/empty write),
+    // recover the previous-good slot so a session is never silently lost.
+    if (out.empty())
+        Nse_LoadTable(db, "session_tabs_prev", out);
     return true;
 }
 
@@ -146,10 +175,17 @@ bool NeSession_HasData()
     sqlite3* db = NeProfiles_GetDb();
     if (!db) return false;
 
+    // Data in EITHER the live slot or the previous-good backup counts.
     sqlite3_stmt* stmt = nullptr;
-    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM session_tabs",
-                           -1, &stmt, nullptr) != SQLITE_OK)
-        return false;
+    if (sqlite3_prepare_v2(db,
+            "SELECT (SELECT COUNT(*) FROM session_tabs) + "
+            "(SELECT COUNT(*) FROM session_tabs_prev WHERE 1)",
+            -1, &stmt, nullptr) != SQLITE_OK) {
+        // session_tabs_prev may not exist yet — fall back to the live table only.
+        if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM session_tabs",
+                               -1, &stmt, nullptr) != SQLITE_OK)
+            return false;
+    }
 
     bool has = false;
     if (sqlite3_step(stmt) == SQLITE_ROW)

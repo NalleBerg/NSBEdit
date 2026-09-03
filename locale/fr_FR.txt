@@ -202,6 +202,7 @@ BTN_KEEP                = Conserver
 
 TAB_CTX_NEW_TAB         = Nouvel onglet
 TAB_CTX_CLOSE_TAB       = Fermer l'onglet
+TAB_CTX_COPY_PATH       = Copier le chemin
 
 # ── Status bar ────────────────────────────────────────────────────────────────────────────────
 SB_WORDS                = Mots

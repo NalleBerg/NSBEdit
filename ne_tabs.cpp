@@ -33,6 +33,7 @@ struct NeTabsState {
     std::wstring untitled = L"Untitled";
     std::wstring ctxNewTab  = L"New Tab";
     std::wstring ctxCloseTab = L"Close Tab";
+    std::wstring ctxCopyPath = L"Copy path";
     void (*pfnEditCreated)(HWND hEdit) = nullptr;
 };
 
@@ -53,6 +54,41 @@ static void NeTabs_RepositionBtnNew(); // forward declaration
 // IDs used inside the tab context menu
 #define NE_CTX_NEWTAB   1
 #define NE_CTX_CLOSETAB 2
+#define NE_CTX_COPYPATH 3
+
+// Copy a tab's full path to the clipboard. For an FTP tab this is the ONLINE
+// remote path (not the local temp file); for a local tab it is the disk path.
+static void NeTabs_CopyTabPath(int idx)
+{
+    if (idx < 0 || idx >= (int)g_tabs.docs.size()) return;
+    const NeTabDoc& doc = g_tabs.docs[idx];
+    std::wstring txt = (doc.isFtpFile && !doc.ftpRemotePath.empty())
+                       ? doc.ftpRemotePath : doc.path;
+    if (txt.empty()) return;
+    if (!OpenClipboard(g_tabs.hwndParent)) return;
+    EmptyClipboard();
+    size_t bytes = (txt.size() + 1) * sizeof(wchar_t);
+    HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, bytes);
+    if (h) {
+        void* p = GlobalLock(h);
+        if (p) {
+            memcpy(p, txt.c_str(), bytes);
+            GlobalUnlock(h);
+            SetClipboardData(CF_UNICODETEXT, h);
+        } else {
+            GlobalFree(h);
+        }
+    }
+    CloseClipboard();
+}
+
+// Does this tab have a path worth offering to copy?
+static bool NeTabs_HasCopyablePath(int idx)
+{
+    if (idx < 0 || idx >= (int)g_tabs.docs.size()) return false;
+    const NeTabDoc& doc = g_tabs.docs[idx];
+    return (doc.isFtpFile && !doc.ftpRemotePath.empty()) || !doc.path.empty();
+}
 
 static std::wstring NeTabs_BaseName(const std::wstring& path, const std::wstring& untitled)
 {
@@ -481,6 +517,8 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         AppendMenuW(hMenu, MF_STRING, NE_CTX_NEWTAB, g_tabs.ctxNewTab.c_str());
         if (tabIdx >= 0)
             AppendMenuW(hMenu, MF_STRING, NE_CTX_CLOSETAB, g_tabs.ctxCloseTab.c_str());
+        if (NeTabs_HasCopyablePath(tabIdx))
+            AppendMenuW(hMenu, MF_STRING, NE_CTX_COPYPATH, g_tabs.ctxCopyPath.c_str());
 
         POINT screen = p;
         ClientToScreen(hwnd, &screen);
@@ -492,6 +530,8 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             PostMessageW(g_tabs.hwndParent, NE_WM_TABNEW, 0, 0);
         else if (cmd == NE_CTX_CLOSETAB && tabIdx >= 0 && g_tabs.hwndParent)
             PostMessageW(g_tabs.hwndParent, NE_WM_TABCLOSE, (WPARAM)tabIdx, 0);
+        else if (cmd == NE_CTX_COPYPATH)
+            NeTabs_CopyTabPath(tabIdx);
         return 0;
     }
     case WM_CAPTURECHANGED:
@@ -711,11 +751,12 @@ void NeTabs_SetUntitledLabel(HWND hwndParent, const wchar_t* untitledLabel)
     NeTabs_UpdateAllTitles(hwndParent);
 }
 
-void NeTabs_SetContextLabels(HWND hwndParent, const wchar_t* newTab, const wchar_t* closeTab)
+void NeTabs_SetContextLabels(HWND hwndParent, const wchar_t* newTab, const wchar_t* closeTab, const wchar_t* copyPath)
 {
     if (g_tabs.hwndParent != hwndParent) return;
     if (newTab)   g_tabs.ctxNewTab   = newTab;
     if (closeTab) g_tabs.ctxCloseTab = closeTab;
+    if (copyPath) g_tabs.ctxCopyPath = copyPath;
 }
 
 void NeTabs_UpdateTabTitle(HWND hwndParent, int index)
@@ -752,6 +793,8 @@ void NeTabs_ShowTabContextMenu(HWND hwndParent, int screenX, int screenY, int ta
     AppendMenuW(hMenu, MF_STRING, NE_CTX_NEWTAB, g_tabs.ctxNewTab.c_str());
     if (tabIndex >= 0)
         AppendMenuW(hMenu, MF_STRING, NE_CTX_CLOSETAB, g_tabs.ctxCloseTab.c_str());
+    if (NeTabs_HasCopyablePath(tabIndex))
+        AppendMenuW(hMenu, MF_STRING, NE_CTX_COPYPATH, g_tabs.ctxCopyPath.c_str());
 
     int cmd = (int)TrackPopupMenu(hMenu, TPM_RETURNCMD | TPM_RIGHTBUTTON,
                                   screenX, screenY, 0,
@@ -762,6 +805,8 @@ void NeTabs_ShowTabContextMenu(HWND hwndParent, int screenX, int screenY, int ta
         PostMessageW(hwndParent, NE_WM_TABNEW, 0, 0);
     else if (cmd == NE_CTX_CLOSETAB && tabIndex >= 0)
         PostMessageW(hwndParent, NE_WM_TABCLOSE, (WPARAM)tabIndex, 0);
+    else if (cmd == NE_CTX_COPYPATH)
+        NeTabs_CopyTabPath(tabIndex);
 }
 
 // Position [+] immediately after the last tab item.

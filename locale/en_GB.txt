@@ -199,6 +199,7 @@ BTN_KEEP                = Keep Current
 
 TAB_CTX_NEW_TAB         = New Tab
 TAB_CTX_CLOSE_TAB       = Close Tab
+TAB_CTX_COPY_PATH       = Copy path
 
 # ── Status bar ────────────────────────────────────────────────────────────────────────────────
 SB_WORDS                = Words

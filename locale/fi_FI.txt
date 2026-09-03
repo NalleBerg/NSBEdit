@@ -209,6 +209,7 @@ BTN_KEEP                = Säilytä nykyinen
 
 TAB_CTX_NEW_TAB         = Uusi välilehti
 TAB_CTX_CLOSE_TAB       = Sulje välilehti
+TAB_CTX_COPY_PATH       = Kopioi polku
 
 # ── Status bar ────────────────────────────────────────────────────────────────
 SB_WORDS                = Sanoja

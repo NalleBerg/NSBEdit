@@ -192,6 +192,7 @@ BTN_KEEP                = Huidige versie bewaren
 
 TAB_CTX_NEW_TAB         = Nieuw tabblad
 TAB_CTX_CLOSE_TAB       = Tabblad sluiten
+TAB_CTX_COPY_PATH       = Pad kopiëren
 
 # ── Status bar ────────────────────────────────────────────────────────────────────────────────
 SB_WORDS                = Woorden
