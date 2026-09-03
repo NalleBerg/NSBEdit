@@ -294,6 +294,54 @@
   Rendering back:            pass it unchanged as data.initRtf.
 
 ================================================================================
+5b. FLATTEN TO PLAIN TEXT  (skip images, keep tables as tab-separated columns)
+================================================================================
+
+  Goal: convert a rich document to plain text so it reads well in txt-mode —
+  drop pictures entirely (they otherwise leave a stray blank / placeholder) but
+  keep tables laid out as columns.
+
+  Tables — already correct, do NOTHING special
+  ─────────────────────────────────────────────
+  RichEdit's own EM_STREAMOUT(SF_TEXT) exports each table cell followed by a
+  TAB (0x09) and each row followed by CR/LF.  So a 2×2 table streams out as:
+        A1<TAB>B1<CR><LF>A2<TAB>B2<CR><LF>
+  which lines up neatly in a monospaced/plain view.  No table-specific code is
+  needed on the plain-text path.
+
+  Images — must be stripped at the RTF level BEFORE the SF_TEXT export
+  ────────────────────────────────────────────────────────────────────
+  An inline picture (\pict, or a Word drawing wrapped in \*\shppict /
+  \*\nonshppict, or an embedded \object) survives EM_STREAMOUT(SF_TEXT) as a
+  single stray character (a space, or the object replacement char U+FFFC).
+  There is no SF_TEXT flag that suppresses it, so remove it from the RTF first:
+
+    1. rtf = EM_STREAMOUT(SF_RTF)                      // full RTF with headers
+    2. Strip every balanced image/object group, e.g. Ne_RtfStripImages():
+         markers = { "{\\*\\shppict", "{\\*\\nonshppict",
+                     "{\\object", "{\\pict" }
+       Each pass: find the EARLIEST occurrence of any marker, then delete from
+       that '{' to its matching '}' using a brace-balance scan that HONOURS the
+       RTF escapes \{  \}  \\  (a backslash makes the next byte literal — do
+       not count it as a brace).  Repeat until no marker remains.  Deleting the
+       outer \pict/\shppict group removes all of its nested groups with it.
+    3. EM_STREAMIN(SF_RTF) the cleaned RTF back into the control.
+    4. plain = EM_STREAMOUT(SF_TEXT | SF_UNICODE)     // UTF-16LE, images gone
+    5. Belt-and-braces: drop any residual U+FFFC (Ne_StripObjChars) from the
+       UTF-16LE buffer — handles object placeholders that were not inside a
+       stripped group.
+    6. EM_STREAMIN(SF_TEXT) the plain text; wrap suppressChange around the
+       stream calls so the edits do not mark the document dirty spuriously.
+
+  Note the matching-brace scan is essential: a naive find("{\\pict")…find("}")
+  stops at the first '}', which is usually a nested \pngblip/\picprop group, not
+  the end of the picture — leaving a corrupt half-stripped RTF.
+
+  HTML export is the OPPOSITE case: there you WANT the picture, so the HTML path
+  (see rtf2html ne_parse_pict) embeds \pict data as a base64 data-URI <img>
+  instead of stripping it.
+
+================================================================================
 6. CHAR FORMAT / PARA FORMAT — BUG-FREE PATTERNS (inherited from notes_editor)
 ================================================================================
 

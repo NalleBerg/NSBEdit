@@ -1235,7 +1235,10 @@
                                                 32767-px page-layout canvas), hover tooltips on
                                                 all 19 toolbar controls (RtfEd_SetToolTip /
                                                 RtfEd_ToolbarBtnProc subclass pattern), RTF stream
-                                                in/out, optional char limit, WS_OVERLAPPEDWINDOW
+                                                in/out (§5b flatten-to-plain-text: strip \pict/
+                                                \object/\shppict via balanced-brace scan so images
+                                                are skipped, tables kept as TAB-separated columns),
+                                                optional char limit, WS_OVERLAPPEDWINDOW
                                                 resizable, control ID range 4500–4555.
                                                 Preferred over notes_editor for component notes,
                                                 dep notes, and any field with no char limit.

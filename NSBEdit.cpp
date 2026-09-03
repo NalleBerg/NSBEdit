@@ -1757,6 +1757,51 @@ static std::string Ne_StreamOut(HWND hEdit, bool asRtf)
     return s;
 }
 
+// Index just past the '}' that closes the RTF group starting at rtf[open]=='{'.
+// Honours \{ \} \\ escapes so literal braces don't break brace-depth counting.
+static size_t Ne_RtfGroupEnd(const std::string& rtf, size_t open)
+{
+    int depth = 0;
+    for (size_t i = open; i < rtf.size(); ++i) {
+        char c = rtf[i];
+        if (c == '\\') { ++i; continue; }          // skip the escaped next char
+        else if (c == '{') ++depth;
+        else if (c == '}') { if (--depth == 0) return i + 1; }
+    }
+    return rtf.size();
+}
+
+// Remove image/object groups from an RTF string so a plain-text conversion skips
+// pictures entirely (an inline \pict otherwise leaves a stray blank/placeholder
+// char). Table groups are left untouched — RichEdit exports their cells as TABs.
+static void Ne_RtfStripImages(std::string& rtf)
+{
+    static const char* kMarkers[] = {
+        "{\\*\\shppict", "{\\*\\nonshppict", "{\\object", "{\\pict"
+    };
+    for (;;) {
+        size_t best = std::string::npos;
+        for (const char* m : kMarkers) {
+            size_t p = rtf.find(m);
+            if (p != std::string::npos && (best == std::string::npos || p < best)) best = p;
+        }
+        if (best == std::string::npos) break;
+        rtf.erase(best, Ne_RtfGroupEnd(rtf, best) - best);
+    }
+}
+
+// Drop U+FFFC (object replacement char) from an SF_UNICODE (UTF-16LE) buffer, so
+// any residual image/object placeholder is removed from converted plain text.
+static void Ne_StripObjChars(std::string& utf16le)
+{
+    size_t n = utf16le.size() / sizeof(wchar_t);
+    wchar_t* w = reinterpret_cast<wchar_t*>(utf16le.data());
+    size_t out = 0;
+    for (size_t i = 0; i < n; ++i)
+        if (w[i] != 0xFFFC) w[out++] = w[i];
+    utf16le.resize(out * sizeof(wchar_t));
+}
+
 // ── Character format helpers ───────────────────────────────────────────────────
 static void Ne_ToggleEffect(HWND hEdit, DWORD maskBit, DWORD effectBit)
 {
@@ -14683,8 +14728,15 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                     return 0;
             }
             // Pull plain text, stream back in as plain, update path/encoding.
-            std::string plain = Ne_StreamOut(hEd, false);
+            // First remove images at the RTF level so they are SKIPPED (an inline
+            // picture otherwise leaves a stray blank in the plain text); tables
+            // are kept — RichEdit exports their cells as TABs.
+            std::string rtf = Ne_StreamOut(hEd, true);
+            Ne_RtfStripImages(rtf);
             doc->suppressChange = true;
+            Ne_StreamIn(hEd, rtf, true);              // reload the doc without pictures
+            std::string plain = Ne_StreamOut(hEd, false);
+            Ne_StripObjChars(plain);                  // drop any residual U+FFFC
             Ne_StreamIn(hEd, plain, false);
             doc->suppressChange = false;
                         Ne_ApplyPlainTextLook(hEd);
