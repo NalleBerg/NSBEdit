@@ -1,0 +1,212 @@
+===============================================================================
+ NSBEdit — AGENT MODE  ·  STEP-BY-STEP BUILD PLAN
+===============================================================================
+ Created: 2026-09-04
+ Companion: ImplementAgentToDo.txt (the full design)
+
+ HOW TO READ THIS
+ - Each Step is sized for ~one 3-hour session.
+ - After EVERY step the editor + AI still BUILD and RUN normally.
+ - Any feature that isn't finished stays INVISIBLE at runtime: don't add the
+   menu item / don't create the button / don't register the tool until it works.
+   Build infrastructure quietly first; reveal UI only in the step that makes it
+   work. A hidden setting key (e.g. "ai_agent_dev" in the settings table) can
+   gate not-yet-public paths during development.
+ - Build ONLY via makeit.bat (no params/piping). Read makeit.log after each build.
+ - Mark a step DONE by putting [x] and the version/date at its header.
+
+ STATUS LEGEND:  [ ] not started   [~] in progress   [x] done
+
+-------------------------------------------------------------------------------
+ PHASE 1 — READ-ONLY AGENT (safe, no writes)
+-------------------------------------------------------------------------------
+
+[ ] STEP 1 — Groundwork, fully invisible
+    - Add a hidden dev gate: settings key "ai_agent_dev" (0/1) read at AI window
+      open. Default 0 => nothing changes anywhere.
+    - Define protocol constants: WM message ids for "run tool"/"tool result",
+      the ```tool fence marker, tool-name strings.
+    - Add an AgentTranscript struct (turns: user / assistant-tool-call / tool-
+      result) as a plain data type. Not used yet.
+    - Build + run. Zero visible change. Commit.
+
+[ ] STEP 2 — Tool-call parser (pure function, invisible)
+    - Ai_ParseToolCall(reply) -> optional{tool, args-json}. Detects a COMPLETE
+      ```tool ... ``` block; ignores partial blocks mid-stream.
+    - Minimal JSON arg reader (tool name + string/int fields). Reuse any existing
+      JSON helper in the tree if present; else a tiny local parser.
+    - Exercise it from a temporary hidden debug command (or Ai_Trace) only.
+    - Build + run. No visible change. Commit.
+
+[ ] STEP 3 — Read-only tool executors (invisible, UI-thread)
+    - Implement, as functions returning a wstring result, ON THE UI THREAD:
+        tool_list_dir(path)  -> reuse NeProjects_CollectFiles / Prj_Walk
+        tool_read_file(path) -> reuse Ai_ResolveRef + NeProjects_ReadTextFile
+        tool_search(query)   -> reuse Ai_SearchSnippets / Ai_ExtractSearchTerms
+    - In-workspace only for now; out-of-workspace paths return a "not permitted"
+      result (real gating comes later).
+    - Not wired into any loop yet. Test via the hidden debug path.
+    - Build + run. No visible change. Commit.
+
+[ ] STEP 4 — The agent loop engine (gated behind ai_agent_dev)
+    - Ai_RunAgentTurn: build agent system preamble + tool schema, send via the
+      EXISTING Ai_StartSendWorker; on WM_AI_SEND_COMPLETE, parse for a tool call;
+      if found, execute on UI thread, append result to transcript, resend; else
+      commit final answer. Iteration cap (e.g. 12) + wall-clock cap.
+    - Only runs when ai_agent_dev==1 AND role would be Agent. Public build (gate
+      off) is unaffected.
+    - Extend Ai_StopSend to abort the loop (set a loop-cancel flag, discard late
+      results).
+    - Build + run. Public UI unchanged; test agent via the dev gate. Commit.
+
+[ ] STEP 5 — Reveal the read-only Agent menu item
+    - In Ai_BuildMenu, add Ai_AddModelMenuItem(..., AiMenuRole::Agent) for local
+      AND cloud, but ONLY expose read-only tools so far.
+    - First VISIBLE agent feature: pick "<model> Agent", ask a question, it
+      reads/searches files and answers. Cloud + local both work.
+    - Add locale strings actually shown (reuse AI_ROLE_AGENT etc.); anything new
+      goes into all 15 locales in this step.
+    - Build + run. Ship-worthy. Commit + (optional) release.
+
+[ ] STEP 6 — Tool-activity rendering
+    - Render each tool call/result in the answer pane as a distinct block
+      ("Read ne_tabs.h", "Searched 'Ai_DoSend' -> 4 hits"), owner-draw styling,
+      collapsible if easy. Falls back to plain lines if collapsing is too big for
+      one session — keep it shippable.
+    - Build + run. Visible polish. Commit.
+
+-------------------------------------------------------------------------------
+ PHASE 2 — GATED EDITS + UNDO STORE
+-------------------------------------------------------------------------------
+
+[ ] STEP 7 — Edit-transaction store (invisible)
+    - Create DB tables via the shared handle (NeProfiles_GetDb, UI thread):
+        agent_edits(id, created, prompt, model, build_ok)
+        agent_edit_files(edit_id, path, before_blob, after_blob, was_new)
+    - Helpers: begin transaction, snapshot before-image, record after-image,
+      list recent transactions, restore a transaction (revert into tabs).
+    - No UI, no tool yet. Unit-exercise via the dev path.
+    - Build + run. No visible change. Commit.
+
+[ ] STEP 8 — apply_edit tool + diff Approve/Reject
+    - Register apply_edit (agent role only). It opens the target file as an
+      in-memory tab if needed, computes a diff, shows an Approve/Reject panel.
+      Approve => write into the tab (NOT disk) + record before/after in the store.
+      Reject => feed refusal back to the model.
+    - Approval panel only appears when the agent proposes an edit; invisible
+      otherwise.
+    - Build + run. Agent can now edit in memory, reversibly recorded. Commit.
+
+[ ] STEP 9 — Undo edit button + history
+    - Add an "Undo edit" button to the AI window that reverts the LAST recorded
+      transaction (restore before-images into tabs). Show the button only when at
+      least one transaction exists; hidden otherwise (invisible-when-empty rule).
+    - Small dropdown/list for undoing more than one (stack). Respect "save only on
+      user Save" — undo does not force a disk write.
+    - Locale strings for the button + history in all 15 locales.
+    - Build + run. Visible, working undo. Commit.
+
+-------------------------------------------------------------------------------
+ PHASE 3 — COMPILE -> FIX LOOP
+-------------------------------------------------------------------------------
+
+[ ] STEP 10 — run_build + get_errors (ask-gated)
+    - run_build tool: async run of makeit.bat, stream output into the pane, then
+      parse makeit.log; get_errors returns parsed errors. First run asks for
+      approval (per approval infra in Step 11 — if Step 11 not done yet, a simple
+      inline yes/no is fine for now).
+    - Build + run. Agent can compile on request. Commit.
+
+[ ] STEP 11 — Auto fix loop
+    - After an approved edit, offer "build & fix": compile -> if makeit.log has
+      errors, feed them back -> agent proposes follow-up edits (each new file
+      still diff-approved) -> rebuild. Cap at 6 iterations (configurable).
+    - You approve entering the loop once; rebuilds inside don't re-prompt.
+    - Whole loop recorded as ONE (or linked) transaction(s) for undo.
+    - Build + run. The headline edit->compile->fix->undo flow works end to end.
+      Commit + release.
+
+-------------------------------------------------------------------------------
+ PHASE 4 — SCRIPTS, OUTSIDE-WORKSPACE, GIT/PUSH (all ask-gated)
+-------------------------------------------------------------------------------
+
+[ ] STEP 12 — Generic per-action approval modal
+    - One reusable owner-draw confirmation dialog that shows: action title, the
+      exact command/path/script body, Approve / Reject, and an optional
+      "remember for this path/session" where allowed.
+    - Retrofit run_build to use it. Invisible until an action needs it.
+    - Build + run. Commit.
+
+[ ] STEP 13 — run_script (ask each time)
+    - Tool writes the proposed script to a scratch file, shows body + interpreter
+      in the approval modal, runs on approve (async, stream output back), feeds
+      stdout/stderr/exit code to the model. Never auto-runs.
+    - Build + run. Commit.
+
+[ ] STEP 14 — Out-of-workspace file access (ask each per path)
+    - read_file_external / write_file_external: any absolute path outside the
+      active project root triggers the approval modal showing the full path.
+      Approvals per-call unless the user opts in for that path. Writes into a tab
+      where it makes sense, or to disk on explicit approval.
+    - Build + run. Commit.
+
+[ ] STEP 15 — run_git (ask each time)
+    - Tool for git status/add/commit/log/diff/branch/checkout; approval modal
+      shows the literal command. For commit, agent proposes the message for
+      approval. Output streamed back.
+    - Build + run. Commit.
+
+[ ] STEP 16 — git_push (stronger confirmation)
+    - Separate git_push tool with a distinct, strongly-worded confirmation
+      (remote / hard-to-undo). Proposes branch + remote; --force is extra-flagged.
+    - Build + run. Commit.
+
+-------------------------------------------------------------------------------
+ PHASE 5 — POLISH
+-------------------------------------------------------------------------------
+
+[ ] STEP 17 — Transcript budgeting + loop guards
+    - Two budget profiles: local (aggressive trim/summarize old tool output, keep
+      prompt small for fast prefill) vs cloud (large transcript). Detect repeated
+      identical tool calls -> inject a nudge. Session allow-list for AUTO tier.
+    - Build + run. Commit.
+
+[ ] STEP 18 — i18n sweep + docs + remove dev gate
+    - Verify every new string exists in all 15 locale/*.txt (key-diff audit).
+    - Document the agent subsystem in API_list.txt + a new API_INTERNALS entry.
+    - Remove the ai_agent_dev gate (or leave as a hidden power-user toggle),
+      remove leftover Ai_Trace probes.
+    - Build + run. Final release. Commit.
+
+===============================================================================
+ REMINDERS
+ - After each step: makeit.bat -> read makeit.log -> confirm clean -> commit.
+ - Never reveal a control for a feature that isn't working yet.
+ - SQLite / project walk / tab edits = UI thread only. Streaming = worker thread.
+ - Update ImplementAgentToDo.txt if the design shifts.
+===============================================================================
+
+-------------------------------------------------------------------------------
+ RELATED: CREATE NEW PROJECT  ->  see .\CreateNewProjSteps.txt
+-------------------------------------------------------------------------------
+ The "Create project" feature (popup for type CLI/Windows/DB, target folder, and
+ a scaffold: main.cpp/.h, CHANGELOG.md, README.md, CMakeLists.txt, appropriate
+ .rc, etc.) is a SEPARATE, standalone feature that extends the existing Project
+ menu. It does NOT depend on the AI.
+
+ RECOMMENDED ORDER: do Create New Project FIRST, before the Agent phases above.
+ Reasons:
+   - Independent of the AI and immediately useful on its own.
+   - Smaller, lower-risk change on top of the Project menu we already have —
+     a good warm-up before the big agent change.
+   - It delivers the per-project "build_command" property that the agent's
+     run_build / compile->fix loop (Steps 10-11) needs anyway, so doing it first
+     REMOVES a dependency instead of creating one. (build_command defaults to
+     makeit.bat for the NSBEdit project; other projects get their own command.)
+
+ NOTE: makeit.bat stays the canonical build for NSBEdit itself. The agent never
+ hardcodes it — run_build always runs "the active project's build_command".
+
+ => Full step list for that feature lives in .\CreateNewProjSteps.txt
+    (to be created / worked next, per the chosen order).
+===============================================================================

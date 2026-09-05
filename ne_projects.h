@@ -23,6 +23,26 @@ bool NeProjects_Delete(int64_t id);
 bool NeProjects_List  (std::vector<NeProject>& out);
 bool NeProjects_GetById(int64_t id, NeProject& out);
 
+// Full project properties, including the New Project columns (type,
+// build_command, run_command).  Empty type/build_command/run_command mean
+// "unset".  These helpers use the shared SQLite handle and must be called on the
+// UI thread (SQLite is built with THREADSAFE=0).
+struct NeProjectInfo {
+    int64_t      id = 0;
+    std::wstring name;
+    std::wstring rootPath;
+    std::wstring type;          // e.g. "cli", "gui", "db" (free-form for now)
+    std::wstring buildCommand;  // e.g. "makeit.bat"
+    std::wstring runCommand;    // how to run once built
+};
+
+// Read all properties for one project.  Returns false if the id is unknown.
+bool NeProjects_GetInfo(int64_t id, NeProjectInfo& out);
+
+// Update the editable properties (type, build_command, run_command) for a
+// project and bump its modified timestamp.  name/root_path are not changed here.
+bool NeProjects_SetInfo(const NeProjectInfo& in);
+
 // Active project selection (0 = no project).  Persisted in the settings table.
 int64_t NeProjects_GetActiveId();
 void    NeProjects_SetActiveId(int64_t id);

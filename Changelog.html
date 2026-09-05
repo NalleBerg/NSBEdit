@@ -1,6 +1,13 @@
 <h2 style="text-align: center; background-color: #e8f4f8; padding: 15px; border-radius: 5px; margin-bottom: 20px;"><span style="color: #0066cc;">&#x1F4DD; NSBEdit &mdash; Standalone RTF Notepad and Programming Editor</span></h2>
 <h3 style="text-align: center;">&nbsp;</h3>
-<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 3 September 2026 &mdash; 03.09.2026 (09:07)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+<p style="text-align: center; font-size: 14px; color: #666; margin-bottom: 30px;"><strong>Latest Update:</strong> 5 September 2026 &mdash; 05.09.2026 (11:59)<br />Lightweight portable RTF notepad and programming editor for Windows. Drop the exe anywhere and run.</p>
+
+<h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.09.05.11 (Groundwork for Create New Project: per-project build settings in the database)</span></h3>
+<p><strong>Groundwork for Create New Project: per-project build settings in the database (05.09.2026 11:59):</strong></p>
+<ul>
+<li><strong>Foundation: projects now carry a type and build/run commands:</strong> the projects table gains three new columns &mdash; <code>type</code>, <code>build_command</code> and <code>run_command</code> &mdash; laying the groundwork for the upcoming <strong>Create New Project</strong> feature (and the per-project build the AI needs later). The upgrade is <strong>safe and automatic</strong>: a fresh or portable database is created with the new columns, and an existing database made by an earlier build is upgraded in place on the next launch (guarded <code>ALTER TABLE ADD COLUMN</code>, so nothing is lost and it never runs twice). This also works on a <strong>USB / truly-portable</strong> copy: the schema and upgrade run at startup regardless of where the exe lives, so a stick used next to an installed copy carries the new columns from first creation. Any project whose root actually contains a <code>makeit.bat</code> is seeded with that as its build command; every other project stays unset.</li>
+<li><strong>Internal: project properties API:</strong> a new read/write API (<code>NeProjectInfo</code> with get/set helpers) exposes the full project record &mdash; name, root, type, build command and run command &mdash; for the New Project dialog and future build actions. No visible change yet; the feature stays invisible until it is complete.</li>
+</ul>
 
 <h3 style="text-align: center;"><span style="color: #ff0000;">NSBEdit Version 2026.09.03.09 (Bullet-proof crash guard: your open tabs always come back &mdash; across crash, reinstall, or file-launch; plus right-click &ldquo;Copy path&rdquo;)</span></h3>
 <p><strong>Bullet-proof crash guard: your open tabs always come back &mdash; across crash, reinstall, or file-launch; plus right-click &ldquo;Copy path&rdquo; (03.09.2026 09:07):</strong></p>

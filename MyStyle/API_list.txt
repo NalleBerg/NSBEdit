@@ -786,7 +786,19 @@
                                                 ne_profiles.cpp; a `projects` table holds
                                                 id/name/root_path and the active project id
                                                 lives in the settings table (survives
-                                                restart). NeProjects_GetActiveId self-heals a
+                                                restart). The table also carries per-project
+                                                type/build_command/run_command columns (for
+                                                the Create New Project feature + build actions).
+                                                Schema is future-proofed for portable/USB DBs:
+                                                the columns live in CREATE TABLE (fresh DBs) AND
+                                                are added to older DBs via a guarded ALTER TABLE
+                                                ADD COLUMN (Prj_ColumnExists/Prj_AddColumnIfMissing)
+                                                run inside NeProjects_Init at every startup, so a
+                                                USB DB made by an older build auto-upgrades in
+                                                place. NeProjectInfo + NeProjects_GetInfo/SetInfo
+                                                read/write the full record (name/root/type/build/
+                                                run) on the UI thread. NeProjects_GetActiveId
+                                                self-heals a
                                                 stale selection: if the active project's root
                                                 no longer exists it clears active_project and
                                                 returns 0. NeProjects_CollectFiles walks the

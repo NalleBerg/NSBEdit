@@ -25,23 +25,96 @@ static std::wstring Prj_U2W(const char* u)
     return w;
 }
 
+// Guarded ALTER TABLE ADD COLUMN: adds the column only when it is missing, so
+// databases created by an older build gain the new columns while newer/fresh
+// DBs (which already have them from CREATE TABLE) are left untouched.
+static bool Prj_ColumnExists(sqlite3* db, const char* table, const char* col)
+{
+    sqlite3_stmt* st = nullptr;
+    std::string sql = std::string("PRAGMA table_info(") + table + ");";
+    if (sqlite3_prepare_v2(db, sql.c_str(), -1, &st, NULL) != SQLITE_OK) return false;
+    bool found = false;
+    while (sqlite3_step(st) == SQLITE_ROW) {
+        const char* name = (const char*)sqlite3_column_text(st, 1); // 1 = "name"
+        if (name && _stricmp(name, col) == 0) { found = true; break; }
+    }
+    sqlite3_finalize(st);
+    return found;
+}
+
+static void Prj_AddColumnIfMissing(sqlite3* db, const char* table,
+                                   const char* col, const char* decl)
+{
+    if (Prj_ColumnExists(db, table, col)) return;
+    std::string sql = std::string("ALTER TABLE ") + table + " ADD COLUMN " +
+                      col + " " + decl + ";";
+    char* err = nullptr;
+    if (sqlite3_exec(db, sql.c_str(), NULL, NULL, &err) != SQLITE_OK) {
+        if (err) sqlite3_free(err); // ignore (e.g. duplicate column race)
+    }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 bool NeProjects_Init()
 {
     sqlite3* db = NeProfiles_GetDb();
     if (!db) return false;
+    // Fresh / portable DBs get the full schema here (incl. the New Project cols).
     const char* schema =
         "CREATE TABLE IF NOT EXISTS projects ("
-        "  id        INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "  name      TEXT    NOT NULL,"
-        "  root_path TEXT    NOT NULL,"
-        "  created   INTEGER NOT NULL DEFAULT 0,"
-        "  modified  INTEGER NOT NULL DEFAULT 0"
+        "  id            INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  name          TEXT    NOT NULL,"
+        "  root_path     TEXT    NOT NULL,"
+        "  created       INTEGER NOT NULL DEFAULT 0,"
+        "  modified      INTEGER NOT NULL DEFAULT 0,"
+        "  type          TEXT    NOT NULL DEFAULT '',"
+        "  build_command TEXT    NOT NULL DEFAULT '',"
+        "  run_command   TEXT    NOT NULL DEFAULT ''"
         ");";
     char* err = nullptr;
     if (sqlite3_exec(db, schema, NULL, NULL, &err) != SQLITE_OK) {
         if (err) sqlite3_free(err);
         return false;
+    }
+    // Older DBs already have `projects` without the new columns; add them now.
+    // CREATE TABLE IF NOT EXISTS never alters an existing table, so this is the
+    // upgrade path for installed/USB DBs made by an earlier build.
+    Prj_AddColumnIfMissing(db, "projects", "type",          "TEXT NOT NULL DEFAULT ''");
+    Prj_AddColumnIfMissing(db, "projects", "build_command", "TEXT NOT NULL DEFAULT ''");
+    Prj_AddColumnIfMissing(db, "projects", "run_command",   "TEXT NOT NULL DEFAULT ''");
+    // Seed build_command = "makeit.bat" for any existing project that still has
+    // an unset build_command AND whose root actually contains a makeit.bat (that
+    // is the NSBEdit project / any makeit-style project).  NULL/empty stays unset
+    // for everything else.
+    {
+        sqlite3_stmt* sel = nullptr;
+        if (sqlite3_prepare_v2(db,
+            "SELECT id,root_path FROM projects "
+            "WHERE build_command IS NULL OR build_command='';",
+            -1, &sel, NULL) == SQLITE_OK) {
+            std::vector<int64_t> toSeed;
+            while (sqlite3_step(sel) == SQLITE_ROW) {
+                int64_t id  = sqlite3_column_int64(sel, 0);
+                std::wstring root = Prj_U2W((const char*)sqlite3_column_text(sel, 1));
+                if (root.empty()) continue;
+                std::wstring bat = root;
+                if (!bat.empty() && bat.back() != L'\\' && bat.back() != L'/') bat += L'\\';
+                bat += L"makeit.bat";
+                if (GetFileAttributesW(bat.c_str()) != INVALID_FILE_ATTRIBUTES)
+                    toSeed.push_back(id);
+            }
+            sqlite3_finalize(sel);
+            for (int64_t id : toSeed) {
+                sqlite3_stmt* up = nullptr;
+                if (sqlite3_prepare_v2(db,
+                    "UPDATE projects SET build_command='makeit.bat' WHERE id=?;",
+                    -1, &up, NULL) == SQLITE_OK) {
+                    sqlite3_bind_int64(up, 1, id);
+                    sqlite3_step(up);
+                    sqlite3_finalize(up);
+                }
+            }
+        }
     }
     // Generic, evolving project knowledge store (notes/info/answers the AI can
     // read in batch mode).  Kept separate from `projects` so it can grow freely.
@@ -137,6 +210,50 @@ bool NeProjects_GetById(int64_t id, NeProject& out)
     }
     sqlite3_finalize(st);
     return found;
+}
+
+// ── Full properties (type / build_command / run_command) ──────────────────────
+bool NeProjects_GetInfo(int64_t id, NeProjectInfo& out)
+{
+    sqlite3* db = NeProfiles_GetDb();
+    if (!db) return false;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(db,
+        "SELECT id,name,root_path,type,build_command,run_command "
+        "FROM projects WHERE id=?;", -1, &st, NULL) != SQLITE_OK)
+        return false;
+    sqlite3_bind_int64(st, 1, id);
+    bool found = false;
+    if (sqlite3_step(st) == SQLITE_ROW) {
+        out.id           = sqlite3_column_int64(st, 0);
+        out.name         = Prj_U2W((const char*)sqlite3_column_text(st, 1));
+        out.rootPath     = Prj_U2W((const char*)sqlite3_column_text(st, 2));
+        out.type         = Prj_U2W((const char*)sqlite3_column_text(st, 3));
+        out.buildCommand = Prj_U2W((const char*)sqlite3_column_text(st, 4));
+        out.runCommand   = Prj_U2W((const char*)sqlite3_column_text(st, 5));
+        found = true;
+    }
+    sqlite3_finalize(st);
+    return found;
+}
+
+bool NeProjects_SetInfo(const NeProjectInfo& in)
+{
+    sqlite3* db = NeProfiles_GetDb();
+    if (!db) return false;
+    sqlite3_stmt* st = nullptr;
+    if (sqlite3_prepare_v2(db,
+        "UPDATE projects SET type=?,build_command=?,run_command=?,modified=? "
+        "WHERE id=?;", -1, &st, NULL) != SQLITE_OK)
+        return false;
+    sqlite3_bind_text (st, 1, Prj_W2U(in.type).c_str(),         -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text (st, 2, Prj_W2U(in.buildCommand).c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text (st, 3, Prj_W2U(in.runCommand).c_str(),   -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int64(st, 4, (int64_t)time(NULL));
+    sqlite3_bind_int64(st, 5, in.id);
+    bool ok = (sqlite3_step(st) == SQLITE_DONE);
+    sqlite3_finalize(st);
+    return ok;
 }
 
 // ── Active selection ──────────────────────────────────────────────────────────
