@@ -817,6 +817,15 @@
                                                 kind/title/body) + NeProjects_AddDoc/CollectDocs
                                                 is the evolving DB knowledge store the AI can
                                                 read as db:// records alongside files.
+                                                Scaffold template engine (Create New Project):
+                                                NeTemplate_Expand fills {{KEY}} placeholders from
+                                                a NeTemplateVars map (unknown keys left verbatim);
+                                                NeTemplate_WriteFile writes one UTF-8 (no BOM) file,
+                                                creating parent dirs and refusing to overwrite
+                                                unless forced; NeTemplate_WriteSet expands relPath
+                                                + content for a NeTemplateFile set into a target
+                                                folder. Used by the New Project dialog to write the
+                                                common scaffold (README/CHANGELOG/.gitignore/LICENSE).
                                                 See API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt
                                                 for how the AI consumes a project.
 

@@ -83,7 +83,14 @@
  PHASE B — CREATE PROJECT DIALOG + SCAFFOLD ENGINE
 -------------------------------------------------------------------------------
 
-[ ] STEP 3 — "New Project" dialog skeleton (gated behind proj_new_dev)
+[x] STEP 3 — "New Project" dialog skeleton (gated behind proj_new_dev)  DONE 2026-09-05
+    (Ne_ShowNewProjectDialog owner-draw modal: Name/Parent+Browse/New folder
+     name(follows Name)/live full-path preview/Type combo(CLI/GUI/DB)/editable
+     Build cmd(default makeit.bat, resets on type change unless edited)/summary.
+     Validates: refuses empty name/parent, missing parent, existing file, or
+     NON-EMPTY target folder. OK only validates+closes, creates nothing yet.
+     Menu item IDM_PROJECT_NEW shown only when settings proj_new_dev==1. English
+     literals for now (localised in STEP 5). Build OK.)
     - Owner-draw modal, 12pt Segoe UI, DPI-aware. Fields:
         Name (text),
         Parent/workspace folder (Ne_PickFolder browse) — MUST allow creating a
@@ -114,14 +121,29 @@
       proj_new_dev==1. Public build unchanged.
     - Build + run. Commit.
 
-[ ] STEP 4 — Template engine (invisible, function-level)
+[x] STEP 4 — Template engine (invisible, function-level)  DONE 2026-09-05
+    (ne_projects: NeTemplateVars map, NeTemplateFile{relPath,content},
+     NeTemplate_Expand ({{KEY}}, unknown left verbatim), NeTemplate_WriteFile
+     (UTF-8 no BOM, creates parent dirs, refuses overwrite unless forced),
+     NeTemplate_WriteSet (expands relPath+content). Runtime-tested with a
+     throwaway harness linked against real ne_projects.cpp: 7/7 PASS
+     (expand, subdir+filename placeholder, UTF-8-no-BOM, overwrite refuse/force).
+     Build OK.)
     - A small writer that takes a template (in-memory string set) + a placeholder
       map ({{NAME}}, {{YEAR}}, {{DATE}}, {{TYPE}}, {{GUARD}}, ...) and writes files
       into the target folder, creating subdirs. UTF-8, no BOM (match repo style).
     - Refuses to overwrite existing files unless explicitly told (safety).
     - Test via dev path. No UI change. Build + run. Commit.
 
-[ ] STEP 5 — Wire dialog -> create + register (REVEAL the feature)
+[x] STEP 5 — Wire dialog -> create + register (REVEAL the feature)  DONE 2026-09-05
+    (OK now: NeTemplate_WriteSet writes COMMON scaffold README.md/CHANGELOG.md/
+     .gitignore/LICENSE (vars NAME/YEAR/DATE/TYPE) -> NeProjects_Add ->
+     NeProjects_SetInfo(type,build) -> SetActiveId -> Ne_OpenFileMerged README.
+     Menu item IDM_PROJECT_NEW now ALWAYS shown (Ls PROJECT_NEW), dev gate removed.
+     Dialog fully localised via NEWPROJ_* keys; English keys added to en_GB.txt
+     (other locales fall back to English until the user translates later).
+     Scaffold output runtime-verified (4 files, placeholders, UTF-8 no BOM).
+     Build OK. NOTE: not yet version-bumped/committed/released.)
     - On OK: create the folder, write the COMMON scaffold (README.md,
       CHANGELOG.md, .gitignore, LICENSE placeholder), register the project via
       NeProjects_Add, set it active, open README.md in a tab.
@@ -152,6 +174,27 @@
       linking sqlite3 + CMakeLists.txt.
     - Creating a DB project produces a folder that BUILDS + opens a db.
     - Build + run. Commit.
+
+-------------------------------------------------------------------------------
+ FUTURE (end of Phase C) — LICENSE SELECTOR in the New Project dialog (requested 2026-09-05)
+-------------------------------------------------------------------------------
+ (Not done yet — add when convenient, own step.)
+ - Add a "License" dropdown to the New Project dialog listing the common licenses
+   (as shown in the user's screenshot):
+     The Unlicense (Public Domain), MIT, Apache 2.0, GNU GPL v2.0, GNU GPL v3.0,
+     GNU LGPL v2.1, GNU LGPL v3.0, GNU AGPL v3.0, BSD 2-Clause "Simplified",
+     BSD 3-Clause "New", ISC, Mozilla Public License 2.0, Boost Software 1.0,
+     European Union Public Licence 1.2, Creative Commons Zero v1.0 Universal,
+     Creative Commons Attribution 4.0, Creative Commons Attribution-ShareAlike 4.0,
+     Artistic License 2.0, "Do What The F*ck You Want" (WTFPL), plus a
+     "Proprietary / custom" option the developer edits themselves.
+ - On Create, write the FULL TEXT of the chosen license into the LICENSE file
+   (not a placeholder). Substitute {{YEAR}}/{{NAME}}/author where the license has
+   a copyright line. The full license texts are the deliverable (bundle them as
+   template resources / an embedded set). "Proprietary / custom" writes a short
+   editable stub the developer replaces.
+ - Store the choice with the project (optional new column later, or leave in the
+   generated file only for now).
 
 -------------------------------------------------------------------------------
  PHASE D — BUILD ACTION + POLISH

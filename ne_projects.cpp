@@ -547,3 +547,85 @@ bool NeProjects_ReadTextFile(const std::wstring& fullPath, std::wstring& out, si
     return true;
 }
 
+// ── Scaffold template engine ──────────────────────────────────────────────────
+std::wstring NeTemplate_Expand(const std::wstring& tmpl, const NeTemplateVars& vars)
+{
+    std::wstring out;
+    out.reserve(tmpl.size() + 64);
+    for (size_t i = 0; i < tmpl.size();) {
+        if (tmpl[i] == L'{' && i + 1 < tmpl.size() && tmpl[i + 1] == L'{') {
+            size_t end = tmpl.find(L"}}", i + 2);
+            if (end != std::wstring::npos) {
+                std::wstring key = tmpl.substr(i + 2, end - (i + 2));
+                auto it = vars.find(key);
+                if (it != vars.end()) {
+                    out += it->second;          // known placeholder → substitute
+                } else {
+                    out += tmpl.substr(i, end + 2 - i);  // unknown → leave verbatim
+                }
+                i = end + 2;
+                continue;
+            }
+        }
+        out += tmpl[i++];
+    }
+    return out;
+}
+
+// Create dir and all missing parents (local paths).  True if it exists afterwards.
+static bool Prj_EnsureDir(const std::wstring& dir)
+{
+    if (dir.empty()) return false;
+    DWORD a = GetFileAttributesW(dir.c_str());
+    if (a != INVALID_FILE_ATTRIBUTES) return (a & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    size_t slash = dir.find_last_of(L"\\/");
+    if (slash != std::wstring::npos && slash > 0) {
+        std::wstring parent = dir.substr(0, slash);
+        if (!(parent.size() == 2 && parent[1] == L':'))   // stop at drive root "C:"
+            Prj_EnsureDir(parent);
+    }
+    return CreateDirectoryW(dir.c_str(), NULL) != 0 ||
+           GetLastError() == ERROR_ALREADY_EXISTS;
+}
+
+bool NeTemplate_WriteFile(const std::wstring& fullPath, const std::wstring& content,
+                          bool overwrite)
+{
+    if (!overwrite && GetFileAttributesW(fullPath.c_str()) != INVALID_FILE_ATTRIBUTES)
+        return false;                                   // never clobber unless told
+    size_t slash = fullPath.find_last_of(L"\\/");
+    if (slash != std::wstring::npos)
+        Prj_EnsureDir(fullPath.substr(0, slash));
+    std::string utf8 = Prj_W2U(content);                // UTF-8, no BOM
+    HANDLE h = CreateFileW(fullPath.c_str(), GENERIC_WRITE, 0, NULL,
+                           overwrite ? CREATE_ALWAYS : CREATE_NEW,
+                           FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return false;
+    BOOL ok = TRUE;
+    DWORD written = 0;
+    if (!utf8.empty())
+        ok = WriteFile(h, utf8.data(), (DWORD)utf8.size(), &written, NULL);
+    CloseHandle(h);
+    return ok && written == (DWORD)utf8.size();
+}
+
+bool NeTemplate_WriteSet(const std::wstring& targetDir,
+                         const std::vector<NeTemplateFile>& files,
+                         const NeTemplateVars& vars, bool overwrite)
+{
+    if (targetDir.empty()) return false;
+    if (!Prj_EnsureDir(targetDir)) return false;
+    std::wstring base = targetDir;
+    if (base.back() != L'\\' && base.back() != L'/') base += L'\\';
+    for (const auto& f : files) {
+        std::wstring rel = NeTemplate_Expand(f.relPath, vars);
+        for (auto& ch : rel) if (ch == L'/') ch = L'\\';   // normalise separators
+        while (!rel.empty() && (rel.front() == L'\\')) rel.erase(rel.begin());
+        std::wstring full = base + rel;
+        std::wstring body = NeTemplate_Expand(f.content, vars);
+        if (!NeTemplate_WriteFile(full, body, overwrite)) return false;
+    }
+    return true;
+}
+
+

@@ -397,7 +397,11 @@ void ShowMultilingualTooltip(const std::vector<TooltipEntry>& entries, int x, in
         }
     }
 
-    if (!g_tooltipWindow) {
+    if (!g_tooltipWindow || !IsWindow(g_tooltipWindow)) {
+        // Recreate if never made OR if the previous window was destroyed with its
+        // owner (e.g. a tooltip first shown from a modal dialog that has since
+        // closed).  A stale handle would otherwise be reused and never show.
+        g_tooltipWindow = NULL;
         HINSTANCE hInst = (HINSTANCE)GetWindowLongPtr(parentHwnd, GWLP_HINSTANCE);
         // For simple single-entry tooltips we keep them mouse-transparent so they
         // don't steal events; for multilingual table tooltips we must allow the

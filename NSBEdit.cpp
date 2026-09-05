@@ -167,6 +167,7 @@ enum class NeEncoding {
 #define IDM_PROJECT_ADD      142  // Project menu: "Add project..."
 #define IDM_PROJECT_REMOVE   143  // Project menu: "Remove current project"
 #define IDM_PROJECT_NONE     144  // Project menu: "(No project)"
+#define IDM_PROJECT_NEW      145  // Project menu: "New project..." (dev-gated: proj_new_dev)
 #define IDM_PROJECT_BASE    1200  // Project menu: project entries 1200..1299
 #define IDC_NE_CLEARFMT     227
 #define IDC_NE_PRINT_BTN    228
@@ -10092,9 +10093,17 @@ static LRESULT CALLBACK Ne_TipSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, L
         if (!IsTooltipVisible() || s_neTipHwnd != hwnd) {
             const wchar_t* txt = (const wchar_t*)(void*)GetPropW(hwnd, L"neTipText");
             if (txt && *txt) {
-                RECT rc; GetWindowRect(hwnd, &rc);
                 std::vector<TooltipEntry> entries = { {L"", txt} };
-                ShowMultilingualTooltip(entries, rc.left, rc.bottom + 4, GetParent(hwnd));
+                if (GetPropW(hwnd, L"neTipAbove")) {
+                    // Above the mouse marker: anchoring to the cursor keeps the
+                    // tooltip off the control, avoiding the spurious WM_MOUSELEAVE
+                    // blink loop (see MyStyle tooltip_API aboveAnchorY note).
+                    POINT cur; GetCursorPos(&cur);
+                    ShowMultilingualTooltip(entries, cur.x, cur.y, GetParent(hwnd), cur.y);
+                } else {
+                    RECT rc; GetWindowRect(hwnd, &rc);
+                    ShowMultilingualTooltip(entries, rc.left, rc.bottom + 4, GetParent(hwnd));
+                }
                 s_neTipHwnd = hwnd;
             }
         }
@@ -10114,6 +10123,7 @@ static LRESULT CALLBACK Ne_TipSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, L
         delete[] tipCopy;
         RemovePropW(hwnd, L"neTipProc");
         RemovePropW(hwnd, L"neTipText");
+        RemovePropW(hwnd, L"neTipAbove");
         SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)prev);
         return CallWindowProcW(prev, hwnd, msg, wParam, lParam);
     }
@@ -10904,6 +10914,484 @@ static bool Ne_PickFolder(HWND owner, const wchar_t* title, std::wstring& outPat
     return ok && outPath[0];
 }
 
+// ── New Project dialog (Create New Project) ───────────────────────────────────
+// Collects Name / Parent folder / Type / Build command, shows a live full-path +
+// summary panel, validates, then scaffolds the project.
+#define IDC_NEWPROJ_NAME    2101
+#define IDC_NEWPROJ_PARENT  2102
+#define IDC_NEWPROJ_BROWSE  2103
+#define IDC_NEWPROJ_FOLDER  2104
+#define IDC_NEWPROJ_PATH    2105
+#define IDC_NEWPROJ_TYPE    2106
+#define IDC_NEWPROJ_BUILD   2107
+#define IDC_NEWPROJ_SUMMARY 2108
+#define IDC_NEWPROJ_INFO    2109
+
+static NeDialogData s_npDD;
+struct NeNewProjState {
+    bool folderEdited = false;   // user typed a folder name != the project name
+    bool buildEdited  = false;   // user changed the build command away from the default
+    bool syncing      = false;   // suppress EN_CHANGE side-effects during programmatic edits
+    int  result       = IDCANCEL;
+    // Captured on OK for the caller to scaffold with:
+    std::wstring name;
+    std::wstring targetPath;
+    std::wstring buildCmd;
+    int          typeIdx = 0;
+};
+static NeNewProjState s_np;
+
+// Char range of the full-path text inside the info RichEdit; used to offer the
+// hover tooltip ONLY when the mouse is over the path line (not the whole panel).
+static LONG s_npPathStart = 0, s_npPathEnd = 0;
+
+// Localised display name for a type combo index.
+static const wchar_t* Ne_NewProjTypeName(int typeIdx)
+{
+    return typeIdx == 1 ? Ls(L"NEWPROJ_TYPE_GUI")
+         : typeIdx == 2 ? Ls(L"NEWPROJ_TYPE_DB")
+         :                Ls(L"NEWPROJ_TYPE_CLI");
+}
+
+static const wchar_t* Ne_NewProjTypeDefaultBuild(int /*typeIdx*/)
+{
+    // All C++ types default to the canonical makeit.bat for now (PHASE E adds
+    // language-specific defaults).
+    return L"makeit.bat";
+}
+
+static bool Ne_DirIsEmpty(const std::wstring& dir)
+{
+    std::wstring pat = dir;
+    if (!pat.empty() && pat.back() != L'\\' && pat.back() != L'/') pat += L'\\';
+    pat += L"*";
+    WIN32_FIND_DATAW fd;
+    HANDLE h = FindFirstFileW(pat.c_str(), &fd);
+    if (h == INVALID_HANDLE_VALUE) return true;   // nothing there → treatable as empty
+    bool empty = true;
+    do {
+        if (wcscmp(fd.cFileName, L".") != 0 && wcscmp(fd.cFileName, L"..") != 0) {
+            empty = false; break;
+        }
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+    return empty;
+}
+
+static std::wstring Ne_NewProjTargetPath(HWND dlg)
+{
+    // The project folder is <parent>\<project name>; no separate folder field.
+    wchar_t parent[MAX_PATH] = {}, name[260] = {};
+    GetWindowTextW(GetDlgItem(dlg, IDC_NEWPROJ_PARENT), parent, MAX_PATH);
+    GetWindowTextW(GetDlgItem(dlg, IDC_NEWPROJ_NAME),   name,   260);
+    std::wstring full = parent;
+    if (!full.empty() && name[0]) {
+        if (full.back() != L'\\' && full.back() != L'/') full += L'\\';
+        full += name;
+    } else if (name[0]) {
+        full = name;
+    }
+    return full;
+}
+
+// Info-panel subclass: shows the full-path tooltip ABOVE the mouse, but ONLY
+// while the cursor is over the path text (hit-tested via EM_CHARFROMPOS), so the
+// blank areas and the type/build line don't trigger it.
+static LRESULT CALLBACK Ne_NewProjInfoProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    WNDPROC prev = (WNDPROC)(LONG_PTR)GetPropW(hwnd, L"npInfoProc");
+    if (!prev) return DefWindowProcW(hwnd, msg, wParam, lParam);
+    switch (msg) {
+    case WM_MOUSEMOVE: {
+        POINTL pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        LRESULT idx = SendMessageW(hwnd, EM_CHARFROMPOS, 0, (LPARAM)&pt);
+        bool onPath = (s_npPathEnd > s_npPathStart &&
+                       idx >= s_npPathStart && idx <= s_npPathEnd);
+        const wchar_t* txt = (const wchar_t*)(void*)GetPropW(hwnd, L"npInfoTip");
+        if (onPath && txt && *txt) {
+            if (!IsTooltipVisible() || s_neTipHwnd != hwnd) {
+                POINT cur; GetCursorPos(&cur);
+                std::vector<TooltipEntry> entries = { {L"", txt} };
+                ShowMultilingualTooltip(entries, cur.x, cur.y, GetParent(hwnd), cur.y);
+                s_neTipHwnd = hwnd;
+            }
+        } else if (s_neTipHwnd == hwnd) {
+            HideTooltip();
+            s_neTipHwnd = NULL;
+        }
+        if (!s_neTipTracking) {
+            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hwnd, 0 };
+            TrackMouseEvent(&tme);
+            s_neTipTracking = true;
+        }
+        break;
+    }
+    case WM_MOUSELEAVE:
+        if (s_neTipHwnd == hwnd) { HideTooltip(); s_neTipHwnd = NULL; }
+        s_neTipTracking = false;
+        break;
+    case WM_NCDESTROY: {
+        wchar_t* c = (wchar_t*)(void*)GetPropW(hwnd, L"npInfoTip");
+        delete[] c;
+        RemovePropW(hwnd, L"npInfoProc");
+        RemovePropW(hwnd, L"npInfoTip");
+        SetWindowLongPtrW(hwnd, GWLP_WNDPROC, (LONG_PTR)prev);
+        return CallWindowProcW(prev, hwnd, msg, wParam, lParam);
+    }
+    }
+    return CallWindowProcW(prev, hwnd, msg, wParam, lParam);
+}
+
+static void Ne_NewProjSetInfoTip(HWND hInfo, const wchar_t* text)
+{
+    if (!hInfo) return;
+    wchar_t* old = (wchar_t*)(void*)GetPropW(hInfo, L"npInfoTip");
+    delete[] old;
+    size_t len = wcslen(text) + 1;
+    wchar_t* copy = new wchar_t[len];
+    wcscpy(copy, text);
+    SetPropW(hInfo, L"npInfoTip", (HANDLE)(void*)copy);
+    if (!GetPropW(hInfo, L"npInfoProc")) {
+        WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hInfo, GWLP_WNDPROC, (LONG_PTR)Ne_NewProjInfoProc);
+        SetPropW(hInfo, L"npInfoProc", (HANDLE)(void*)(LONG_PTR)prev);
+    }
+}
+
+static void Ne_NewProjUpdatePreview(HWND dlg)
+{
+    std::wstring full = Ne_NewProjTargetPath(dlg);
+    wchar_t build[MAX_PATH] = {};
+    GetWindowTextW(GetDlgItem(dlg, IDC_NEWPROJ_BUILD), build, MAX_PATH);
+    int typeIdx = (int)SendMessageW(GetDlgItem(dlg, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
+
+    // Rebuild the RichEdit info panel: bold labels, normal values.
+    HWND hInfo = GetDlgItem(dlg, IDC_NEWPROJ_INFO);
+    if (!hInfo) return;
+    COLORREF fg = GetSysColor(COLOR_WINDOWTEXT);
+    GETTEXTLENGTHEX gtl = { GTL_DEFAULT, 1200 };
+    SendMessageW(hInfo, WM_SETREDRAW, FALSE, 0);
+    SetWindowTextW(hInfo, L"");
+    AppendNsbRich(hInfo, Ls(L"NEWPROJ_PATH"), true, fg, 0, false);
+    AppendNsbRich(hInfo, L":\r\n", true, fg, 0, false);
+    s_npPathStart = (LONG)SendMessageW(hInfo, EM_GETTEXTLENGTHEX, (WPARAM)&gtl, 0);
+    AppendNsbRich(hInfo, full.empty() ? L"\u2014" : full.c_str(), false, fg, 0, false);
+    s_npPathEnd = (LONG)SendMessageW(hInfo, EM_GETTEXTLENGTHEX, (WPARAM)&gtl, 0);
+    AppendNsbRich(hInfo, L"\r\n\r\n", false, fg, 0, false);
+    AppendNsbRich(hInfo, Ls(L"NEWPROJ_TYPE"), true, fg, 0, false);
+    AppendNsbRich(hInfo, L": ", true, fg, 0, false);
+    AppendNsbRich(hInfo, Ne_NewProjTypeName(typeIdx), false, fg, 0, false);
+    AppendNsbRich(hInfo, L"\u00A0\u00A0\u00A0", false, fg, 0, false);
+    AppendNsbRich(hInfo, Ls(L"NEWPROJ_BUILD"), true, fg, 0, false);
+    AppendNsbRich(hInfo, L": ", true, fg, 0, false);
+    AppendNsbRich(hInfo, build[0] ? build : L"\u2014", false, fg, 0, false);
+    SendMessageW(hInfo, WM_SETREDRAW, TRUE, 0);
+    InvalidateRect(hInfo, NULL, TRUE);
+
+    // Tooltip (whole path, above the mouse) offered only over the path line.
+    Ne_NewProjSetInfoTip(hInfo, full.empty() ? L"" : full.c_str());
+}
+
+static LRESULT CALLBACK Ne_NewProjDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    switch (msg) {
+    case WM_COMMAND: {
+        int id  = LOWORD(wParam);
+        int code = HIWORD(wParam);
+        if (code == EN_CHANGE) {
+            if (id == IDC_NEWPROJ_NAME) {
+                Ne_NewProjUpdatePreview(hwnd);   // name is also the folder name
+            } else if (id == IDC_NEWPROJ_PARENT) {
+                Ne_NewProjUpdatePreview(hwnd);
+            } else if (id == IDC_NEWPROJ_BUILD) {
+                if (!s_np.syncing) s_np.buildEdited = true;
+                Ne_NewProjUpdatePreview(hwnd);
+            }
+            return 0;
+        }
+        if (code == CBN_SELCHANGE && id == IDC_NEWPROJ_TYPE) {
+            if (!s_np.buildEdited) {
+                int typeIdx = (int)SendMessageW(GetDlgItem(hwnd, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
+                s_np.syncing = true;
+                SetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD), Ne_NewProjTypeDefaultBuild(typeIdx));
+                s_np.syncing = false;
+            }
+            Ne_NewProjUpdatePreview(hwnd);
+            return 0;
+        }
+        if (code == BN_CLICKED) {
+            if (id == IDC_NEWPROJ_BROWSE) {
+                std::wstring folder;
+                if (Ne_PickFolder(hwnd, Ls(L"NEWPROJ_PICK_PARENT"), folder)) {
+                    SetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_PARENT), folder.c_str());
+                    Ne_NewProjUpdatePreview(hwnd);
+                }
+                return 0;
+            }
+            if (id == IDOK) {
+                wchar_t name[260] = {}, parent[MAX_PATH] = {};
+                GetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_NAME),   name,   260);
+                GetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_PARENT), parent, MAX_PATH);
+                const wchar_t* err = nullptr;
+                if (!name[0])                    err = Ls(L"NEWPROJ_ERR_NAME");
+                else if (!parent[0])             err = Ls(L"NEWPROJ_ERR_PARENT");
+                else {
+                    DWORD pa = GetFileAttributesW(parent);
+                    if (pa == INVALID_FILE_ATTRIBUTES || !(pa & FILE_ATTRIBUTE_DIRECTORY))
+                        err = Ls(L"NEWPROJ_ERR_PARENT_MISSING");
+                }
+                if (!err) {
+                    std::wstring target = Ne_NewProjTargetPath(hwnd);
+                    DWORD ta = GetFileAttributesW(target.c_str());
+                    if (ta != INVALID_FILE_ATTRIBUTES) {
+                        if (!(ta & FILE_ATTRIBUTE_DIRECTORY))
+                            err = Ls(L"NEWPROJ_ERR_FILE");
+                        else if (!Ne_DirIsEmpty(target))
+                            err = Ls(L"NEWPROJ_ERR_NOT_EMPTY");
+                    }
+                }
+                if (err) {
+                    MessageBoxW(hwnd, err, Ls(L"NEWPROJ_TITLE"), MB_OK | MB_ICONWARNING);
+                    return 0;
+                }
+                // Capture the validated values for the caller to scaffold with.
+                s_np.name       = name;
+                s_np.targetPath = Ne_NewProjTargetPath(hwnd);
+                s_np.typeIdx    = (int)SendMessageW(GetDlgItem(hwnd, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
+                {
+                    wchar_t build[MAX_PATH] = {};
+                    GetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD), build, MAX_PATH);
+                    s_np.buildCmd = build;
+                }
+                s_np.result = IDOK;
+                DestroyWindow(hwnd);
+                return 0;
+            }
+            if (id == IDCANCEL) {
+                s_np.result = IDCANCEL;
+                DestroyWindow(hwnd);
+                return 0;
+            }
+        }
+        break;
+    }
+    case WM_DRAWITEM:
+        if (((const DRAWITEMSTRUCT*)lParam)->CtlType == ODT_BUTTON) {
+            Ne_DrawDialogButton((const DRAWITEMSTRUCT*)lParam, &s_npDD);
+            return TRUE;
+        }
+        break;
+    case WM_CTLCOLORSTATIC:
+    case WM_CTLCOLORBTN:
+    case WM_CTLCOLOREDIT:
+    case WM_CTLCOLORLISTBOX:
+        return Ne_DlgCtlColor((HDC)wParam);
+    case WM_CLOSE:
+        s_np.result = IDCANCEL;
+        DestroyWindow(hwnd);
+        return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static bool Ne_ShowNewProjectDialog(HWND parent)
+{
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    static bool registered = false;
+    if (!registered) {
+        WNDCLASSW wc = {};
+        wc.lpfnWndProc   = Ne_NewProjDlgProc;
+        wc.hInstance     = hi;
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wc.lpszClassName = L"NsbNewProjClass";
+        RegisterClassW(&wc);
+        registered = true;
+    }
+
+    s_np = NeNewProjState{};
+
+    const int P = S(12), LH = S(20), EB = S(26), CB = S(34), GAP = S(8), BROWSE = S(90);
+    const int INFO_H = S(116);                        // path (may wrap) + type/build
+    const int rowLE = LH + S(2) + EB;                 // one label-over-field row
+    int clientW = S(470);
+    int clientH = P
+                + 4 * (rowLE + GAP)                   // name, parent, type, build
+                + INFO_H + GAP                        // info panel (path + type/build)
+                + CB + P;                             // buttons
+    int VW = clientW - 2 * P;
+
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_POPUP | WS_CAPTION | WS_SYSMENU, FALSE,
+                       WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE);
+    int W = wr.right - wr.left, H = wr.bottom - wr.top;
+    RECT pr = {}; if (parent) GetWindowRect(parent, &pr);
+    int x = (pr.left + pr.right) / 2 - W / 2, y = (pr.top + pr.bottom) / 2 - H / 2;
+    if (y < 30) y = 30;
+
+    HWND dlg = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE,
+        L"NsbNewProjClass", Ls(L"NEWPROJ_TITLE"),
+        WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_VISIBLE,
+        x, y, W, H, parent, NULL, hi, NULL);
+    if (!dlg) return false;
+    Ne_ApplyDarkFrame(dlg);
+
+    HFONT hf = Ne_MakeDlgFont(dlg);
+    s_np.syncing = true;   // ignore EN_CHANGE while we set up controls
+
+    auto mkLbl = [&](const wchar_t* t, int yy) {
+        HWND h = CreateWindowExW(0, L"STATIC", t, WS_CHILD | WS_VISIBLE,
+            P, yy, VW, LH, dlg, NULL, hi, NULL);
+        if (hf) SendMessageW(h, WM_SETFONT, (WPARAM)hf, TRUE);
+    };
+    auto mkEdit = [&](int id, int yy, int w) -> HWND {
+        HWND h = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+            WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+            P, yy, w, EB, dlg, (HMENU)(UINT_PTR)id, hi, NULL);
+        if (hf) SendMessageW(h, WM_SETFONT, (WPARAM)hf, TRUE);
+        return h;
+    };
+    int y0 = P;
+
+    // Name
+    mkLbl(Ls(L"NEWPROJ_NAME"), y0); y0 += LH + S(2);
+    mkEdit(IDC_NEWPROJ_NAME, y0, VW); y0 += EB + GAP;
+
+    // Parent folder + Browse
+    mkLbl(Ls(L"NEWPROJ_PARENT"), y0); y0 += LH + S(2);
+    mkEdit(IDC_NEWPROJ_PARENT, y0, VW - BROWSE - S(6));
+    {
+        HWND hB = CreateWindowExW(0, L"BUTTON", Ls(L"NEWPROJ_BROWSE"),
+            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+            P + VW - BROWSE, y0, BROWSE, EB, dlg,
+            (HMENU)(UINT_PTR)IDC_NEWPROJ_BROWSE, hi, NULL);
+        if (hf) SendMessageW(hB, WM_SETFONT, (WPARAM)hf, TRUE);
+    }
+    y0 += EB + GAP;
+
+    // Type
+    mkLbl(Ls(L"NEWPROJ_TYPE"), y0); y0 += LH + S(2);
+    {
+        HWND hType = CreateWindowExW(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",
+            WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+            P, y0, VW, EB * 8, dlg, (HMENU)(UINT_PTR)IDC_NEWPROJ_TYPE, hi, NULL);
+        if (hf) SendMessageW(hType, WM_SETFONT, (WPARAM)hf, TRUE);
+        SendMessageW(hType, CB_ADDSTRING, 0, (LPARAM)Ls(L"NEWPROJ_TYPE_CLI"));
+        SendMessageW(hType, CB_ADDSTRING, 0, (LPARAM)Ls(L"NEWPROJ_TYPE_GUI"));
+        SendMessageW(hType, CB_ADDSTRING, 0, (LPARAM)Ls(L"NEWPROJ_TYPE_DB"));
+        SendMessageW(hType, CB_SETCURSEL, 1, 0);   // default: Windows GUI
+        if (g_darkMode) SetWindowTheme(hType, L"DarkMode_CFD", L"");
+    }
+    y0 += EB + GAP;
+
+    // Build command (editable, default makeit.bat)
+    mkLbl(Ls(L"NEWPROJ_BUILD"), y0); y0 += LH + S(2);
+    {
+        HWND hBuild = mkEdit(IDC_NEWPROJ_BUILD, y0, VW);
+        SetWindowTextW(hBuild, Ne_NewProjTypeDefaultBuild(0));
+    }
+    y0 += EB + GAP;
+
+    // Info panel: a read-only RichEdit renders bold labels + values; the full
+    // path wraps to the panel width so it is always fully visible, and hovering
+    // shows the whole path in a tooltip above the mouse.
+    {
+        LoadLibraryW(L"Msftedit.dll");
+        HWND hInfo = CreateWindowExW(0, L"RICHEDIT50W", NULL,
+            WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_READONLY,
+            P, y0, VW, INFO_H, dlg, (HMENU)(UINT_PTR)IDC_NEWPROJ_INFO, hi, NULL);
+        if (hInfo) {
+            SendMessageW(hInfo, EM_SETBKGNDCOLOR, 0, (LPARAM)GetSysColor(COLOR_WINDOW));
+            SendMessageW(hInfo, EM_SETTARGETDEVICE, 0, 0);  // word-wrap to width
+        }
+    }
+    y0 += INFO_H + GAP;
+
+    // OK / Cancel
+    s_npDD = {};
+    s_npDD.buttonCount = 2;
+    s_npDD.buttons[0] = { IDOK,     Ls(L"NEWPROJ_CREATE"), NeBtnTone::Blue, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"NEWPROJ_CREATE")) };
+    s_npDD.buttons[1] = { IDCANCEL, Ls(L"BTN_CANCEL"),     NeBtnTone::Red,  IDI_ERROR,       Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL")) };
+    {
+        int totalBtnW = 0;
+        for (int i = 0; i < s_npDD.buttonCount; i++) {
+            totalBtnW += s_npDD.buttons[i].width;
+            if (i + 1 < s_npDD.buttonCount) totalBtnW += S(6);
+        }
+        int bx = (clientW - totalBtnW) / 2;
+        for (int i = 0; i < s_npDD.buttonCount; i++) {
+            auto& b = s_npDD.buttons[i];
+            DWORD sty = WS_CHILD | WS_VISIBLE | BS_OWNERDRAW;
+            if (b.id == IDOK) sty |= BS_DEFPUSHBUTTON;
+            HWND hBtn = CreateWindowExW(0, L"BUTTON", b.text.c_str(), sty,
+                bx, y0, b.width, CB, dlg, (HMENU)(UINT_PTR)b.id, hi, NULL);
+            if (hBtn) {
+                WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hBtn, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+                SetPropW(hBtn, L"NePrevProc", (HANDLE)prev);
+            }
+            bx += b.width + S(6);
+        }
+    }
+
+    s_np.syncing = false;
+    Ne_NewProjUpdatePreview(dlg);
+    if (parent) EnableWindow(parent, FALSE);
+    SetFocus(GetDlgItem(dlg, IDC_NEWPROJ_NAME));
+
+    MSG m;
+    s_np.result = IDCANCEL;
+    while (IsWindow(dlg) && GetMessageW(&m, NULL, 0, 0)) {
+        if (m.message == WM_KEYDOWN && m.wParam == VK_ESCAPE) { DestroyWindow(dlg); break; }
+        if (!IsDialogMessageW(dlg, &m)) { TranslateMessage(&m); DispatchMessageW(&m); }
+    }
+    // Clear shared tooltip state so it can never linger tied to this closed dialog.
+    HideTooltip();
+    s_neTipHwnd = NULL;
+    s_neTipTracking = false;
+    if (parent) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
+    if (s_np.result != IDOK) return false;
+
+    // ── Scaffold: create folder + COMMON files, register, activate, open README ──
+    const wchar_t* typeStr = s_np.typeIdx == 1 ? L"gui"
+                           : s_np.typeIdx == 2 ? L"db" : L"cli";
+    SYSTEMTIME lt; GetLocalTime(&lt);
+    wchar_t yearBuf[8], dateBuf[16];
+    swprintf_s(yearBuf, L"%04d", lt.wYear);
+    swprintf_s(dateBuf, L"%02d.%02d.%04d", lt.wDay, lt.wMonth, lt.wYear);
+    NeTemplateVars vars = {
+        { L"NAME", s_np.name }, { L"YEAR", yearBuf },
+        { L"DATE", dateBuf },   { L"TYPE", typeStr },
+    };
+    std::vector<NeTemplateFile> files = {
+        { L"README.md",
+          L"# {{NAME}}\n\nA new project created with NSBEdit.\n" },
+        { L"CHANGELOG.md",
+          L"# Changelog\n\n## Unreleased - {{DATE}}\n- Initial project.\n" },
+        { L".gitignore",
+          L"# Build output\nbuild/\n*.o\n*.obj\n*.exe\n*.log\n\n# Editor / OS\n.vs/\n.vscode/\n*.user\nThumbs.db\n" },
+        { L"LICENSE",
+          L"Copyright (c) {{YEAR}} {{NAME}}\n\nAll rights reserved. (Choose a licence.)\n" },
+    };
+    if (!NeTemplate_WriteSet(s_np.targetPath, files, vars, false)) {
+        MessageBoxW(parent, Ls(L"NEWPROJ_ERR_WRITE"), Ls(L"NEWPROJ_TITLE"),
+                    MB_OK | MB_ICONERROR);
+        return false;
+    }
+    NeProject np; np.name = s_np.name; np.rootPath = s_np.targetPath;
+    if (NeProjects_Add(np)) {
+        NeProjectInfo info;
+        if (NeProjects_GetInfo(np.id, info)) {
+            info.type         = typeStr;
+            info.buildCommand = s_np.buildCmd;
+            NeProjects_SetInfo(info);
+        }
+        NeProjects_SetActiveId(np.id);
+    }
+    std::wstring readme = s_np.targetPath;
+    if (!readme.empty() && readme.back() != L'\\' && readme.back() != L'/') readme += L'\\';
+    readme += L"README.md";
+    Ne_OpenFileMerged(parent, readme);
+    return true;
+}
+
 // Rebuild the Project popup from scratch (called in WM_INITMENUPOPUP for s_hProjectMenu).
 // The active project is marked with the same tick icon used by the GUI-language menu.
 static void Ne_RebuildProjectMenu(HWND hwnd)
@@ -10911,6 +11399,8 @@ static void Ne_RebuildProjectMenu(HWND hwnd)
     while (GetMenuItemCount(s_hProjectMenu) > 0)
         RemoveMenu(s_hProjectMenu, 0, MF_BYPOSITION);
     int64_t activeId = NeProjects_GetActiveId();
+    Ne_AppendMenuOD(s_hProjectMenu, MF_STRING, IDM_PROJECT_NEW, Ls(L"PROJECT_NEW"));
+    Ne_AppendMenuOD(s_hProjectMenu, MF_SEPARATOR, 0, NULL);
     Ne_AppendMenuOD(s_hProjectMenu, MF_STRING, IDM_PROJECT_ADD, Ls(L"PROJECT_ADD"));
     Ne_AppendMenuOD(s_hProjectMenu,
         MF_STRING | (activeId ? 0 : MF_GRAYED),
@@ -14911,6 +15401,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         if (wmId == IDM_PROJECT_NONE) {
             NeProjects_SetActiveId(0);
+            return 0;
+        }
+        if (wmId == IDM_PROJECT_NEW) {   // dev-gated New Project dialog (STEP 3)
+            Ne_ShowNewProjectDialog(hwnd);
             return 0;
         }
         if (wmId == IDM_PROJECT_REMOVE) {

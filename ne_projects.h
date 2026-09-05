@@ -2,6 +2,7 @@
 #include <windows.h>
 #include <string>
 #include <vector>
+#include <map>
 #include <cstdint>
 
 // A project defines a root folder that the AI may read, search and work in.
@@ -82,5 +83,31 @@ bool NeProjects_AddDoc(int64_t projectId, NeProjectDoc& doc);
 // Collect all knowledge records for a project (newest first).  Bounded by maxDocs.
 bool NeProjects_CollectDocs(int64_t projectId, std::vector<NeProjectDoc>& out,
                             int maxDocs = 100000);
+
+// ── Scaffold template engine (New Project) ────────────────────────────────────
+// A tiny writer that fills {{KEY}} placeholders from a variable map and writes a
+// set of files into a target folder (creating any missing subfolders).  Files
+// are written as UTF-8 with NO BOM to match the repository style.  By default it
+// REFUSES to overwrite an existing file (safety); pass overwrite=true to force.
+using NeTemplateVars = std::map<std::wstring, std::wstring>;
+
+struct NeTemplateFile {
+    std::wstring relPath;   // path relative to the target dir (placeholders allowed)
+    std::wstring content;   // template text with {{KEY}} placeholders
+};
+
+// Replace every {{KEY}} in tmpl with vars[KEY].  Unknown keys are left as-is.
+std::wstring NeTemplate_Expand(const std::wstring& tmpl, const NeTemplateVars& vars);
+
+// Write one UTF-8 (no BOM) file, creating parent folders.  Returns false if the
+// file exists and overwrite is false, or on any I/O error.
+bool NeTemplate_WriteFile(const std::wstring& fullPath, const std::wstring& content,
+                          bool overwrite = false);
+
+// Expand and write a whole set under targetDir.  relPath and content are both
+// expanded with vars.  Stops and returns false on the first failure.
+bool NeTemplate_WriteSet(const std::wstring& targetDir,
+                         const std::vector<NeTemplateFile>& files,
+                         const NeTemplateVars& vars, bool overwrite = false);
 
 

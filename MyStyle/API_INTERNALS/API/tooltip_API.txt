@@ -132,6 +132,19 @@ API REFERENCE:
       - Tooltip is positioned using MONITOR bounds, not parent window bounds
         (critical: entry windows are often too small to contain the tooltip table)
       - Tooltip is created on first call, reused on subsequent calls
+      - PITFALL — the shared window must be recreated if its handle went stale:
+        the tooltip window is created OWNED by the parentHwnd passed on the FIRST
+        show. If that first show happens from a MODAL DIALOG, the window is owned
+        by the dialog and Windows DESTROYS it when the dialog closes — but the
+        global handle still points at the dead window. The "reuse on subsequent
+        calls" path then keeps reusing a destroyed handle, so NO tooltip appears
+        again anywhere until the app restarts (and even then only until the next
+        dialog closes). Symptom: tooltips work the first time a dialog is opened,
+        then never again after it is reopened. Fix: guard the creation with
+        `if (!g_tooltipWindow || !IsWindow(g_tooltipWindow))` so a stale/destroyed
+        window is transparently recreated. (Best practice: prefer showing tips
+        with the MAIN window as owner so the shared window persists; the IsWindow
+        guard is the robust backstop.)
       - Tooltip is topmost and non-activating (WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW)
       - PITFALL — hosting window must be OWNED by the main window: because this
         tooltip is a shared TOPMOST window, showing it from a control that lives

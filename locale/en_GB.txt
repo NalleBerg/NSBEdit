@@ -504,11 +504,44 @@ CREDITS_OLLAMA     = Ollama is an open-source local AI runtime. NSBEdit uses it 
 # ── Project (AI workspace) ────────────────────────────────────────────────────
 MENU_PROJECT         = Project
 PROJECT_ADD          = Add project...
+PROJECT_NEW          = Create new project...
 PROJECT_REMOVE       = Remove current project
 PROJECT_NONE         = (No project)
 PROJECT_PICK_TITLE   = Select the project root folder
 PROJECT_REMOVE_TITLE = Remove project
 PROJECT_REMOVE_CONFIRM = Remove this project from the list?
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# >>> TRANSLATE ME <<<  New Project feature (v2026.09.05) — added 2026-09-05
+# These keys are ENGLISH-ONLY so far. Every other locale/*.txt falls back to
+# English until translated. To localise: copy the block below (PROJECT_NEW plus
+# all NEWPROJ_* keys) into each locale/*.txt and translate the right-hand side.
+# Keep \n in NEWPROJ_ERR_NOT_EMPTY. Do NOT translate the keys, only the values.
+# ═══════════════════════════════════════════════════════════════════════════════
+# ── New Project dialog ────────────────────────────────────────────────────────
+NEWPROJ_TITLE        = New Project
+NEWPROJ_NAME         = Project name
+NEWPROJ_PARENT       = Parent folder
+NEWPROJ_BROWSE       = Browse...
+NEWPROJ_PATH         = Full project path
+NEWPROJ_TYPE         = Type
+NEWPROJ_TYPE_CLI     = CLI (console)
+NEWPROJ_TYPE_GUI     = Windows GUI
+NEWPROJ_TYPE_DB      = Database
+NEWPROJ_BUILD        = Build command
+NEWPROJ_CREATE       = Create
+NEWPROJ_PICK_PARENT  = Choose the parent folder
+NEWPROJ_ERR_NAME     = Please enter a project name.
+NEWPROJ_ERR_PARENT   = Please choose a parent folder.
+NEWPROJ_ERR_PARENT_MISSING = The parent folder does not exist.
+NEWPROJ_ERR_FILE     = A file with that name already exists.
+NEWPROJ_ERR_NOT_EMPTY = The target folder is not empty.\nA new project must be created in a new or empty folder.
+NEWPROJ_ERR_WRITE    = Could not create the project files. Check the folder and try again.
+# ═══════════════════════════════════════════════════════════════════════════════
+# >>> END TRANSLATE ME <<<  (New Project feature)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
 
 AI_PROGRESS_READING  = Reading batch
 AI_PROGRESS_SYNTH    = Synthesising answer
