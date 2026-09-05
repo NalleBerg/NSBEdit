@@ -1,8 +1,2 @@
-Fikse søk i regex guide
-*Fix copy and paste into search windows
-let ollama look for code in file tree and find files
-Fix URLs so they open URL in browser
-Sjekk at RTF-funksjonaliteten er 100% (konvertering også)
-*Forbedre forover/bakover i query history (virker bare bakover nå)
-[Ctrl]+0/+/- for AI window
-Mak it possible to copy tooltip for tab full pathe in eeditor
+
+

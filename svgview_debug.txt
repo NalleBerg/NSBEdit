@@ -1,0 +1,40 @@
+LoadSvgImage called
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit\NSB.svg
+File exists
+SVG parsed successfully
+SVG size: 151.000000 x 151.000000
+Shape count: 5
+Rasterizer created
+Rasterization done
+Has non-zero pixels: Y
+Bitmap created, calling FitToWindow
+LoadSvgImage called
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit\NSB.svg
+File exists
+SVG parsed successfully
+SVG size: 151.000000 x 151.000000
+Shape count: 5
+Rasterizer created
+Rasterization done
+Has non-zero pixels: Y
+Bitmap created, calling FitToWindow
+LoadSvgImage called
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit\NSB.svg
+File exists
+SVG parsed successfully
+SVG size: 151.000000 x 151.000000
+Shape count: 5
+Rasterizer created
+Rasterization done
+Has non-zero pixels: Y
+Bitmap created, calling FitToWindow
+LoadSvgImage called
+C:\Users\NalleBerg\Documents\C++\Workspace\NSBEdit\NSB.svg
+File exists
+SVG parsed successfully
+SVG size: 151.000000 x 151.000000
+Shape count: 5
+Rasterizer created
+Rasterization done
+Has non-white pixels: Y
+Bitmap created, calling FitToWindow

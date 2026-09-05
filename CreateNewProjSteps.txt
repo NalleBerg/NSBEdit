@@ -1,0 +1,252 @@
+===============================================================================
+ NSBEdit — CREATE NEW PROJECT  ·  STEP-BY-STEP BUILD PLAN
+===============================================================================
+ Created: 2026-09-04
+ Companions: ImplementAgentSteps.txt / ImplementAgentToDo.txt (the Agent work)
+
+ WHY THIS FIRST
+ - Standalone feature, independent of the AI, useful immediately.
+ - Extends the Project menu we already have (lower-risk warm-up).
+ - Delivers the per-project "build_command" property the Agent's run_build /
+   compile->fix loop needs later, so doing it first REMOVES a dependency.
+
+ HOW TO READ THIS
+ - Each Step is sized for ~one 3-hour session.
+ - After EVERY step the editor still BUILDS and RUNS normally.
+ - Any unfinished feature stays INVISIBLE at runtime: don't add the menu item /
+   don't show the dialog / don't register it until it works. A hidden dev gate
+   (settings key "proj_new_dev" = 0/1) can reach not-yet-public paths while
+   building.
+ - Build ONLY via makeit.bat (no params/piping). Read makeit.log after each build.
+ - Mark a step DONE with [x] + version/date at its header.
+
+ STATUS LEGEND:  [ ] not started   [~] in progress   [x] done
+
+-------------------------------------------------------------------------------
+ OPEN DECISION (can be changed later without reworking the steps)
+-------------------------------------------------------------------------------
+ What build system do GENERATED projects use?
+   DEFAULT CHOSEN HERE: generate BOTH per project —
+     - a per-project makeit.bat  (the canonical build_command; mirrors NSBEdit's
+       clean MinGW/windres/g++ flow so every project feels the same), AND
+     - a CMakeLists.txt          (for IDE/portability; optional to use).
+   build_command for a new project defaults to its generated makeit.bat.
+   NSBEdit itself keeps its own existing makeit.bat unchanged.
+ If you later prefer CMake-only (build_command = "cmake --build build"), only the
+ template contents + the default build_command change; the step structure holds.
+
+-------------------------------------------------------------------------------
+ PHASE A — PROJECT MODEL + build_command GROUNDWORK (invisible)
+-------------------------------------------------------------------------------
+
+[ ] STEP 1 — Extend the projects table (invisible, backward compatible)
+    - ne_projects: add columns type, build_command, run_command to the projects
+      table via a safe migration (ALTER TABLE ... ADD COLUMN if missing; existing
+      rows get sensible defaults). NULL/empty => treat as "unset".
+    - Seed the NSBEdit project's build_command = "makeit.bat" (only if that row
+      exists / matches this workspace root).
+    - PORTABLE / FRESH DB: the DB is created at init on EVERY launch via
+      CREATE TABLE IF NOT EXISTS (NeProfiles_Init / NeProjects_Init), and the DB is
+      the shared %APPDATA%\NSBEdit\nsbedit.db for BOTH installed and portable runs
+      (portable exe-dir db is migrated up on first run). So we never ship a pre-
+      built DB. BUT: CREATE TABLE IF NOT EXISTS does NOT add columns to a table an
+      older DB already has. So do BOTH:
+        (a) put the new columns in the CREATE TABLE (fresh/portable DBs get them),
+        (b) run guarded ALTER TABLE ADD COLUMN for already-existing DBs (ignore the
+            "duplicate column" error, or check pragma table_info first).
+      Same pattern later for the `language` column (Phase E) and the agent_edits /
+      agent_edit_files tables (those are plain CREATE TABLE IF NOT EXISTS — fine).
+    - USB / TRULY-PORTABLE FIRST RUN: on a PC with the app NOT installed, the DB
+      falls through to the last-resort branch and is created BESIDE THE EXE (on the
+      USB stick), because AppData has nothing yet and it isn't running from Program
+      Files (Np_GetDbPath). When that stick is later used next to an installed exe,
+      Np_CopyDbToAppData migrates it UP to AppData — so the USB DB becomes the
+      developer's real DB. THEREFORE the New Project schema MUST live in
+      NeProjects_Init (which runs at startup on EVERY launch + EVERY location,
+      right after sqlite3_open), so the USB DB contains the New Project tables from
+      first creation. The guarded ALTERs running every launch also auto-upgrade a
+      USB DB made by an older exe. Do NOT put schema creation in any UI-only/lazy
+      path a portable first run could skip.
+    - No UI change. Build + run. Commit.
+
+[ ] STEP 2 — Project properties API (invisible)
+    - NeProjects: a NeProjectInfo struct (name, root, type, build_command,
+      run_command) + Get/Set helpers (UI thread, shared DB handle).
+    - Exercise via the dev path only. No UI change. Build + run. Commit.
+
+-------------------------------------------------------------------------------
+ PHASE B — CREATE PROJECT DIALOG + SCAFFOLD ENGINE
+-------------------------------------------------------------------------------
+
+[ ] STEP 3 — "New Project" dialog skeleton (gated behind proj_new_dev)
+    - Owner-draw modal, 12pt Segoe UI, DPI-aware. Fields:
+        Name (text),
+        Parent/workspace folder (Ne_PickFolder browse) — MUST allow creating a
+          NEW folder here: pass BIF_NEWDIALOGSTYLE so SHBrowseForFolderW shows the
+          "Make New Folder" button.
+        New folder name (EDITABLE, DEFAULT = the project Name) — the project is
+          created in <parent>\<new folder name>, which is CREATED if it doesn't
+          exist. This is the "empty folder to create the project in".
+        Full project path (read-only preview, = parent + new folder name),
+        Type combo (CLI / Windows GUI / DB),
+        Build command (EDITABLE text, DEFAULT "makeit.bat") — the developer can
+          change it here per project; it becomes the project's build_command,
+        a read-only summary line.
+    - NOTE (future): a LANGUAGE selector is coming (see PHASE E). The Type combo
+      contents and Build command default will DEPEND on the chosen language
+      (e.g. C++ -> CLI/Windows GUI/DB + makeit.bat; PHP/HTML -> Website + no local
+      build). For now Step 3 assumes C++; PHASE E generalises it. Don't hardcode
+      the type list in a way that blocks adding languages later.
+    - Selecting a type resets the Build command field to that template's default
+      (makeit.bat) unless the developer has already edited it.
+    - Validates input (non-empty name, parent folder chosen, target folder either
+      does not exist -> create it, or exists and is EMPTY, else confirm/refuse).
+    - RULE: a NON-EMPTY folder can NOT be used for a new project (refuse it, don't
+      just warn). The scaffold must land in a clean/empty folder so nothing is
+      overwritten. If the developer needs external files, they add them AFTER the
+      project is created.
+    - Does NOT create anything yet; OK just closes. Reachable only when
+      proj_new_dev==1. Public build unchanged.
+    - Build + run. Commit.
+
+[ ] STEP 4 — Template engine (invisible, function-level)
+    - A small writer that takes a template (in-memory string set) + a placeholder
+      map ({{NAME}}, {{YEAR}}, {{DATE}}, {{TYPE}}, {{GUARD}}, ...) and writes files
+      into the target folder, creating subdirs. UTF-8, no BOM (match repo style).
+    - Refuses to overwrite existing files unless explicitly told (safety).
+    - Test via dev path. No UI change. Build + run. Commit.
+
+[ ] STEP 5 — Wire dialog -> create + register (REVEAL the feature)
+    - On OK: create the folder, write the COMMON scaffold (README.md,
+      CHANGELOG.md, .gitignore, LICENSE placeholder), register the project via
+      NeProjects_Add, set it active, open README.md in a tab.
+    - Add the visible menu item: Project -> "New project..." (IDM_PROJECT_NEW),
+      next to "Add project...". Locale strings for it added to ALL 15 locales in
+      this step.
+    - Build + run. FIRST shippable Create-Project (bare project). Commit + release.
+
+-------------------------------------------------------------------------------
+ PHASE C — TYPE-SPECIFIC TEMPLATES (each adds one working type)
+-------------------------------------------------------------------------------
+
+[ ] STEP 6 — CLI template
+    - main.cpp (hello-world CLI), matching makeit.bat (MinGW g++, console) +
+      CMakeLists.txt. build_command = generated makeit.bat.
+    - Creating a CLI project produces a folder that BUILDS out of the box.
+    - Build + run. Commit.
+
+[ ] STEP 7 — Windows GUI template
+    - main.cpp/.h (WinMain skeleton window), app.manifest, a .rc with version
+      info + icon placeholder, makeit.bat (windres + g++ -mwindows -municode) +
+      CMakeLists.txt.
+    - Creating a Windows GUI project produces a folder that BUILDS + runs a window.
+    - Build + run. Commit.
+
+[ ] STEP 8 — DB template
+    - main.cpp + a tiny sqlite3 wrapper stub (.h/.cpp), schema.sql, makeit.bat
+      linking sqlite3 + CMakeLists.txt.
+    - Creating a DB project produces a folder that BUILDS + opens a db.
+    - Build + run. Commit.
+
+-------------------------------------------------------------------------------
+ PHASE D — BUILD ACTION + POLISH
+-------------------------------------------------------------------------------
+
+[ ] STEP 9 — "Build project" action (standalone + pre-wires the Agent)
+    - Project -> "Build current project" runs the active project's build_command
+      asynchronously, streams output to a pane/output area, reports success/errors
+      (parse the build log). Useful on its own; this is exactly what the Agent's
+      run_build will call later.
+    - Menu item visible only when a project is active. Locale strings in all 15.
+    - Build + run. Commit.
+
+[ ] STEP 10 — Polish, git init, i18n sweep, docs
+    - Optional "git init + first commit" checkbox in the dialog (uses the same
+      approval-free local git init; no push).
+    - Key-diff audit: every new string present in all 15 locale/*.txt.
+    - Document the feature in API_list.txt + an API_INTERNALS entry.
+    - Remove/keep the proj_new_dev gate as a hidden toggle.
+    - Build + run. Final release. Commit.
+
+-------------------------------------------------------------------------------
+ PHASE E — PROGRAMMING LANGUAGE + ONLINE (FTP) PROJECTS
+-------------------------------------------------------------------------------
+ (Placeholder — needs more thinking. Captured now so it isn't forgotten. This
+ generalises Phases B/C beyond the C++ assumption. Design first, then split into
+ more day-sized steps.)
+
+ STARTER FILES PER LANGUAGE: see .\NewProjectLanguageFiles.txt (25 languages,
+ their minimal files, default build_command / run_command, .gitignore).
+
+ DESIGN NOTES / OPEN QUESTIONS
+ - LANGUAGE is a separate axis from project KIND. The dialog needs a Language
+   selector; the Type/Kind list + Build command default + scaffold files all
+   DEPEND on the language:
+       C++    -> CLI / Windows GUI / DB        (build: makeit.bat / cmake)
+       C      -> CLI                            (build: makeit.bat / cmake)
+       Python -> CLI / script                   (no compile; run_command = python)
+       HTML   -> Website (static)               (no build)
+       PHP    -> Website (server)               (no local build; needs a server)
+       (extensible — don't hardcode a closed set)
+ - New projects table columns likely need: language (+ reuse type/build_command/
+   run_command from Step 1). Add via the same safe migration.
+ - LOCATION axis: web languages (HTML/PHP) must be creatable ONLINE, directly on
+   an FTP server, NOT only in a local empty folder. So the dialog's "where" needs
+   a mode:
+       LOCAL folder (current Step 3 flow), OR
+       REMOTE/FTP target (reuse the existing FTP support: ne_ftp.*, the FTP menu,
+       stored FTP profiles). Scaffold files are written to the server via FTP.
+ - The "empty folder" rule maps to "empty remote dir" for FTP projects (refuse a
+   non-empty remote target too).
+ - PROFILE GAP: the target FTP site may be one we have NO profile for yet. So
+   creating an FTP project may need to add a new FTP profile as part of the flow.
+   Options: (a) inline "Add FTP profile..." in the New Project dialog, or
+   (b) jump to the existing FTP profile manager to add/choose one (it already has
+   an Add). Prefer (b) to reuse existing UI; return to New Project with the chosen
+   profile selected.
+ - Templates per web language: HTML -> index.html + style.css + script.js; PHP ->
+   index.php + a small include + .htaccess; both get README/CHANGELOG locally or
+   remotely as appropriate.
+
+[ ] STEP E1 — Language selector in the model + dialog (design + minimal wire)
+    - Add a language column (migration) + Language combo in the dialog. Make the
+      Type/Kind list and Build command default DERIVE from the language (data-
+      driven table, no hardcoded switch that blocks new languages).
+    - Start with C++ behaving exactly as today (no regression); add C + Python as
+      simple local templates to prove the axis works.
+    - Invisible/gated until it works. Build + run. Commit.
+
+[ ] STEP E2 — Web languages + ONLINE (FTP) creation (HTML / PHP)
+    - Add HTML + PHP languages with Website templates. Add the LOCAL vs REMOTE/FTP
+      "where" mode to the dialog, reusing ne_ftp.* + stored FTP profiles for the
+      remote case. Empty-target rule applies to the remote dir too.
+    - Only reveal the FTP option when at least one FTP profile exists.
+    - Build + run. Commit.
+
+ (More steps to be split out once the design above is settled.)
+
+[ ] STEP E3 — Toolchain doctor (detect -> ask -> offer install / guide)
+    - After the language/toolchain is chosen (and reused at first build), probe
+      PATH + known locations for the toolchain's key exe. If MISSING:
+        * no winget + no toolchain -> show an install GUIDE (link / manual steps),
+        * winget present + no toolchain -> OFFER to install, showing the EXACT
+          winget command; Approve runs it, Decline continues.
+    - NEVER auto-install and NEVER block creation. If declined/unavailable, CREATE
+      the project anyway, then END with a pop-up: "<Toolchain> missing — created,
+      but won't build until installed" (+ the guide / winget command).
+    - Respect elevation (don't drive UAC; ask the dev to run elevated installs
+      themselves) and PATH-refresh (tell them to restart / open a new shell).
+    - Per-language winget id + guide come from the data table (see
+      NewProjectLanguageFiles.txt "Toolchain doctor"). The AI agent reuses this
+      same doctor when IT needs a tool.
+    - Build + run. Commit.
+
+===============================================================================
+ REMINDERS
+ - After each step: makeit.bat -> read makeit.log -> confirm clean -> commit.
+ - Never reveal a control for a feature that isn't working yet.
+ - SQLite / project walk / tab edits = UI thread only.
+ - makeit.bat stays the canonical build for NSBEdit itself; generated projects
+   get their OWN build_command.
+ - When this file is complete, continue with ImplementAgentSteps.txt (the Agent).
+===============================================================================

@@ -1,0 +1,201 @@
+===============================================================================
+ NSBEdit — AGENT MODE FOR THE AI  ·  MASTER PLAN (living document)
+===============================================================================
+ Created: 2026-09-04
+ Purpose: the full design/plan for turning the AI window from suggestion-only
+          into a real agent that can read, edit, build, fix, script, run git,
+          and push — always with the user in control.
+ Companion file: ImplementAgentSteps.txt  (the day-by-day step list)
+
+ GOLDEN RULE FOR EVERY STEP
+   The app must ALWAYS build and run. Any half-finished feature must be
+   INVISIBLE while running (menu item not added, button not shown, tool not
+   registered) until it actually works. Never ship a visible-but-broken control.
+
+-------------------------------------------------------------------------------
+ REQUIREMENTS (from the user)
+-------------------------------------------------------------------------------
+ 1. The AI can CREATE and RUN scripts to help itself — but ALWAYS ask before
+    running anything.
+ 2. The AI can access files OUTSIDE the workspace — ask EACH TIME, per path.
+ 3. The AI can run GIT commands, including PUSH to GitHub.
+ 4. Works in BOTH Cloud and Local modes.
+ 5. EDIT FLOW: agent makes the change -> COMPILES (makeit.bat) to check ->
+    FIXES errors if any -> then REMEMBERS the whole edit (temp file / DB) so the
+    user can hit an UNDO EDIT button.
+
+-------------------------------------------------------------------------------
+ WHERE WE START FROM (current state)
+-------------------------------------------------------------------------------
+ - AI window (ollama_ai.cpp) runs SUGGESTION MODE ONLY: Ai_BuildProjectContext
+   builds a read-only [PROJECT CONTEXT] block, prepends it to the prompt, streams
+   one answer. The model can only DESCRIBE changes; it never touches disk.
+ - Dormant scaffolding already exists and will be reused:
+     enum class AiMenuRole { Suggest, Agent };
+     AiWindowState.role field
+     Ai_ModelMenuLabel / Ai_AddModelMenuItem support both roles
+     locale keys AI_ROLE_AGENT / AI_ROLE_SUGGEST
+   The Agent menu items were deliberately removed for the public release; the
+   enum/infra stayed. We re-activate that path rather than build new plumbing.
+
+-------------------------------------------------------------------------------
+ ARCHITECTURE — THE TOOL-CALLING LOOP
+-------------------------------------------------------------------------------
+ Agent mode = a tool-calling loop layered on the existing Ai_StartSendWorker
+ stream:
+
+   user prompt (Agent role)
+     -> build agent prompt + tool schema (system preamble)
+     -> stream model reply
+     -> is there a tool-call block?
+          no  -> final answer -> commit to transcript
+          yes -> does the tool need approval?
+                   yes -> show Approve / Reject (or diff)
+                            reject -> feed refusal back to model
+                            approve -> execute tool ON UI THREAD
+                   no  -> execute tool ON UI THREAD
+                 -> append tool result to transcript -> resend
+     -> repeat until final answer or iteration cap
+
+ TOOL-CALL PROTOCOL (structured text, not native function-calling — local models
+ can't be trusted with native tool calls):
+   Model emits a fenced block, e.g.
+       ```tool
+       {"tool":"read_file","path":"ne_tabs.h","start":1,"end":80}
+       ```
+   The app detects a COMPLETE tool block in the stream, stops consuming,
+   executes it, feeds the result back as the next turn. Final answer = no tool
+   block (or explicit {"tool":"done"}). A system preamble documents the schema
+   and the available tools; for role==Agent it replaces the SUGGESTION MODE header.
+
+-------------------------------------------------------------------------------
+ APPROVAL TIERS (the safety spine)
+-------------------------------------------------------------------------------
+   AUTO (no prompt):     read_file, list_dir, search   (INSIDE workspace only)
+   ASK EACH TIME:        read/write file OUTSIDE workspace, run_script, run_git,
+                         git_push, run_build
+   DIFF-APPROVE:         apply_edit  (show diff, Approve / Reject)
+
+ Nothing hard-to-reverse (push, delete, out-of-workspace write, arbitrary
+ script) ever runs without an explicit yes. No blanket bypass. An optional
+ "allow for the rest of this session" only ever covers the AUTO/read tier.
+
+-------------------------------------------------------------------------------
+ TOOL REGISTRY
+-------------------------------------------------------------------------------
+   list_dir / read_file / search   <- NeProjects_CollectFiles,
+                                       NeProjects_ReadTextFile, Ai_SearchSnippets
+                                       (AUTO, in-workspace)
+   read_file_external /            <- new; absolute path outside active project
+   write_file_external                root  (ASK EACH TIME, shows full path)
+   apply_edit                      <- new; into IN-MEMORY editor tab (DIFF-APPROVE)
+   run_build                       <- makeit.bat -> parse makeit.log (ASK; then
+                                       auto during a fix loop)
+   run_script                      <- write script to scratch file, then execute
+                                       (ASK EACH TIME, shows body + interpreter)
+   run_git                         <- git status/add/commit/log/diff/branch/checkout
+                                       (ASK EACH TIME, shows exact command)
+   git_push                        <- git push (+ force etc.) (ASK EACH TIME,
+                                       flagged remote/irreversible)
+   get_errors                      <- parse makeit.log (AUTO, after a build)
+
+ Scripts: model proposes language + body + why; user approves; written to a
+ scratch location and run; stdout/stderr/exit code fed back. Never auto-run.
+ Out-of-workspace: every access outside the active project root prompts with the
+ absolute path; approvals are per-call unless the user opts in for that path.
+ Git: all git goes through approval showing the literal command; push is a
+ separate, stronger confirmation (only truly remote, hard-to-undo action).
+
+ TOOLCHAIN DOCTOR (shared with Create New Project): if the agent needs a tool it
+ doesn't have (e.g. Python to run a helper script in a C++ project), it does NOT
+ fail silently — it runs the detect -> ask -> offer flow: probe PATH; if missing,
+ offer a winget install (exact command, Approve/Decline) or show an install guide;
+ never auto-install, never elevate silently. See NewProjectLanguageFiles.txt
+ "Toolchain doctor" for the flow + per-language winget recipes.
+
+-------------------------------------------------------------------------------
+ EDIT -> COMPILE -> FIX -> REMEMBER -> UNDO  (requirement 5, the centerpiece)
+-------------------------------------------------------------------------------
+ Each agent "edit session" is a TRANSACTION:
+   1. APPLY: apply_edit writes into the IN-MEMORY editor tab (opens the file as a
+      tab if needed), shown as a diff to Approve/Reject. Before touching a file,
+      snapshot its current content (before-image).
+   2. COMPILE: run_build via makeit.bat (ALWAYS via makeit.bat, no params/piping,
+      per rules.txt). Read makeit.log afterward.
+   3. FIX LOOP: if makeit.log has errors, feed them back; agent proposes follow-up
+      edits; rebuild. Repeat until clean or iteration cap (default 6). You approve
+      ENTERING the loop once; rebuilds inside it don't re-prompt, but any NEW file
+      it wants to touch still triggers a diff-approve.
+   4. REMEMBER: store the whole transaction — every file's before/after content +
+      metadata (prompt, timestamp, model, build result) — so it survives restart.
+   5. UNDO EDIT BUTTON: revert the entire last transaction (restore before-images
+      into the tabs), with a small history so more than one can be undone.
+
+ WHERE "REMEMBER" LIVES — shared nsbedit.db (UI-thread only, atomic, already
+ backed up by the two-slot rolling backup, survives restart, not swept by
+ makeit.bat scratch cleanup):
+     agent_edits(id, created, prompt, model, build_ok)
+     agent_edit_files(edit_id, path, before_blob, after_blob, was_new)
+ Undo restores before_blob into the in-memory tab (respects "save only on user
+ Save" — undo does NOT force a disk write either).
+
+-------------------------------------------------------------------------------
+ CLOUD + LOCAL  (requirement 4)
+-------------------------------------------------------------------------------
+ - Loop is transport-agnostic: local via daemon (NeAiClient_AskOllamaStream),
+   Cloud routes -cloud models to ollama.com (Ai_CloudAskStream / API-key path).
+ - Re-enable BOTH Agent menu items (local + Cloud) once the loop works.
+ - Transcript budgeting differs: local prefill cost scales hard with prompt size
+   (keep local prompts to a few thousand tokens) -> aggressively trim/summarize
+   old tool outputs for local; Cloud carries a much larger transcript. Same
+   protocol, two budget profiles.
+
+-------------------------------------------------------------------------------
+ THREADING & SAFETY  (non-negotiable for this codebase)
+-------------------------------------------------------------------------------
+ - Model stream stays on the worker thread; EVERY tool executes on the UI thread
+   (SQLite THREADSAFE=0; project walk, DB knowledge, editor-tab mutation are all
+   UI-thread-only). Worker posts a "run tool" message, UI executes, posts result.
+ - run_build / run_script / git_push are long-running -> async, stream output into
+   the answer pane, keep the window responsive.
+ - Extend the existing Stop button (Ai_StopSend) to abort the WHOLE loop.
+ - Keep the Ai_Trace %TEMP% diagnostic available while building (decisive last time).
+ - Malformed tool JSON, missing files, non-zero exit codes -> fed back to the
+   model as errors, never crash the app.
+
+-------------------------------------------------------------------------------
+ UI ADDITIONS
+-------------------------------------------------------------------------------
+ - Answer pane renders tool activity as distinct, collapsible blocks
+   ("Read ne_tabs.h", "Proposed edit", "Ran makeit.bat -> 0 errors", "git commit").
+ - Approve / Reject controls for gated actions and diffs.
+ - Undo edit button (+ small history list of recent transactions).
+ - Per-action modal for scripts / out-of-workspace / git showing exactly what runs.
+ - Owner-draw everything, 12pt Segoe UI, DPI-aware (project UI policy).
+
+-------------------------------------------------------------------------------
+ i18n
+-------------------------------------------------------------------------------
+ All new strings (tool labels, Approve/Reject, script/git/out-of-workspace
+ confirmations, Undo edit, agent errors) added to ALL 15 embedded locale/*.txt
+ ("all languages complete at all times").
+
+-------------------------------------------------------------------------------
+ OPEN DECISIONS
+-------------------------------------------------------------------------------
+ 1. Undo depth — only the LAST agent edit, or a stack of the last N? (plan: stack)
+ 2. Fix-loop cap — how many auto-rebuild-and-fix iterations before it stops and
+    asks (default 6)?
+ 3. Git identity — push current branch/remote as configured, or always propose
+    branch + commit message for approval first? (plan: propose for approval)
+
+-------------------------------------------------------------------------------
+ PHASED BUILD ORDER (high level — see ImplementAgentSteps.txt for daily steps)
+-------------------------------------------------------------------------------
+ 1. Read-only agent: protocol + loop + read_file/list_dir/search + activity UI.
+ 2. Gated edits + undo store: apply_edit diff-approve, agent_edits DB, Undo button.
+ 3. Compile->fix loop: run_build + get_errors, auto-iterate to green build.
+ 4. Scripts + out-of-workspace + git/push, all with per-action approval.
+ 5. Polish: transcript trimming, loop guards, session allow-list, i18n, docs
+    (API_list.txt / API_INTERNALS/).
+===============================================================================

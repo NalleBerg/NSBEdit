@@ -1,0 +1,316 @@
+===============================================================================
+ NSBEdit — NEW PROJECT · STARTER FILES PER LANGUAGE (reference for Phase E)
+===============================================================================
+ Created: 2026-09-05
+ Companion: CreateNewProjSteps.txt (Phase E = language + online/FTP projects)
+
+ PURPOSE
+   For each language, what files does a brand-new project need so it OPENS and
+   (where it compiles) BUILDS/RUNS out of the box? Feeds the template engine
+   (Step 4) and the language table (Step E1). Not final — trim/extend as we go.
+
+ THREE AXES (recap from CreateNewProjSteps.txt)
+   LANGUAGE (this file) · KIND (CLI/GUI/DB/Website...) · LOCATION (local / FTP).
+
+ TOOLCHAIN AXIS (native/compiled languages only)
+   The compiled entries below support BOTH MinGW and MSVC. The developer picks a
+   toolchain (or we auto-detect what's installed); it changes the generated
+   makeit.bat + the default build_command, NOT the source files:
+     MinGW : gcc / g++ , windres (.rc) , NASM (.asm) , gfortran
+     MSVC  : cl.exe   , rc.exe  (.rc) , MASM ml64 (.asm) ; needs vcvarsall.bat
+             in the generated makeit.bat to set up the env. (MSVC has no Fortran.)
+   CMakeLists.txt works for either toolchain (pick the generator), so it stays a
+   good portable second build file. Default toolchain = MinGW (matches NSBEdit);
+   MSVC selectable.
+
+-------------------------------------------------------------------------------
+ COMMON FILES — written for EVERY project regardless of language
+-------------------------------------------------------------------------------
+   README.md          project name + short description (from the dialog)
+   CHANGELOG.md       seeded with a first "unreleased" entry
+   .gitignore         language-specific ignores (see each entry) + editor cruft
+   LICENSE            placeholder (developer picks later)
+   .editorconfig      (optional) consistent indentation
+
+ NOTES
+   - build_command = the project's stored build_command (default per language).
+     For NSBEdit-style consistency, compiled languages default to a generated
+     per-project makeit.bat AND a portable config file (CMakeLists/pom/etc.).
+   - run_command = how to run once built/interpreted (for a future "Run" action).
+   - Web languages (HTML/PHP) may be created LOCAL or ONLINE via FTP; they have
+     no local build.
+
+===============================================================================
+ THE 25 LANGUAGES
+===============================================================================
+
+-------------------------------------------------------------------------------
+ COMPILED — SYSTEMS / NATIVE
+-------------------------------------------------------------------------------
+
+1) C
+   Source:        main.c
+   Build/config:  makeit.bat  + CMakeLists.txt
+   build_command: makeit.bat        run: app.exe
+   .gitignore:    *.o *.obj *.exe *.pdb *.ilk
+   Toolchain:     MinGW gcc   -> gcc main.c -o app.exe
+                  MSVC  cl    -> (vcvars) cl /EHsc main.c /Fe:app.exe
+
+2) C++
+   Source:        main.cpp  (+ main.h optional)
+   Build/config:  makeit.bat  + CMakeLists.txt
+   build_command: makeit.bat        run: app.exe
+   .gitignore:    *.o *.obj *.exe *.pdb *.ilk build/
+   Toolchain:     MinGW g++    -> g++ -std=c++17 main.cpp -o app.exe
+                  MSVC  cl     -> (vcvars) cl /EHsc /std:c++17 main.cpp /Fe:app.exe
+   Kinds:         CLI / Windows GUI (WinMain + .rc + app.manifest) / DB (sqlite)
+                  GUI resource compiler: windres (MinGW) vs rc.exe (MSVC)
+
+3) C#  (.NET)
+   Source:        Program.cs
+   Build/config:  <Name>.csproj
+   build_command: dotnet build      run: dotnet run
+   .gitignore:    bin/ obj/
+   Toolchain:     .NET SDK
+
+4) Go
+   Source:        main.go
+   Build/config:  go.mod
+   build_command: go build          run: ./app
+   .gitignore:    /bin *.exe
+   Toolchain:     Go
+
+5) Rust
+   Source:        src/main.rs
+   Build/config:  Cargo.toml
+   build_command: cargo build       run: cargo run
+   .gitignore:    /target
+   Toolchain:     cargo/rustc
+
+6) Swift
+   Source:        Sources/<Name>/main.swift
+   Build/config:  Package.swift
+   build_command: swift build       run: swift run
+   .gitignore:    .build/
+   Toolchain:     Swift
+
+7) Objective-C
+   Source:        main.m
+   Build/config:  Makefile (clang -framework Foundation)
+   build_command: make              run: ./app
+   .gitignore:    *.o app
+   Toolchain:     clang
+
+8) Assembly  (x64, Windows)
+   Source:        main.asm
+   Build/config:  makeit.bat
+   build_command: makeit.bat        run: app.exe
+   .gitignore:    *.obj *.exe
+   Toolchain:     MinGW -> NASM (nasm -f win64) + linker (ld/gcc)
+                  MSVC  -> MASM  (ml64) + link.exe   [DIFFERENT syntax dialect!]
+   Note:          NASM and MASM source are NOT interchangeable; pick the .asm
+                  template to match the chosen assembler.
+
+9) Fortran
+   Source:        main.f90
+   Build/config:  makeit.bat (gfortran) + CMakeLists.txt
+   build_command: makeit.bat        run: app.exe
+   .gitignore:    *.o *.mod *.exe
+   Toolchain:     MinGW gfortran  (MSVC has NO Fortran; Intel ifx/ifort optional)
+
+-------------------------------------------------------------------------------
+ COMPILED / JVM
+-------------------------------------------------------------------------------
+
+10) Java
+    Source:        src/main/java/Main.java   (or src/Main.java for the simple kind)
+    Build/config:  pom.xml (Maven)  OR  build.gradle  OR a plain makeit.bat (javac)
+    build_command: mvn package  /  gradle build  /  makeit.bat
+    run:           java -jar ... / java Main
+    .gitignore:    *.class target/ build/ .gradle/
+    Toolchain:     JDK (+ Maven/Gradle for the build variant)
+
+11) Kotlin
+    Source:        src/main/kotlin/Main.kt
+    Build/config:  build.gradle.kts
+    build_command: gradle build     run: gradle run
+    .gitignore:    build/ .gradle/
+    Toolchain:     Kotlin + Gradle
+
+-------------------------------------------------------------------------------
+ SCRIPTING / INTERPRETED
+-------------------------------------------------------------------------------
+
+12) Python
+    Source:        main.py
+    Build/config:  requirements.txt  (+ pyproject.toml optional)
+    build_command: (none — interpreted)   run: python main.py
+    .gitignore:    __pycache__/ *.pyc .venv/ venv/
+    Toolchain:     Python 3
+
+13) JavaScript  (Node.js)
+    Source:        index.js
+    Build/config:  package.json
+    build_command: npm install (optional)  run: node index.js
+    .gitignore:    node_modules/
+    Toolchain:     Node.js
+
+14) TypeScript
+    Source:        src/index.ts
+    Build/config:  package.json + tsconfig.json
+    build_command: tsc  (or npm run build)  run: node dist/index.js
+    .gitignore:    node_modules/ dist/
+    Toolchain:     Node.js + tsc
+
+15) Ruby
+    Source:        main.rb
+    Build/config:  Gemfile
+    build_command: bundle install (optional)  run: ruby main.rb
+    .gitignore:    (bundler) vendor/bundle
+    Toolchain:     Ruby
+
+16) Perl
+    Source:        main.pl
+    Build/config:  (none minimal; cpanfile optional)
+    build_command: (none)   run: perl main.pl
+    Toolchain:     Perl
+
+17) Lua
+    Source:        main.lua
+    Build/config:  (none minimal; rockspec optional)
+    build_command: (none)   run: lua main.lua
+    Toolchain:     Lua
+
+18) Dart
+    Source:        bin/main.dart
+    Build/config:  pubspec.yaml
+    build_command: dart pub get (optional)  run: dart run
+    .gitignore:    .dart_tool/ build/
+    Toolchain:     Dart SDK
+
+19) R
+    Source:        main.R
+    Build/config:  DESCRIPTION (optional)
+    build_command: (none)   run: Rscript main.R
+    Toolchain:     R
+
+-------------------------------------------------------------------------------
+ SHELL / AUTOMATION
+-------------------------------------------------------------------------------
+
+20) Shell (Bash)
+    Source:        main.sh   (shebang #!/usr/bin/env bash, +x)
+    build_command: (none)   run: ./main.sh
+    Toolchain:     bash
+
+21) PowerShell
+    Source:        main.ps1
+    build_command: (none)   run: pwsh ./main.ps1
+    Toolchain:     PowerShell
+
+22) Batch (Windows)
+    Source:        main.bat  (or main.cmd)
+    build_command: (none)   run: main.bat
+    Toolchain:     cmd.exe (built-in)
+
+-------------------------------------------------------------------------------
+ WEB  (may be created LOCAL or ONLINE via FTP — no local build)
+-------------------------------------------------------------------------------
+
+23) HTML / CSS / JS  (static site)
+    Source:        index.html + css/style.css + js/script.js
+    Build/config:  (none)   deploy: copy / FTP upload
+    .gitignore:    (minimal)
+    LOCATION:      local folder OR remote FTP dir (reuse ne_ftp.* + FTP profiles)
+
+24) PHP  (server site)
+    Source:        index.php + includes/header.php  (+ .htaccess)
+    Build/config:  composer.json (optional)
+    run:           needs a PHP server (local php -S, or the FTP host)
+    .gitignore:    vendor/
+    LOCATION:      local folder OR remote FTP dir (needs a PHP-capable host)
+
+-------------------------------------------------------------------------------
+ DATA
+-------------------------------------------------------------------------------
+
+25) SQL  (SQLite / DB project)
+    Source:        schema.sql  (+ seed.sql)
+    Build/config:  a small runner (makeit.bat: sqlite3 app.db < schema.sql) optional
+    build_command: makeit.bat (build the .db)   run: open app.db
+    .gitignore:    *.db *.sqlite (if generated)
+    Toolchain:     sqlite3
+
+===============================================================================
+ TOOLCHAIN DOCTOR  (detect -> ask -> offer install / guide; never silent)
+===============================================================================
+ THE DEVELOPER IS KING: nothing is ever auto-installed. We only detect, then ask.
+
+ DECISION FLOW (run at project creation for the chosen language/toolchain, and
+ reused by the AI agent whenever IT needs a tool — see note at the end):
+   1. Is the TOOLCHAIN present? (probe PATH + known install locations for the
+      language's key exe: g++/cl/python/node/cargo/...)
+        -> YES: nothing to do. Proceed.
+   2. Toolchain MISSING. Is WINGET present? (where winget)
+        -> NO winget + NO toolchain: show a GUIDE (how to install this toolchain,
+           with a link / the manual steps). Don't try to run anything.
+        -> WINGET present + NO toolchain: OFFER to install for the developer,
+           showing the EXACT winget command. Approve -> run it. Decline -> step 3.
+   3. If the developer says NO (or install fails / winget absent):
+        -> CREATE THE PROJECT ANYWAY (never block creation), and at the END of the
+           job show a pop-up: "<Toolchain> is missing — the project was created but
+           won't build until it's installed." (include the guide / winget command).
+
+ CAVEATS
+   - Elevation: some installers need admin/UAC. We do NOT drive a UAC prompt or
+     elevate silently — if a package needs elevation, SHOW the command and ask the
+     developer to run it themselves.
+   - PATH refresh: after a winget install the running app won't see the new tool
+     until PATH reloads — tell the developer to restart NSBEdit / open a new shell.
+   - winget IDs change over time — verify; treat the table below as a starting set.
+
+ PER-LANGUAGE INSTALL RECIPE (store as a data field per language: winget id +
+ fallback guide). Starting set (VERIFY IDs):
+   MinGW-w64  -> MSYS2.MSYS2 then `pacman -S mingw-w64-x86_64-toolchain`
+                 (no clean single-package winget — GUIDE this one)
+   MSVC       -> Microsoft.VisualStudio.2022.BuildTools   (large; elevation)
+   Python     -> Python.Python.3.12
+   Node.js    -> OpenJS.NodeJS            (TypeScript: then `npm i -g typescript`)
+   Go         -> GoLang.Go
+   Rust       -> Rustlang.Rustup
+   .NET (C#)  -> Microsoft.DotNet.SDK.8
+   Java (JDK) -> Microsoft.OpenJDK.21  /  EclipseAdoptium.Temurin.21.JDK
+   Kotlin     -> (via SDKMAN/JetBrains — GUIDE)
+   Ruby       -> RubyInstallerTeam.Ruby.3.3
+   Perl       -> StrawberryPerl.StrawberryPerl
+   Lua        -> (GUIDE; or DEVCOM.Lua if available)
+   Dart       -> (via Flutter/Dart SDK — GUIDE)
+   R          -> RProject.R
+   PHP        -> PHP.PHP
+   Swift      -> Swift.Toolchain
+   NASM       -> NASM.NASM     (gfortran ships with MSYS2/MinGW)
+   PowerShell -> Microsoft.PowerShell
+   Git        -> Git.Git
+
+ AI / AGENT REUSE: if the AI needs a toolchain to do its job (e.g. Python to run a
+ helper script inside a C++ project), it uses this SAME doctor — ASK + OFFER to
+ install (winget) or show the guide, never silent. Ties into the Agent's
+ approval/run_script gate (ImplementAgentToDo.txt).
+
+===============================================================================
+ IMPLEMENTATION NOTES
+ - Data-driven: store per-language {kind list, default build_command, run_command,
+   template file set, gitignore lines} in ONE table, not a hardcoded switch, so a
+   new language = one data entry (matches Step E1's "don't hardcode" rule).
+ - TOOLCHAIN (native langs): the dialog needs a compiler selector (MinGW / MSVC)
+   shown only for compiled languages. It changes the generated makeit.bat body +
+   the default build_command (and .asm dialect for Assembly), never the other
+   source files. Store the chosen toolchain per project. Auto-detect what's on the
+   machine to preselect; still allow either. MSVC makeit.bat must call vcvarsall.bat
+   (or vcvars64.bat) first to set up cl/rc/ml64. CMakeLists stays toolchain-neutral.
+ - Toolchain may be absent on the machine — creating the project should still
+   succeed; a first build just reports "tool not found" (don't block creation).
+ - Extension -> editor lexer is already handled by the editor (Lexilla); scaffold
+   only needs to write the right file extensions.
+ - Web (HTML/PHP) is the only group needing the LOCAL-vs-FTP location choice.
+===============================================================================
