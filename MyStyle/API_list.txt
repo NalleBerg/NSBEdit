@@ -1172,6 +1172,26 @@
                                                 must be called after both RTF and non-RTF load
                                                 paths), and bug history.
 
+  API_INTERNALS\INTERNALS\new_project_INTERNALS.txt
+                                                New Project system — PLANNING note (nothing
+                                                implemented yet). Records where projects stand
+                                                today (ne_projects: attach-an-existing-folder
+                                                only, no creation path), the goal of a single
+                                                "New Project…" entry point, the planned
+                                                ne_newproject.h/.cpp modal dialog (name,
+                                                location + Browse, template combo, live
+                                                full-path preview, validation rules incl.
+                                                illegal characters and reserved device names),
+                                                the declarative template set (Empty / Notes /
+                                                Web / C++ Win32, {{NAME}} and {{YEAR}}
+                                                substitution, kept in step with
+                                                MyStyle\new-project.ps1 and skeleton_idea.txt),
+                                                persistence via the existing NeProjects_Add /
+                                                SetActiveId with additive-only schema changes,
+                                                the six build phases, and the open questions
+                                                (git init, per-project AI ignore list, menu
+                                                placement).
+
   API_INTERNALS\INTERNALS\find_replace_INTERNALS.txt
                                                 Find / Replace subsystem — the modeless
                                                 NsbFindClass window, incremental EN_CHANGE
