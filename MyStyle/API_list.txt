@@ -829,6 +829,23 @@
                                                 See API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt
                                                 for how the AI consumes a project.
 
+  ne_licenses.h / ne_licenses.cpp               License catalogue for the New Project dialog.
+                                                19 canonical (SPDX) license texts are embedded as
+                                                RCDATA resources (ids 200..218 in NSBEdit.rc, order
+                                                0..18) and seeded into a `licenses(id,name,body)`
+                                                table via NeLicenses_Init() at startup (after
+                                                NeProfiles_Init; guarded by settings key
+                                                licenses_seed_ver so it only reseeds when the bump
+                                                constant changes). NeLicenses_List returns id+name in
+                                                order; NeLicenses_GetBody returns the raw body with
+                                                {{YEAR}}/{{NAME}} placeholders intact (short licenses
+                                                MIT/BSD-2/BSD-3/ISC carry them; the rest are verbatim).
+                                                The dialog combo maps item data -1="Choose License"
+                                                (mandatory sentinel), 0..18=catalogue, -2="Other"
+                                                (writes an editable stub + opens LICENSE). Texts are
+                                                downloaded once by _get_licenses.ps1 from
+                                                spdx/license-list-data.
+
   API_INTERNALS\API\system_API.txt             Public MyStyle system overview — install and
                                                 runtime database rules, portable vs installed
                                                 storage, and why the same user-data policy

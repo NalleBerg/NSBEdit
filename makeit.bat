@@ -125,6 +125,7 @@ g++ -v -std=c++17 -O2 -Wall -mwindows -municode ^
     highlight\highlight.cpp checkbox.cpp regex_guide\regex_guide.cpp ^
     ne_crypto.cpp ne_profiles.cpp ne_ai_bootstrap.cpp ne_ai_client.cpp ne_session.cpp ne_ftp.cpp ne_autocomplete\ne_autocomplete.cpp ^
     ne_projects.cpp ^
+    ne_licenses.cpp ^
     spinner\spinner_dialog.cpp ^
     ai_markdown_helper.cpp ^
     copy_ai_code.cpp ^

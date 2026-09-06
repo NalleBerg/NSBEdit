@@ -39,6 +39,7 @@
 #include "ne_crypto.h"
 #include "ne_profiles.h"
 #include "ne_projects.h"
+#include "ne_licenses.h"
 #include "ne_ai_bootstrap.h"
 #include "ne_ai_client.h"
 #include "ollama_ai.h"
@@ -10926,6 +10927,7 @@ static bool Ne_PickFolder(HWND owner, const wchar_t* title, std::wstring& outPat
 #define IDC_NEWPROJ_BUILD   2107
 #define IDC_NEWPROJ_SUMMARY 2108
 #define IDC_NEWPROJ_INFO    2109
+#define IDC_NEWPROJ_LICENSE 2110
 
 static NeDialogData s_npDD;
 struct NeNewProjState {
@@ -10938,6 +10940,7 @@ struct NeNewProjState {
     std::wstring targetPath;
     std::wstring buildCmd;
     int          typeIdx = 0;
+    int          licenseId = -1;   // -1 = none chosen, -2 = Other/custom, 0..18 = catalogue
 };
 static NeNewProjState s_np;
 
@@ -11153,10 +11156,23 @@ static LRESULT CALLBACK Ne_NewProjDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
                     MessageBoxW(hwnd, err, Ls(L"NEWPROJ_TITLE"), MB_OK | MB_ICONWARNING);
                     return 0;
                 }
+                // License is mandatory: block on the "Choose License" sentinel.
+                int licSel = (int)SendMessageW(GetDlgItem(hwnd, IDC_NEWPROJ_LICENSE), CB_GETCURSEL, 0, 0);
+                int licId  = (int)(INT_PTR)SendMessageW(GetDlgItem(hwnd, IDC_NEWPROJ_LICENSE),
+                                                        CB_GETITEMDATA, licSel, 0);
+                if (licId == -1) {
+                    NeDialogButtonSpec okb[1] = {
+                        { IDOK, Ls(L"BTN_OK"), NeBtnTone::Blue, IDI_WARNING, 0 }
+                    };
+                    Ne_ShowChoiceDialog(hwnd, Ls(L"NEWPROJ_TITLE"),
+                                        Ls(L"NEWPROJ_ERR_LICENSE"), okb, 1, IDOK);
+                    return 0;
+                }
                 // Capture the validated values for the caller to scaffold with.
                 s_np.name       = name;
                 s_np.targetPath = Ne_NewProjTargetPath(hwnd);
                 s_np.typeIdx    = (int)SendMessageW(GetDlgItem(hwnd, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
+                s_np.licenseId  = licId;   // -2 = Other/custom, 0..18 = catalogue
                 {
                     wchar_t build[MAX_PATH] = {};
                     GetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD), build, MAX_PATH);
@@ -11214,7 +11230,7 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
     const int rowLE = LH + S(2) + EB;                 // one label-over-field row
     int clientW = S(470);
     int clientH = P
-                + 4 * (rowLE + GAP)                   // name, parent, type, build
+                + 5 * (rowLE + GAP)                   // name, parent, type, build, license
                 + INFO_H + GAP                        // info panel (path + type/build)
                 + CB + P;                             // buttons
     int VW = clientW - 2 * P;
@@ -11287,6 +11303,28 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
     {
         HWND hBuild = mkEdit(IDC_NEWPROJ_BUILD, y0, VW);
         SetWindowTextW(hBuild, Ne_NewProjTypeDefaultBuild(0));
+    }
+    y0 += EB + GAP;
+
+    // License (mandatory): "Choose License" (no value) + catalogue + "Other".
+    mkLbl(Ls(L"NEWPROJ_LICENSE"), y0); y0 += LH + S(2);
+    {
+        HWND hLic = CreateWindowExW(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",
+            WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+            P, y0, VW, EB * 14, dlg, (HMENU)(UINT_PTR)IDC_NEWPROJ_LICENSE, hi, NULL);
+        if (hf) SendMessageW(hLic, WM_SETFONT, (WPARAM)hf, TRUE);
+        int ix = (int)SendMessageW(hLic, CB_ADDSTRING, 0, (LPARAM)Ls(L"NEWPROJ_LICENSE_CHOOSE"));
+        SendMessageW(hLic, CB_SETITEMDATA, ix, (LPARAM)-1);   // -1 = nothing chosen
+        std::vector<NeLicenseInfo> lics;
+        NeLicenses_List(lics);
+        for (const auto& li : lics) {
+            ix = (int)SendMessageW(hLic, CB_ADDSTRING, 0, (LPARAM)li.name.c_str());
+            SendMessageW(hLic, CB_SETITEMDATA, ix, (LPARAM)(INT_PTR)li.id);
+        }
+        ix = (int)SendMessageW(hLic, CB_ADDSTRING, 0, (LPARAM)Ls(L"NEWPROJ_LICENSE_OTHER"));
+        SendMessageW(hLic, CB_SETITEMDATA, ix, (LPARAM)-2);   // -2 = Other/custom
+        SendMessageW(hLic, CB_SETCURSEL, 0, 0);               // default: Choose License
+        if (g_darkMode) SetWindowTheme(hLic, L"DarkMode_CFD", L"");
     }
     y0 += EB + GAP;
 
@@ -11367,8 +11405,6 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
           L"# Changelog\n\n## Unreleased - {{DATE}}\n- Initial project.\n" },
         { L".gitignore",
           L"# Build output\nbuild/\n*.o\n*.obj\n*.exe\n*.log\n\n# Editor / OS\n.vs/\n.vscode/\n*.user\nThumbs.db\n" },
-        { L"LICENSE",
-          L"Copyright (c) {{YEAR}} {{NAME}}\n\nAll rights reserved. (Choose a licence.)\n" },
     };
     if (!NeTemplate_WriteSet(s_np.targetPath, files, vars, false)) {
         MessageBoxW(parent, Ls(L"NEWPROJ_ERR_WRITE"), Ls(L"NEWPROJ_TITLE"),
@@ -11385,10 +11421,27 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
         }
         NeProjects_SetActiveId(np.id);
     }
+    // Write the chosen LICENSE (mandatory).  "Other" writes an editable stub.
+    std::wstring licPath = s_np.targetPath;
+    if (!licPath.empty() && licPath.back() != L'\\' && licPath.back() != L'/') licPath += L'\\';
+    licPath += L"LICENSE";
+    bool licIsOther = (s_np.licenseId == -2);
+    std::wstring licBody;
+    if (licIsOther) {
+        licBody = Ls(L"NEWPROJ_LICENSE_STUB");
+        licBody += L"\r\n";
+    } else {
+        std::wstring raw;
+        if (NeLicenses_GetBody(s_np.licenseId, raw))
+            licBody = NeTemplate_Expand(raw, vars);
+    }
+    NeTemplate_WriteFile(licPath, licBody, true);
+
     std::wstring readme = s_np.targetPath;
     if (!readme.empty() && readme.back() != L'\\' && readme.back() != L'/') readme += L'\\';
     readme += L"README.md";
     Ne_OpenFileMerged(parent, readme);
+    if (licIsOther) Ne_OpenFileMerged(parent, licPath);   // let the developer edit it
     return true;
 }
 
@@ -16873,6 +16926,7 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     NeCrypto_Init();
     NeProfiles_Init();
     NeProjects_Init();
+    NeLicenses_Init();
     {
         int locVal = 0;
         NeProfiles_GetIntSetting("locale_id",  0, locVal);  g_localeId   = locVal;
