@@ -203,3 +203,152 @@ bool NeSession_Clear()
     return sqlite3_exec(db, "DELETE FROM session_tabs",
                         NULL, NULL, NULL) == SQLITE_OK;
 }
+
+// ── Recently closed tabs ──────────────────────────────────────────────────────
+static void Nse_EnsureClosedTable(sqlite3* db)
+{
+    sqlite3_exec(db,
+        "CREATE TABLE IF NOT EXISTS closed_tabs ("
+        "  id              INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  sort_order      INTEGER NOT NULL DEFAULT 0,"
+        "  local_path      TEXT    NOT NULL DEFAULT '',"
+        "  is_ftp          INTEGER NOT NULL DEFAULT 0,"
+        "  ftp_profile_id  INTEGER NOT NULL DEFAULT -1,"
+        "  ftp_remote_path TEXT    NOT NULL DEFAULT '',"
+        "  ftp_friendly    TEXT    NOT NULL DEFAULT '',"
+        "  content         BLOB,"
+        "  content_is_rtf  INTEGER NOT NULL DEFAULT 0,"
+        "  is_active       INTEGER NOT NULL DEFAULT 0,"
+        "  disk_time_lo    INTEGER NOT NULL DEFAULT 0,"
+        "  disk_time_hi    INTEGER NOT NULL DEFAULT 0,"
+        "  disk_size       INTEGER NOT NULL DEFAULT 0,"
+        "  was_modified    INTEGER NOT NULL DEFAULT 0,"
+        "  word_wrap       INTEGER NOT NULL DEFAULT 1,"
+        "  is_sci_tab      INTEGER NOT NULL DEFAULT 0,"
+        "  caret_pos       INTEGER NOT NULL DEFAULT 0,"
+        "  scroll_line     INTEGER NOT NULL DEFAULT 0,"
+        "  spell_lang      TEXT    NOT NULL DEFAULT ''"
+        ")", NULL, NULL, NULL);
+}
+
+bool NeSession_PushClosedTab(const NeSessionTab& t)
+{
+    sqlite3* db = NeProfiles_GetDb();
+    if (!db) return false;
+    Nse_EnsureClosedTable(db);
+
+    const char* sql =
+        "INSERT INTO closed_tabs"
+        " (sort_order, local_path, is_ftp, ftp_profile_id,"
+        "  ftp_remote_path, ftp_friendly,"
+        "  content, content_is_rtf, is_active,"
+        "  disk_time_lo, disk_time_hi, disk_size, was_modified,"
+        "  word_wrap, is_sci_tab, caret_pos, scroll_line, spell_lang)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)";
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr) != SQLITE_OK) return false;
+    sqlite3_bind_int   (stmt,  1, t.sortOrder);
+    auto lp = Nse_W2U(t.localPath);
+    sqlite3_bind_text  (stmt,  2, lp.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_int   (stmt,  3, t.isFtp ? 1 : 0);
+    sqlite3_bind_int64 (stmt,  4, t.ftpProfileId);
+    auto rp = Nse_W2U(t.ftpRemotePath);
+    sqlite3_bind_text  (stmt,  5, rp.c_str(), -1, SQLITE_TRANSIENT);
+    auto fn = Nse_W2U(t.ftpFriendly);
+    sqlite3_bind_text  (stmt,  6, fn.c_str(), -1, SQLITE_TRANSIENT);
+    if (!t.content.empty())
+        sqlite3_bind_blob(stmt, 7, t.content.data(), (int)t.content.size(), SQLITE_TRANSIENT);
+    else
+        sqlite3_bind_null(stmt, 7);
+    sqlite3_bind_int   (stmt,  8, t.contentIsRtf ? 1 : 0);
+    sqlite3_bind_int   (stmt,  9, t.isActive ? 1 : 0);
+    sqlite3_bind_int64 (stmt, 10, (int64_t)t.diskTimeLo);
+    sqlite3_bind_int64 (stmt, 11, (int64_t)t.diskTimeHi);
+    sqlite3_bind_int64 (stmt, 12, t.diskSize);
+    sqlite3_bind_int   (stmt, 13, t.wasModified ? 1 : 0);
+    sqlite3_bind_int   (stmt, 14, t.wordWrap   ? 1 : 0);
+    sqlite3_bind_int   (stmt, 15, t.isSciTab   ? 1 : 0);
+    sqlite3_bind_int   (stmt, 16, t.caretPos);
+    sqlite3_bind_int   (stmt, 17, t.scrollLine);
+    auto sl = Nse_W2U(t.spellLang);
+    sqlite3_bind_text  (stmt, 18, sl.c_str(), -1, SQLITE_TRANSIENT);
+    bool ok = (sqlite3_step(stmt) == SQLITE_DONE);
+    sqlite3_finalize(stmt);
+
+    // Keep only the newest 5.
+    sqlite3_exec(db,
+        "DELETE FROM closed_tabs WHERE id NOT IN "
+        "(SELECT id FROM closed_tabs ORDER BY id DESC LIMIT 5)",
+        NULL, NULL, NULL);
+    return ok;
+}
+
+bool NeSession_PopClosedTab(NeSessionTab& out)
+{
+    sqlite3* db = NeProfiles_GetDb();
+    if (!db) return false;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db,
+        "SELECT id, sort_order, local_path, is_ftp, ftp_profile_id,"
+        "       ftp_remote_path, ftp_friendly,"
+        "       content, content_is_rtf, is_active,"
+        "       disk_time_lo, disk_time_hi, disk_size, was_modified,"
+        "       word_wrap, is_sci_tab, caret_pos, scroll_line, spell_lang"
+        " FROM closed_tabs ORDER BY id DESC LIMIT 1", -1, &stmt, nullptr) != SQLITE_OK)
+        return false;
+    bool found = false;
+    int64_t rowId = 0;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        rowId          = sqlite3_column_int64 (stmt, 0);
+        out.sortOrder  = sqlite3_column_int   (stmt, 1);
+        const char* lp = (const char*)sqlite3_column_text(stmt, 2);
+        out.localPath  = lp ? Nse_U2W(lp) : L"";
+        out.isFtp      = sqlite3_column_int   (stmt, 3) != 0;
+        out.ftpProfileId = sqlite3_column_int64(stmt, 4);
+        const char* rp = (const char*)sqlite3_column_text(stmt, 5);
+        out.ftpRemotePath = rp ? Nse_U2W(rp) : L"";
+        const char* fn = (const char*)sqlite3_column_text(stmt, 6);
+        out.ftpFriendly = fn ? Nse_U2W(fn) : L"";
+        const void* blob = sqlite3_column_blob (stmt, 7);
+        int blen         = sqlite3_column_bytes(stmt, 7);
+        out.content.clear();
+        if (blob && blen > 0)
+            out.content.assign((const uint8_t*)blob, (const uint8_t*)blob + blen);
+        out.contentIsRtf = sqlite3_column_int (stmt, 8) != 0;
+        out.isActive     = sqlite3_column_int (stmt, 9) != 0;
+        out.diskTimeLo   = (DWORD)sqlite3_column_int64(stmt, 10);
+        out.diskTimeHi   = (DWORD)sqlite3_column_int64(stmt, 11);
+        out.diskSize     = sqlite3_column_int64(stmt, 12);
+        out.wasModified  = sqlite3_column_int (stmt, 13) != 0;
+        out.wordWrap     = sqlite3_column_int (stmt, 14) != 0;
+        out.isSciTab     = sqlite3_column_int (stmt, 15) != 0;
+        out.caretPos     = sqlite3_column_int (stmt, 16);
+        out.scrollLine   = sqlite3_column_int (stmt, 17);
+        const char* sl   = (const char*)sqlite3_column_text(stmt, 18);
+        out.spellLang    = sl ? Nse_U2W(sl) : L"";
+        found = true;
+    }
+    sqlite3_finalize(stmt);
+    if (found) {
+        sqlite3_stmt* del = nullptr;
+        if (sqlite3_prepare_v2(db, "DELETE FROM closed_tabs WHERE id=?", -1, &del, nullptr) == SQLITE_OK) {
+            sqlite3_bind_int64(del, 1, rowId);
+            sqlite3_step(del);
+            sqlite3_finalize(del);
+        }
+    }
+    return found;
+}
+
+bool NeSession_HasClosedTab()
+{
+    sqlite3* db = NeProfiles_GetDb();
+    if (!db) return false;
+    sqlite3_stmt* stmt = nullptr;
+    if (sqlite3_prepare_v2(db, "SELECT COUNT(*) FROM closed_tabs", -1, &stmt, nullptr) != SQLITE_OK)
+        return false;   // table not created yet → none
+    bool has = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) has = sqlite3_column_int(stmt, 0) > 0;
+    sqlite3_finalize(stmt);
+    return has;
+}

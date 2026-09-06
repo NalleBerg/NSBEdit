@@ -211,6 +211,7 @@ BTN_KEEP                = Halda núverandi
 TAB_CTX_NEW_TAB         = Nýr flipi
 TAB_CTX_CLOSE_TAB       = Loka flipa
 TAB_CTX_COPY_PATH       = Afrita slóð
+TAB_CTX_REOPEN          = Enduropna lokaðan flipa
 
 # ── Status bar ────────────────────────────────────────────────────────────────
 SB_WORDS                = Orð

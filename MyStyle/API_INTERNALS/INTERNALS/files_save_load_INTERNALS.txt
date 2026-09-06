@@ -422,9 +422,32 @@ empty buffer overwrote the real file. Three layers now prevent this:
    close-down to fewer tabs must still restore fewer tabs — do NOT prefer the bigger
    slot). NeSession_HasData counts both. This is a safety net; the real guarantee is
    never writing a bad live slot (see 8).
-10. Single instance + file forwarding: wWinMain CreateMutexW; on ERROR_ALREADY_EXISTS,
-    FindWindowW(main class) and SendMessageW(WM_COPYDATA, {tag, wide path}) to the
-    running window, SetForegroundWindow, and exit. The running app's WM_COPYDATA
-    handler calls the same Ne_OpenFileMerged. One instance owns the one shared DB, so
-    two instances can't overwrite each other's session.
+10. Single instance + file forwarding: wWinMain detects a running instance by its
+    WINDOW first — FindWindowW(main class) — because that works ACROSS INTEGRITY
+    LEVELS. A named-mutex check alone BREAKS when the running app is ELEVATED (the
+    admin installer launches it that way) and the new launch is medium IL:
+    CreateMutex/GetLastError==ERROR_ALREADY_EXISTS fails with ACCESS_DENIED, is read
+    as "no instance", a DUPLICATE starts, and the two instances then clobber each
+    other's saved session (lost tabs + recent). Resolve the forwarded arg to an
+    ABSOLUTE path (GetFullPathNameW) — the receiver has a different CWD. RECEIVER:
+    the main WM_CREATE calls ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA,
+    MSGFLT_ALLOW, NULL) so a lower-IL sender's WM_COPYDATA reaches an elevated window
+    (UIPI would otherwise silently drop it). Then SendMessageW(WM_COPYDATA,{tag,wide
+    path}) -> Ne_OpenFileMerged. The mutex stays only as a race guard (OpenMutex
+    probe + short FindWindow retry). LESSON: single-instance via a named mutex is
+    unreliable across integrity levels — use FindWindow + a WM_COPYDATA message
+    filter. FAILSAFE: the installer must register the file association to the
+    INSTALLED exe (HKLM+HKCU Applications\<app>.exe\shell\open\command + SupportedTypes)
+    so a stale loose copy in a download/zip folder is never what a double-click runs.
+
+11. Reopen closed tab (recently-closed stack): ne_session closed_tabs table (same
+    schema as session_tabs) + NeSession_PushClosedTab/PopClosedTab/HasClosedTab
+    (push keeps newest 5 via DELETE ... WHERE id NOT IN (... ORDER BY id DESC LIMIT 5)).
+    NSBEdit.cpp Ne_CaptureTabForReopen snapshots a tab on Ne_CloseTabAt (guarded by
+    s_recordClosedTab=false during exit mass-close so quitting doesn't fill the list);
+    Ne_ReopenClosedTab reopens from disk for a saved+clean file (with caret/scroll)
+    else restores stored content (Scintilla or RichEdit). ne_tabs: NE_CTX_REOPEN item
+    + NE_WM_TABREOPEN (WM_APP+203) in both context menus, greyed via
+    NeTabs_SetReopenTab(hwnd, available, label); Ne_UpdateReopenAvailability keeps it
+    in sync. Locale key TAB_CTX_REOPEN.
 ================================================================================

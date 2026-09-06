@@ -54,3 +54,11 @@ bool NeSession_HasData();
 
 // Delete all rows from session_tabs.
 bool NeSession_Clear();
+
+// ── Recently closed tabs (Reopen closed tab) ──────────────────────────────────
+// Push one just-closed tab onto the closed-tab stack (keeps the newest 5).
+bool NeSession_PushClosedTab(const NeSessionTab& t);
+// Pop the most recently closed tab into |out| (removes it).  False if none.
+bool NeSession_PopClosedTab(NeSessionTab& out);
+// True if there is at least one recently-closed tab to reopen.
+bool NeSession_HasClosedTab();

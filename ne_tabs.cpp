@@ -34,6 +34,8 @@ struct NeTabsState {
     std::wstring ctxNewTab  = L"New Tab";
     std::wstring ctxCloseTab = L"Close Tab";
     std::wstring ctxCopyPath = L"Copy path";
+    std::wstring ctxReopen  = L"Reopen closed tab";
+    bool         hasClosedTabs = false;
     void (*pfnEditCreated)(HWND hEdit) = nullptr;
 };
 
@@ -55,6 +57,7 @@ static void NeTabs_RepositionBtnNew(); // forward declaration
 #define NE_CTX_NEWTAB   1
 #define NE_CTX_CLOSETAB 2
 #define NE_CTX_COPYPATH 3
+#define NE_CTX_REOPEN   4
 
 // Copy a tab's full path to the clipboard. For an FTP tab this is the ONLINE
 // remote path (not the local temp file); for a local tab it is the disk path.
@@ -517,6 +520,8 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
         AppendMenuW(hMenu, MF_STRING, NE_CTX_NEWTAB, g_tabs.ctxNewTab.c_str());
         if (tabIdx >= 0)
             AppendMenuW(hMenu, MF_STRING, NE_CTX_CLOSETAB, g_tabs.ctxCloseTab.c_str());
+        AppendMenuW(hMenu, MF_STRING | (g_tabs.hasClosedTabs ? 0 : MF_GRAYED),
+                    NE_CTX_REOPEN, g_tabs.ctxReopen.c_str());
         if (NeTabs_HasCopyablePath(tabIdx))
             AppendMenuW(hMenu, MF_STRING, NE_CTX_COPYPATH, g_tabs.ctxCopyPath.c_str());
 
@@ -530,6 +535,8 @@ static LRESULT CALLBACK NeTabs_TabProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             PostMessageW(g_tabs.hwndParent, NE_WM_TABNEW, 0, 0);
         else if (cmd == NE_CTX_CLOSETAB && tabIdx >= 0 && g_tabs.hwndParent)
             PostMessageW(g_tabs.hwndParent, NE_WM_TABCLOSE, (WPARAM)tabIdx, 0);
+        else if (cmd == NE_CTX_REOPEN && g_tabs.hwndParent)
+            PostMessageW(g_tabs.hwndParent, NE_WM_TABREOPEN, 0, 0);
         else if (cmd == NE_CTX_COPYPATH)
             NeTabs_CopyTabPath(tabIdx);
         return 0;
@@ -759,6 +766,13 @@ void NeTabs_SetContextLabels(HWND hwndParent, const wchar_t* newTab, const wchar
     if (copyPath) g_tabs.ctxCopyPath = copyPath;
 }
 
+void NeTabs_SetReopenTab(HWND hwndParent, bool available, const wchar_t* label)
+{
+    if (g_tabs.hwndParent != hwndParent) return;
+    g_tabs.hasClosedTabs = available;
+    if (label) g_tabs.ctxReopen = label;
+}
+
 void NeTabs_UpdateTabTitle(HWND hwndParent, int index)
 {
     if (g_tabs.hwndParent != hwndParent) return;
@@ -793,6 +807,8 @@ void NeTabs_ShowTabContextMenu(HWND hwndParent, int screenX, int screenY, int ta
     AppendMenuW(hMenu, MF_STRING, NE_CTX_NEWTAB, g_tabs.ctxNewTab.c_str());
     if (tabIndex >= 0)
         AppendMenuW(hMenu, MF_STRING, NE_CTX_CLOSETAB, g_tabs.ctxCloseTab.c_str());
+    AppendMenuW(hMenu, MF_STRING | (g_tabs.hasClosedTabs ? 0 : MF_GRAYED),
+                NE_CTX_REOPEN, g_tabs.ctxReopen.c_str());
     if (NeTabs_HasCopyablePath(tabIndex))
         AppendMenuW(hMenu, MF_STRING, NE_CTX_COPYPATH, g_tabs.ctxCopyPath.c_str());
 
@@ -805,6 +821,8 @@ void NeTabs_ShowTabContextMenu(HWND hwndParent, int screenX, int screenY, int ta
         PostMessageW(hwndParent, NE_WM_TABNEW, 0, 0);
     else if (cmd == NE_CTX_CLOSETAB && tabIndex >= 0)
         PostMessageW(hwndParent, NE_WM_TABCLOSE, (WPARAM)tabIndex, 0);
+    else if (cmd == NE_CTX_REOPEN)
+        PostMessageW(hwndParent, NE_WM_TABREOPEN, 0, 0);
     else if (cmd == NE_CTX_COPYPATH)
         NeTabs_CopyTabPath(tabIndex);
 }

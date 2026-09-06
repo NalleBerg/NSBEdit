@@ -225,6 +225,50 @@ New-Lnk (Join-Path $desk      'NSBEdit.lnk') $exePath 'NSBEdit RTF Notepad'
 New-Lnk (Join-Path $startMenu 'NSBEdit.lnk') $exePath 'NSBEdit RTF Notepad'
 New-Lnk (Join-Path $programs  'NSBEdit.lnk') $exePath 'NSBEdit RTF Notepad'
 
+# -- File associations (optional) ---------------------------------------------
+# Register NSBEdit (the INSTALLED exe) as an "Open with" handler for its
+# supported file types. Always points at the installed exe, so double-clicking a
+# file can never launch a stale loose copy (the cause of duplicate instances +
+# wiped sessions). Registration is opt-in.
+Write-Section "File associations"
+$openCmd = '"{0}" "%1"' -f $exePath
+$exts = @(
+    'txt','text','log','rtf',
+    'sh','bash','zsh','ksh','bat','cmd',
+    'c','cpp','cxx','cc','h','hpp','hxx','inl','cs',
+    'css','scss','less','html','htm','xhtml','shtml',
+    'ini','cfg','conf','properties',
+    'java','js','mjs','cjs','json','jsonc','geojson','lua','mak','mk',
+    'md','markdown','pas','pp','dpr','lpr','pl','pm','pod',
+    'php','php3','php4','php5','phtml','ps1','psm1','psd1',
+    'py','pyw','pyi','rb','rbw','gemspec','rs','sql','ts','tsx','vbs',
+    'xml','xsl','xslt','xsd','svg','plist','resx','yaml','yml'
+)
+$doAssoc = Read-Host "  Register NSBEdit for its $($exts.Count) supported file types? [Y/n]"
+if ($doAssoc -notmatch '^[nN]') {
+    foreach ($root in @('HKLM:\SOFTWARE\Classes', 'HKCU:\Software\Classes')) {
+        $appKey = Join-Path $root 'Applications\NSBEdit.exe'
+        $cmdKey = Join-Path $appKey 'shell\open\command'
+        $stKey  = Join-Path $appKey 'SupportedTypes'
+        try {
+            New-Item -Path $cmdKey -Force | Out-Null
+            Set-ItemProperty -Path $cmdKey -Name '(Default)' -Value $openCmd
+            New-ItemProperty -Path $appKey -Name 'FriendlyAppName' -Value 'NSBEdit' -PropertyType String -Force | Out-Null
+            New-Item -Path $stKey -Force | Out-Null
+            foreach ($e in $exts) {
+                New-ItemProperty -Path $stKey -Name (".{0}" -f $e) -Value '' -PropertyType String -Force | Out-Null
+            }
+        } catch {
+            Write-Host "  ~ could not update associations under $root : $_" -ForegroundColor Yellow
+        }
+    }
+    Write-Host "  + NSBEdit registered for $($exts.Count) file types -> $exePath"
+    Write-Host "    (Appears in 'Open with'. Set it as the default per type from"
+    Write-Host "     Windows 'Open with > Choose another app' if you want.)"
+} else {
+    Write-Host "  ~ Skipped file-type registration"
+}
+
 # -- Registry uninstall entry --------------------------------------------------
 Write-Section "Write uninstall registry entry"
 $regKey    = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\NSBEdit'

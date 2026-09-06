@@ -8,6 +8,7 @@
 // Parent-notification messages posted by the tab module.
 #define NE_WM_TABCLOSE (WM_APP + 201)   // wParam = tab index to close
 #define NE_WM_TABNEW   (WM_APP + 202)   // new tab requested (+ button / context menu)
+#define NE_WM_TABREOPEN (WM_APP + 203)  // reopen the most recently closed tab
 
 struct NeTabDoc {
     HWND hEdit = NULL;
@@ -68,6 +69,9 @@ bool NeTabs_CloseTab(HWND hwndParent, int index);
 
 void NeTabs_SetUntitledLabel(HWND hwndParent, const wchar_t* untitledLabel);
 void NeTabs_SetContextLabels(HWND hwndParent, const wchar_t* newTab, const wchar_t* closeTab, const wchar_t* copyPath = nullptr);
+
+// Set the "Reopen closed tab" menu label and whether it is currently available.
+void NeTabs_SetReopenTab(HWND hwndParent, bool available, const wchar_t* label = nullptr);
 
 // Show the tab right-click context menu at the given screen coords.
 // tabIndex: the tab under the cursor, or -1 if over empty space.

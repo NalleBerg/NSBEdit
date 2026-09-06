@@ -249,6 +249,7 @@ BTN_KEEP = Behold nåværende
 TAB_CTX_NEW_TAB = Ny fane
 TAB_CTX_CLOSE_TAB = Lukk fane
 TAB_CTX_COPY_PATH = Kopier bane
+TAB_CTX_REOPEN = Gjenåpne lukket fane
 SB_WORDS = Ord
 SB_CHARS = Tegn
 SB_SAVED = Lagret

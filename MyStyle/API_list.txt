@@ -1127,6 +1127,13 @@
                                                 NeSession_HasData() — true when at least
                                                 one row exists.
                                                 NeSession_Clear() — DELETE all rows.
+                                                Recently-closed tabs (Reopen closed tab):
+                                                closed_tabs table (same schema) +
+                                                NeSession_PushClosedTab (keeps newest 5) /
+                                                PopClosedTab (newest, removes it) /
+                                                HasClosedTab. Driven from NSBEdit.cpp
+                                                Ne_CaptureTabForReopen (on close) and
+                                                Ne_ReopenClosedTab.
                                                 Uses NeProfiles_GetDb() for the shared
                                                 SQLite handle (no separate connection).
 

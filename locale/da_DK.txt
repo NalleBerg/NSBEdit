@@ -198,6 +198,7 @@ BTN_KEEP                = Behold nuværende
 TAB_CTX_NEW_TAB         = Ny fane
 TAB_CTX_CLOSE_TAB       = Luk fane
 TAB_CTX_COPY_PATH       = Kopiér sti
+TAB_CTX_REOPEN          = Genåbn lukket faneblad
 
 # ── Status bar ────────────────────────────────────────────────────────────────────────────────
 SB_WORDS                = Ord

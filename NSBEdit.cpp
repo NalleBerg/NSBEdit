@@ -8848,15 +8848,16 @@ static void Ne_SubclassEditForCaret(HWND hEdit)
 static void Ne_ApplyPlainTextLook(HWND hEdit)
 {
     if (!hEdit) return;
+    bool darkEd = g_darkMode || g_darkEditor;   // dark editor viewport even in a light UI
     CHARFORMAT2W cfD = {}; cfD.cbSize = sizeof(cfD);
     cfD.dwMask      = CFM_FACE | CFM_SIZE | CFM_CHARSET | CFM_COLOR | CFM_EFFECTS;
-    cfD.dwEffects   = 0;
-    cfD.crTextColor = RGB(220, 220, 220);
+    cfD.dwEffects   = darkEd ? 0 : CFE_AUTOCOLOR;
+    cfD.crTextColor = darkEd ? RGB(220, 220, 220) : 0;
     cfD.yHeight     = s_neFontSizes[s_neFontDefault] * 20;
     cfD.bCharSet    = DEFAULT_CHARSET;
     wcsncpy_s(cfD.szFaceName, L"Segoe UI", LF_FACESIZE - 1);
     SendMessageW(hEdit, EM_SETCHARFORMAT, SCF_ALL, (LPARAM)&cfD);
-    SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, RGB(25, 26, 27));
+    SendMessageW(hEdit, EM_SETBKGNDCOLOR, 0, darkEd ? RGB(25, 26, 27) : RGB(255, 255, 255));
 }
 
 static void Ne_UpdateToolbarMode(HWND hwnd);        // forward declaration
@@ -9129,7 +9130,19 @@ static void Ne_OpenFileMerged(HWND hwnd, const std::wstring& path)
     bool reuseTab = existingDoc && existingDoc->path.empty() &&
                     Ne_TabIsEmpty(existingDoc) &&
                     existingDoc->hEdit && !existingDoc->hSci;
-    if (!reuseTab) NeTabs_AddUntitled(hwnd);
+    if (!reuseTab) {
+        NeTabs_AddUntitled(hwnd);
+        // A freshly added untitled RichEdit carries no editor theme yet; apply
+        // the plain-text look (honours the dark editor) so a failed or empty
+        // load never shows a white viewport. Suppress EN_CHANGE so the empty
+        // tab isn't marked modified.
+        HWND heNew = NeTabs_GetActiveEdit(hwnd);
+        if (heNew && !NeTabs_GetActiveDoc(hwnd)->hSci) {
+            SendMessageW(heNew, EM_SETEVENTMASK, 0, ENM_SELCHANGE);
+            Ne_ApplyPlainTextLook(heNew);
+            SendMessageW(heNew, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
+        }
+    }
     if (Ne_LoadPathIntoEditor(hwnd, path)) Ne_MruAdd(path);
     Ne_UpdateToolbarMode(hwnd);
     HWND he = NeTabs_GetActiveEdit(hwnd);
@@ -10041,6 +10054,143 @@ static void Ne_SessionRestore(HWND hwnd)
     }
 }
 
+// ── Recently closed tabs (Reopen closed tab) ──────────────────────────────────
+static bool s_recordClosedTab = true;   // suppressed during exit-time mass close
+
+static void Ne_UpdateReopenAvailability(HWND hwnd)
+{
+    NeTabs_SetReopenTab(hwnd, NeSession_HasClosedTab(), Ls(L"TAB_CTX_REOPEN"));
+}
+
+// Snapshot a tab's full state onto the closed-tab stack just before it closes.
+static void Ne_CaptureTabForReopen(HWND hwnd, NeTabDoc* doc)
+{
+    (void)hwnd;
+    if (!doc || doc->isDiffResult) return;
+    NeSessionTab t;
+    t.localPath     = doc->path;
+    t.isFtp         = doc->isFtpFile;
+    t.ftpProfileId  = doc->ftpProfileId;
+    t.ftpRemotePath = doc->ftpRemotePath;
+    t.ftpFriendly   = doc->ftpFriendlyName;
+    t.wasModified   = doc->modified;
+    t.spellLang     = doc->spellLang;
+    t.isSciTab      = (doc->hSci != nullptr);
+    if (doc->hSci) {
+        t.wordWrap   = (SendMessageW(doc->hSci, SCI_GETWRAPMODE, 0, 0) != SC_WRAP_NONE);
+        t.caretPos   = (int)SendMessageW(doc->hSci, SCI_GETCURRENTPOS, 0, 0);
+        t.scrollLine = (int)SendMessageW(doc->hSci, SCI_GETFIRSTVISIBLELINE, 0, 0);
+        std::string utf8 = Ne_SciGetText(doc->hSci);
+        if (!utf8.empty()) { t.content.assign(utf8.begin(), utf8.end()); t.contentIsRtf = false; }
+    } else if (doc->hEdit) {
+        t.wordWrap   = doc->wordWrap;
+        CHARRANGE cr = {}; SendMessageW(doc->hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+        t.caretPos   = (int)cr.cpMin;
+        t.scrollLine = (int)SendMessageW(doc->hEdit, EM_GETFIRSTVISIBLELINE, 0, 0);
+        std::string rtf = Ne_StreamOut(doc->hEdit, true);
+        if (!rtf.empty()) { t.content.assign(rtf.begin(), rtf.end()); t.contentIsRtf = true; }
+    }
+    if (t.localPath.empty() && t.content.empty()) return;   // skip empty untitled
+    NeSession_PushClosedTab(t);
+}
+
+// Reopen the most recently closed tab, restored to how it was when it closed.
+static void Ne_ReopenClosedTab(HWND hwnd)
+{
+    NeSessionTab t;
+    if (!NeSession_PopClosedTab(t)) { Ne_UpdateReopenAvailability(hwnd); return; }
+
+    // Saved, unmodified, local file that still exists → reopen from disk cleanly.
+    bool onDiskClean = !t.isFtp && !t.localPath.empty() && !t.wasModified &&
+        GetFileAttributesW(t.localPath.c_str()) != INVALID_FILE_ATTRIBUTES;
+    if (onDiskClean) {
+        Ne_OpenFileMerged(hwnd, t.localPath);
+        NeTabDoc* d = NeTabs_GetActiveDoc(hwnd);
+        if (d) {
+            if (d->hSci) {
+                SendMessageW(d->hSci, SCI_SETSEL, (WPARAM)t.caretPos, (LPARAM)t.caretPos);
+                SendMessageW(d->hSci, SCI_SETFIRSTVISIBLELINE, (WPARAM)t.scrollLine, 0);
+            } else if (d->hEdit) {
+                CHARRANGE cr = { t.caretPos, t.caretPos };
+                SendMessageW(d->hEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
+            }
+        }
+        Ne_UpdateReopenAvailability(hwnd);
+        return;
+    }
+
+    // Already open? Just activate it.
+    if (!t.localPath.empty()) {
+        int n = NeTabs_GetCount(hwnd);
+        for (int i = 0; i < n; ++i) {
+            NeTabDoc* dd = NeTabs_GetDocByIndex(hwnd, i);
+            if (dd && !dd->path.empty() && _wcsicmp(dd->path.c_str(), t.localPath.c_str()) == 0) {
+                NeTabs_SetActive(hwnd, i);
+                Ne_UpdateToolbarMode(hwnd);
+                Ne_UpdateReopenAvailability(hwnd);
+                return;
+            }
+        }
+    }
+
+    // Restore from the stored content (unsaved edits, untitled, or file gone).
+    NeTabDoc* cur = NeTabs_GetActiveDoc(hwnd);
+    bool reuse = cur && cur->path.empty() && Ne_TabIsEmpty(cur) && cur->hEdit && !cur->hSci;
+    if (!reuse) NeTabs_AddUntitled(hwnd);
+    NeTabDoc* doc = NeTabs_GetActiveDoc(hwnd);
+    HWND hEdit = doc ? doc->hEdit : NULL;
+    if (!doc || !hEdit) { Ne_UpdateReopenAvailability(hwnd); return; }
+
+    if (t.contentIsRtf) {
+        Ne_AttachScrollbars(hEdit);
+        ShowWindow(hEdit, SW_SHOW);
+        std::string rtf(t.content.begin(), t.content.end());
+        doc->suppressChange = true;
+        Ne_StreamIn(hEdit, rtf, true);
+        doc->suppressChange = false;
+        SendMessageW(hEdit, EM_SETEVENTMASK, 0, ENM_CHANGE | ENM_SELCHANGE | ENM_LINK | ENM_SCROLL);
+    } else {
+        if (!doc->hSci) {
+            RECT rc; GetWindowRect(hEdit, &rc);
+            POINT pt = { rc.left, rc.top }; ScreenToClient(hwnd, &pt);
+            doc->hSci = Ne_CreateScintilla(hwnd, pt.x, pt.y, rc.right - rc.left, rc.bottom - rc.top);
+            if (doc->hSci) { SetWindowSubclass(doc->hSci, Ne_SciWrapSubclassProc, 2, 0); Ne_AttachSciScrollbars(doc->hSci); }
+        }
+        if (doc->hSci) {
+            doc->langId = t.localPath.empty() ? 0 : Ne_LangFromExt(t.localPath);
+            Ne_ApplyLang(doc->hSci, doc->langId);
+            std::string utf8(t.content.begin(), t.content.end());
+            SendMessageW(doc->hSci, SCI_SETTEXT, 0, (LPARAM)utf8.c_str());
+            SendMessageW(doc->hSci, SCI_EMPTYUNDOBUFFER, 0, 0);
+            ShowWindow(hEdit, SW_HIDE);
+            ShowWindow(doc->hSci, SW_SHOW);
+            SetFocus(doc->hSci);
+            SendMessageW(doc->hSci, SCI_SETZOOM, (WPARAM)g_zoomSci, 0);
+            SendMessageW(doc->hSci, SCI_SETWRAPMODE, t.wordWrap ? SC_WRAP_WORD : SC_WRAP_NONE, 0);
+            SendMessageW(doc->hSci, SCI_SETSEL, (WPARAM)t.caretPos, (LPARAM)t.caretPos);
+            SendMessageW(doc->hSci, SCI_SETFIRSTVISIBLELINE, (WPARAM)t.scrollLine, 0);
+        }
+    }
+    doc->path      = t.localPath;
+    doc->modified  = t.wasModified;
+    doc->wordWrap  = t.wordWrap;
+    doc->spellLang = t.spellLang;
+    if (t.isFtp) {
+        doc->isFtpFile       = true;
+        doc->ftpProfileId    = t.ftpProfileId;
+        doc->ftpRemotePath   = t.ftpRemotePath;
+        doc->ftpFriendlyName = t.ftpFriendly;
+    }
+    NeTabs_UpdateTabTitle(hwnd, NeTabs_GetActiveIndex(hwnd));
+    Ne_UpdateToolbarMode(hwnd);
+    Ne_UpdateStatusText(hwnd);
+    Ne_UpdateTitle(hwnd);
+    Ne_SyncScrollbarVisibility(hwnd);
+    Ne_SyncRichGutters(hwnd);
+    { HWND heAct = NeTabs_GetActiveEdit(hwnd); if (heAct) Ne_SyncToolbar(hwnd, heAct); }
+    Ne_UpdateReopenAvailability(hwnd);
+}
+
 static bool Ne_CloseTabAt(HWND hwnd, int index)
 {
     if (!NeTabs_SetActive(hwnd, index)) return false;
@@ -10048,6 +10198,10 @@ static bool Ne_CloseTabAt(HWND hwnd, int index)
     Ne_UpdateTitle(hwnd);
 
     if (!Ne_PromptSaveIfModified(hwnd)) return false;
+
+    // Record the tab so it can be reopened (skip the exit-time mass close).
+    if (s_recordClosedTab)
+        Ne_CaptureTabForReopen(hwnd, NeTabs_GetActiveDoc(hwnd));
 
     // Detach scrollbars before the edit HWNDs are destroyed
     HWND hEditPre = NeTabs_GetActiveEdit(hwnd);
@@ -10063,21 +10217,25 @@ static bool Ne_CloseTabAt(HWND hwnd, int index)
     Ne_UpdateTitle(hwnd);
     HWND hEdit = NeTabs_GetActiveEdit(hwnd);
     if (hEdit) Ne_SyncToolbar(hwnd, hEdit);
+    if (s_recordClosedTab) Ne_UpdateReopenAvailability(hwnd);
     return true;
 }
 
 static bool Ne_CloseAllTabsForExit(HWND hwnd)
 {
+    s_recordClosedTab = false;   // don't fill the reopen stack while exiting
+    bool ok = true;
     while (NeTabs_GetCount(hwnd) > 0) {
         int idx = NeTabs_GetActiveIndex(hwnd);
         if (idx < 0) break;
-        if (!Ne_CloseTabAt(hwnd, idx)) return false;
+        if (!Ne_CloseTabAt(hwnd, idx)) { ok = false; break; }
         if (NeTabs_GetCount(hwnd) == 1) {
             NeTabDoc* d = NeTabs_GetActiveDoc(hwnd);
             if (d && d->path.empty() && !d->modified) break;
         }
     }
-    return true;
+    s_recordClosedTab = true;
+    return ok;
 }
 
 // ── Tooltip subclass (English-only, project tooltip system) ───────────────────
@@ -14561,6 +14719,12 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         CREATESTRUCTW* cs    = (CREATESTRUCTW*)lParam;
         HINSTANCE      hInst = cs->hInstance;
 
+        // Accept the file-open WM_COPYDATA forward even from a lower integrity
+        // level, so a double-click (medium) reaches this window when it is running
+        // elevated (e.g. launched by the admin installer).  Without this, UIPI
+        // silently drops the message and the launcher spawns a duplicate instance.
+        ChangeWindowMessageFilterEx(hwnd, WM_COPYDATA, MSGFLT_ALLOW, NULL);
+
         // ── COM (spell checker, ISpellCheckerFactory) ─────────────────────────
         CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
 
@@ -14851,6 +15015,7 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         NeTabs_Create(tp);
         NeTabs_SetDarkMode(hwnd, g_darkMode);
         NeTabs_SetContextLabels(hwnd, Ls(L"TAB_CTX_NEW_TAB"), Ls(L"TAB_CTX_CLOSE_TAB"), Ls(L"TAB_CTX_COPY_PATH"));
+        NeTabs_SetReopenTab(hwnd, NeSession_HasClosedTab(), Ls(L"TAB_CTX_REOPEN"));
         st->editX = pad; st->editW = cW - 2 * pad; st->editH = std::max(1, editH);
         NeTabs_SetRects(hwnd,
             pad, st->tabY, cW - 2 * pad, st->tabH,
@@ -15996,6 +16161,10 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         Ne_SyncRichGutters(hwnd);
         return 0;
 
+    case NE_WM_TABREOPEN:
+        Ne_ReopenClosedTab(hwnd);
+        return 0;
+
     // ── WM_MENURBUTTONUP — right-click on FTP profile → open properties ────────
     case WM_MENURBUTTONUP: {
         HMENU hM = (HMENU)lParam;
@@ -16887,32 +17056,44 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     // ── Single instance ──────────────────────────────────────────────────────
     // One running app owns the one shared session DB. A second launch (e.g.
     // double-clicking a file) forwards that file to the running instance so it
-    // merges into the existing tabs, then exits — this keeps the crash-guard
-    // session coherent (two instances would otherwise overwrite each other).
-    HANDLE hSingle = CreateMutexW(NULL, TRUE, L"NSBEdit_SingleInstance_Nalle");
-    if (hSingle && GetLastError() == ERROR_ALREADY_EXISTS) {
-        HWND existing = FindWindowW(L"NSBEditWnd", NULL);
-        if (existing) {
-            std::wstring arg = lpCmdLine ? lpCmdLine : L"";
-            if (!arg.empty() && arg.front() == L'"') {
-                arg.erase(0, 1);
-                size_t q = arg.find(L'"');
-                if (q != std::wstring::npos) arg.erase(q);
-            }
-            if (!arg.empty()) {
-                COPYDATASTRUCT cds = {};
-                cds.dwData = NE_COPYDATA_OPENFILE;
-                cds.cbData = (DWORD)((arg.size() + 1) * sizeof(wchar_t));
-                cds.lpData = (PVOID)arg.c_str();
-                SendMessageW(existing, WM_COPYDATA, 0, (LPARAM)&cds);
-            }
-            if (IsIconic(existing)) ShowWindow(existing, SW_RESTORE);
-            SetForegroundWindow(existing);
-            return 0;   // handed off to the running instance
+    // merges into the existing tabs, then exits.
+    // Detect the running instance by its WINDOW first: FindWindow works even when
+    // the two launches run at different integrity levels, whereas a named-mutex
+    // check can fail with ACCESS_DENIED (medium vs elevated) and wrongly report
+    // "no instance", spawning a duplicate. The mutex is kept only as a race guard
+    // for two launches racing before either has created its window yet.
+    HWND existing = FindWindowW(L"NSBEditWnd", NULL);
+    if (!existing) {
+        HANDLE hProbe = OpenMutexW(SYNCHRONIZE, FALSE, L"NSBEdit_SingleInstance_Nalle");
+        if (hProbe) {
+            CloseHandle(hProbe);   // a starting instance exists — wait for its window
+            for (int i = 0; i < 20 && !existing; ++i) { Sleep(50); existing = FindWindowW(L"NSBEditWnd", NULL); }
         }
-        // Mutex held but no window yet (the first instance is still starting):
-        // fall through and run normally rather than dropping the launch.
     }
+    if (existing) {
+        std::wstring arg = lpCmdLine ? lpCmdLine : L"";
+        if (!arg.empty() && arg.front() == L'"') {
+            arg.erase(0, 1);
+            size_t q = arg.find(L'"');
+            if (q != std::wstring::npos) arg.erase(q);
+        }
+        if (!arg.empty()) {
+            // Resolve to an absolute path — the receiver has a different CWD.
+            wchar_t full[MAX_PATH] = {};
+            if (GetFullPathNameW(arg.c_str(), MAX_PATH, full, NULL)) arg = full;
+            COPYDATASTRUCT cds = {};
+            cds.dwData = NE_COPYDATA_OPENFILE;
+            cds.cbData = (DWORD)((arg.size() + 1) * sizeof(wchar_t));
+            cds.lpData = (PVOID)arg.c_str();
+            SendMessageW(existing, WM_COPYDATA, 0, (LPARAM)&cds);
+        }
+        if (IsIconic(existing)) ShowWindow(existing, SW_RESTORE);
+        SetForegroundWindow(existing);
+        return 0;   // handed off to the running instance
+    }
+    // First instance: own the single-instance mutex for the app's lifetime.
+    HANDLE hSingle = CreateMutexW(NULL, TRUE, L"NSBEdit_SingleInstance_Nalle");
+    (void)hSingle;
 
     Ne_GdiplusInit();
     {
@@ -17023,6 +17204,12 @@ int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE, LPWSTR lpCmdLine, int nCmdShow)
     // Now open the command-line file, merged into the restored session.
     if (!cmdFilePath.empty())
         Ne_OpenFileMerged(s_hwndMain, cmdFilePath);
+
+    // Belt-and-braces: after session restore + any command-line open, force the
+    // toolbar to match the active tab, so a freshly-launched instance never
+    // lingers on the default (rich) button row for a plain-text/code tab.
+    Ne_UpdateToolbarMode(s_hwndMain);
+    { HWND heAct = NeTabs_GetActiveEdit(s_hwndMain); if (heAct) Ne_SyncToolbar(s_hwndMain, heAct); }
 
     // If spell marking was on, scan all restored tabs now.
     if (s_spellMarkActive) {

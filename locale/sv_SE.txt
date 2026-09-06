@@ -233,6 +233,7 @@ BTN_KEEP = Behåll nuvarande
 TAB_CTX_NEW_TAB = Ny flik
 TAB_CTX_CLOSE_TAB = Stäng flik
 TAB_CTX_COPY_PATH = Kopiera sökväg
+TAB_CTX_REOPEN = Återöppna stängd flik
 SB_WORDS = Ord
 SB_CHARS = Tecken
 SB_SAVED = Sparad

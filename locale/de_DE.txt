@@ -204,6 +204,7 @@ BTN_KEEP                = Aktuelle Version behalten
 TAB_CTX_NEW_TAB         = Neuer Tab
 TAB_CTX_CLOSE_TAB       = Tab schließen
 TAB_CTX_COPY_PATH       = Pfad kopieren
+TAB_CTX_REOPEN          = Geschlossenen Tab wieder öffnen
 
 # ── Status bar ────────────────────────────────────────────────────────────────────────────────
 SB_WORDS                = Wörter
