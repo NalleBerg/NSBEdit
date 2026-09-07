@@ -525,11 +525,37 @@ CREDITS_OLLAMA     = Ollama is an open-source local AI runtime. NSBEdit uses it 
 # ── Project (AI workspace) ────────────────────────────────────────────────────
 MENU_PROJECT         = Project
 PROJECT_ADD          = Add project...
+PROJECT_NEW          = Crear nuevo proyecto...
 PROJECT_REMOVE       = Remove current project
 PROJECT_NONE         = (No project)
 PROJECT_PICK_TITLE   = Select the project root folder
 PROJECT_REMOVE_TITLE = Remove project
 PROJECT_REMOVE_CONFIRM = Remove this project from the list?
+
+NEWPROJ_TITLE        = Nuevo Proyecto
+NEWPROJ_NAME         = Nombre del proyecto
+NEWPROJ_PARENT       = Carpeta principal
+NEWPROJ_BROWSE       = Examinar...
+NEWPROJ_PATH         = Ruta completa del proyecto
+NEWPROJ_TYPE         = Tipo
+NEWPROJ_TYPE_CLI     = CLI (consola)
+NEWPROJ_TYPE_GUI     = GUI de Windows
+NEWPROJ_TYPE_DB      = Base de datos
+NEWPROJ_BUILD        = Comando de compilación
+NEWPROJ_CREATE       = Crear
+NEWPROJ_LICENSE      = Licencia
+NEWPROJ_LICENSE_CHOOSE = Elegir licencia
+NEWPROJ_LICENSE_OTHER = Otra (personalizada)
+NEWPROJ_LICENSE_STUB = Añada aquí su licencia personalizada
+NEWPROJ_PICK_PARENT  = Elija la carpeta principal
+NEWPROJ_ERR_NAME     = Introduzca un nombre de proyecto.
+NEWPROJ_ERR_PARENT   = Elija una carpeta principal.
+NEWPROJ_ERR_PARENT_MISSING = La carpeta principal no existe.
+NEWPROJ_ERR_FILE     = Ya existe un archivo con ese nombre.
+NEWPROJ_ERR_NOT_EMPTY = La carpeta de destino no está vacía.\nUn proyecto nuevo debe crearse en una carpeta nueva o vacía.
+NEWPROJ_ERR_LICENSE  = Debe elegir una licencia para su proyecto.
+NEWPROJ_ERR_WRITE    = No se pudieron crear los archivos del proyecto. Compruebe la carpeta e inténtelo de nuevo.
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = Reading batch
 AI_PROGRESS_SYNTH    = Synthesising answer

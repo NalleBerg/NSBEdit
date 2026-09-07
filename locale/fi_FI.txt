@@ -516,11 +516,37 @@ CREDITS_OLLAMA     = Ollama on avoimen lähdekoodin paikallinen AI-ajoympärist�
 # ── Projekti (AI-työtila) ────────────────────────────────────────────────────
 MENU_PROJECT         = Projekti
 PROJECT_ADD          = Lisää projekti...
+PROJECT_NEW          = Luo uusi projekti...
 PROJECT_REMOVE       = Poista nykyinen projekti
 PROJECT_NONE         = (Ei projektia)
 PROJECT_PICK_TITLE   = Valitse projektin juurikansio
 PROJECT_REMOVE_TITLE = Poista projekti
 PROJECT_REMOVE_CONFIRM = Poista tämä projekti listasta?
+
+NEWPROJ_TITLE        = Uusi projekti
+NEWPROJ_NAME         = Projektin nimi
+NEWPROJ_PARENT       = Ylätason kansio
+NEWPROJ_BROWSE       = Selaa...
+NEWPROJ_PATH         = Koko projektipolku
+NEWPROJ_TYPE         = Tyyppi
+NEWPROJ_TYPE_CLI     = CLI (konsoli)
+NEWPROJ_TYPE_GUI     = Windows GUI
+NEWPROJ_TYPE_DB      = Tietokanta
+NEWPROJ_BUILD        = Käännöskomento
+NEWPROJ_CREATE       = Luo
+NEWPROJ_LICENSE      = Lisenssi
+NEWPROJ_LICENSE_CHOOSE = Valitse lisenssi
+NEWPROJ_LICENSE_OTHER = Muu (mukautettu)
+NEWPROJ_LICENSE_STUB = Lisää mukautettu lisenssisi tähän
+NEWPROJ_PICK_PARENT  = Valitse ylätason kansio
+NEWPROJ_ERR_NAME     = Anna projektin nimi.
+NEWPROJ_ERR_PARENT   = Valitse ylätason kansio.
+NEWPROJ_ERR_PARENT_MISSING = Ylätason kansiota ei ole olemassa.
+NEWPROJ_ERR_FILE     = Tiedosto samalla nimellä on jo olemassa.
+NEWPROJ_ERR_NOT_EMPTY = Kohdekansio ei ole tyhjä.\nUusi projekti on luotava uuteen tai tyhjään kansioon.
+NEWPROJ_ERR_LICENSE  = Sinun on valittava projektille lisenssi.
+NEWPROJ_ERR_WRITE    = Projektitiedostoja ei voitu luoda. Tarkista kansio ja yritä uudelleen.
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = Luetaan erää
 AI_PROGRESS_SYNTH    = Synkronoidaan vastausta

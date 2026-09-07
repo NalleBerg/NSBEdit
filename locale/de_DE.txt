@@ -506,11 +506,37 @@ CREDITS_OLLAMA     = Ollama ist eine Open-Source-Laufzeitumgebung für lokale KI
 # ── Projekt (KI-Arbeitsbereich) ───────────────────────────────────────────────
 MENU_PROJECT         = Projekt
 PROJECT_ADD          = Projekt hinzufügen...
+PROJECT_NEW          = Neues Projekt erstellen...
 PROJECT_REMOVE       = Aktuelles Projekt entfernen
 PROJECT_NONE         = (Kein Projekt)
 PROJECT_PICK_TITLE   = Projektstammordner auswählen
 PROJECT_REMOVE_TITLE = Projekt entfernen
 PROJECT_REMOVE_CONFIRM = Dieses Projekt aus der Liste entfernen?
+
+NEWPROJ_TITLE        = Neues Projekt
+NEWPROJ_NAME         = Projektname
+NEWPROJ_PARENT       = Übergeordneter Ordner
+NEWPROJ_BROWSE       = Durchsuchen...
+NEWPROJ_PATH         = Vollständiger Projektpfad
+NEWPROJ_TYPE         = Typ
+NEWPROJ_TYPE_CLI     = CLI (Konsole)
+NEWPROJ_TYPE_GUI     = Windows-GUI
+NEWPROJ_TYPE_DB      = Datenbank
+NEWPROJ_BUILD        = Build-Befehl
+NEWPROJ_CREATE       = Erstellen
+NEWPROJ_LICENSE      = Lizenz
+NEWPROJ_LICENSE_CHOOSE = Lizenz wählen
+NEWPROJ_LICENSE_OTHER = Andere (benutzerdefiniert)
+NEWPROJ_LICENSE_STUB = Fügen Sie hier Ihre benutzerdefinierte Lizenz ein
+NEWPROJ_PICK_PARENT  = Übergeordneten Ordner wählen
+NEWPROJ_ERR_NAME     = Bitte geben Sie einen Projektnamen ein.
+NEWPROJ_ERR_PARENT   = Bitte wählen Sie einen übergeordneten Ordner.
+NEWPROJ_ERR_PARENT_MISSING = Der übergeordnete Ordner existiert nicht.
+NEWPROJ_ERR_FILE     = Eine Datei mit diesem Namen existiert bereits.
+NEWPROJ_ERR_NOT_EMPTY = Der Zielordner ist nicht leer.\nEin neues Projekt muss in einem neuen oder leeren Ordner erstellt werden.
+NEWPROJ_ERR_LICENSE  = Sie müssen eine Lizenz für Ihr Projekt wählen.
+NEWPROJ_ERR_WRITE    = Die Projektdateien konnten nicht erstellt werden. Überprüfen Sie den Ordner und versuchen Sie es erneut.
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = Lese Teil
 AI_PROGRESS_SYNTH    = Antwort wird zusammengestellt

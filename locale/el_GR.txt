@@ -513,11 +513,37 @@ CREDITS_OLLAMA     = Το Ollama είναι μια τοπική μηχανή AI 
 # ── Έργο (χώρος εργασίας AI) ──────────────────────────────────────────────────
 MENU_PROJECT         = Έργο
 PROJECT_ADD          = Προσθήκη έργου...
+PROJECT_NEW          = Δημιουργία νέου έργου...
 PROJECT_REMOVE       = Κατάργηση τρέχοντος έργου
 PROJECT_NONE         = (Κανένα έργο)
 PROJECT_PICK_TITLE   = Επιλέξτε τον ριζικό φάκελο του έργου
 PROJECT_REMOVE_TITLE = Κατάργηση έργου
 PROJECT_REMOVE_CONFIRM = Κατάργηση αυτού του έργου από τη λίστα;
+
+NEWPROJ_TITLE        = Νέο Έργο
+NEWPROJ_NAME         = Όνομα έργου
+NEWPROJ_PARENT       = Γονικός φάκελος
+NEWPROJ_BROWSE       = Περιήγηση...
+NEWPROJ_PATH         = Πλήρης διαδρομή έργου
+NEWPROJ_TYPE         = Τύπος
+NEWPROJ_TYPE_CLI     = CLI (κοντσόλα)
+NEWPROJ_TYPE_GUI     = Windows GUI
+NEWPROJ_TYPE_DB      = Βάση δεδομένων
+NEWPROJ_BUILD        = Εντολή build
+NEWPROJ_CREATE       = Δημιουργία
+NEWPROJ_LICENSE      = Άδεια
+NEWPROJ_LICENSE_CHOOSE = Επιλογή άδειας
+NEWPROJ_LICENSE_OTHER = Άλλη (προσαρμοσμένη)
+NEWPROJ_LICENSE_STUB = Προσθέστε την προσαρμοσμένη άδειά σας εδώ
+NEWPROJ_PICK_PARENT  = Επιλέξτε τον γονικό φάκελο
+NEWPROJ_ERR_NAME     = Παρακαλώ εισάγετε ένα όνομα έργου.
+NEWPROJ_ERR_PARENT   = Παρακαλώ επιλέξτε έναν γονικό φάκελο.
+NEWPROJ_ERR_PARENT_MISSING = Ο γονικός φάκελος δεν υπάρχει.
+NEWPROJ_ERR_FILE     = Υπάρχει ήδη ένα αρχείο με αυτό το όνομα.
+NEWPROJ_ERR_NOT_EMPTY = Ο φάκελος προορισμού δεν είναι κενός.\nΈνα νέο έργο πρέπει να δημιουργηθεί σε νέο ή κενό φάκελο.
+NEWPROJ_ERR_LICENSE  = Πρέπει να επιλέξετε μια άδεια για το έργο σας.
+NEWPROJ_ERR_WRITE    = Δεν ήταν δυνατή η δημιουργία των αρχείων του έργου. Ελέγξτε τον φάκελο και δοκιμάστε ξανά.
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = Ανάγνωση τμήματος
 AI_PROGRESS_SYNTH    = Σύνθεση απάντησης

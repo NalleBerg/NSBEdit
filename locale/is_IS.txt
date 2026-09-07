@@ -522,11 +522,37 @@ CREDITS_OLLAMA     = Ollama er opinn staðvær AI keyrsluforrit. NSBEdit notar �
 # ── Project (AI workspace) ────────────────────────────────────────────────────
 MENU_PROJECT         = Verkefni
 PROJECT_ADD          = Bæta við verkefni...
+PROJECT_NEW          = Búa til nýtt verkefni...
 PROJECT_REMOVE       = Fjarlægja núverandi verkefni
 PROJECT_NONE         = (Ekkert verkefni)
 PROJECT_PICK_TITLE   = Veldu rót verkefnis
 PROJECT_REMOVE_TITLE = Fjarlægja verkefni
 PROJECT_REMOVE_CONFIRM = Fjarlægja þetta verkefni af listanum?
+
+NEWPROJ_TITLE        = Nýtt verkefni
+NEWPROJ_NAME         = Heiti verkefnis
+NEWPROJ_PARENT       = Yfirmappa
+NEWPROJ_BROWSE       = Skoða...
+NEWPROJ_PATH         = Full slóð verkefnis
+NEWPROJ_TYPE         = Gerð
+NEWPROJ_TYPE_CLI     = CLI (stjórnborð)
+NEWPROJ_TYPE_GUI     = Windows GUI
+NEWPROJ_TYPE_DB      = Gagnagrunnur
+NEWPROJ_BUILD        = Byggingarskipun
+NEWPROJ_CREATE       = Búa til
+NEWPROJ_LICENSE      = Leyfi
+NEWPROJ_LICENSE_CHOOSE = Veldu leyfi
+NEWPROJ_LICENSE_OTHER = Annað (sérsniðið)
+NEWPROJ_LICENSE_STUB = Bættu þínu eigin leyfi hér
+NEWPROJ_PICK_PARENT  = Veldu yfirmöppu
+NEWPROJ_ERR_NAME     = Vinsamlegast sláðu inn heiti verkefnis.
+NEWPROJ_ERR_PARENT   = Vinsamlegast veldu yfirmöppu.
+NEWPROJ_ERR_PARENT_MISSING = Yfirmappan er ekki til.
+NEWPROJ_ERR_FILE     = Skrá með því nafni er þegar til.
+NEWPROJ_ERR_NOT_EMPTY = Markmappan er ekki tóm.\nNýtt verkefni verður að vera búið til í nýrri eða tómri möppu.
+NEWPROJ_ERR_LICENSE  = Þú verður að velja leyfi fyrir verkefnið þitt.
+NEWPROJ_ERR_WRITE    = Gat ekki búið til verkefnisskrárnar. Athugaðu möppuna og reyndu aftur.
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = Les runu
 AI_PROGRESS_SYNTH    = Smíða svar

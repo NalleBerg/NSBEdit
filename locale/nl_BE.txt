@@ -507,11 +507,38 @@ CREDITS_OLLAMA     = Ollama is een open-source lokale AI-runtime. NSBEdit gebrui
 # ── Project (AI-werkruimte) ────────────────────────────────────────────────────
 MENU_PROJECT         = Project
 PROJECT_ADD          = Project toevoegen...
+PROJECT_NEW          = Nieuw project maken...
 PROJECT_REMOVE       = Huidig project verwijderen
 PROJECT_NONE         = (Geen project)
 PROJECT_PICK_TITLE   = Selecteer de projecthoofdmap
 PROJECT_REMOVE_TITLE = Project verwijderen
 PROJECT_REMOVE_CONFIRM = Dit project uit de lijst verwijderen?
+
+NEWPROJ_TITLE        = Nieuw project
+NEWPROJ_NAME         = Projectnaam
+NEWPROJ_PARENT       = Bovenliggende map
+NEWPROJ_BROWSE       = Bladeren...
+NEWPROJ_PATH         = Volledig projectpad
+NEWPROJ_TYPE         = Type
+NEWPROJ_TYPE_CLI     = CLI (console)
+NEWPROJ_TYPE_GUI     = Windows GUI
+NEWPROJ_TYPE_DB      = Databank
+NEWPROJ_BUILD        = Build-opdracht
+NEWPROJ_CREATE       = Aanmaken
+NEWPROJ_LICENSE      = Licentie
+NEWPROJ_LICENSE_CHOOSE = Kies licentie
+NEWPROJ_LICENSE_OTHER = Andere (aangepast)
+NEWPROJ_LICENSE_STUB = Voeg hier uw aangepaste licentie toe
+NEWPROJ_PICK_PARENT  = Kies de bovenliggende map
+NEWPROJ_ERR_NAME     = Voer een projectnaam in.
+NEWPROJ_ERR_PARENT   = Kies een bovenliggende map.
+NEWPROJ_ERR_PARENT_MISSING = De bovenliggende map bestaat niet.
+NEWPROJ_ERR_FILE     = Er bestaat al een bestand met die naam.
+NEWPROJ_ERR_NOT_EMPTY = De doelmap is niet leeg.\nEen nieuw project moet in een nieuwe of lege map worden aangemaakt.
+NEWPROJ_ERR_LICENSE  = U moet een licentie voor uw project kiezen.
+NEWPROJ_ERR_WRITE    = De projectbestanden konden niet worden aangemaakt. Controleer de map en probeer opnieuw.
+
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = Batch lezen
 AI_PROGRESS_SYNTH    = Antwoord synthetiseren

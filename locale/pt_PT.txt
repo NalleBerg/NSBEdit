@@ -506,11 +506,37 @@ CREDITS_OLLAMA     = Ollama é um runtime de IA local de código aberto. O NSBEd
 # ── Project (AI workspace) ────────────────────────────────────────────────────
 MENU_PROJECT         = Projeto
 PROJECT_ADD          = Adicionar projeto...
+PROJECT_NEW          = Criar novo projeto...
 PROJECT_REMOVE       = Remover projeto atual
 PROJECT_NONE         = (Sem projeto)
 PROJECT_PICK_TITLE   = Selecione a pasta raiz do projeto
 PROJECT_REMOVE_TITLE = Remover projeto
 PROJECT_REMOVE_CONFIRM = Remover este projeto da lista?
+
+NEWPROJ_TITLE        = Novo Projeto
+NEWPROJ_NAME         = Nome do projeto
+NEWPROJ_PARENT       = Pasta principal
+NEWPROJ_BROWSE       = Procurar...
+NEWPROJ_PATH         = Caminho completo do projeto
+NEWPROJ_TYPE         = Tipo
+NEWPROJ_TYPE_CLI     = CLI (consola)
+NEWPROJ_TYPE_GUI     = GUI do Windows
+NEWPROJ_TYPE_DB      = Base de dados
+NEWPROJ_BUILD        = Comando de compilação
+NEWPROJ_CREATE       = Criar
+NEWPROJ_LICENSE      = Licença
+NEWPROJ_LICENSE_CHOOSE = Escolher Licença
+NEWPROJ_LICENSE_OTHER = Outra (personalizada)
+NEWPROJ_LICENSE_STUB = Adicione aqui a sua licença personalizada
+NEWPROJ_PICK_PARENT  = Escolha a pasta principal
+NEWPROJ_ERR_NAME     = Introduza um nome de projeto.
+NEWPROJ_ERR_PARENT   = Escolha uma pasta principal.
+NEWPROJ_ERR_PARENT_MISSING = A pasta principal não existe.
+NEWPROJ_ERR_FILE     = Já existe um ficheiro com esse nome.
+NEWPROJ_ERR_NOT_EMPTY = A pasta de destino não está vazia.\nUm novo projeto deve ser criado numa pasta nova ou vazia.
+NEWPROJ_ERR_LICENSE  = Tem de escolher uma licença para o seu projeto.
+NEWPROJ_ERR_WRITE    = Não foi possível criar os ficheiros do projeto. Verifique a pasta e tente novamente.
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = A ler lote
 AI_PROGRESS_SYNTH    = A sintetizar resposta

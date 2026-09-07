@@ -500,11 +500,37 @@ CREDITS_OLLAMA     = Ollama er en open source lokal AI-kørselmotor. NSBEdit bru
 # ── Projekt (AI-arbejdsområde) ────────────────────────────────────────────────
 MENU_PROJECT         = Projekt
 PROJECT_ADD          = Tilføj projekt...
+PROJECT_NEW          = Opret nyt projekt...
 PROJECT_REMOVE       = Fjern aktuelt projekt
 PROJECT_NONE         = (Intet projekt)
 PROJECT_PICK_TITLE   = Vælg projektets rodmappe
 PROJECT_REMOVE_TITLE = Fjern projekt
 PROJECT_REMOVE_CONFIRM = Fjern dette projekt fra listen?
+
+NEWPROJ_TITLE        = Nyt projekt
+NEWPROJ_NAME         = Projektnavn
+NEWPROJ_PARENT       = Overordnet mappe
+NEWPROJ_BROWSE       = Gennemse...
+NEWPROJ_PATH         = Fuld projektsti
+NEWPROJ_TYPE         = Type
+NEWPROJ_TYPE_CLI     = CLI (konsol)
+NEWPROJ_TYPE_GUI     = Windows GUI
+NEWPROJ_TYPE_DB      = Database
+NEWPROJ_BUILD        = Build-kommando
+NEWPROJ_CREATE       = Opret
+NEWPROJ_LICENSE      = Licens
+NEWPROJ_LICENSE_CHOOSE = Vælg licens
+NEWPROJ_LICENSE_OTHER = Anden (brugerdefineret)
+NEWPROJ_LICENSE_STUB = Tilføj din brugerdefinerede licens her
+NEWPROJ_PICK_PARENT  = Vælg den overordnede mappe
+NEWPROJ_ERR_NAME     = Angiv et projektnavn.
+NEWPROJ_ERR_PARENT   = Vælg en overordnet mappe.
+NEWPROJ_ERR_PARENT_MISSING = Den overordnede mappe findes ikke.
+NEWPROJ_ERR_FILE     = Der findes allerede en fil med det navn.
+NEWPROJ_ERR_NOT_EMPTY = Målmappen er ikke tom.\nEt nyt projekt skal oprettes i en ny eller tom mappe.
+NEWPROJ_ERR_LICENSE  = Du skal vælge en licens til dit projekt.
+# CONTINUE HERE
+
 
 AI_PROGRESS_READING  = Læser del
 AI_PROGRESS_SYNTH    = Samler svar

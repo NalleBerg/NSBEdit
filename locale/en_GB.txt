@@ -512,13 +512,7 @@ PROJECT_PICK_TITLE   = Select the project root folder
 PROJECT_REMOVE_TITLE = Remove project
 PROJECT_REMOVE_CONFIRM = Remove this project from the list?
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# >>> TRANSLATE ME <<<  New Project feature (v2026.09.05) — added 2026-09-05
-# These keys are ENGLISH-ONLY so far. Every other locale/*.txt falls back to
-# English until translated. To localise: copy the block below (PROJECT_NEW plus
-# all NEWPROJ_* keys) into each locale/*.txt and translate the right-hand side.
-# Keep \n in NEWPROJ_ERR_NOT_EMPTY. Do NOT translate the keys, only the values.
-# ═══════════════════════════════════════════════════════════════════════════════
+
 # ── New Project dialog ────────────────────────────────────────────────────────
 NEWPROJ_TITLE        = New Project
 NEWPROJ_NAME         = Project name
@@ -543,9 +537,7 @@ NEWPROJ_ERR_FILE     = A file with that name already exists.
 NEWPROJ_ERR_NOT_EMPTY = The target folder is not empty.\nA new project must be created in a new or empty folder.
 NEWPROJ_ERR_LICENSE  = You must choose a license for your project.
 NEWPROJ_ERR_WRITE    = Could not create the project files. Check the folder and try again.
-# ═══════════════════════════════════════════════════════════════════════════════
-# >>> END TRANSLATE ME <<<  (New Project feature)
-# ═══════════════════════════════════════════════════════════════════════════════
+# CONTINUE HERE
 
 
 

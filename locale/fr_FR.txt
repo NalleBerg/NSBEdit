@@ -526,11 +526,37 @@ CREDITS_OLLAMA     = Ollama est un runtime IA local open source. NSBEdit l'utili
 # ── Projet (espace de travail IA) ────────────────────────────────────────────
 MENU_PROJECT         = Projet
 PROJECT_ADD          = Ajouter un projet...
+PROJECT_NEW          = Créer un nouveau projet...
 PROJECT_REMOVE       = Supprimer le projet actuel
 PROJECT_NONE         = (Aucun projet)
 PROJECT_PICK_TITLE   = Sélectionnez le dossier racine du projet
 PROJECT_REMOVE_TITLE = Supprimer le projet
 PROJECT_REMOVE_CONFIRM = Supprimer ce projet de la liste ?
+
+NEWPROJ_TITLE        = Nouveau projet
+NEWPROJ_NAME         = Nom du projet
+NEWPROJ_PARENT       = Dossier parent
+NEWPROJ_BROWSE       = Parcourir...
+NEWPROJ_PATH         = Chemin complet du projet
+NEWPROJ_TYPE         = Type
+NEWPROJ_TYPE_CLI     = CLI (console)
+NEWPROJ_TYPE_GUI     = Interface graphique Windows
+NEWPROJ_TYPE_DB      = Base de données
+NEWPROJ_BUILD        = Commande de compilation
+NEWPROJ_CREATE       = Créer
+NEWPROJ_LICENSE      = Licence
+NEWPROJ_LICENSE_CHOOSE = Choisir une licence
+NEWPROJ_LICENSE_OTHER = Autre (personnalisée)
+NEWPROJ_LICENSE_STUB = Ajoutez votre licence personnalisée ici
+NEWPROJ_PICK_PARENT  = Choisir le dossier parent
+NEWPROJ_ERR_NAME     = Veuillez saisir un nom de projet.
+NEWPROJ_ERR_PARENT   = Veuillez choisir un dossier parent.
+NEWPROJ_ERR_PARENT_MISSING = Le dossier parent n'existe pas.
+NEWPROJ_ERR_FILE     = Un fichier portant ce nom existe déjà.
+NEWPROJ_ERR_NOT_EMPTY = Le dossier cible n'est pas vide.\nUn nouveau projet doit être créé dans un dossier nouveau ou vide.
+NEWPROJ_ERR_LICENSE  = Vous devez choisir une licence pour votre projet.
+NEWPROJ_ERR_WRITE    = Impossible de créer les fichiers du projet. Vérifiez le dossier et réessayez.
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = Lecture du lot
 AI_PROGRESS_SYNTH    = Synthèse de la réponse

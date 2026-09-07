@@ -498,11 +498,39 @@ CREDITS_RTF2HTML = rtf2html er et RTF-til-HTML-konverteringsbibliotek med åpen 
 CREDITS_OLLAMA = Ollama er et lokalt AI-kjøretidsmiljø med åpen kildekode. NSBEdit bruker det til valgfrie lokale AI-forslag og agentmodus.\n\n
 MENU_PROJECT = Prosjekt
 PROJECT_ADD = Legg til prosjekt …
+PROJECT_NEW = Opprett nytt prosjekt …
 PROJECT_REMOVE = Fjern gjeldende prosjekt
 PROJECT_NONE = (Ingen prosjekt)
 PROJECT_PICK_TITLE = Velg prosjektets rotmappe
 PROJECT_REMOVE_TITLE = Fjern prosjekt
 PROJECT_REMOVE_CONFIRM = Fjerne dette prosjektet fra listen?
+
+NEWPROJ_TITLE        = Nytt prosjekt
+NEWPROJ_NAME         = Prosjektnavn
+NEWPROJ_PARENT       = Overordnet mappe
+NEWPROJ_BROWSE       = Bla gjennom...
+NEWPROJ_PATH         = Full prosjektsti
+NEWPROJ_TYPE         = Type
+NEWPROJ_TYPE_CLI     = CLI (konsoll)
+NEWPROJ_TYPE_GUI     = Windows GUI
+NEWPROJ_TYPE_DB      = Database
+NEWPROJ_BUILD        = Byggekommando
+NEWPROJ_CREATE       = Opprett
+NEWPROJ_LICENSE      = Lisens
+NEWPROJ_LICENSE_CHOOSE = Velg lisens
+NEWPROJ_LICENSE_OTHER = Annet (egendefinert)
+NEWPROJ_LICENSE_STUB = Legg til din egendefinerte lisens her
+NEWPROJ_PICK_PARENT  = Velg overordnet mappe
+NEWPROJ_ERR_NAME     = Skriv inn et prosjektnavn.
+NEWPROJ_ERR_PARENT   = Velg en overordnet mappe.
+NEWPROJ_ERR_PARENT_MISSING = Den overordnede mappen finnes ikke.
+NEWPROJ_ERR_FILE     = En fil med det navnet finnes allerede.
+NEWPROJ_ERR_NOT_EMPTY = Målmappen er ikke tom.\nEt nytt prosjekt må opprettes i en ny eller tom mappe.
+NEWPROJ_ERR_LICENSE  = Du må velge en lisens for prosjektet.
+NEWPROJ_ERR_WRITE    = Kunne ikke opprette prosjektfilene. Sjekk mappen og prøv igjen.
+# CONTINUE HERE
+
+
 AI_PROGRESS_READING = Leser gruppe
 AI_PROGRESS_SYNTH = Sammenstiller svar
 FTP_ADD_SITE = Legg til nettsted …

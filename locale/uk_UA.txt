@@ -506,11 +506,38 @@ CREDITS_OLLAMA     = Ollama — це локальне середовище ви�
 # ── Project (AI workspace) ────────────────────────────────────────────────────
 MENU_PROJECT         = Проєкт
 PROJECT_ADD          = Додати проєкт...
+PROJECT_NEW          = Створити новий проєкт...
 PROJECT_REMOVE       = Вилучити поточний проєкт
 PROJECT_NONE         = (Немає проєкту)
 PROJECT_PICK_TITLE   = Оберіть кореневу папку проєкту
 PROJECT_REMOVE_TITLE = Вилучити проєкт
 PROJECT_REMOVE_CONFIRM = Вилучити цей проєкт зі списку?
+
+NEWPROJ_TITLE        = Новий проєкт
+NEWPROJ_NAME         = Назва проєкту
+NEWPROJ_PARENT       = Батьківська папка
+NEWPROJ_BROWSE       = Огляд...
+NEWPROJ_PATH         = Повний шлях до проєкту
+NEWPROJ_TYPE         = Тип
+NEWPROJ_TYPE_CLI     = CLI (консоль)
+NEWPROJ_TYPE_GUI     = Windows GUI
+NEWPROJ_TYPE_DB      = База даних
+NEWPROJ_BUILD        = Команда збірки
+NEWPROJ_CREATE       = Створити
+NEWPROJ_LICENSE      = Ліцензія
+NEWPROJ_LICENSE_CHOOSE = Обрати ліцензію
+NEWPROJ_LICENSE_OTHER = Інша (власна)
+NEWPROJ_LICENSE_STUB = Додайте вашу власну ліцензію тут
+NEWPROJ_PICK_PARENT  = Оберіть батьківську папку
+NEWPROJ_ERR_NAME     = Будь ласка, введіть назву проєкту.
+NEWPROJ_ERR_PARENT   = Будь ласка, оберіть батьківську папку.
+NEWPROJ_ERR_PARENT_MISSING = Батьківська папка не існує.
+NEWPROJ_ERR_FILE     = Файл із такою назвою вже існує.
+NEWPROJ_ERR_NOT_EMPTY = Цільова папка не порожня.\nНовий проєкт потрібно створювати в новій або порожній папці.
+NEWPROJ_ERR_LICENSE  = Ви повинні обрати ліцензію для свого проєкту.
+NEWPROJ_ERR_WRITE    = Не вдалося створити файли проєкту. Перевірте папку та спробуйте ще раз.
+
+# CONTINUE HERE
 
 AI_PROGRESS_READING  = Читання пакета
 AI_PROGRESS_SYNTH    = Синтез відповіді
