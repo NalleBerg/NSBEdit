@@ -283,6 +283,15 @@ LANG_UI_UKRAINIAN = Ukrainian
 LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)
 
+
+# ── «Font presets» ────────────────────────────────────────────────────────────
+TIP_PRESET      = Ajustes preestablecidos de fuente  (Título 1-3 / Normal)
+PRESET_NORMAL   = Normal
+PRESET_HEADER1  = Título 1
+PRESET_HEADER2  = Título 2
+PRESET_HEADER3  = Título 3
+
+
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF files (*.pdf)|*.pdf
 DLG_EXPORT_PDF   = Export as PDF

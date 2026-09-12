@@ -305,6 +305,16 @@ LANG_UI_DUTCH = Nederländska
 LANG_UI_FLEMISH = Flamländska
 LANG_UI_SWEDISH = Svenska
 LANG_UI_UKRAINIAN = Ukrainska
+
+
+# ── «Font presets» ────────────────────────────────────────────────────────────
+TIP_PRESET      = Teckensnittsförinställningar  (Rubrik 1-3 / Normal)
+PRESET_NORMAL   = Normal
+PRESET_HEADER1  = Rubrik 1
+PRESET_HEADER2  = Rubrik 2
+PRESET_HEADER3  = Rubrik 3
+
+
 DLG_EXPORT_PDF = Exportera som PDF
 MSG_PDF_ERR = Kunde inte exportera PDF. Kontrollera att "Microsoft Print to PDF" är installerat (Windows 10+).
 DLG_FIND = Sök / Ersätt

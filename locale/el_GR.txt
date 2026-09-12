@@ -292,6 +292,15 @@ LANG_UI_UKRAINIAN = Ουκρανικά
 LANG_UI_ICELANDIC = Ισλανδικά
 LANG_UI_NORWEGIAN = Νορβηγικά
 
+
+# ── «Font presets» ────────────────────────────────────────────────────────────
+TIP_PRESET      = Προεπιλογές γραμματοσειράς  (Επικεφαλίδα 1-3 / Κανονικό)
+PRESET_NORMAL   = Κανονικό
+PRESET_HEADER1  = Επικεφαλίδα 1
+PRESET_HEADER2  = Επικεφαλίδα 2
+PRESET_HEADER3  = Επικεφαλίδα 3
+
+
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = Αρχεία PDF (*.pdf)|*.pdf
 DLG_EXPORT_PDF   = Εξαγωγή ως PDF

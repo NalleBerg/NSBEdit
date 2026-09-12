@@ -1,5 +1,8 @@
 # Changelog
 
+## v2026.09.12.12 (Font presets translated in every interface language) - 12.09.2026 12:07
+- **i18n: the «Font presets» dropdown is now translated in all 14 interface languages**: the preset feature (v2026.09.12.11) shipped its dropdown and tooltip — the preset names (`PRESET_NORMAL`, `PRESET_HEADER1`–`3`) and the toolbar tooltip (`TIP_PRESET`) — as **English-only**, so every other locale fell back to English. Those strings are now fully localised in **Danish, German, Greek, Spanish, Finnish, French, Icelandic, Flemish, Dutch, Norwegian, Portuguese, Swedish and Ukrainian** (English is the reference), so the **Normal / Header 1–3** dropdown and its hover tooltip now read in the user's own language. No code changes; strings only.
+
 ## v2026.09.12.11 (Font presets on the RTF toolbar — one-click Header 1-3 / Normal) - 12.09.2026 11:40
 - **New: «Font presets» dropdown**: the RTF toolbar gains a **presets** dropdown between **Superscript** and the **Font face** selector, offering **Normal**, **Header 1**, **Header 2** and **Header 3**. Picking an entry applies a ready-made heading style to the selection in one click — **Header 1** = Arial 24 pt bold, **Header 2** = Arial 18 pt bold, **Header 3** = Arial 14 pt bold, and **Normal** = Calibri 11 pt (bold cleared). The dropdown defaults to **Normal**, shows only in RTF mode, follows the responsive toolbar reflow, and honours the dark theme like the other combos.
 - **i18n**: the preset names and tooltip are new locale keys (`PRESET_NORMAL`, `PRESET_HEADER1`–`3`, `TIP_PRESET`); English is the reference and every other language falls back to English until translated. The keys are grouped under a clearly marked *«Font presets»* section in the locale file.

@@ -284,6 +284,15 @@ LANG_UI_UKRAINIAN = Ukrainien
 LANG_UI_ICELANDIC = Islandais
 LANG_UI_NORWEGIAN = Norvégien (bokmål)
 
+
+# ── «Préréglages de police» ─────────────────────────────────────────────────
+TIP_PRESET      = Préréglages de police  (Titre 1-3 / Normal)
+PRESET_NORMAL   = Normal
+PRESET_HEADER1  = Titre 1
+PRESET_HEADER2  = Titre 2
+PRESET_HEADER3  = Titre 3
+
+
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = Fichiers PDF (*.pdf)|*.pdf
 DLG_EXPORT_PDF   = Exporter au format PDF

@@ -291,6 +291,15 @@ LANG_UI_UKRAINIAN = Ukraina
 LANG_UI_ICELANDIC = Islanti
 LANG_UI_NORWEGIAN = Norja (bokmål)
 
+
+# ── «Font presets» ────────────────────────────────────────────────────────────
+TIP_PRESET      = Fonttiasetukset  (Otsikko 1-3 / Normaali)
+PRESET_NORMAL   = Normaali
+PRESET_HEADER1  = Otsikko 1
+PRESET_HEADER2  = Otsikko 2
+PRESET_HEADER3  = Otsikko 3
+
+
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF-tiedostot (*.pdf)|*.pdf
 DLG_EXPORT_PDF   = Vie PDF-muotoon

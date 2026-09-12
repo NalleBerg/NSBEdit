@@ -306,6 +306,16 @@ TIP_SAVE_FTP = Lagre til FTP-server
 TIP_PREVIEW = Forhåndsvis på nett.
 TIP_LANG_UI = Grensesnittspråk
 TIP_COMMENT = Kommenter / fjern kommentar på valgte linjer
+
+
+# ── «Font presets» ────────────────────────────────────────────────────────────
+TIP_PRESET      = Skriftforhåndsinnstillinger  (Overskrift 1-3 / Normal)
+PRESET_NORMAL   = Normal
+PRESET_HEADER1  = Overskrift 1
+PRESET_HEADER2  = Overskrift 2
+PRESET_HEADER3  = Overskrift 3
+
+
 MENU_GUI_LANG = GUI Språk
 MENU_LANGUAGE = &Språk
 LANG_PLAIN_TEXT = Ren tekst

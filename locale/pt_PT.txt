@@ -282,6 +282,15 @@ LANG_UI_UKRAINIAN = Ucraniano
 LANG_UI_ICELANDIC = Islandês
 LANG_UI_NORWEGIAN = Norueguês (bokmål)
 
+
+# ── «Predefinições de tipo de letra» ─────────────────────────────────────────
+TIP_PRESET      = Predefinições de tipo de letra  (Cabeçalho 1-3 / Normal)
+PRESET_NORMAL   = Normal
+PRESET_HEADER1  = Cabeçalho 1
+PRESET_HEADER2  = Cabeçalho 2
+PRESET_HEADER3  = Cabeçalho 3
+
+
 # ── Exportar PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = Ficheiros PDF (*.pdf)|*.pdf
 DLG_EXPORT_PDF   = Exportar como PDF

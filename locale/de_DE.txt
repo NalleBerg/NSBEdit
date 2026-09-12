@@ -285,6 +285,15 @@ LANG_UI_UKRAINIAN = Ukrainisch
 LANG_UI_ICELANDIC = Íslenska
 LANG_UI_NORWEGIAN = Norsk (bokmål)
 
+
+# ── «Schriftvorlagen» ─────────────────────────────────────────────────────────
+TIP_PRESET      = Schriftvorlagen  (Überschrift 1-3 / Normal)
+PRESET_NORMAL   = Normal
+PRESET_HEADER1  = Überschrift 1
+PRESET_HEADER2  = Überschrift 2
+PRESET_HEADER3  = Überschrift 3
+
+
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF-Dateien (*.pdf)|*.pdf
 DLG_EXPORT_PDF   = Als PDF exportieren

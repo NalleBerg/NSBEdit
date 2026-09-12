@@ -274,6 +274,15 @@ LANG_UI_DUTCH     = Nederlands
 LANG_UI_FLEMISH   = Vlaams
 LANG_UI_SAMI      = Noordsamisch
 
+
+# ── «Font presets» ────────────────────────────────────────────────────────────
+TIP_PRESET      = Lettertypevoorinstellingen  (Kop 1-3 / Normaal)
+PRESET_NORMAL   = Normaal
+PRESET_HEADER1  = Kop 1
+PRESET_HEADER2  = Kop 2
+PRESET_HEADER3  = Kop 3
+
+
 # ── Export PDF ───────────────────────────────────────────────────────────────
 FILTER_PDF       = PDF-bestanden (*.pdf)|*.pdf
 DLG_EXPORT_PDF   = Exporteren als PDF
