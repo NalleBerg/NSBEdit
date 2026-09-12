@@ -115,10 +115,10 @@
                                                 drawn (isBar=true, tighter padding).
                                                 All UI fonts: 12pt Segoe UI DPI-aware
                                                 (GetDpiForWindow / GetDpiForSystem).
-                                                17-control RTF toolbar (Bold/Italic/
+                                                18-control RTF toolbar (Bold/Italic/
                                                 Underline/Strike/Subscript/Superscript/
-                                                FontFace/FontSize/Color/Highlight/Align
-                                                L/C/R/J/Bullet/Numbered/Image), status
+                                                Presets/FontFace/FontSize/Color/Highlight/
+                                                Align L/C/R/J/Bullet/Numbered/Image), status
                                                 bar, About dialog (GDI+ logo + RCDATA 12
                                                 nsb_256.png, NE_PUBLISHED/NE_VERSION from
                                                 ne_version.h generated at build time by

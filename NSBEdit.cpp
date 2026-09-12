@@ -1,7 +1,7 @@
-// NSBEdit — standalone RTF notepad
-// Full-featured RTF editor window with File menu, toolbar, and status bar.
+// NSBEdit — standalone programming editor and RTF notepad with AI
+
 // Icon: shell32.dll index 70  (set on taskbar, title bar, and status bar).
-// Tooltips: English-only via project tooltip system.
+
 
 #include "NSBEdit.h"
 #include "ne_version.h"
@@ -47,6 +47,7 @@
 #include "ne_session.h"
 #include "rtf2html/ne_rtf2html_lib.h"
 #include <spellcheck.h>
+
 // Scintilla + Lexilla (statically linked)
 #include "ILexer.h"
 #include "Scintilla.h"
@@ -109,6 +110,14 @@
 
 #define IDM_REGEX_GUIDE     141
 
+
+// For the Styles in the rtf-menu
+#define ID_STYLE_HEADER1  40001
+#define ID_STYLE_HEADER2  40002
+#define ID_STYLE_HEADER3  40003
+#define ID_STYLE_NORMAL   40004
+
+
 enum class NeEncoding {
     Unknown  = 0,
     RichText,   // .rtf — not a text encoding, shown as "Rich text"
@@ -145,6 +154,7 @@ enum class NeEncoding {
 #define IDC_NE_LINK         224
 #define IDC_NE_TABLE        225
 #define IDC_NE_TABLE_DROP   235   // ▼ split-arrow beside TABLE button
+#define IDC_NE_PRESET       236   // «Font presets» dropdown (Header 1-3 / Normal)
 #define IDC_NE_HLINE        226
 #define IDM_TABLE_PROPS     127   // Table properties (menu/button)
 #define IDM_CTX_TABLE_PROPS 128   // Context-menu "Table properties"
@@ -257,6 +267,46 @@ enum class NeEncoding {
 #define NE_TIMER_SESSION        10    // 10-second autosave of session state
 #define NE_TIMER_SESSION_SAVE   13    // debounced session save ~1.2s after edits stop
 #define NE_COPYDATA_OPENFILE  0x4E534201   // WM_COPYDATA tag: forward a file to open
+
+
+// Handeling the presets for the rtf editor
+
+// Define preset styles («Font presets»: Header 1-3 / Normal)
+void ApplyHeadingStyle(HWND hRichEdit, int level)
+{
+    CHARFORMAT2W cf;
+    memset(&cf, 0, sizeof(cf));
+    cf.cbSize = sizeof(cf);
+    cf.dwMask = CFM_SIZE | CFM_BOLD | CFM_FACE;
+
+    switch(level)
+    {
+        case 1: // Header 1
+            cf.yHeight = 24 * 20; // 24pt in twips
+            cf.dwEffects = CFE_BOLD;
+            wcscpy_s(cf.szFaceName, L"Arial");
+            break;
+        case 2: // Header 2
+            cf.yHeight = 18 * 20; // 18pt
+            cf.dwEffects = CFE_BOLD;
+            wcscpy_s(cf.szFaceName, L"Arial");
+            break;
+        case 3: // Header 3
+            cf.yHeight = 14 * 20; // 14pt
+            cf.dwEffects = CFE_BOLD;
+            wcscpy_s(cf.szFaceName, L"Arial");
+            break;
+        default: // Normal
+            cf.yHeight = 11 * 20; // 11pt
+            cf.dwEffects = 0;
+            wcscpy_s(cf.szFaceName, L"Calibri");
+            break;
+    }
+
+    SendMessageW(hRichEdit, EM_SETCHARFORMAT, SCF_SELECTION, (LPARAM)&cf);
+}
+
+
 
 // ── Internal state ─────────────────────────────────────────────────────────────
 // ── Per-tab custom scrollbar handles (keyed by hEdit / hSci HWND) ────────────
@@ -10330,6 +10380,7 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
     const int wCol  = bSz + S(10);
     const int wFace = S(170);
     const int wSize = S(56);
+    const int wPre  = S(110);        // «Font presets» dropdown
     const int rowH  = bSz + S(4);   // height of one toolbar row including gap
 
     // Ordered list of all 17 toolbar controls: { id, pixel-width, gap-after }.
@@ -10342,6 +10393,7 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
         { IDC_NE_STRIKE,      bSz,   sG },
         { IDC_NE_SUBSCRIPT,   wXs,   bG },
         { IDC_NE_SUPERSCRIPT, wXs,   sG },
+        { IDC_NE_PRESET,      wPre,  sG },
         { IDC_NE_FONTFACE,    wFace, bG },
         { IDC_NE_FONTSIZE,    wSize, sG },
         { IDC_NE_ALIGN_L,     wAl,   bG },
@@ -10465,7 +10517,7 @@ static void Ne_ShowToolbarButtons(HWND hwnd, NeToolbarMode mode)
 {
     static const int allIds[] = {
         IDC_NE_BOLD, IDC_NE_ITALIC, IDC_NE_UNDERLINE, IDC_NE_STRIKE,
-        IDC_NE_SUBSCRIPT, IDC_NE_SUPERSCRIPT, IDC_NE_FONTFACE, IDC_NE_FONTSIZE,
+        IDC_NE_SUBSCRIPT, IDC_NE_SUPERSCRIPT, IDC_NE_PRESET, IDC_NE_FONTFACE, IDC_NE_FONTSIZE,
         IDC_NE_ALIGN_L, IDC_NE_ALIGN_C, IDC_NE_ALIGN_R, IDC_NE_ALIGN_J,
         IDC_NE_BULLET, IDC_NE_NUMBERED, IDC_NE_COLOR, IDC_NE_HIGHLIGHT, IDC_NE_IMAGE,
         IDC_NE_INDENT_IN, IDC_NE_INDENT_OUT, IDC_NE_LINESPACE, IDC_NE_PARSPACE,
@@ -10944,6 +10996,20 @@ static void Ne_BuildMainMenu(HWND hwnd)
     Ne_RebuildLocaleMenu(hwnd);
 }
 
+// «Font presets» — populate the preset combo with localized entries.
+// Index 0 = Normal, 1..3 = Header 1-3.
+static void Ne_PopulatePresetCombo(HWND hCombo)
+{
+    if (!hCombo) return;
+    int prev = (int)SendMessageW(hCombo, CB_GETCURSEL, 0, 0);
+    SendMessageW(hCombo, CB_RESETCONTENT, 0, 0);
+    SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)Ls(L"PRESET_NORMAL"));
+    SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)Ls(L"PRESET_HEADER1"));
+    SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)Ls(L"PRESET_HEADER2"));
+    SendMessageW(hCombo, CB_ADDSTRING, 0, (LPARAM)Ls(L"PRESET_HEADER3"));
+    SendMessageW(hCombo, CB_SETCURSEL, prev >= 0 ? prev : 0, 0);
+}
+
 // Re-apply all tooltip strings from the current locale to toolbar controls.
 static void Ne_RefreshTooltips(HWND hwnd)
 {
@@ -10953,6 +11019,8 @@ static void Ne_RefreshTooltips(HWND hwnd)
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_STRIKE),     Ls(L"TIP_STRIKE"));
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SUBSCRIPT),  Ls(L"TIP_SUBSCRIPT"));
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_SUPERSCRIPT),Ls(L"TIP_SUPERSCRIPT"));
+    Ne_SetTip(GetDlgItem(hwnd, IDC_NE_PRESET),     Ls(L"TIP_PRESET"));
+    Ne_PopulatePresetCombo(GetDlgItem(hwnd, IDC_NE_PRESET));
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_FONTFACE),   Ls(L"TIP_FONTFACE"));
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_FONTSIZE),   Ls(L"TIP_FONTSIZE"));
     Ne_SetTip(GetDlgItem(hwnd, IDC_NE_COLOR),      Ls(L"TIP_COLOR"));
@@ -14395,7 +14463,7 @@ static void Ne_RethemeAll(HWND hwnd)
     }
     // Strip UxTheme from toolbar combo boxes and subclass to dark-draw
     // the dropdown arrow-button area.
-    static const int s_comboIds[] = { IDC_NE_FONTFACE, IDC_NE_FONTSIZE, IDC_NE_ZOOM };
+    static const int s_comboIds[] = { IDC_NE_PRESET, IDC_NE_FONTFACE, IDC_NE_FONTSIZE, IDC_NE_ZOOM };
     for (int id : s_comboIds) {
         HWND hC = GetDlgItem(hwnd, id);
         if (hC) {
@@ -14825,6 +14893,12 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         CreateWindowExW(0, L"BUTTON", L"X\u00B2",
             WS_CHILD|WS_VISIBLE|BS_OWNERDRAW,
             0, 0, wXs, bSz, hwnd, (HMENU)(UINT_PTR)IDC_NE_SUPERSCRIPT, hInst, NULL);
+
+        // ── «Font presets» — Header 1-3 / Normal dropdown ─────────────────────
+        HWND hPreset = CreateWindowExW(0, L"COMBOBOX", L"",
+            WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL,
+            0, 0, S(110), S(280), hwnd, (HMENU)(UINT_PTR)IDC_NE_PRESET, hInst, NULL);
+        Ne_PopulatePresetCombo(hPreset);
 
         HWND hFace = CreateWindowExW(0, L"COMBOBOX", L"",
             WS_CHILD|WS_VISIBLE|CBS_DROPDOWNLIST|WS_VSCROLL,
@@ -15901,6 +15975,20 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 NeProfiles_SetIntSetting("zoom_rtf", g_zoomRtf);
                 InvalidateRect(hEdit, NULL, FALSE);
             }
+            SetFocus(hEdit); return 0;
+        }
+
+        // ── «Font presets» — Header 1-3 / Normal ──────────────────────────────
+        if (wmId == IDC_NE_PRESET && wmEv == CBN_SELCHANGE && st && !st->updatingToolbar) {
+            HWND hPre = GetDlgItem(hwnd, IDC_NE_PRESET);
+            int sel = (int)SendMessageW(hPre, CB_GETCURSEL, 0, 0);
+            if (sel >= 0) {   // 0→Normal, 1→H1, 2→H2, 3→H3
+                CHARRANGE cr = {}; SendMessageW(hEdit, EM_EXGETSEL, 0, (LPARAM)&cr);
+                ApplyHeadingStyle(hEdit, sel);
+                SendMessageW(hEdit, EM_EXSETSEL, 0, (LPARAM)&cr);
+                Ne_SyncToolbar(hwnd, hEdit);
+            }
+            InvalidateRect(hEdit, NULL, FALSE);
             SetFocus(hEdit); return 0;
         }
 

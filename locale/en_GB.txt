@@ -231,6 +231,14 @@ TIP_UNDERLINE   = Underline  (Ctrl+U)
 TIP_STRIKE      = Strikethrough
 TIP_SUBSCRIPT   = Subscript  (e.g. H₂O)
 TIP_SUPERSCRIPT = Superscript  (e.g. m²)
+
+# ── «Font presets» ────────────────────────────────────────────────────────────
+TIP_PRESET      = Font presets  (Header 1-3 / Normal)
+PRESET_NORMAL   = Normal
+PRESET_HEADER1  = Header 1
+PRESET_HEADER2  = Header 2
+PRESET_HEADER3  = Header 3
+
 TIP_FONTFACE    = Font face
 TIP_FONTSIZE    = Font size (pt)
 TIP_COLOR       = Text colour
