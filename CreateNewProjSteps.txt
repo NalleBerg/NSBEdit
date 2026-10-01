@@ -161,6 +161,37 @@
       CMakeLists.txt. build_command = generated makeit.bat.
     - Creating a CLI project produces a folder that BUILDS out of the box.
     - Build + run. Commit.
+    DONE 2026-10-01 (scope EXPANDED at user request — see note below):
+      * New data-driven language catalogue: ne_proj_templates.h/.cpp
+        (NeLangInfo + NeLangKindFiles; NeLang_Catalog/Find/GetKindFiles). ALL 25
+        languages from NewProjectLanguageFiles.txt get CLI starter file sets
+        (C/C++/C#/Go/Rust/Swift/Obj-C/Asm/Fortran/Java/Kotlin/Python/JS/TS/Ruby/
+        Perl/Lua/Dart/R/Bash/PowerShell/Batch/HTML/PHP/SQL). HTML/PHP use kind
+        "website"; SQL uses "db". Adding a language = one catalogue entry.
+      * COLOURFUL + verbose makeit.bat generated for the native-exe languages
+        (C, C++, Fortran, Assembly): ANSI colours (Windows 10+, NO_COLOR opt-out),
+        [COMPILE]/[ASSEMBLE]/[LINK] phases, static link (-static) so the exe is
+        self-contained, then a [PACKAGE] step that assembles a sub-folder named
+        after the project (.\<Name>\<Name>.exe) with every file needed to run —
+        mirrors how ..\SetupCraft packages itself. Developer owns the script:
+        delete the [PACKAGE] block to skip packing. Java gets a compile-only
+        makeit.bat (no pack, needs JVM); SQL gets a sqlite3-runner makeit.bat.
+      * Packing is ONLY for compiled languages producing an .exe (C/C++/Fortran/
+        Asm). Interpreted/toolchain langs use their native build tool (dotnet/
+        cargo/go/swift/gradle/tsc/…) as build_command and are not packed. MSVC/.NET
+        runtimes are NOT bundled — the developer installs those themselves.
+      * Dialog: NEW Language combo (IDC_NEWPROJ_LANG 2111) listing all 25 langs
+        (default C++). The Type/Kind combo now derives from the selected language
+        (Ne_NewProjFillKinds); Build command default derives from (lang,kind) via
+        the catalogue (Ne_NewProjDefaultBuild) and still resets on change unless
+        edited. Info panel shows Language + Type + Build. Create path writes COMMON
+        (README/CHANGELOG) + the catalogue file set (+ per-language .gitignore) and
+        stores type=kindId / build_command / run_command. This pulls PHASE E1's
+        language axis forward (CLI only; GUI/DB still Steps 7/8). New locale keys
+        NEWPROJ_LANG / NEWPROJ_TYPE_WEBSITE in en_GB (others fall back to English).
+      * Verified at runtime: generated C and C++ CLI projects BUILD + PACK + RUN
+        out of the box (static exe in .\<Name>\<Name>.exe). makeit.log clean.
+      * NOT yet version-bumped / committed / released.
 
 [ ] STEP 7 — Windows GUI template
     - main.cpp/.h (WinMain skeleton window), app.manifest, a .rc with version

@@ -846,6 +846,30 @@
                                                 downloaded once by _get_licenses.ps1 from
                                                 spdx/license-list-data.
 
+  ne_proj_templates.h /                         Language catalogue for the New Project dialog
+  ne_proj_templates.cpp                         (CLI starter templates for 25 languages). Pure
+                                                data, no hard-coded switch: NeLang_Catalog()
+                                                returns a vector<NeLangInfo>{id, display, kindIds,
+                                                compiled}; NeLang_Find(id) looks one up;
+                                                NeLang_GetKindFiles(langId, kindId, out) fills a
+                                                NeLangKindFiles{buildCommand, runCommand, files}
+                                                with the starter NeTemplateFile set (source +
+                                                project/config file + language .gitignore, all with
+                                                {{NAME}}/{{YEAR}}/{{DATE}}/{{TYPE}} placeholders).
+                                                Adding a language = one catalogue entry. Compiled
+                                                native languages (C, C++, Fortran, Assembly) get a
+                                                generated colourful, verbose makeit.bat (ANSI colour
+                                                via `for /f %%E in ('echo prompt $E ^| cmd')`, NO_COLOR
+                                                opt-out) that builds a self-contained (-static) .exe
+                                                then PACKAGES it into a sub-folder named after the
+                                                project (.\<Name>\<Name>.exe) + any DLLs — mirrors
+                                                how the app packages itself; the developer deletes the
+                                                [PACKAGE] block to skip it. Interpreted/toolchain
+                                                languages use their native build tool (dotnet/cargo/
+                                                go/swift/gradle/tsc/…) and are not packed. The dialog's
+                                                Language combo, Type list and default Build command all
+                                                derive from this catalogue.
+
   API_INTERNALS\API\system_API.txt             Public MyStyle system overview — install and
                                                 runtime database rules, portable vs installed
                                                 storage, and why the same user-data policy

@@ -39,6 +39,7 @@
 #include "ne_crypto.h"
 #include "ne_profiles.h"
 #include "ne_projects.h"
+#include "ne_proj_templates.h"
 #include "ne_licenses.h"
 #include "ne_ai_bootstrap.h"
 #include "ne_ai_client.h"
@@ -11154,6 +11155,7 @@ static bool Ne_PickFolder(HWND owner, const wchar_t* title, std::wstring& outPat
 #define IDC_NEWPROJ_SUMMARY 2108
 #define IDC_NEWPROJ_INFO    2109
 #define IDC_NEWPROJ_LICENSE 2110
+#define IDC_NEWPROJ_LANG    2111
 
 static NeDialogData s_npDD;
 struct NeNewProjState {
@@ -11165,6 +11167,8 @@ struct NeNewProjState {
     std::wstring name;
     std::wstring targetPath;
     std::wstring buildCmd;
+    std::wstring langId;         // catalogue language id, e.g. L"cpp"
+    std::wstring kindId;         // catalogue kind id, e.g. L"cli"
     int          typeIdx = 0;
     int          licenseId = -1;   // -1 = none chosen, -2 = Other/custom, 0..18 = catalogue
 };
@@ -11174,19 +11178,72 @@ static NeNewProjState s_np;
 // hover tooltip ONLY when the mouse is over the path line (not the whole panel).
 static LONG s_npPathStart = 0, s_npPathEnd = 0;
 
-// Localised display name for a type combo index.
-static const wchar_t* Ne_NewProjTypeName(int typeIdx)
+// Localised display name for a kind id (cli/gui/db/website).
+static const wchar_t* Ne_NewProjKindDisplay(const std::wstring& kindId)
 {
-    return typeIdx == 1 ? Ls(L"NEWPROJ_TYPE_GUI")
-         : typeIdx == 2 ? Ls(L"NEWPROJ_TYPE_DB")
-         :                Ls(L"NEWPROJ_TYPE_CLI");
+    if (kindId == L"gui")     return Ls(L"NEWPROJ_TYPE_GUI");
+    if (kindId == L"db")      return Ls(L"NEWPROJ_TYPE_DB");
+    if (kindId == L"website") return Ls(L"NEWPROJ_TYPE_WEBSITE");
+    return Ls(L"NEWPROJ_TYPE_CLI");
 }
 
-static const wchar_t* Ne_NewProjTypeDefaultBuild(int /*typeIdx*/)
+// Currently selected language entry (never null — the combo always has a sel).
+static const NeLangInfo* Ne_NewProjCurLang(HWND dlg)
 {
-    // All C++ types default to the canonical makeit.bat for now (PHASE E adds
-    // language-specific defaults).
-    return L"makeit.bat";
+    const auto& cat = NeLang_Catalog();
+    int sel = (int)SendMessageW(GetDlgItem(dlg, IDC_NEWPROJ_LANG), CB_GETCURSEL, 0, 0);
+    if (sel < 0 || sel >= (int)cat.size()) sel = 0;
+    return &cat[sel];
+}
+
+// Currently selected kind id for the selected language.
+static std::wstring Ne_NewProjCurKindId(HWND dlg)
+{
+    const NeLangInfo* li = Ne_NewProjCurLang(dlg);
+    int sel = (int)SendMessageW(GetDlgItem(dlg, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
+    if (sel < 0 || sel >= (int)li->kindIds.size()) sel = 0;
+    return li->kindIds[sel];
+}
+
+// Localised display name for the current language + kind selection.
+static const wchar_t* Ne_NewProjTypeName(HWND dlg)
+{
+    return Ne_NewProjKindDisplay(Ne_NewProjCurKindId(dlg));
+}
+
+// Default build_command for the current language + kind (from the catalogue).
+static std::wstring Ne_NewProjDefaultBuild(HWND dlg)
+{
+    NeLangKindFiles kf;
+    if (NeLang_GetKindFiles(Ne_NewProjCurLang(dlg)->id, Ne_NewProjCurKindId(dlg), kf))
+        return kf.buildCommand;
+    return L"";
+}
+
+// Repopulate the Kind combo from the selected language's offered kinds.
+static void Ne_NewProjFillKinds(HWND dlg)
+{
+    const NeLangInfo* li = Ne_NewProjCurLang(dlg);
+    HWND hKind = GetDlgItem(dlg, IDC_NEWPROJ_TYPE);
+    SendMessageW(hKind, CB_RESETCONTENT, 0, 0);
+    for (const auto& k : li->kindIds)
+        SendMessageW(hKind, CB_ADDSTRING, 0, (LPARAM)Ne_NewProjKindDisplay(k));
+    SendMessageW(hKind, CB_SETCURSEL, 0, 0);
+}
+
+// Cached small folder icon for the themed "Browse..." button (app lifetime).
+static HICON Ne_FolderIconSmall()
+{
+    static HICON s_ico = NULL;
+    static bool  s_tried = false;
+    if (!s_tried) {
+        s_tried = true;
+        SHFILEINFOW sfi = {};
+        if (SHGetFileInfoW(L"C:\\", FILE_ATTRIBUTE_DIRECTORY, &sfi, sizeof(sfi),
+                           SHGFI_ICON | SHGFI_SMALLICON | SHGFI_USEFILEATTRIBUTES))
+            s_ico = sfi.hIcon;
+    }
+    return s_ico;
 }
 
 static bool Ne_DirIsEmpty(const std::wstring& dir)
@@ -11291,7 +11348,7 @@ static void Ne_NewProjUpdatePreview(HWND dlg)
     std::wstring full = Ne_NewProjTargetPath(dlg);
     wchar_t build[MAX_PATH] = {};
     GetWindowTextW(GetDlgItem(dlg, IDC_NEWPROJ_BUILD), build, MAX_PATH);
-    int typeIdx = (int)SendMessageW(GetDlgItem(dlg, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
+    const NeLangInfo* li = Ne_NewProjCurLang(dlg);
 
     // Rebuild the RichEdit info panel: bold labels, normal values.
     HWND hInfo = GetDlgItem(dlg, IDC_NEWPROJ_INFO);
@@ -11306,10 +11363,14 @@ static void Ne_NewProjUpdatePreview(HWND dlg)
     AppendNsbRich(hInfo, full.empty() ? L"\u2014" : full.c_str(), false, fg, 0, false);
     s_npPathEnd = (LONG)SendMessageW(hInfo, EM_GETTEXTLENGTHEX, (WPARAM)&gtl, 0);
     AppendNsbRich(hInfo, L"\r\n\r\n", false, fg, 0, false);
+    AppendNsbRich(hInfo, Ls(L"NEWPROJ_LANG"), true, fg, 0, false);
+    AppendNsbRich(hInfo, L": ", true, fg, 0, false);
+    AppendNsbRich(hInfo, li->display.c_str(), false, fg, 0, false);
+    AppendNsbRich(hInfo, L"\u00A0\u00A0\u00A0", false, fg, 0, false);
     AppendNsbRich(hInfo, Ls(L"NEWPROJ_TYPE"), true, fg, 0, false);
     AppendNsbRich(hInfo, L": ", true, fg, 0, false);
-    AppendNsbRich(hInfo, Ne_NewProjTypeName(typeIdx), false, fg, 0, false);
-    AppendNsbRich(hInfo, L"\u00A0\u00A0\u00A0", false, fg, 0, false);
+    AppendNsbRich(hInfo, Ne_NewProjTypeName(dlg), false, fg, 0, false);
+    AppendNsbRich(hInfo, L"\r\n", false, fg, 0, false);
     AppendNsbRich(hInfo, Ls(L"NEWPROJ_BUILD"), true, fg, 0, false);
     AppendNsbRich(hInfo, L": ", true, fg, 0, false);
     AppendNsbRich(hInfo, build[0] ? build : L"\u2014", false, fg, 0, false);
@@ -11337,11 +11398,22 @@ static LRESULT CALLBACK Ne_NewProjDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
             }
             return 0;
         }
+        if (code == CBN_SELCHANGE && id == IDC_NEWPROJ_LANG) {
+            // New language: rebuild its Kind list, then reset the build default.
+            s_np.syncing = true;
+            Ne_NewProjFillKinds(hwnd);
+            if (!s_np.buildEdited)
+                SetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD),
+                               Ne_NewProjDefaultBuild(hwnd).c_str());
+            s_np.syncing = false;
+            Ne_NewProjUpdatePreview(hwnd);
+            return 0;
+        }
         if (code == CBN_SELCHANGE && id == IDC_NEWPROJ_TYPE) {
             if (!s_np.buildEdited) {
-                int typeIdx = (int)SendMessageW(GetDlgItem(hwnd, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
                 s_np.syncing = true;
-                SetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD), Ne_NewProjTypeDefaultBuild(typeIdx));
+                SetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD),
+                               Ne_NewProjDefaultBuild(hwnd).c_str());
                 s_np.syncing = false;
             }
             Ne_NewProjUpdatePreview(hwnd);
@@ -11397,6 +11469,8 @@ static LRESULT CALLBACK Ne_NewProjDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
                 // Capture the validated values for the caller to scaffold with.
                 s_np.name       = name;
                 s_np.targetPath = Ne_NewProjTargetPath(hwnd);
+                s_np.langId     = Ne_NewProjCurLang(hwnd)->id;
+                s_np.kindId     = Ne_NewProjCurKindId(hwnd);
                 s_np.typeIdx    = (int)SendMessageW(GetDlgItem(hwnd, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
                 s_np.licenseId  = licId;   // -2 = Other/custom, 0..18 = catalogue
                 {
@@ -11451,13 +11525,14 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
 
     s_np = NeNewProjState{};
 
-    const int P = S(12), LH = S(20), EB = S(26), CB = S(34), GAP = S(8), BROWSE = S(90);
-    const int INFO_H = S(116);                        // path (may wrap) + type/build
+    const int P = S(12), LH = S(20), EB = S(26), CB = S(34), GAP = S(8);
+    const int BROWSE = Ne_MeasureButtonWidth(Ls(L"NEWPROJ_BROWSE"));  // themed, auto-sized
+    const int INFO_H = S(140);                        // path (may wrap) + lang/type + build
     const int rowLE = LH + S(2) + EB;                 // one label-over-field row
     int clientW = S(470);
     int clientH = P
-                + 5 * (rowLE + GAP)                   // name, parent, type, build, license
-                + INFO_H + GAP                        // info panel (path + type/build)
+                + 6 * (rowLE + GAP)                   // name, parent, language, type, build, license
+                + INFO_H + GAP                        // info panel (path + lang/type/build)
                 + CB + P;                             // buttons
     int VW = clientW - 2 * P;
 
@@ -11478,6 +11553,7 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
 
     HFONT hf = Ne_MakeDlgFont(dlg);
     s_np.syncing = true;   // ignore EN_CHANGE while we set up controls
+    s_npDD = {};           // collects every owner-draw button on this dialog (Browse + OK/Cancel)
 
     auto mkLbl = [&](const wchar_t* t, int yy) {
         HWND h = CreateWindowExW(0, L"STATIC", t, WS_CHILD | WS_VISIBLE,
@@ -11497,38 +11573,55 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
     mkLbl(Ls(L"NEWPROJ_NAME"), y0); y0 += LH + S(2);
     mkEdit(IDC_NEWPROJ_NAME, y0, VW); y0 += EB + GAP;
 
-    // Parent folder + Browse
+    // Parent folder + Browse (themed owner-draw button, auto-sized to its label)
     mkLbl(Ls(L"NEWPROJ_PARENT"), y0); y0 += LH + S(2);
     mkEdit(IDC_NEWPROJ_PARENT, y0, VW - BROWSE - S(6));
     {
+        int bi = s_npDD.buttonCount++;
+        s_npDD.buttons[bi] = { IDC_NEWPROJ_BROWSE, Ls(L"NEWPROJ_BROWSE"),
+                               NeBtnTone::Blue, NULL, BROWSE, Ne_FolderIconSmall() };
         HWND hB = CreateWindowExW(0, L"BUTTON", Ls(L"NEWPROJ_BROWSE"),
-            WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+            WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
             P + VW - BROWSE, y0, BROWSE, EB, dlg,
             (HMENU)(UINT_PTR)IDC_NEWPROJ_BROWSE, hi, NULL);
-        if (hf) SendMessageW(hB, WM_SETFONT, (WPARAM)hf, TRUE);
+        if (hB) {
+            WNDPROC prev = (WNDPROC)SetWindowLongPtrW(hB, GWLP_WNDPROC, (LONG_PTR)Ne_BtnHoverProc);
+            SetPropW(hB, L"NePrevProc", (HANDLE)prev);
+        }
     }
     y0 += EB + GAP;
 
-    // Type
+    // Language
+    mkLbl(Ls(L"NEWPROJ_LANG"), y0); y0 += LH + S(2);
+    {
+        HWND hLang = CreateWindowExW(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",
+            WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+            P, y0, VW, EB * 16, dlg, (HMENU)(UINT_PTR)IDC_NEWPROJ_LANG, hi, NULL);
+        if (hf) SendMessageW(hLang, WM_SETFONT, (WPARAM)hf, TRUE);
+        for (const auto& l : NeLang_Catalog())
+            SendMessageW(hLang, CB_ADDSTRING, 0, (LPARAM)l.display.c_str());
+        SendMessageW(hLang, CB_SETCURSEL, 0, 0);   // default: C++ (first entry)
+        if (g_darkMode) SetWindowTheme(hLang, L"DarkMode_CFD", L"");
+    }
+    y0 += EB + GAP;
+
+    // Type / kind (populated from the selected language)
     mkLbl(Ls(L"NEWPROJ_TYPE"), y0); y0 += LH + S(2);
     {
         HWND hType = CreateWindowExW(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",
             WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
             P, y0, VW, EB * 8, dlg, (HMENU)(UINT_PTR)IDC_NEWPROJ_TYPE, hi, NULL);
         if (hf) SendMessageW(hType, WM_SETFONT, (WPARAM)hf, TRUE);
-        SendMessageW(hType, CB_ADDSTRING, 0, (LPARAM)Ls(L"NEWPROJ_TYPE_CLI"));
-        SendMessageW(hType, CB_ADDSTRING, 0, (LPARAM)Ls(L"NEWPROJ_TYPE_GUI"));
-        SendMessageW(hType, CB_ADDSTRING, 0, (LPARAM)Ls(L"NEWPROJ_TYPE_DB"));
-        SendMessageW(hType, CB_SETCURSEL, 1, 0);   // default: Windows GUI
+        Ne_NewProjFillKinds(dlg);                  // kinds for the default language
         if (g_darkMode) SetWindowTheme(hType, L"DarkMode_CFD", L"");
     }
     y0 += EB + GAP;
 
-    // Build command (editable, default makeit.bat)
+    // Build command (editable, default from the catalogue)
     mkLbl(Ls(L"NEWPROJ_BUILD"), y0); y0 += LH + S(2);
     {
         HWND hBuild = mkEdit(IDC_NEWPROJ_BUILD, y0, VW);
-        SetWindowTextW(hBuild, Ne_NewProjTypeDefaultBuild(0));
+        SetWindowTextW(hBuild, Ne_NewProjDefaultBuild(dlg).c_str());
     }
     y0 += EB + GAP;
 
@@ -11569,19 +11662,18 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
     }
     y0 += INFO_H + GAP;
 
-    // OK / Cancel
-    s_npDD = {};
-    s_npDD.buttonCount = 2;
-    s_npDD.buttons[0] = { IDOK,     Ls(L"NEWPROJ_CREATE"), NeBtnTone::Blue, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"NEWPROJ_CREATE")) };
-    s_npDD.buttons[1] = { IDCANCEL, Ls(L"BTN_CANCEL"),     NeBtnTone::Red,  IDI_ERROR,       Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL")) };
+    // OK / Cancel (appended after the Browse button already in s_npDD)
+    int btnRowStart = s_npDD.buttonCount;
+    s_npDD.buttons[s_npDD.buttonCount++] = { IDOK,     Ls(L"NEWPROJ_CREATE"), NeBtnTone::Blue, IDI_INFORMATION, Ne_MeasureButtonWidth(Ls(L"NEWPROJ_CREATE")) };
+    s_npDD.buttons[s_npDD.buttonCount++] = { IDCANCEL, Ls(L"BTN_CANCEL"),     NeBtnTone::Red,  IDI_ERROR,       Ne_MeasureButtonWidth(Ls(L"BTN_CANCEL")) };
     {
         int totalBtnW = 0;
-        for (int i = 0; i < s_npDD.buttonCount; i++) {
+        for (int i = btnRowStart; i < s_npDD.buttonCount; i++) {
             totalBtnW += s_npDD.buttons[i].width;
             if (i + 1 < s_npDD.buttonCount) totalBtnW += S(6);
         }
         int bx = (clientW - totalBtnW) / 2;
-        for (int i = 0; i < s_npDD.buttonCount; i++) {
+        for (int i = btnRowStart; i < s_npDD.buttonCount; i++) {
             auto& b = s_npDD.buttons[i];
             DWORD sty = WS_CHILD | WS_VISIBLE | BS_OWNERDRAW;
             if (b.id == IDOK) sty |= BS_DEFPUSHBUTTON;
@@ -11613,9 +11705,8 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
     if (parent) { EnableWindow(parent, TRUE); SetForegroundWindow(parent); }
     if (s_np.result != IDOK) return false;
 
-    // ── Scaffold: create folder + COMMON files, register, activate, open README ──
-    const wchar_t* typeStr = s_np.typeIdx == 1 ? L"gui"
-                           : s_np.typeIdx == 2 ? L"db" : L"cli";
+    // ── Scaffold: folder + COMMON files + language starter set, register, open ──
+    const std::wstring typeStr = s_np.kindId.empty() ? L"cli" : s_np.kindId;
     SYSTEMTIME lt; GetLocalTime(&lt);
     wchar_t yearBuf[8], dateBuf[16];
     swprintf_s(yearBuf, L"%04d", lt.wYear);
@@ -11624,14 +11715,29 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
         { L"NAME", s_np.name }, { L"YEAR", yearBuf },
         { L"DATE", dateBuf },   { L"TYPE", typeStr },
     };
+    // COMMON files written for every project regardless of language.
     std::vector<NeTemplateFile> files = {
         { L"README.md",
           L"# {{NAME}}\n\nA new project created with NSBEdit.\n" },
         { L"CHANGELOG.md",
           L"# Changelog\n\n## Unreleased - {{DATE}}\n- Initial project.\n" },
-        { L".gitignore",
-          L"# Build output\nbuild/\n*.o\n*.obj\n*.exe\n*.log\n\n# Editor / OS\n.vs/\n.vscode/\n*.user\nThumbs.db\n" },
     };
+    // Language-specific starter set (source, build files, .gitignore, …).
+    NeLangKindFiles kf;
+    std::wstring runCommand;
+    bool haveGitignore = false;
+    if (NeLang_GetKindFiles(s_np.langId, typeStr, kf)) {
+        runCommand = NeTemplate_Expand(kf.runCommand, vars);
+        for (const auto& f : kf.files) {
+            if (f.relPath == L".gitignore") haveGitignore = true;
+            files.push_back(f);
+        }
+    }
+    if (!haveGitignore) {
+        files.push_back({ L".gitignore",
+          L"# Build output\nbuild/\n*.o\n*.obj\n*.exe\n*.log\n\n"
+          L"# Editor / OS\n.vs/\n.vscode/\n*.user\nThumbs.db\n" });
+    }
     if (!NeTemplate_WriteSet(s_np.targetPath, files, vars, false)) {
         MessageBoxW(parent, Ls(L"NEWPROJ_ERR_WRITE"), Ls(L"NEWPROJ_TITLE"),
                     MB_OK | MB_ICONERROR);
@@ -11643,6 +11749,7 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
         if (NeProjects_GetInfo(np.id, info)) {
             info.type         = typeStr;
             info.buildCommand = s_np.buildCmd;
+            info.runCommand   = runCommand;
             NeProjects_SetInfo(info);
         }
         NeProjects_SetActiveId(np.id);

@@ -1,8 +1,15 @@
-Fikse søk i regex guide
-*Fix copy and paste into search windows
-let ollama look for code in file tree and find files
-Fix URLs so they open URL in browser
-Sjekk at RTF-funksjonaliteten er 100% (konvertering også)
-*Forbedre forover/bakover i query history (virker bare bakover nå)
-[Ctrl]+0/+/- for AI window
-Mak it possible to copy tooltip for tab full pathe in eeditor
+* Fikse søk i regex guide
+* Fix copy and paste into search windows
+Let ollama look for code in file tree and find files - verbose, so I know it's actuelly searhing -
+Now it says it cannot find text i KNOW is in the project files, but I do not get any delay for search through files -
+or any feedback that it is looking through a file. I asked it to return an URL - 
+(that I know I have several of in Credits) but it returned that I have no URLs in the project.
+Fix URLs so they open URL in browser i get the pinting finger, but not the action.
+* Sjekk at RTF-funksjonaliteten er 100% (konvertering også)
+* Forbedre forover/bakover i query history (virker bare bakover nå)
+* [Ctrl]+0/+/- for AI window
+* Make it possible to copy tooltip for tab full path in editor
+Complete the sqlite3 credit.
+Check that cloud models updates every time the AI-window is opened
+Make the local Models aslo update when the AI window is opened, so if I install one with Ollama's interface-
+it will show up in the AI-menu in NSBEdit next time the AI-window is opened.
