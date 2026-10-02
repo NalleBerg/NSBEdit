@@ -11156,6 +11156,7 @@ static bool Ne_PickFolder(HWND owner, const wchar_t* title, std::wstring& outPat
 #define IDC_NEWPROJ_INFO    2109
 #define IDC_NEWPROJ_LICENSE 2110
 #define IDC_NEWPROJ_LANG    2111
+#define IDC_NEWPROJ_TOOLKIT 2112
 
 static NeDialogData s_npDD;
 struct NeNewProjState {
@@ -11169,6 +11170,8 @@ struct NeNewProjState {
     std::wstring buildCmd;
     std::wstring langId;         // catalogue language id, e.g. L"cpp"
     std::wstring kindId;         // catalogue kind id, e.g. L"cli"
+    std::wstring toolkit;        // C/C++ GUI only: L"win32" (default) or L"qt6"
+    std::wstring qtPath;         // Qt6 toolkit only: developer's Qt install folder
     int          typeIdx = 0;
     int          licenseId = -1;   // -1 = none chosen, -2 = Other/custom, 0..18 = catalogue
 };
@@ -11244,6 +11247,40 @@ static HICON Ne_FolderIconSmall()
             s_ico = sfi.hIcon;
     }
     return s_ico;
+}
+
+// A GUI toolkit choice (Win32 / Qt6) applies ONLY to a C or C++ "gui" project.
+static bool Ne_NewProjHasToolkit(HWND dlg)
+{
+    const NeLangInfo* li = Ne_NewProjCurLang(dlg);
+    return (li->id == L"c" || li->id == L"cpp") && Ne_NewProjCurKindId(dlg) == L"gui";
+}
+
+// Repopulate + enable/disable the GUI-toolkit combo for the current selection.
+// Win32 is always offered; Qt6 is C++ only.  Greyed when not a C/C++ GUI project.
+static void Ne_NewProjUpdateToolkit(HWND dlg)
+{
+    HWND h = GetDlgItem(dlg, IDC_NEWPROJ_TOOLKIT);
+    if (!h) return;
+    bool on = Ne_NewProjHasToolkit(dlg);
+    int prev = (int)SendMessageW(h, CB_GETCURSEL, 0, 0);
+    SendMessageW(h, CB_RESETCONTENT, 0, 0);
+    if (on) {
+        SendMessageW(h, CB_ADDSTRING, 0, (LPARAM)L"Win32");
+        if (Ne_NewProjCurLang(dlg)->id == L"cpp")
+            SendMessageW(h, CB_ADDSTRING, 0, (LPARAM)L"Qt6");
+        int cnt = (int)SendMessageW(h, CB_GETCOUNT, 0, 0);
+        SendMessageW(h, CB_SETCURSEL, (prev >= 0 && prev < cnt) ? prev : 0, 0);
+    }
+    EnableWindow(h, on);
+}
+
+// Current toolkit id ("win32"/"qt6") for the selection (win32 when N/A).
+static std::wstring Ne_NewProjToolkitId(HWND dlg)
+{
+    if (!Ne_NewProjHasToolkit(dlg)) return L"win32";
+    int sel = (int)SendMessageW(GetDlgItem(dlg, IDC_NEWPROJ_TOOLKIT), CB_GETCURSEL, 0, 0);
+    return sel == 1 ? L"qt6" : L"win32";   // index 1 = Qt6 (C++ only)
 }
 
 static bool Ne_DirIsEmpty(const std::wstring& dir)
@@ -11402,6 +11439,7 @@ static LRESULT CALLBACK Ne_NewProjDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
             // New language: rebuild its Kind list, then reset the build default.
             s_np.syncing = true;
             Ne_NewProjFillKinds(hwnd);
+            Ne_NewProjUpdateToolkit(hwnd);
             if (!s_np.buildEdited)
                 SetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD),
                                Ne_NewProjDefaultBuild(hwnd).c_str());
@@ -11410,12 +11448,17 @@ static LRESULT CALLBACK Ne_NewProjDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
             return 0;
         }
         if (code == CBN_SELCHANGE && id == IDC_NEWPROJ_TYPE) {
+            Ne_NewProjUpdateToolkit(hwnd);
             if (!s_np.buildEdited) {
                 s_np.syncing = true;
                 SetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD),
                                Ne_NewProjDefaultBuild(hwnd).c_str());
                 s_np.syncing = false;
             }
+            Ne_NewProjUpdatePreview(hwnd);
+            return 0;
+        }
+        if (code == CBN_SELCHANGE && id == IDC_NEWPROJ_TOOLKIT) {
             Ne_NewProjUpdatePreview(hwnd);
             return 0;
         }
@@ -11471,12 +11514,24 @@ static LRESULT CALLBACK Ne_NewProjDlgProc(HWND hwnd, UINT msg, WPARAM wParam, LP
                 s_np.targetPath = Ne_NewProjTargetPath(hwnd);
                 s_np.langId     = Ne_NewProjCurLang(hwnd)->id;
                 s_np.kindId     = Ne_NewProjCurKindId(hwnd);
+                s_np.toolkit    = Ne_NewProjToolkitId(hwnd);
                 s_np.typeIdx    = (int)SendMessageW(GetDlgItem(hwnd, IDC_NEWPROJ_TYPE), CB_GETCURSEL, 0, 0);
                 s_np.licenseId  = licId;   // -2 = Other/custom, 0..18 = catalogue
                 {
                     wchar_t build[MAX_PATH] = {};
                     GetWindowTextW(GetDlgItem(hwnd, IDC_NEWPROJ_BUILD), build, MAX_PATH);
                     s_np.buildCmd = build;
+                }
+                // Qt6 needs the developer's Qt install folder (baked into makeit.bat).
+                // Ask for it here; remembered within the session for convenience.
+                if (s_np.toolkit == L"qt6") {
+                    static std::wstring s_lastQtPath;
+                    std::wstring qt = s_lastQtPath;
+                    if (Ne_PickFolder(hwnd, Ls(L"NEWPROJ_PICK_QT"), qt)) {
+                        s_np.qtPath = qt;
+                        s_lastQtPath = qt;
+                    }
+                    // If cancelled, qtPath stays empty -> makeit.bat gets a clear placeholder.
                 }
                 s_np.result = IDOK;
                 DestroyWindow(hwnd);
@@ -11531,7 +11586,7 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
     const int rowLE = LH + S(2) + EB;                 // one label-over-field row
     int clientW = S(470);
     int clientH = P
-                + 6 * (rowLE + GAP)                   // name, parent, language, type, build, license
+                + 7 * (rowLE + GAP)                   // name, parent, language, type, toolkit, build, license
                 + INFO_H + GAP                        // info panel (path + lang/type/build)
                 + CB + P;                             // buttons
     int VW = clientW - 2 * P;
@@ -11614,6 +11669,18 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
         if (hf) SendMessageW(hType, WM_SETFONT, (WPARAM)hf, TRUE);
         Ne_NewProjFillKinds(dlg);                  // kinds for the default language
         if (g_darkMode) SetWindowTheme(hType, L"DarkMode_CFD", L"");
+    }
+    y0 += EB + GAP;
+
+    // GUI toolkit (C/C++ GUI only; greyed otherwise): Win32 / Qt6
+    mkLbl(Ls(L"NEWPROJ_TOOLKIT"), y0); y0 += LH + S(2);
+    {
+        HWND hTk = CreateWindowExW(WS_EX_CLIENTEDGE, L"COMBOBOX", L"",
+            WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_VSCROLL,
+            P, y0, VW, EB * 6, dlg, (HMENU)(UINT_PTR)IDC_NEWPROJ_TOOLKIT, hi, NULL);
+        if (hf) SendMessageW(hTk, WM_SETFONT, (WPARAM)hf, TRUE);
+        Ne_NewProjUpdateToolkit(dlg);              // populate + enable for the default selection
+        if (g_darkMode) SetWindowTheme(hTk, L"DarkMode_CFD", L"");
     }
     y0 += EB + GAP;
 
@@ -11726,7 +11793,7 @@ static bool Ne_ShowNewProjectDialog(HWND parent)
     NeLangKindFiles kf;
     std::wstring runCommand;
     bool haveGitignore = false;
-    if (NeLang_GetKindFiles(s_np.langId, typeStr, kf)) {
+    if (NeLang_GetKindFiles(s_np.langId, typeStr, kf, s_np.toolkit, s_np.qtPath)) {
         runCommand = NeTemplate_Expand(kf.runCommand, vars);
         for (const auto& f : kf.files) {
             if (f.relPath == L".gitignore") haveGitignore = true;

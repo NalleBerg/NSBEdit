@@ -18,6 +18,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Shared banner + ANSI-colour setup.  {{NAME}} becomes the exe/app base name.
+// A self-logging wrapper mirrors the whole run to makeit.log (overwritten each
+// build) while still showing the verbose, colourful output on the console.
 static std::wstring MakeitHeader()
 {
     return
@@ -25,7 +27,16 @@ L"@echo off\n"
 L"setlocal EnableDelayedExpansion\n"
 L"\n"
 L"REM NSBEdit-generated build for {{NAME}} - verbose & colourful.\n"
+L"REM The whole run is mirrored to makeit.log (overwritten each build).\n"
 L"REM Edit freely. To skip packaging, delete the [PACKAGE] block near the end.\n"
+L"\n"
+L"if \"%_NSB_LOGGED%\"==\"1\" goto :_nsb_body\n"
+L"set \"_NSB_LOGGED=1\"\n"
+L"call \"%~f0\" %* > \"%~dp0makeit.log\" 2>&1\n"
+L"set \"RC=%errorlevel%\"\n"
+L"type \"%~dp0makeit.log\"\n"
+L"exit /b %RC%\n"
+L":_nsb_body\n"
 L"\n"
 L"set \"APP={{NAME}}\"\n"
 L"\n"
@@ -139,7 +150,7 @@ L"echo %CS%[BUILD] Creating app.db from schema.sql + seed.sql%C0%\n"
 L"if exist app.db del /q app.db\n"
 L"sqlite3 app.db \".read schema.sql\"\n"
 L"if errorlevel 1 (\n"
-L"  echo %CR%  [ERROR] schema.sql failed (is sqlite3 on PATH?).%C0%\n"
+L"  echo %CR%  [ERROR] schema.sql failed - is sqlite3 on PATH?%C0%\n"
 L"  exit /b 1\n"
 L")\n"
 L"sqlite3 app.db \".read seed.sql\"\n"
@@ -151,6 +162,225 @@ L"echo %CG%  DONE - open:  sqlite3 app.db%C0%\n"
 L"echo %CT%============================================================%C0%\n"
 L"exit /b 0\n";
     return s;
+}
+
+// Win32 GUI build: compiles the .rc + source into a windowed exe with whatever
+// compiler is on PATH (MinGW preferred; MSVC cl fallback), then packs it.
+// srcFile = L"main.cpp"/L"main.c"; mingwCc = L"g++"/L"gcc".
+static std::wstring MakeitWin32(const std::wstring& srcFile, const std::wstring& mingwCc)
+{
+    std::wstring s = MakeitHeader();
+    s +=
+L"echo %CS%[COMPILE]%C0%\n"
+L"REM Force a compiler with:  set NSB_CC=mingw   or   set NSB_CC=msvc\n"
+L"set \"MODE=\"\n"
+L"if defined NSB_CC set \"MODE=%NSB_CC%\"\n"
+L"if not defined MODE where " + mingwCc + L" >nul 2>&1 && set \"MODE=mingw\"\n"
+L"if not defined MODE where cl >nul 2>&1 && set \"MODE=msvc\"\n"
+L"if \"%MODE%\"==\"mingw\" goto :_mingw\n"
+L"if \"%MODE%\"==\"msvc\" goto :_msvc\n"
+L"echo %CR%  [ERROR] No compiler on PATH (need MinGW " + mingwCc + L" or MSVC cl).%C0%\n"
+L"echo %CY%  Install one and add it to PATH, then run makeit.bat again.%C0%\n"
+L"exit /b 1\n"
+L"\n"
+L":_mingw\n"
+L"echo       windres app.rc -O coff -o app_res.o\n"
+L"windres app.rc -O coff -o app_res.o\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] windres failed.%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"echo       " + mingwCc + L" -municode -mwindows -static -O2 " + srcFile + L" app_res.o -o \"%APP%.exe\"\n"
++ mingwCc + L" -municode -mwindows -static -O2 " + srcFile + L" app_res.o -o \"%APP%.exe\"\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] compile failed.%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"goto :_built\n"
+L"\n"
+L":_msvc\n"
+L"echo       rc /nologo /fo app.res app.rc\n"
+L"rc /nologo /fo app.res app.rc\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] rc failed.%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"echo       cl /nologo /O2 " + srcFile + L" app.res user32.lib gdi32.lib /Fe:\"%APP%.exe\" /link /SUBSYSTEM:WINDOWS\n"
+L"cl /nologo /O2 " + srcFile + L" app.res user32.lib gdi32.lib /Fe:\"%APP%.exe\" /link /SUBSYSTEM:WINDOWS\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] cl failed.%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"goto :_built\n"
+L"\n"
+L":_built\n"
+L"echo %CG%  [OK] Built %APP%.exe (%MODE%)%C0%\n";
+    s += MakeitPackExe();
+    return s;
+}
+
+// Qt6 GUI build: CMake configure+build against the developer's Qt folder, then
+// pack the exe and run windeployqt to drop the needed Qt DLLs/plugins beside it.
+static std::wstring MakeitQt6(const std::wstring& qtPath)
+{
+    std::wstring qp = qtPath.empty() ? L"<set your Qt6 folder here, e.g. C:\\Qt\\6.7.2\\mingw_64>"
+                                     : qtPath;
+    std::wstring s = MakeitHeader();
+    s += L"set \"QTDIR=" + qp + L"\"\n";
+    s +=
+L"REM Pick a CMake generator matching the Qt build (mingw_* -> MinGW; else default/MSVC).\n"
+L"set \"GENMODE=msvc\"\n"
+L"echo %QTDIR% | find /i \"mingw\" >nul && set \"GENMODE=mingw\"\n"
+L"if not \"%GENMODE%\"==\"mingw\" goto :_cfg\n"
+L"REM Use the MinGW that ships with Qt (same ABI as the Qt libraries).\n"
+L"set \"QTMINGW=\"\n"
+L"for /d %%D in (\"%QTDIR%\\..\\..\\Tools\\mingw*_64\") do set \"QTMINGW=%%~fD\"\n"
+L"if defined QTMINGW set \"PATH=%QTMINGW%\\bin;%PATH%\"\n"
+L"if not defined QTMINGW echo %CY%  [WARN] Qt's bundled MinGW not found under %QTDIR%\\..\\..\\Tools - using PATH g++, ABI may mismatch.%C0%\n"
+L":_cfg\n"
+L"echo %CS%[CONFIGURE] cmake (%GENMODE%) -DCMAKE_PREFIX_PATH=\"%QTDIR%\"%C0%\n"
+L"if \"%GENMODE%\"==\"mingw\" goto :_cfg_mingw\n"
+L"cmake -S . -B build -DCMAKE_PREFIX_PATH=\"%QTDIR%\"\n"
+L"goto :_cfg_done\n"
+L":_cfg_mingw\n"
+L"cmake -S . -B build -G \"MinGW Makefiles\" -DCMAKE_PREFIX_PATH=\"%QTDIR%\" -DCMAKE_BUILD_TYPE=Release\n"
+L":_cfg_done\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] CMake configure failed - check Qt6 at %%QTDIR%% and that cmake is on PATH.%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"echo %CS%[BUILD] cmake --build build --config Release%C0%\n"
+L"cmake --build build --config Release\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] Build failed.%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"echo %CG%  [OK] Built %APP%.exe%C0%\n"
+L"\n"
+L"echo %CS%[PACKAGE] Assembling .\\%APP%\\ ...%C0%\n"
+L"set \"EXE=\"\n"
+L"for /f \"delims=\" %%I in ('dir /b /s \"build\\%APP%.exe\" 2^>nul') do set \"EXE=%%~fI\"\n"
+L"if not defined EXE (\n"
+L"  echo %CR%  [ERROR] %APP%.exe not found under build\\%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"set \"PKG=%~dp0%APP%\"\n"
+L"if exist \"%PKG%\" rmdir /s /q \"%PKG%\"\n"
+L"mkdir \"%PKG%\"\n"
+L"copy /y \"%EXE%\" \"%PKG%\\\" >nul\n"
+L"if exist \"%QTDIR%\\bin\\windeployqt.exe\" (\n"
+L"  echo       windeployqt --release \"%PKG%\\%APP%.exe\"\n"
+L"  \"%QTDIR%\\bin\\windeployqt.exe\" --release \"%PKG%\\%APP%.exe\"\n"
+L") else (\n"
+L"  echo %CY%  [WARN] windeployqt not found in %%QTDIR%%\\bin - copy the Qt DLLs yourself.%C0%\n"
+L")\n"
+L"echo %CG%  [OK] Packaged -^> %PKG%\\%APP%.exe%C0%\n"
+L"\n"
+L"echo.\n"
+L"echo %CT%============================================================%C0%\n"
+L"echo %CG%  DONE - run:  %APP%\\%APP%.exe%C0%\n"
+L"echo %CT%============================================================%C0%\n"
+L"exit /b 0\n";
+    return s;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  GUI source bodies (one window at a set geometry, a File -> Exit menu, no more)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Win32 source — valid as both C and C++ (pure Win32 API).
+static std::wstring Win32MainSrc()
+{
+    return
+L"#ifndef UNICODE\n"
+L"#define UNICODE\n"
+L"#endif\n"
+L"#include <windows.h>\n\n"
+L"#define IDR_MAINMENU  101\n"
+L"#define IDM_FILE_EXIT 1001\n\n"
+L"static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {\n"
+L"    switch (msg) {\n"
+L"    case WM_COMMAND:\n"
+L"        if (LOWORD(wParam) == IDM_FILE_EXIT) { DestroyWindow(hWnd); return 0; }\n"
+L"        break;\n"
+L"    case WM_DESTROY:\n"
+L"        PostQuitMessage(0);\n"
+L"        return 0;\n"
+L"    }\n"
+L"    return DefWindowProcW(hWnd, msg, wParam, lParam);\n"
+L"}\n\n"
+L"int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrev, PWSTR cmdLine, int nCmdShow) {\n"
+L"    (void)hPrev; (void)cmdLine;\n"
+L"    const wchar_t* cls = L\"{{NAME}}Window\";\n"
+L"    WNDCLASSW wc;\n"
+L"    ZeroMemory(&wc, sizeof(wc));\n"
+L"    wc.lpfnWndProc   = WndProc;\n"
+L"    wc.hInstance     = hInstance;\n"
+L"    wc.hCursor       = LoadCursorW(NULL, IDC_ARROW);\n"
+L"    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);\n"
+L"    wc.lpszClassName = cls;\n"
+L"    wc.lpszMenuName  = MAKEINTRESOURCEW(IDR_MAINMENU);\n"
+L"    RegisterClassW(&wc);\n\n"
+L"    HWND hWnd = CreateWindowExW(0, cls, L\"{{NAME}}\",\n"
+L"        WS_OVERLAPPEDWINDOW,\n"
+L"        120, 80, 800, 600,\n"
+L"        NULL, NULL, hInstance, NULL);\n"
+L"    if (!hWnd) return 0;\n\n"
+L"    ShowWindow(hWnd, nCmdShow);\n"
+L"    UpdateWindow(hWnd);\n\n"
+L"    MSG msg;\n"
+L"    while (GetMessageW(&msg, NULL, 0, 0)) {\n"
+L"        TranslateMessage(&msg);\n"
+L"        DispatchMessageW(&msg);\n"
+L"    }\n"
+L"    return (int)msg.wParam;\n"
+L"}\n";
+}
+
+static std::wstring Win32Rc()
+{
+    return
+L"#include <windows.h>\n\n"
+L"101 MENU\n"
+L"BEGIN\n"
+L"    POPUP \"&File\"\n"
+L"    BEGIN\n"
+L"        MENUITEM \"E&xit\", 1001\n"
+L"    END\n"
+L"END\n";
+}
+
+static std::wstring Qt6MainSrc()
+{
+    return
+L"#include <QApplication>\n"
+L"#include <QMainWindow>\n"
+L"#include <QMenuBar>\n"
+L"#include <QMenu>\n"
+L"#include <QAction>\n\n"
+L"int main(int argc, char *argv[]) {\n"
+L"    QApplication app(argc, argv);\n\n"
+L"    QMainWindow window;\n"
+L"    window.setWindowTitle(\"{{NAME}}\");\n"
+L"    window.setGeometry(120, 80, 800, 600);\n\n"
+L"    QMenu *fileMenu = window.menuBar()->addMenu(\"&File\");\n"
+L"    QAction *exitAction = fileMenu->addAction(\"E&xit\");\n"
+L"    QObject::connect(exitAction, &QAction::triggered, &app, &QApplication::quit);\n\n"
+L"    window.show();\n"
+L"    return app.exec();\n"
+L"}\n";
+}
+
+static std::wstring Qt6CMake()
+{
+    return
+L"cmake_minimum_required(VERSION 3.16)\n"
+L"project({{NAME}} LANGUAGES CXX)\n\n"
+L"set(CMAKE_CXX_STANDARD 17)\n"
+L"set(CMAKE_AUTOMOC ON)\n\n"
+L"find_package(Qt6 REQUIRED COMPONENTS Widgets)\n\n"
+L"add_executable({{NAME}} WIN32 main.cpp)\n"
+L"target_link_libraries({{NAME}} PRIVATE Qt6::Widgets)\n";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -176,17 +406,17 @@ const std::vector<NeLangInfo>& NeLang_Catalog()
     static const std::vector<NeLangInfo> cat = {
         // id            display            kinds                         compiled
         { L"cpp",        L"C++",            { L"cli", L"gui", L"db" },     true  },
-        { L"c",          L"C",              { L"cli" },                    true  },
-        { L"csharp",     L"C#",             { L"cli" },                    true  },
+        { L"c",          L"C",              { L"cli", L"gui" },            true  },
+        { L"csharp",     L"C#",             { L"cli", L"gui" },            true  },
         { L"go",         L"Go",             { L"cli" },                    true  },
         { L"rust",       L"Rust",           { L"cli" },                    true  },
         { L"swift",      L"Swift",          { L"cli" },                    true  },
         { L"objc",       L"Objective-C",    { L"cli" },                    true  },
         { L"asm",        L"Assembly (x64)", { L"cli" },                    true  },
         { L"fortran",    L"Fortran",        { L"cli" },                    true  },
-        { L"java",       L"Java",           { L"cli" },                    true  },
-        { L"kotlin",     L"Kotlin",         { L"cli" },                    true  },
-        { L"python",     L"Python",         { L"cli" },                    false },
+        { L"java",       L"Java",           { L"cli", L"gui" },            true  },
+        { L"kotlin",     L"Kotlin",         { L"cli", L"gui" },            true  },
+        { L"python",     L"Python",         { L"cli", L"gui" },            false },
         { L"javascript", L"JavaScript",     { L"cli" },                    false },
         { L"typescript", L"TypeScript",     { L"cli" },                    false },
         { L"ruby",       L"Ruby",           { L"cli" },                    false },
@@ -212,7 +442,9 @@ const NeLangInfo* NeLang_Find(const std::wstring& langId)
 }
 
 bool NeLang_GetKindFiles(const std::wstring& langId, const std::wstring& kindId,
-                         NeLangKindFiles& out)
+                         NeLangKindFiles& out,
+                         const std::wstring& toolkit,
+                         const std::wstring& qtPath)
 {
     const NeLangInfo* li = NeLang_Find(langId);
     if (!li) return false;
@@ -224,6 +456,17 @@ bool NeLang_GetKindFiles(const std::wstring& langId, const std::wstring& kindId,
 
     // ── C ────────────────────────────────────────────────────────────────────
     if (langId == L"c") {
+        if (kindId == L"gui") {
+            out.buildCommand = L"makeit.bat";
+            out.runCommand   = L"{{NAME}}.exe";
+            out.files = {
+                { L"main.c",      Win32MainSrc() },
+                { L"app.rc",      Win32Rc() },
+                { L"makeit.bat",  MakeitWin32(L"main.c", L"gcc") },
+                GitIgnore(L"*.o\n*.obj\n*.res\n*.exe\n*.pdb\n*.ilk\n"),
+            };
+            return true;
+        }
         out.buildCommand = L"makeit.bat";
         out.runCommand   = L"{{NAME}}.exe";
         out.files = {
@@ -266,7 +509,27 @@ L"add_executable({{NAME}} main.cpp)\n" },
             };
             return true;
         }
-        // gui / db kinds: own steps (7 / 8) — only the common scaffold for now.
+        if (kindId == L"gui") {
+            out.buildCommand = L"makeit.bat";
+            out.runCommand   = L"{{NAME}}.exe";
+            if (toolkit == L"qt6") {
+                out.files = {
+                    { L"main.cpp",       Qt6MainSrc() },
+                    { L"CMakeLists.txt", Qt6CMake() },
+                    { L"makeit.bat",     MakeitQt6(qtPath) },
+                    GitIgnore(L"build/\n*.exe\n"),
+                };
+            } else {
+                out.files = {
+                    { L"main.cpp",   Win32MainSrc() },
+                    { L"app.rc",     Win32Rc() },
+                    { L"makeit.bat", MakeitWin32(L"main.cpp", L"g++") },
+                    GitIgnore(L"*.o\n*.obj\n*.res\n*.exe\n*.pdb\n*.ilk\nbuild/\n"),
+                };
+            }
+            return true;
+        }
+        // db kind: own step (8) — only the common scaffold for now.
         out.buildCommand = L"makeit.bat";
         out.runCommand   = L"{{NAME}}.exe";
         out.files = { GitIgnore(L"*.o\n*.obj\n*.exe\n*.pdb\n*.ilk\nbuild/\n") };
@@ -275,6 +538,42 @@ L"add_executable({{NAME}} main.cpp)\n" },
 
     // ── C# (.NET) ─────────────────────────────────────────────────────────────
     if (langId == L"csharp") {
+        if (kindId == L"gui") {
+            out.buildCommand = L"dotnet build";
+            out.runCommand   = L"dotnet run";
+            out.files = {
+                { L"Program.cs",
+L"using System;\n"
+L"using System.Windows.Forms;\n\n"
+L"static class Program {\n"
+L"    [STAThread]\n"
+L"    static void Main() {\n"
+L"        ApplicationConfiguration.Initialize();\n"
+L"        var form = new Form { Text = \"{{NAME}}\", Width = 800, Height = 600 };\n"
+L"        var menu = new MenuStrip();\n"
+L"        var fileItem = new ToolStripMenuItem(\"&File\");\n"
+L"        var exitItem = new ToolStripMenuItem(\"E&xit\", null, (s, e) => Application.Exit());\n"
+L"        fileItem.DropDownItems.Add(exitItem);\n"
+L"        menu.Items.Add(fileItem);\n"
+L"        form.MainMenuStrip = menu;\n"
+L"        form.Controls.Add(menu);\n"
+L"        Application.Run(form);\n"
+L"    }\n"
+L"}\n" },
+                { L"{{NAME}}.csproj",
+L"<Project Sdk=\"Microsoft.NET.Sdk\">\n"
+L"  <PropertyGroup>\n"
+L"    <OutputType>WinExe</OutputType>\n"
+L"    <TargetFramework>net8.0-windows</TargetFramework>\n"
+L"    <UseWindowsForms>true</UseWindowsForms>\n"
+L"    <ImplicitUsings>enable</ImplicitUsings>\n"
+L"    <Nullable>enable</Nullable>\n"
+L"  </PropertyGroup>\n"
+L"</Project>\n" },
+                GitIgnore(L"bin/\nobj/\n"),
+            };
+            return true;
+        }
         out.buildCommand = L"dotnet build";
         out.runCommand   = L"dotnet run";
         out.files = {
@@ -431,6 +730,32 @@ L"add_executable({{NAME}} main.f90)\n" },
     if (langId == L"java") {
         out.buildCommand = L"makeit.bat";
         out.runCommand   = L"java -cp out Main";
+        if (kindId == L"gui") {
+            out.files = {
+                { L"src/Main.java",
+L"import javax.swing.*;\n\n"
+L"public class Main {\n"
+L"    public static void main(String[] args) {\n"
+L"        SwingUtilities.invokeLater(() -> {\n"
+L"            JFrame frame = new JFrame(\"{{NAME}}\");\n"
+L"            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);\n"
+L"            frame.setBounds(120, 80, 800, 600);\n\n"
+L"            JMenuBar menuBar = new JMenuBar();\n"
+L"            JMenu fileMenu = new JMenu(\"File\");\n"
+L"            JMenuItem exitItem = new JMenuItem(\"Exit\");\n"
+L"            exitItem.addActionListener(e -> System.exit(0));\n"
+L"            fileMenu.add(exitItem);\n"
+L"            menuBar.add(fileMenu);\n"
+L"            frame.setJMenuBar(menuBar);\n\n"
+L"            frame.setVisible(true);\n"
+L"        });\n"
+L"    }\n"
+L"}\n" },
+                { L"makeit.bat", MakeitJava() },
+                GitIgnore(L"*.class\nout/\ntarget/\nbuild/\n.gradle/\n"),
+            };
+            return true;
+        }
         out.files = {
             { L"src/Main.java",
 L"public class Main {\n"
@@ -448,11 +773,30 @@ L"}\n" },
     if (langId == L"kotlin") {
         out.buildCommand = L"gradle build";
         out.runCommand   = L"gradle run";
-        out.files = {
-            { L"src/main/kotlin/Main.kt",
+        std::wstring kt = (kindId == L"gui")
+?
+L"import javax.swing.*\n\n"
+L"fun main() {\n"
+L"    SwingUtilities.invokeLater {\n"
+L"        val frame = JFrame(\"{{NAME}}\")\n"
+L"        frame.defaultCloseOperation = JFrame.EXIT_ON_CLOSE\n"
+L"        frame.setBounds(120, 80, 800, 600)\n\n"
+L"        val menuBar = JMenuBar()\n"
+L"        val fileMenu = JMenu(\"File\")\n"
+L"        val exitItem = JMenuItem(\"Exit\")\n"
+L"        exitItem.addActionListener { System.exit(0) }\n"
+L"        fileMenu.add(exitItem)\n"
+L"        menuBar.add(fileMenu)\n"
+L"        frame.jMenuBar = menuBar\n\n"
+L"        frame.isVisible = true\n"
+L"    }\n"
+L"}\n"
+:
 L"fun main() {\n"
 L"    println(\"Hello from {{NAME}}!\")\n"
-L"}\n" },
+L"}\n";
+        out.files = {
+            { L"src/main/kotlin/Main.kt", kt },
             { L"build.gradle.kts",
 L"plugins {\n"
 L"    kotlin(\"jvm\") version \"1.9.22\"\n"
@@ -471,6 +815,26 @@ L"}\n" },
     if (langId == L"python") {
         out.buildCommand = L"";
         out.runCommand   = L"python main.py";
+        if (kindId == L"gui") {
+            out.files = {
+                { L"main.py",
+L"import tkinter as tk\n\n\n"
+L"def main():\n"
+L"    root = tk.Tk()\n"
+L"    root.title(\"{{NAME}}\")\n"
+L"    root.geometry(\"800x600+120+80\")\n\n"
+L"    menubar = tk.Menu(root)\n"
+L"    file_menu = tk.Menu(menubar, tearoff=0)\n"
+L"    file_menu.add_command(label=\"Exit\", command=root.destroy)\n"
+L"    menubar.add_cascade(label=\"File\", menu=file_menu)\n"
+L"    root.config(menu=menubar)\n\n"
+L"    root.mainloop()\n\n\n"
+L"if __name__ == \"__main__\":\n"
+L"    main()\n" },
+                GitIgnore(L"__pycache__/\n*.pyc\n.venv/\nvenv/\n"),
+            };
+            return true;
+        }
         out.files = {
             { L"main.py",
 L"def main():\n"
@@ -511,8 +875,8 @@ L"}\n" },
         out.runCommand   = L"node dist/index.js";
         out.files = {
             { L"src/index.ts",
-L"const name: string = \"{{NAME}}\";\n"
-L"console.log(`Hello from ${name}!`);\n" },
+L"const appName: string = \"{{NAME}}\";\n"
+L"console.log(`Hello from ${appName}!`);\n" },
             { L"package.json",
 L"{\n"
 L"  \"name\": \"{{NAME}}\",\n"

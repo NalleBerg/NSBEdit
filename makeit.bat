@@ -9,6 +9,11 @@ if "%1" neq "__logged__" (
     exit /b !ERRORLEVEL!
 )
 
+:: Pin the primary MinGW-w64 toolchain so another gcc on PATH (e.g. the one
+:: bundled with Strawberry Perl in C:\Strawberry\c\bin) can't shadow it and
+:: break the build with older/mismatched headers.
+if exist "C:\mingw64\bin\g++.exe" set "PATH=C:\mingw64\bin;%PATH%"
+
 :: ── Timer start ──────────────────────────────────────────────────────────────
 for /f %%T in ('powershell -NoProfile -Command "(Get-Date).Ticks"') do set BUILD_TICKS=%%T
 

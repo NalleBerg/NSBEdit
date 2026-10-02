@@ -42,7 +42,15 @@ const NeLangInfo* NeLang_Find(const std::wstring& langId);
 
 // Fill `out` with the starter file set + default commands for one (language,
 // kind).  Returns false if the pairing is unknown (out left unchanged).  A
-// known pairing with no type-specific files (e.g. the not-yet-built C++ GUI/DB
-// kinds) returns true with an empty `files` list.
+// known pairing with no type-specific files (e.g. the not-yet-built C++ DB
+// kind) returns true with an empty `files` list.
+//
+// toolkit / qtPath only apply to the C / C++ "gui" kind: toolkit is L"win32"
+// (default) or L"qt6"; for L"qt6", qtPath is the developer's Qt install folder
+// (baked into the generated makeit.bat / used by windeployqt).  Both are ignored
+// for every other language/kind.
 bool NeLang_GetKindFiles(const std::wstring& langId, const std::wstring& kindId,
-                         NeLangKindFiles& out);
+                         NeLangKindFiles& out,
+                         const std::wstring& toolkit = L"win32",
+                         const std::wstring& qtPath  = L"");
+

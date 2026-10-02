@@ -156,7 +156,7 @@
  PHASE C — TYPE-SPECIFIC TEMPLATES (each adds one working type)
 -------------------------------------------------------------------------------
 
-[ ] STEP 6 — CLI template
+[x] STEP 6 — CLI template  DONE 2026-10-01 (v2026.10.01.17)
     - main.cpp (hello-world CLI), matching makeit.bat (MinGW g++, console) +
       CMakeLists.txt. build_command = generated makeit.bat.
     - Creating a CLI project produces a folder that BUILDS out of the box.
@@ -193,12 +193,37 @@
         out of the box (static exe in .\<Name>\<Name>.exe). makeit.log clean.
       * NOT yet version-bumped / committed / released.
 
-[ ] STEP 7 — Windows GUI template
+[x] STEP 7 — Windows GUI template  DONE 2026-10-02
     - main.cpp/.h (WinMain skeleton window), app.manifest, a .rc with version
       info + icon placeholder, makeit.bat (windres + g++ -mwindows -municode) +
       CMakeLists.txt.
     - Creating a Windows GUI project produces a folder that BUILDS + runs a window.
     - Build + run. Commit.
+    DONE (scope widened to all GUI-capable languages, validated across compilers):
+      * GUI kind added to C, C++, C#, Java, Kotlin, Python (one window at set
+        geometry 800x600 @120,80 + a File->Exit menu, nothing more).
+      * C/C++ GUI gets a TOOLKIT toggle in the dialog: Win32 (default) or Qt6.
+        Win32 = WinMain + app.rc menu; makeit.bat auto-detects the compiler
+        (MinGW g++/gcc + windres, else MSVC cl + rc + /SUBSYSTEM:WINDOWS) and now
+        honours a `set NSB_CC=mingw|msvc` override. Qt6 = QMainWindow + File->Exit
+        + CMakeLists; the dialog asks for the developer's Qt folder (folder picker,
+        NEWPROJ_PICK_QT), which is baked into makeit.bat; it picks the MinGW/MSVC
+        CMake generator from the Qt path, prepends Qt's bundled Tools\mingw*\bin
+        (ABI match) and runs windeployqt so the pack folder is self-contained.
+      * C# GUI = WinForms, Java/Kotlin GUI = Swing, Python GUI = tkinter.
+      * makeit.bat now self-logs: every compiled-language makeit.bat mirrors its
+        full verbose output to makeit.log (overwritten each run) and preserves the
+        real exit code. Colours still show on the console.
+      * VALIDATED on real toolchains (2026-10-02): C/C++/Fortran/Asm/Go/Rust/C#/
+        Java CLI; C/C++ Win32 GUI (MinGW AND MSVC); C++ Qt6 GUI; C#/Java/Kotlin
+        GUI; Python/JS/Ruby/Perl/Lua/R run; TypeScript; SQL. 24 targets, all the
+        installable ones pass. Fixed TypeScript template (`const name` clashed with
+        the DOM global -> appName).
+      * NOT viable on Windows: Objective-C (no Foundation) — left as a CLI stub,
+        candidate to drop/mark macOS-only. Swift needs its own Windows toolchain
+        env. Bash run depends on the dev's bash (Git Bash vs WSL).
+      * makeit.bat (NSBEdit's own) now pins C:\mingw64 so a stray gcc on PATH
+        (e.g. Strawberry Perl) can't shadow the primary toolchain.
 
 [ ] STEP 8 — DB template
     - main.cpp + a tiny sqlite3 wrapper stub (.h/.cpp), schema.sql, makeit.bat

@@ -38,3 +38,12 @@ test.txt
 start.txt
 AI_attach.txt
 ToDo.render.AI
+
+# Local, machine-specific toolchain helpers (one-off installers + PATH backups).
+# These set up compilers on THIS PC and are not part of the product.
+_install_*.ps1
+_fix_path.ps1
+_user_path_backup_*.txt
+# Throwaway template-validation harness (recreated on demand).
+_tpl_test.*
+_validate.ps1
