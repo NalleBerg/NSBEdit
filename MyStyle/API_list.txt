@@ -775,6 +775,16 @@
                                                 has no CA bundle. NeAiClient_ValidateCloudApiKey =
                                                 GET ollama.com/api/tags; NeAiClient_OllamaSignout =
                                                 POST /api/signout.
+                                                Local model management: NeAiClient_ListOllamaModels
+                                                (GET /api/tags), NeAiClient_PullOllamaModel (POST
+                                                /api/pull, streamed progress) and
+                                                NeAiClient_DeleteOllamaModel (DELETE /api/delete).
+                                                ALL localhost daemon calls go through
+                                                Ai_OpenLocalDaemonSession() which opens WinHTTP with
+                                                WINHTTP_ACCESS_TYPE_NO_PROXY — loopback must never be
+                                                routed through a system/VPN proxy (that made /api/tags
+                                                fail and the model list come back empty); only the
+                                                ollama.com cloud calls keep the default proxy.
                                                 On a non-200 cloud reply Ai_CloudAskStream reads the
                                                 body and surfaces the daemon's real "error" field
                                                 (e.g. "this model requires a subscription, upgrade
@@ -944,6 +954,22 @@
                                                 local models maintenance action that streams
                                                 progress while it checks the installed
                                                 Ollama models.
+                                                The Model menu also has a modal Manage models
+                                                dialog (Ai_ShowManageModelsDialog): install from a
+                                                curated popular list (shown with approximate sizes,
+                                                real name in LB item data) or by typed name, and
+                                                delete an installed model after a Ne_ShowConfirmDialog
+                                                Yes/No. A worker thread drives pull/delete; a live
+                                                log line shows Downloading NN% / Installing with an
+                                                animated braille spinner (WM_TIMER), then a final
+                                                result line. Install/delete re-lists both boxes and
+                                                calls Ai_RefreshUi(parent) so the Model menu mirrors
+                                                the daemon live. Ai_GetModelCandidates() returns the
+                                                daemon's installed set EXACTLY (adds appear, removes
+                                                vanish), falling back to default+fallback only when
+                                                Ollama is unreachable. Custom MyStyle scrollbars
+                                                (msb_attach) on both lists + the log, detached first
+                                                in WM_DESTROY.
                                                 It also resolves `ollama.png` from the
                                                 executable directory so the AI buttons
                                                 keep their icon after install. The prompt

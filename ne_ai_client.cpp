@@ -351,12 +351,20 @@ static std::wstring Ai_FormatWinHttpErrorAt(const wchar_t* prefix, const wchar_t
     return message;
 }
 
+// localhost:11434 is a loopback address. Never route it through a configured
+// system/VPN proxy (WINHTTP_ACCESS_TYPE_DEFAULT_PROXY would, making /api/tags,
+// /api/me, etc. fail and leaving the local model list empty). Connect directly.
+static HINTERNET Ai_OpenLocalDaemonSession()
+{
+    return WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_NO_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+}
+
 }
 
 bool NeAiClient_IsOllamaResponsive()
 {
-    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET hSession = Ai_OpenLocalDaemonSession();
     if (!hSession) return false;
 
     bool ok = false;
@@ -391,8 +399,7 @@ int NeAiClient_QueryOllamaSignIn(std::wstring* outSigninUrl)
 {
     if (outSigninUrl) outSigninUrl->clear();
 
-    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET hSession = Ai_OpenLocalDaemonSession();
     if (!hSession) return -1;
 
     // Keep the probe snappy: the daemon validates the sign-in key with
@@ -442,8 +449,7 @@ int NeAiClient_QueryOllamaSignIn(std::wstring* outSigninUrl)
 
 bool NeAiClient_OllamaSignout()
 {
-    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET hSession = Ai_OpenLocalDaemonSession();
     if (!hSession) return false;
 
     WinHttpSetTimeouts(hSession, 4000, 4000, 4000, 4000);
@@ -480,11 +486,12 @@ bool NeAiClient_ListOllamaModels(std::vector<std::wstring>& outModels)
 {
     outModels.clear();
 
-    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET hSession = Ai_OpenLocalDaemonSession();
     if (!hSession) {
         return false;
     }
+    // Keep the list probe snappy so a rebuild on window-open/focus never stalls.
+    WinHttpSetTimeouts(hSession, 4000, 4000, 4000, 4000);
 
     bool ok = false;
     HINTERNET hConnect = WinHttpConnect(hSession, kOllamaHost, 11434, 0);
@@ -526,8 +533,7 @@ bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
 {
     outError.clear();
 
-    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    HINTERNET hSession = Ai_OpenLocalDaemonSession();
     if (!hSession) {
         outError = L"Could not open WinHTTP session.";
         return false;
@@ -663,6 +669,54 @@ bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
 
     WinHttpCloseHandle(hSession);
     return ok && outError.empty();
+}
+
+bool NeAiClient_DeleteOllamaModel(const std::wstring& model, std::wstring& outError)
+{
+    outError.clear();
+    if (model.empty()) { outError = L"No model specified."; return false; }
+
+    HINTERNET hSession = Ai_OpenLocalDaemonSession();
+    if (!hSession) { outError = L"Could not open WinHTTP session."; return false; }
+    WinHttpSetTimeouts(hSession, 4000, 4000, 4000, 10000);
+
+    bool ok = false;
+    HINTERNET hConnect = WinHttpConnect(hSession, kOllamaHost, 11434, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"DELETE", L"/api/delete",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (hRequest) {
+            std::string body = std::string("{\"model\":\"") +
+                Ai_EscapeJson(Ai_WideToUtf8(model)) + "\"}";
+            const wchar_t* headers = L"Content-Type: application/json\r\n";
+            if (WinHttpSendRequest(hRequest, headers, (DWORD)-1L,
+                    (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0;
+                DWORD statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                        WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                        WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
+                    if (status == 200)      ok = true;
+                    else if (status == 404) outError = L"Model not found.";
+                    else outError = L"Delete failed (HTTP " + std::to_wstring(status) + L").";
+                } else {
+                    outError = L"Could not query Ollama response status.";
+                }
+            } else {
+                outError = L"Could not reach the local Ollama daemon.";
+            }
+            WinHttpCloseHandle(hRequest);
+        } else {
+            outError = L"Could not open Ollama delete request.";
+        }
+        WinHttpCloseHandle(hConnect);
+    } else {
+        outError = L"Could not connect to Ollama on localhost.";
+    }
+
+    WinHttpCloseHandle(hSession);
+    return ok;
 }
 
 bool NeAiClient_ValidateCloudApiKey(const std::wstring& key)

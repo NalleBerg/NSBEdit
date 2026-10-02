@@ -47,6 +47,9 @@ typedef void (*NeAiPullProgressFn)(void* context, const std::wstring& status,
 typedef void (*NeAiOllamaChunkFn)(void* context, const std::wstring& chunk);
 bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
 	NeAiPullProgressFn onProgress, std::wstring& outError);
+// Deletes a locally-installed Ollama model (DELETE /api/delete). Returns true on
+// HTTP 200; on failure outError holds a short reason (e.g. model not found).
+bool NeAiClient_DeleteOllamaModel(const std::wstring& model, std::wstring& outError);
 bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& prompt,
 	void* context, NeAiOllamaChunkFn onChunk, std::wstring& outReply, std::wstring& outError,
 	int numCtx = 0, const std::vector<std::string>& images = std::vector<std::string>());

@@ -10,6 +10,6 @@ Fix URLs so they open URL in browser i get the pinting finger, but not the actio
 * [Ctrl]+0/+/- for AI window
 * Make it possible to copy tooltip for tab full path in editor
 Complete the sqlite3 credit.
-Check that cloud models updates every time the AI-window is opened
-Make the local Models aslo update when the AI window is opened, so if I install one with Ollama's interface-
-it will show up in the AI-menu in NSBEdit next time the AI-window is opened.
+* Check that cloud models updates every time the AI-window is opened
+* Make the local Models aslo update when the AI window is opened, so if I install one with Ollama's interface-
+* |t will show up in the AI-menu in NSBEdit next time the AI-window is opened.

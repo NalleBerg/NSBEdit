@@ -45,6 +45,12 @@
 #define IDC_AI_STOP_BTN           1961
 #define IDC_AI_PREV_BTN           1962
 #define IDC_AI_NEXT_BTN           1963
+#define IDC_AI_MANAGE_INSTALLED_LIST  1970
+#define IDC_AI_MANAGE_POPULAR_LIST    1971
+#define IDC_AI_MANAGE_NAME_EDIT       1972
+#define IDC_AI_MANAGE_DELETE_BTN      1973
+#define IDC_AI_MANAGE_INSTALL_BTN     1974
+#define IDC_AI_MANAGE_INSTALLNAME_BTN 1975
 
 #define IDM_AI_MODEL_DEFAULT      1901
 #define IDM_AI_MODEL_FALLBACK     1902
@@ -55,6 +61,7 @@
 #define IDM_AI_OPEN_PROVIDER      1922
 #define IDM_AI_CHECK_MODELS       1923
 #define IDM_AI_SET_API_KEY        1924
+#define IDM_AI_MANAGE_MODELS      1925
 #define IDM_AI_LOG_CLEAR          1930
 #define IDM_AI_LOG_COPY           1931
 #define IDM_AI_SEND               1932
@@ -66,6 +73,9 @@
 #define WM_AI_SEND_APPEND         (WM_APP + 74)
 #define WM_AI_PROGRESS            (WM_APP + 75)
 #define WM_AI_CLOUDMODELS_READY   (WM_APP + 76)  // lParam = new std::vector<std::wstring>*
+#define WM_AI_MANAGE_APPEND       (WM_APP + 77)  // lParam = new std::wstring* (log line)
+#define WM_AI_MANAGE_DONE         (WM_APP + 78)  // lParam = new AiManageDoneInfo* (final line + ok)
+#define WM_AI_MANAGE_PROGRESS     (WM_APP + 79)  // lParam = new std::wstring* (live status text)
 
 static constexpr UINT_PTR kAiLiveTypingTimerId = 0xA11E;
 static constexpr UINT_PTR kAiLiveTypingStartDelayTimerId = 0xA11F;
@@ -533,6 +543,7 @@ static void Ai_AppendMarkupLine(HWND hLog, const std::wstring& line, const CHARF
 static void Ai_AppendMarkdownBlocks(HWND hLog, const std::wstring& reply);
 static void Ai_ApplyButtons(AiWindowState* st);
 static void Ai_ShowModelCheckDialog(HWND parent);
+static void Ai_ShowManageModelsDialog(HWND parent);
 
 
 static void Ai_SavePrefs(const AiWindowState* st)
@@ -2667,6 +2678,539 @@ static void Ai_ShowModelCheckDialog(HWND parent)
     SetForegroundWindow(parent);
 }
 
+// ── Manage models dialog (install popular / by name, delete) ──────────────────
+struct AiManageModelsState {
+    HWND hwnd = NULL;
+    HWND parent = NULL;
+    HWND hInstalledList = NULL;
+    HWND hPopularList = NULL;
+    HWND hNameEdit = NULL;
+    HWND hLog = NULL;
+    HFONT hFont = NULL;
+    AiDialogData* dd = NULL;    // 4 owner-draw buttons: Delete / Install / Install-by-name / Close
+    bool busy = false;          // an install or delete worker is running
+    HMSB hInstalledSb = NULL;   // custom scrollbars (MyStyle msb)
+    HMSB hPopularSb = NULL;
+    HMSB hLogSb = NULL;
+    int  liveLineStart = -1;    // char offset of the live status line in hLog, -1 = none
+    std::wstring liveStatus;    // phase/percent text, spinner appended separately
+    int  spinnerFrame = 0;
+    bool spinnerActive = false;
+};
+
+struct AiManageProgressContext {
+    HWND hwnd = NULL;
+    std::wstring lastText;      // last status string posted, so we only post on change
+};
+
+struct AiManageDoneInfo {
+    bool ok = false;
+    std::wstring finalLine;     // transcript line appended when the worker finishes
+};
+
+struct AiPopularModel { const wchar_t* name; const wchar_t* size; };
+
+// Braille spinner frames shown after the percent so a long download never looks frozen.
+static const wchar_t* const kAiSpinnerFrames[] = {
+    L"\u280b", L"\u2819", L"\u2839", L"\u2838", L"\u283c",
+    L"\u2834", L"\u2826", L"\u2827", L"\u2807", L"\u280f"
+};
+static constexpr UINT_PTR kAiManageSpinnerTimerId = 0xA130;
+static constexpr UINT     kAiManageSpinnerMs = 120;
+
+
+// Curated "popular" models offered for one-click install. Ollama has no public
+// API to enumerate its library, so this is a hand-picked list (coding-first);
+// the "Install by name" field covers anything not listed here. Sizes are the
+// approximate default-quantisation download sizes (there is no API for them).
+static const std::vector<AiPopularModel>& Ai_PopularModelCandidates()
+{
+    static const std::vector<AiPopularModel> list = {
+        { L"qwen2.5-coder:7b",         L"~4.7 GB" },
+        { L"qwen2.5-coder:3b",         L"~1.9 GB" },
+        { L"qwen2.5-coder:14b",        L"~9.0 GB" },
+        { L"qwen2.5-coder:32b",        L"~20 GB"  },
+        { L"qwen3-coder:latest",       L"~18 GB"  },
+        { L"deepseek-coder-v2:latest", L"~8.9 GB" },
+        { L"deepseek-r1:latest",       L"~5.2 GB" },
+        { L"codellama:latest",         L"~3.8 GB" },
+        { L"codegemma:latest",         L"~5.0 GB" },
+        { L"starcoder2:latest",        L"~1.7 GB" },
+        { L"llama3.2:latest",          L"~2.0 GB" },
+        { L"llama3.1:8b",              L"~4.9 GB" },
+        { L"mistral:latest",           L"~4.1 GB" },
+        { L"gemma3:latest",            L"~3.3 GB" },
+        { L"phi4:latest",              L"~9.1 GB" },
+        { L"llava:latest",             L"~4.7 GB" },
+    };
+    return list;
+}
+
+
+static void Ai_ManagePostLine(HWND hwnd, const std::wstring& line)
+{
+    if (!IsWindow(hwnd)) return;
+    PostMessageW(hwnd, WM_AI_MANAGE_APPEND, 0, (LPARAM)new std::wstring(line));
+}
+
+static void Ai_ManagePostStatus(HWND hwnd, const std::wstring& status)
+{
+    if (!IsWindow(hwnd)) return;
+    PostMessageW(hwnd, WM_AI_MANAGE_PROGRESS, 0, (LPARAM)new std::wstring(status));
+}
+
+// Append a frozen transcript line to the log and end any live status line.
+static void Ai_ManageLogAppend(AiManageModelsState* st, const std::wstring& line)
+{
+    if (!st || !st->hLog) return;
+    int len = GetWindowTextLengthW(st->hLog);
+    SendMessageW(st->hLog, EM_SETSEL, (WPARAM)len, (LPARAM)len);
+    if (len > 0) SendMessageW(st->hLog, EM_REPLACESEL, FALSE, (LPARAM)L"\r\n");
+    SendMessageW(st->hLog, EM_REPLACESEL, FALSE, (LPARAM)line.c_str());
+    SendMessageW(st->hLog, EM_SCROLLCARET, 0, 0);
+    st->liveLineStart = -1;
+    if (st->hLogSb) msb_sync(st->hLogSb);
+}
+
+// Re-render the live status line (phase/percent + animated braille spinner).
+static void Ai_ManageLiveRender(AiManageModelsState* st)
+{
+    if (!st || !st->hLog || st->liveLineStart < 0) return;
+    std::wstring text = st->liveStatus;
+    if (st->spinnerActive) {
+        int n = (int)(sizeof(kAiSpinnerFrames) / sizeof(kAiSpinnerFrames[0]));
+        text += L" ";
+        text += kAiSpinnerFrames[((st->spinnerFrame % n) + n) % n];
+    }
+    int end = GetWindowTextLengthW(st->hLog);
+    SendMessageW(st->hLog, EM_SETSEL, (WPARAM)st->liveLineStart, (LPARAM)end);
+    SendMessageW(st->hLog, EM_REPLACESEL, FALSE, (LPARAM)text.c_str());
+    SendMessageW(st->hLog, EM_SCROLLCARET, 0, 0);
+}
+
+// Start a fresh live status line at the end of the log.
+static void Ai_ManageLiveBegin(AiManageModelsState* st, const std::wstring& initial)
+{
+    if (!st || !st->hLog) return;
+    int len = GetWindowTextLengthW(st->hLog);
+    if (len > 0) {
+        SendMessageW(st->hLog, EM_SETSEL, (WPARAM)len, (LPARAM)len);
+        SendMessageW(st->hLog, EM_REPLACESEL, FALSE, (LPARAM)L"\r\n");
+        len = GetWindowTextLengthW(st->hLog);
+    }
+    st->liveLineStart = len;
+    st->liveStatus = initial;
+    Ai_ManageLiveRender(st);
+    if (st->hLogSb) msb_sync(st->hLogSb);
+}
+
+static void Ai_ManageProgress(void* context, const std::wstring& status,
+    unsigned long long completed, unsigned long long total)
+{
+    auto* pc = (AiManageProgressContext*)context;
+    if (!pc || !IsWindow(pc->hwnd)) return;
+    std::wstring lower = status;
+    for (wchar_t& c : lower) c = (wchar_t)towlower(c);
+    std::wstring text;
+    if (total > 0 && completed > 0) {
+        int pct = (int)((completed * 100ULL) / total);
+        text = std::wstring(L"   ") + Ne_Ls(L"AI_MANAGE_PHASE_DOWNLOADING") + L" - " + std::to_wstring(pct) + L"%";
+    } else if (lower.find(L"verif") != std::wstring::npos ||
+               lower.find(L"writ")  != std::wstring::npos ||
+               lower.find(L"remov") != std::wstring::npos) {
+        text = std::wstring(L"   ") + Ne_Ls(L"AI_MANAGE_PHASE_INSTALLING");
+    } else {
+        text = std::wstring(L"   ") + Ne_Ls(L"AI_MANAGE_PHASE_DOWNLOADING");
+    }
+    if (text != pc->lastText) {
+        pc->lastText = text;
+        Ai_ManagePostStatus(pc->hwnd, text);
+    }
+}
+
+static void Ai_ManageInstallWorker(HWND hwnd, std::wstring model)
+{
+    std::thread([hwnd, model]() {
+        AiManageProgressContext pc;
+        pc.hwnd = hwnd;
+        std::wstring error;
+        bool ok = NeAiClient_PullOllamaModel(model, &pc, Ai_ManageProgress, error);
+        auto* info = new AiManageDoneInfo();
+        info->ok = ok;
+        if (ok) {
+            info->finalLine = Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_INSTALLED_OK"), model);
+        } else {
+            info->finalLine = Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_INSTALL_FAILED"), model);
+            if (!error.empty()) info->finalLine += L" " + error;
+        }
+        if (IsWindow(hwnd)) PostMessageW(hwnd, WM_AI_MANAGE_DONE, 0, (LPARAM)info);
+        else delete info;
+    }).detach();
+}
+
+static void Ai_ManageDeleteWorker(HWND hwnd, std::wstring model)
+{
+    std::thread([hwnd, model]() {
+        std::wstring error;
+        bool ok = NeAiClient_DeleteOllamaModel(model, error);
+        auto* info = new AiManageDoneInfo();
+        info->ok = ok;
+        if (ok) {
+            info->finalLine = Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_DELETED_OK"), model);
+        } else {
+            info->finalLine = Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_DELETE_FAILED"), model);
+            if (!error.empty()) info->finalLine += L" " + error;
+        }
+        if (IsWindow(hwnd)) PostMessageW(hwnd, WM_AI_MANAGE_DONE, 0, (LPARAM)info);
+        else delete info;
+    }).detach();
+}
+
+
+static std::wstring Ai_ListBoxSelText(HWND hList)
+{
+    int sel = (int)SendMessageW(hList, LB_GETCURSEL, 0, 0);
+    if (sel < 0) return L"";
+    int len = (int)SendMessageW(hList, LB_GETTEXTLEN, (WPARAM)sel, 0);
+    if (len <= 0) return L"";
+    std::wstring s((size_t)len + 1, L'\0');
+    SendMessageW(hList, LB_GETTEXT, (WPARAM)sel, (LPARAM)&s[0]);
+    s.resize(wcslen(s.c_str()));
+    return s;
+}
+
+// The popular list shows "name<TAB>~size"; the real model name is stored as the
+// item's data (an index into Ai_PopularModelCandidates), so retrieve it there.
+static std::wstring Ai_PopularSelName(HWND hList)
+{
+    int sel = (int)SendMessageW(hList, LB_GETCURSEL, 0, 0);
+    if (sel < 0) return L"";
+    LRESULT idx = SendMessageW(hList, LB_GETITEMDATA, (WPARAM)sel, 0);
+    const auto& list = Ai_PopularModelCandidates();
+    if (idx < 0 || (size_t)idx >= list.size()) return L"";
+    return list[(size_t)idx].name;
+}
+
+static std::wstring Ai_EditText(HWND hEdit)
+{
+    int len = GetWindowTextLengthW(hEdit);
+    if (len <= 0) return L"";
+    std::wstring s((size_t)len + 1, L'\0');
+    int got = GetWindowTextW(hEdit, &s[0], len + 1);
+    s.resize((size_t)(got < 0 ? 0 : got));
+    size_t a = s.find_first_not_of(L" \t\r\n");
+    size_t b = s.find_last_not_of(L" \t\r\n");
+    if (a == std::wstring::npos) return L"";
+    return s.substr(a, b - a + 1);
+}
+
+static void Ai_ManagePopulateLists(AiManageModelsState* st)
+{
+    if (!st) return;
+    std::vector<std::wstring> installed;
+    NeAiClient_ListOllamaModels(installed);
+    for (std::wstring& m : installed) Ai_NormalizeModelNameLocal(m);
+
+    if (st->hInstalledList) {
+        SendMessageW(st->hInstalledList, LB_RESETCONTENT, 0, 0);
+        for (const std::wstring& m : installed)
+            SendMessageW(st->hInstalledList, LB_ADDSTRING, 0, (LPARAM)m.c_str());
+        if (st->hInstalledSb) msb_sync(st->hInstalledSb);
+    }
+    if (st->hPopularList) {
+        SendMessageW(st->hPopularList, LB_RESETCONTENT, 0, 0);
+        const auto& list = Ai_PopularModelCandidates();
+        for (size_t i = 0; i < list.size(); ++i) {
+            bool have = false;
+            for (const std::wstring& in : installed) if (in == list[i].name) { have = true; break; }
+            if (have) continue;
+            std::wstring disp = std::wstring(list[i].name) + L"\t" + list[i].size;
+            int pos = (int)SendMessageW(st->hPopularList, LB_ADDSTRING, 0, (LPARAM)disp.c_str());
+            if (pos >= 0) SendMessageW(st->hPopularList, LB_SETITEMDATA, (WPARAM)pos, (LPARAM)i);
+        }
+        if (st->hPopularSb) msb_sync(st->hPopularSb);
+    }
+}
+
+
+static void Ai_ManageSetBusy(AiManageModelsState* st, bool busy)
+{
+    if (!st) return;
+    st->busy = busy;
+    BOOL en = busy ? FALSE : TRUE;
+    if (st->hInstalledList) EnableWindow(st->hInstalledList, en);
+    if (st->hPopularList)   EnableWindow(st->hPopularList, en);
+    if (st->hNameEdit)      EnableWindow(st->hNameEdit, en);
+    HWND hDel  = GetDlgItem(st->hwnd, IDC_AI_MANAGE_DELETE_BTN);
+    HWND hIns  = GetDlgItem(st->hwnd, IDC_AI_MANAGE_INSTALL_BTN);
+    HWND hInsN = GetDlgItem(st->hwnd, IDC_AI_MANAGE_INSTALLNAME_BTN);
+    if (hDel)  EnableWindow(hDel, en);
+    if (hIns)  EnableWindow(hIns, en);
+    if (hInsN) EnableWindow(hInsN, en);
+}
+
+static LRESULT CALLBACK Ai_ManageModelsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+    AiManageModelsState* st = (AiManageModelsState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    switch (msg) {
+    case WM_CREATE: {
+        auto* cs = (CREATESTRUCTW*)lParam;
+        st = (AiManageModelsState*)cs->lpCreateParams;
+        SetWindowLongPtrW(hwnd, GWLP_USERDATA, (LONG_PTR)st);
+        if (!st) return -1;
+        st->hwnd = hwnd;
+        st->hFont = Ai_MakeDlgFont(hwnd, false);
+        st->dd = new AiDialogData();
+        if (!st->dd) return -1;
+        st->dd->buttonCount = 4;
+        st->dd->buttons[0] = AiButtonSpec{ IDC_AI_MANAGE_DELETE_BTN,      Ne_Ls(L"AI_MANAGE_BTN_DELETE"),   AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"AI_MANAGE_BTN_DELETE")),   true };
+        st->dd->buttons[1] = AiButtonSpec{ IDC_AI_MANAGE_INSTALL_BTN,     Ne_Ls(L"AI_MANAGE_BTN_INSTALL"),  AiBtnTone::Green, Ai_MeasureButtonWidth(Ne_Ls(L"AI_MANAGE_BTN_INSTALL")),  true };
+        st->dd->buttons[2] = AiButtonSpec{ IDC_AI_MANAGE_INSTALLNAME_BTN, Ne_Ls(L"AI_MANAGE_BTN_INSTALL"),  AiBtnTone::Green, Ai_MeasureButtonWidth(Ne_Ls(L"AI_MANAGE_BTN_INSTALL")),  true };
+        st->dd->buttons[3] = AiButtonSpec{ IDC_AI_CLOSE_BTN,             Ne_Ls(L"BTN_CLOSE"),              AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLOSE")),              true };
+
+        HWND hTitle = CreateWindowExW(0, L"STATIC", Ne_Ls(L"AI_MANAGE_TITLE"),
+            WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP,
+            S(12), S(10), S(660), S(22), hwnd, NULL, GetModuleHandleW(NULL), NULL);
+        if (hTitle && st->hFont) SendMessageW(hTitle, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        HWND hLblInst = CreateWindowExW(0, L"STATIC", Ne_Ls(L"AI_MANAGE_INSTALLED"),
+            WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP,
+            S(12), S(42), S(320), S(20), hwnd, NULL, GetModuleHandleW(NULL), NULL);
+        if (hLblInst && st->hFont) SendMessageW(hLblInst, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        HWND hLblAvail = CreateWindowExW(0, L"STATIC", Ne_Ls(L"AI_MANAGE_AVAILABLE"),
+            WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP,
+            S(356), S(42), S(320), S(20), hwnd, NULL, GetModuleHandleW(NULL), NULL);
+        if (hLblAvail && st->hFont) SendMessageW(hLblAvail, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        st->hInstalledList = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"",
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_HASSTRINGS,
+            S(12), S(64), S(320), S(180), hwnd, (HMENU)(UINT_PTR)IDC_AI_MANAGE_INSTALLED_LIST, GetModuleHandleW(NULL), NULL);
+        if (st->hInstalledList && st->hFont) SendMessageW(st->hInstalledList, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        st->hPopularList = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"",
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_HASSTRINGS | LBS_USETABSTOPS,
+            S(356), S(64), S(320), S(180), hwnd, (HMENU)(UINT_PTR)IDC_AI_MANAGE_POPULAR_LIST, GetModuleHandleW(NULL), NULL);
+        if (st->hPopularList && st->hFont) SendMessageW(st->hPopularList, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+        {
+            // One tab stop clears the longest model name so the "~size" column aligns.
+            int tab = 116;   // listbox dialog units (4 units ≈ one average char)
+            SendMessageW(st->hPopularList, LB_SETTABSTOPS, 1, (LPARAM)&tab);
+        }
+
+        CreateWindowExW(0, L"BUTTON", Ne_Ls(L"AI_MANAGE_BTN_DELETE"),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
+            S(12), S(250), st->dd->buttons[0].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_MANAGE_DELETE_BTN, GetModuleHandleW(NULL), NULL);
+        CreateWindowExW(0, L"BUTTON", Ne_Ls(L"AI_MANAGE_BTN_INSTALL"),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
+            S(356), S(250), st->dd->buttons[1].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_MANAGE_INSTALL_BTN, GetModuleHandleW(NULL), NULL);
+
+        HWND hLblName = CreateWindowExW(0, L"STATIC", Ne_Ls(L"AI_MANAGE_INSTALL_BY_NAME"),
+            WS_CHILD | WS_VISIBLE | SS_LEFTNOWORDWRAP,
+            S(12), S(298), S(200), S(20), hwnd, NULL, GetModuleHandleW(NULL), NULL);
+        if (hLblName && st->hFont) SendMessageW(hLblName, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        st->hNameEdit = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_AUTOHSCROLL,
+            S(12), S(320), S(470), S(26), hwnd, (HMENU)(UINT_PTR)IDC_AI_MANAGE_NAME_EDIT, GetModuleHandleW(NULL), NULL);
+        if (st->hNameEdit && st->hFont) SendMessageW(st->hNameEdit, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        CreateWindowExW(0, L"BUTTON", Ne_Ls(L"AI_MANAGE_BTN_INSTALL"),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
+            S(494), S(316), st->dd->buttons[2].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_MANAGE_INSTALLNAME_BTN, GetModuleHandleW(NULL), NULL);
+
+        st->hLog = CreateWindowExW(WS_EX_CLIENTEDGE, L"EDIT", L"",
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_READONLY | ES_AUTOVSCROLL,
+            S(12), S(360), S(664), S(96), hwnd, NULL, GetModuleHandleW(NULL), NULL);
+        if (st->hLog && st->hFont) SendMessageW(st->hLog, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+
+        CreateWindowExW(0, L"BUTTON", Ne_Ls(L"BTN_CLOSE"),
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
+            S(12) + (S(664) - st->dd->buttons[3].width) / 2, S(466), st->dd->buttons[3].width, S(34), hwnd, (HMENU)(UINT_PTR)IDC_AI_CLOSE_BTN, GetModuleHandleW(NULL), NULL);
+
+        // Apply the dialog font to every owner-draw button too.
+        for (int i = 0; i < st->dd->buttonCount; ++i) {
+            HWND hb = GetDlgItem(hwnd, st->dd->buttons[i].id);
+            if (hb && st->hFont) SendMessageW(hb, WM_SETFONT, (WPARAM)st->hFont, TRUE);
+        }
+
+        // Custom MyStyle scrollbars on the two lists + the log (attach before fill).
+        st->hInstalledSb = msb_attach(st->hInstalledList, MSB_VERTICAL);
+        st->hPopularSb   = msb_attach(st->hPopularList,   MSB_VERTICAL);
+        st->hLogSb       = msb_attach(st->hLog,           MSB_VERTICAL);
+
+        Ai_ManagePopulateLists(st);
+        return 0;
+    }
+    case WM_COMMAND: {
+        if (!st) break;
+        UINT id = LOWORD(wParam);
+        if (st->busy && id != IDCANCEL) { MessageBeep(MB_ICONASTERISK); return 0; }
+        if (id == IDC_AI_MANAGE_DELETE_BTN) {
+            std::wstring model = Ai_ListBoxSelText(st->hInstalledList);
+            if (model.empty()) { Ai_ManagePostLine(hwnd, Ne_Ls(L"AI_MANAGE_NO_SELECTION")); return 0; }
+            std::wstring msg = Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_DELETE_CONFIRM_MSG"), model);
+            if (Ne_ShowConfirmDialog(hwnd, Ne_Ls(L"AI_MANAGE_DELETE_CONFIRM_TITLE"), msg.c_str())) {
+                Ai_ManageSetBusy(st, true);
+                Ai_ManageLogAppend(st, Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_DELETING"), model));
+                st->spinnerFrame = 0;
+                st->spinnerActive = true;
+                Ai_ManageLiveBegin(st, std::wstring(L"   ") + model);
+                SetTimer(hwnd, kAiManageSpinnerTimerId, kAiManageSpinnerMs, NULL);
+                Ai_ManageDeleteWorker(hwnd, model);
+            }
+            return 0;
+        }
+        if (id == IDC_AI_MANAGE_INSTALL_BTN) {
+            std::wstring model = Ai_PopularSelName(st->hPopularList);
+            if (model.empty()) { Ai_ManagePostLine(hwnd, Ne_Ls(L"AI_MANAGE_NO_SELECTION")); return 0; }
+            Ai_ManageSetBusy(st, true);
+            Ai_ManageLogAppend(st, Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_INSTALLING"), model));
+            st->spinnerFrame = 0;
+            st->spinnerActive = true;
+            Ai_ManageLiveBegin(st, std::wstring(L"   ") + model);
+            SetTimer(hwnd, kAiManageSpinnerTimerId, kAiManageSpinnerMs, NULL);
+            Ai_ManageInstallWorker(hwnd, model);
+            return 0;
+        }
+        if (id == IDC_AI_MANAGE_INSTALLNAME_BTN) {
+            std::wstring model = Ai_EditText(st->hNameEdit);
+            if (model.empty()) { Ai_ManagePostLine(hwnd, Ne_Ls(L"AI_MANAGE_EMPTY_NAME")); return 0; }
+            SetWindowTextW(st->hNameEdit, L"");
+            Ai_ManageSetBusy(st, true);
+            Ai_ManageLogAppend(st, Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_INSTALLING"), model));
+            st->spinnerFrame = 0;
+            st->spinnerActive = true;
+            Ai_ManageLiveBegin(st, std::wstring(L"   ") + model);
+            SetTimer(hwnd, kAiManageSpinnerTimerId, kAiManageSpinnerMs, NULL);
+            Ai_ManageInstallWorker(hwnd, model);
+            return 0;
+        }
+        if (id == IDC_AI_CLOSE_BTN || id == IDCANCEL) {
+            if (st->busy) { MessageBeep(MB_ICONASTERISK); return 0; }
+            DestroyWindow(hwnd);
+            return 0;
+        }
+        return 0;
+    }
+    case WM_AI_MANAGE_APPEND: {
+        auto* line = (std::wstring*)lParam;
+        if (st && line) Ai_ManageLogAppend(st, *line);
+        delete line;
+        return 0;
+    }
+    case WM_AI_MANAGE_PROGRESS: {
+        auto* text = (std::wstring*)lParam;
+        if (st && text) { st->liveStatus = *text; Ai_ManageLiveRender(st); }
+        delete text;
+        return 0;
+    }
+    case WM_TIMER:
+        if (st && wParam == kAiManageSpinnerTimerId && st->spinnerActive) {
+            st->spinnerFrame++;
+            Ai_ManageLiveRender(st);
+        }
+        return 0;
+    case WM_AI_MANAGE_DONE: {
+        auto* info = (AiManageDoneInfo*)lParam;
+        if (st) {
+            KillTimer(hwnd, kAiManageSpinnerTimerId);
+            st->spinnerActive = false;
+            Ai_ManageLiveRender(st);    // drop the spinner from the frozen status line
+            st->liveLineStart = -1;
+            if (info) Ai_ManageLogAppend(st, info->finalLine);
+            Ai_ManageSetBusy(st, false);
+            Ai_ManagePopulateLists(st);
+            if (st->parent && IsWindow(st->parent)) Ai_RefreshUi(st->parent);   // live-refresh the Model menu
+        }
+        delete info;
+        return 0;
+    }
+    case WM_DRAWITEM:
+        if (st && st->dd) {
+            DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+            if (dis && Ai_ButtonIndexById(st->dd, dis->CtlID) >= 0) {
+                Ai_DrawButton(dis, st->dd);
+                return TRUE;
+            }
+        }
+        break;
+    case WM_CLOSE:
+        if (st && st->busy) { MessageBeep(MB_ICONASTERISK); return 0; }
+        DestroyWindow(hwnd);
+        return 0;
+    case WM_DESTROY:
+        if (st) {
+            KillTimer(hwnd, kAiManageSpinnerTimerId);
+            msb_detach(st->hInstalledSb); st->hInstalledSb = NULL;   // detach BEFORE children die
+            msb_detach(st->hPopularSb);   st->hPopularSb = NULL;
+            msb_detach(st->hLogSb);       st->hLogSb = NULL;
+        }
+        if (st && st->hFont) { DeleteObject(st->hFont); st->hFont = NULL; }
+        if (st && st->dd) { delete st->dd; st->dd = NULL; }
+        return 0;
+    }
+    return DefWindowProcW(hwnd, msg, wParam, lParam);
+}
+
+static void Ai_ShowManageModelsDialog(HWND parent)
+{
+    if (!parent || !IsWindow(parent)) return;
+    auto* st = new AiManageModelsState();
+    st->parent = parent;
+    HINSTANCE hi = GetModuleHandleW(NULL);
+    WNDCLASSW wc = {};
+    wc.lpfnWndProc = Ai_ManageModelsWndProc;
+    wc.hInstance = hi;
+    wc.hCursor = LoadCursorW(NULL, MAKEINTRESOURCEW(kSystemArrowCursor));
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wc.lpszClassName = L"NSBEditAiManageModelsDialog";
+    if (!GetClassInfoW(hi, wc.lpszClassName, &wc)) {
+        RegisterClassW(&wc);
+    }
+
+    RECT pr = {};
+    GetWindowRect(parent, &pr);
+    const int clientW = S(688);
+    const int clientH = S(512);
+    RECT wr = { 0, 0, clientW, clientH };
+    AdjustWindowRectEx(&wr, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU, FALSE, WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE);
+    int winW = wr.right - wr.left;
+    int winH = wr.bottom - wr.top;
+    int x = pr.left + std::max(0, (int)((pr.right - pr.left - winW) / 2));
+    int y = pr.top + std::max(0, (int)((pr.bottom - pr.top - winH) / 2));
+
+    EnableWindow(parent, FALSE);
+    HWND hwnd = CreateWindowExW(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE,
+        wc.lpszClassName, Ne_Ls(L"AI_MANAGE_TITLE"),
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
+        x, y, winW, winH, parent, NULL, hi, st);
+    if (!hwnd) {
+        EnableWindow(parent, TRUE);
+        delete st;
+        return;
+    }
+    st->hwnd = hwnd;
+    ShowWindow(hwnd, SW_SHOW);
+    UpdateWindow(hwnd);
+    SetForegroundWindow(hwnd);
+
+    MSG msg = {};
+    while (IsWindow(hwnd) && GetMessageW(&msg, NULL, 0, 0)) {
+        if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE && !st->busy) {
+            DestroyWindow(hwnd);
+            break;
+        }
+        if (!IsDialogMessageW(hwnd, &msg)) {
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+    }
+    EnableWindow(parent, TRUE);
+    SetForegroundWindow(parent);
+    delete st;
+}
+
 // ── AI menu hover tooltip (owned by the AI window) ────────────────────────────
 // A dedicated yellow tooltip that looks identical to the shared multilingual
 // tooltip, but is OWNED BY THE AI WINDOW.  The shared singleton (tooltip.cpp) is
@@ -3040,21 +3584,26 @@ static std::vector<std::wstring> Ai_GetModelCandidates()
     std::vector<std::wstring> installed;
     std::vector<std::wstring> models;
     if (NeAiClient_ListOllamaModels(installed)) {
+        // Daemon reachable: the menu mirrors EXACTLY what Ollama has installed
+        // right now, so a model added in Ollama's UI shows up and a removed one
+        // disappears on the next refresh (window open / focus).
         for (std::wstring& model : installed) {
             Ai_NormalizeModelNameLocal(model);
         }
+        for (const std::wstring& model : installed) {
+            Ai_AddUniqueModel(models, model);
+        }
+        return models;
     }
 
+    // Daemon unreachable: fall back to the known default + fallback so the menu
+    // is never empty while Ollama is offline.
     std::wstring primary = Ai_DefaultModelName();
     std::wstring secondary = Ai_FallbackModelName();
     Ai_NormalizeModelNameLocal(primary);
     Ai_NormalizeModelNameLocal(secondary);
     Ai_AddUniqueModel(models, primary);
     Ai_AddUniqueModel(models, secondary);
-
-    for (const std::wstring& model : installed) {
-        Ai_AddUniqueModel(models, model);
-    }
 
     return models;
 }
@@ -3551,6 +4100,7 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
     // Local and Cloud groups, with a divider above and below it.
     Ai_AppendMenuOD(hModel, MF_SEPARATOR, 0, NULL, false);
     Ai_AppendMenuOD(hModel, MF_STRING, IDM_AI_CHECK_MODELS, Ne_Ls(L"MENU_AI_CHECK_MODELS"), false);
+    Ai_AppendMenuOD(hModel, MF_STRING, IDM_AI_MANAGE_MODELS, Ne_Ls(L"MENU_AI_MANAGE_MODELS"), false);
     Ai_AppendMenuOD(hModel, MF_SEPARATOR, 0, NULL, false);
     // "Cloud" section header, then the cloud models — served through the
     // signed-in local Ollama daemon.  Greyed until the user signs in
@@ -5096,6 +5646,9 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             return 0;
         case IDM_AI_CHECK_MODELS:
             Ai_ShowModelCheckDialog(hwnd);
+            return 0;
+        case IDM_AI_MANAGE_MODELS:
+            Ai_ShowManageModelsDialog(hwnd);
             return 0;
         case IDM_AI_LOG_CLEAR:
             if (st) {
