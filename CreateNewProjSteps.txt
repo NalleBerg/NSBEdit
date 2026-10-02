@@ -225,11 +225,18 @@
       * makeit.bat (NSBEdit's own) now pins C:\mingw64 so a stray gcc on PATH
         (e.g. Strawberry Perl) can't shadow the primary toolchain.
 
-[ ] STEP 8 — DB template
+[x] STEP 8 — DB template  DONE 2026-10-02
     - main.cpp + a tiny sqlite3 wrapper stub (.h/.cpp), schema.sql, makeit.bat
       linking sqlite3 + CMakeLists.txt.
     - Creating a DB project produces a folder that BUILDS + opens a db.
     - Build + run. Commit.
+    DONE: C++ "db" kind now scaffolds main.cpp + db.h/db.cpp (tiny SQLite wrapper:
+      open/exec/execFile/printQuery) + schema.sql + CMakeLists + makeit.bat. The
+      makeit.bat (MakeitDbCpp) fetches the SQLite amalgamation (sqlite3.c/.h) from
+      sqlite.org on first build, compiles it statically into a self-contained exe,
+      and PACKAGES exe + schema.sql into .\<Name>\. Verified end-to-end: fetch ->
+      build -> run opens app.db, applies schema.sql, inserts + prints a row.
+      (SQL language 'db' kind = the sqlite3-runner from Step 6, unchanged.)
 
 -------------------------------------------------------------------------------
  FUTURE (end of Phase C) — LICENSE SELECTOR in the New Project dialog (requested 2026-09-05)

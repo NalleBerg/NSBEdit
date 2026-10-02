@@ -588,6 +588,28 @@ static bool Prj_EnsureDir(const std::wstring& dir)
            GetLastError() == ERROR_ALREADY_EXISTS;
 }
 
+// Force line endings by file type so generated files "just work" regardless of
+// how the template text was authored: .bat/.cmd need CRLF for Windows cmd.exe;
+// everything else (shell scripts, source, config) is LF — bash is always "Linux".
+static void Prj_NormalizeEol(std::string& s, const std::wstring& path)
+{
+    bool wantCrlf = false;
+    size_t dot = path.find_last_of(L'.');
+    if (dot != std::wstring::npos) {
+        std::wstring ext = path.substr(dot);
+        for (auto& c : ext) c = (wchar_t)towlower(c);
+        if (ext == L".bat" || ext == L".cmd") wantCrlf = true;
+    }
+    std::string lf;                                     // first collapse to pure LF
+    lf.reserve(s.size());
+    for (char c : s) if (c != '\r') lf.push_back(c);
+    if (!wantCrlf) { s.swap(lf); return; }
+    std::string out;                                    // then LF -> CRLF
+    out.reserve(lf.size() + lf.size() / 16 + 1);
+    for (char c : lf) { if (c == '\n') out.push_back('\r'); out.push_back(c); }
+    s.swap(out);
+}
+
 bool NeTemplate_WriteFile(const std::wstring& fullPath, const std::wstring& content,
                           bool overwrite)
 {
@@ -597,6 +619,7 @@ bool NeTemplate_WriteFile(const std::wstring& fullPath, const std::wstring& cont
     if (slash != std::wstring::npos)
         Prj_EnsureDir(fullPath.substr(0, slash));
     std::string utf8 = Prj_W2U(content);                // UTF-8, no BOM
+    Prj_NormalizeEol(utf8, fullPath);                   // LF (or CRLF for .bat/.cmd)
     HANDLE h = CreateFileW(fullPath.c_str(), GENERIC_WRITE, 0, NULL,
                            overwrite ? CREATE_ALWAYS : CREATE_NEW,
                            FILE_ATTRIBUTE_NORMAL, NULL);

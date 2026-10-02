@@ -164,6 +164,59 @@ L"exit /b 0\n";
     return s;
 }
 
+// C/C++ SQLite DB build: fetch the SQLite amalgamation (sqlite3.c/.h) on first
+// run, compile the sources + sqlite3.c into a self-contained exe (sqlite linked
+// statically), then pack the exe + schema.sql.  Needs a compiler + internet once.
+// compiler = e.g. L"g++ -std=c++17" / L"gcc -std=c11"; sources = L"main.cpp db.cpp" / L"main.c".
+static std::wstring MakeitDbNative(const std::wstring& compiler, const std::wstring& sources)
+{
+    std::wstring s = MakeitHeader();
+    s +=
+L"REM -- Fetch the SQLite amalgamation once (update the version URL if needed). --\n"
+L"if exist sqlite3.c goto :_have_sqlite\n"
+L"echo %CS%[FETCH] Downloading the SQLite amalgamation ...%C0%\n"
+L"powershell -NoProfile -Command \"try { Invoke-WebRequest 'https://sqlite.org/2024/sqlite-amalgamation-3460100.zip' -OutFile 'sqlite.zip'; Expand-Archive 'sqlite.zip' 'sqlite_amalg' -Force; Copy-Item 'sqlite_amalg/sqlite-amalgamation-3460100/sqlite3.c' .; Copy-Item 'sqlite_amalg/sqlite-amalgamation-3460100/sqlite3.h' . } catch { exit 1 }\"\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] Download failed. Put sqlite3.c + sqlite3.h here from sqlite.org/download.html%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"del /q sqlite.zip 2>nul\n"
+L"rmdir /s /q sqlite_amalg 2>nul\n"
+L"echo %CG%  [OK] Got sqlite3.c + sqlite3.h%C0%\n"
+L":_have_sqlite\n"
+L"echo %CS%[COMPILE]%C0%\n"
+L"if exist sqlite3.o goto :_link\n"
+L"echo       gcc -O2 -c sqlite3.c -o sqlite3.o\n"
+L"gcc -O2 -c sqlite3.c -o sqlite3.o\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] sqlite3.c failed to compile.%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L":_link\n"
+L"echo       " + compiler + L" -static -O2 " + sources + L" sqlite3.o -o \"%APP%.exe\"\n"
++ compiler + L" -static -O2 " + sources + L" sqlite3.o -o \"%APP%.exe\"\n"
+L"if errorlevel 1 (\n"
+L"  echo %CR%  [ERROR] Compilation failed.%C0%\n"
+L"  exit /b 1\n"
+L")\n"
+L"echo %CG%  [OK] Built %APP%.exe%C0%\n"
+L"\n"
+L"echo %CS%[PACKAGE] Assembling .\\%APP%\\ ...%C0%\n"
+L"set \"PKG=%~dp0%APP%\"\n"
+L"if exist \"%PKG%\" rmdir /s /q \"%PKG%\"\n"
+L"mkdir \"%PKG%\"\n"
+L"copy /y \"%~dp0%APP%.exe\" \"%PKG%\\\" >nul\n"
+L"copy /y \"%~dp0schema.sql\" \"%PKG%\\\" >nul\n"
+L"echo %CG%  [OK] Packaged -^> %PKG%\\%APP%.exe%C0%\n"
+L"\n"
+L"echo.\n"
+L"echo %CT%============================================================%C0%\n"
+L"echo %CG%  DONE - run:  %APP%\\%APP%.exe%C0%\n"
+L"echo %CT%============================================================%C0%\n"
+L"exit /b 0\n";
+    return s;
+}
+
 // Win32 GUI build: compiles the .rc + source into a windowed exe with whatever
 // compiler is on PATH (MinGW preferred; MSVC cl fallback), then packs it.
 // srcFile = L"main.cpp"/L"main.c"; mingwCc = L"g++"/L"gcc".
@@ -397,6 +450,16 @@ L".vs/\n.vscode/\n*.user\nThumbs.db\n.DS_Store\n";
     return { L".gitignore", body };
 }
 
+// Shared schema for every Database template.
+static NeTemplateFile DbSchema()
+{
+    return { L"schema.sql",
+L"CREATE TABLE IF NOT EXISTS items (\n"
+L"    id    INTEGER PRIMARY KEY,\n"
+L"    name  TEXT NOT NULL\n"
+L");\n" };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Catalogue
 // ─────────────────────────────────────────────────────────────────────────────
@@ -406,27 +469,27 @@ const std::vector<NeLangInfo>& NeLang_Catalog()
     static const std::vector<NeLangInfo> cat = {
         // id            display            kinds                         compiled
         { L"cpp",        L"C++",            { L"cli", L"gui", L"db" },     true  },
-        { L"c",          L"C",              { L"cli", L"gui" },            true  },
-        { L"csharp",     L"C#",             { L"cli", L"gui" },            true  },
-        { L"go",         L"Go",             { L"cli" },                    true  },
-        { L"rust",       L"Rust",           { L"cli" },                    true  },
+        { L"c",          L"C",              { L"cli", L"gui", L"db" },     true  },
+        { L"csharp",     L"C#",             { L"cli", L"gui", L"db" },     true  },
+        { L"go",         L"Go",             { L"cli", L"db" },            true  },
+        { L"rust",       L"Rust",           { L"cli", L"db" },            true  },
         { L"swift",      L"Swift",          { L"cli" },                    true  },
         { L"objc",       L"Objective-C",    { L"cli" },                    true  },
         { L"asm",        L"Assembly (x64)", { L"cli" },                    true  },
         { L"fortran",    L"Fortran",        { L"cli" },                    true  },
         { L"java",       L"Java",           { L"cli", L"gui" },            true  },
         { L"kotlin",     L"Kotlin",         { L"cli", L"gui" },            true  },
-        { L"python",     L"Python",         { L"cli", L"gui" },            false },
+        { L"python",     L"Python",         { L"cli", L"gui", L"db" },     false },
         { L"javascript", L"JavaScript",     { L"cli" },                    false },
         { L"typescript", L"TypeScript",     { L"cli" },                    false },
         { L"ruby",       L"Ruby",           { L"cli" },                    false },
-        { L"perl",       L"Perl",           { L"cli" },                    false },
+        { L"perl",       L"Perl",           { L"cli", L"db" },            false },
         { L"lua",        L"Lua",            { L"cli" },                    false },
         { L"dart",       L"Dart",           { L"cli" },                    false },
         { L"r",          L"R",              { L"cli" },                    false },
-        { L"bash",       L"Shell (Bash)",   { L"cli" },                    false },
-        { L"powershell", L"PowerShell",     { L"cli" },                    false },
-        { L"batch",      L"Batch",          { L"cli" },                    false },
+        { L"bash",       L"Shell (Bash)",   { L"cli", L"db" },            false },
+        { L"powershell", L"PowerShell",     { L"cli", L"db" },            false },
+        { L"batch",      L"Batch",          { L"cli", L"db" },            false },
         { L"html",       L"HTML / CSS / JS",{ L"website" },                false },
         { L"php",        L"PHP",            { L"website" },                false },
         { L"sql",        L"SQL (SQLite)",   { L"db" },                     true  },
@@ -464,6 +527,57 @@ bool NeLang_GetKindFiles(const std::wstring& langId, const std::wstring& kindId,
                 { L"app.rc",      Win32Rc() },
                 { L"makeit.bat",  MakeitWin32(L"main.c", L"gcc") },
                 GitIgnore(L"*.o\n*.obj\n*.res\n*.exe\n*.pdb\n*.ilk\n"),
+            };
+            return true;
+        }
+        if (kindId == L"db") {
+            out.buildCommand = L"makeit.bat";
+            out.runCommand   = L"{{NAME}}.exe";
+            out.files = {
+                { L"main.c",
+L"#include \"sqlite3.h\"\n"
+L"#include <stdio.h>\n"
+L"#include <stdlib.h>\n\n"
+L"static int print_row(void* u, int cols, char** vals, char** names) {\n"
+L"    (void)u;\n"
+L"    printf(\" \");\n"
+L"    for (int i = 0; i < cols; ++i)\n"
+L"        printf(\"  %s=%s\", names[i], vals[i] ? vals[i] : \"NULL\");\n"
+L"    printf(\"\\n\");\n"
+L"    return 0;\n"
+L"}\n\n"
+L"static char* read_file(const char* path) {\n"
+L"    FILE* f = fopen(path, \"rb\");\n"
+L"    if (!f) return NULL;\n"
+L"    fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);\n"
+L"    char* buf = (char*)malloc(n + 1);\n"
+L"    if (buf) { fread(buf, 1, n, f); buf[n] = 0; }\n"
+L"    fclose(f);\n"
+L"    return buf;\n"
+L"}\n\n"
+L"int main(void) {\n"
+L"    sqlite3* db;\n"
+L"    if (sqlite3_open(\"app.db\", &db) != SQLITE_OK) {\n"
+L"        fprintf(stderr, \"open failed: %s\\n\", sqlite3_errmsg(db));\n"
+L"        return 1;\n"
+L"    }\n"
+L"    char* schema = read_file(\"schema.sql\");\n"
+L"    if (schema) { sqlite3_exec(db, schema, 0, 0, 0); free(schema); }\n"
+L"    sqlite3_exec(db, \"INSERT INTO items (name) VALUES ('hello from {{NAME}}');\", 0, 0, 0);\n"
+L"    printf(\"Rows in items:\\n\");\n"
+L"    sqlite3_exec(db, \"SELECT id, name FROM items;\", print_row, 0, 0);\n"
+L"    sqlite3_close(db);\n"
+L"    return 0;\n"
+L"}\n" },
+                DbSchema(),
+                { L"makeit.bat", MakeitDbNative(L"gcc -std=c11", L"main.c") },
+                { L"CMakeLists.txt",
+L"cmake_minimum_required(VERSION 3.15)\n"
+L"project({{NAME}} LANGUAGES C)\n"
+L"set(CMAKE_C_STANDARD 11)\n"
+L"# Run makeit.bat once to fetch sqlite3.c / sqlite3.h, or drop them here first.\n"
+L"add_executable({{NAME}} main.c sqlite3.c)\n" },
+                GitIgnore(L"*.o\n*.obj\n*.exe\n*.db\n*.sqlite\nsqlite3.c\nsqlite3.h\nsqlite.zip\nsqlite_amalg/\nbuild/\n"),
             };
             return true;
         }
@@ -529,7 +643,101 @@ L"add_executable({{NAME}} main.cpp)\n" },
             }
             return true;
         }
-        // db kind: own step (8) — only the common scaffold for now.
+        // ── C++ DB (SQLite) ──────────────────────────────────────────────────
+        if (kindId == L"db") {
+            out.buildCommand = L"makeit.bat";
+            out.runCommand   = L"{{NAME}}.exe";
+            out.files = {
+                { L"main.cpp",
+L"#include \"db.h\"\n"
+L"#include <iostream>\n\n"
+L"int main() {\n"
+L"    Db db(\"app.db\");\n"
+L"    if (!db.ok()) return 1;\n\n"
+L"    db.execFile(\"schema.sql\");\n"
+L"    db.exec(\"INSERT INTO items (name) VALUES ('hello from {{NAME}}');\");\n\n"
+L"    std::cout << \"Rows in items:\\n\";\n"
+L"    db.printQuery(\"SELECT id, name FROM items;\");\n"
+L"    return 0;\n"
+L"}\n" },
+                { L"db.h",
+L"#pragma once\n"
+L"#include <string>\n\n"
+L"struct sqlite3;\n\n"
+L"// Tiny SQLite wrapper: open a database, run SQL, print a query.\n"
+L"class Db {\n"
+L"public:\n"
+L"    explicit Db(const std::string& path);\n"
+L"    ~Db();\n"
+L"    bool ok() const;\n"
+L"    bool exec(const std::string& sql);         // run statements, ignore results\n"
+L"    bool execFile(const std::string& path);    // run all SQL in a file\n"
+L"    void printQuery(const std::string& sql);   // run a SELECT and print rows\n"
+L"private:\n"
+L"    sqlite3* db_;\n"
+L"};\n" },
+                { L"db.cpp",
+L"#include \"db.h\"\n"
+L"#include \"sqlite3.h\"\n"
+L"#include <fstream>\n"
+L"#include <sstream>\n"
+L"#include <iostream>\n\n"
+L"Db::Db(const std::string& path) : db_(nullptr) {\n"
+L"    if (sqlite3_open(path.c_str(), &db_) != SQLITE_OK) {\n"
+L"        std::cerr << \"open failed: \" << sqlite3_errmsg(db_) << \"\\n\";\n"
+L"        sqlite3_close(db_);\n"
+L"        db_ = nullptr;\n"
+L"    }\n"
+L"}\n\n"
+L"Db::~Db() { if (db_) sqlite3_close(db_); }\n\n"
+L"bool Db::ok() const { return db_ != nullptr; }\n\n"
+L"bool Db::exec(const std::string& sql) {\n"
+L"    if (!db_) return false;\n"
+L"    char* err = nullptr;\n"
+L"    if (sqlite3_exec(db_, sql.c_str(), nullptr, nullptr, &err) != SQLITE_OK) {\n"
+L"        std::cerr << \"exec failed: \" << (err ? err : \"?\") << \"\\n\";\n"
+L"        sqlite3_free(err);\n"
+L"        return false;\n"
+L"    }\n"
+L"    return true;\n"
+L"}\n\n"
+L"bool Db::execFile(const std::string& path) {\n"
+L"    std::ifstream f(path);\n"
+L"    if (!f) { std::cerr << \"cannot read \" << path << \"\\n\"; return false; }\n"
+L"    std::stringstream ss; ss << f.rdbuf();\n"
+L"    return exec(ss.str());\n"
+L"}\n\n"
+L"static int printRow(void*, int cols, char** vals, char** names) {\n"
+L"    for (int i = 0; i < cols; ++i)\n"
+L"        std::cout << (i ? \" | \" : \"  \") << names[i] << \"=\" << (vals[i] ? vals[i] : \"NULL\");\n"
+L"    std::cout << \"\\n\";\n"
+L"    return 0;\n"
+L"}\n\n"
+L"void Db::printQuery(const std::string& sql) {\n"
+L"    if (!db_) return;\n"
+L"    char* err = nullptr;\n"
+L"    if (sqlite3_exec(db_, sql.c_str(), printRow, nullptr, &err) != SQLITE_OK) {\n"
+L"        std::cerr << \"query failed: \" << (err ? err : \"?\") << \"\\n\";\n"
+L"        sqlite3_free(err);\n"
+L"    }\n"
+L"}\n" },
+                { L"schema.sql",
+L"CREATE TABLE IF NOT EXISTS items (\n"
+L"    id    INTEGER PRIMARY KEY,\n"
+L"    name  TEXT NOT NULL\n"
+L");\n" },
+                { L"makeit.bat", MakeitDbNative(L"g++ -std=c++17", L"main.cpp db.cpp") },
+                { L"CMakeLists.txt",
+L"cmake_minimum_required(VERSION 3.15)\n"
+L"project({{NAME}} LANGUAGES C CXX)\n"
+L"set(CMAKE_CXX_STANDARD 17)\n"
+L"# Run makeit.bat once to fetch sqlite3.c / sqlite3.h, or drop them here first.\n"
+L"add_executable({{NAME}} main.cpp db.cpp sqlite3.c)\n" },
+                GitIgnore(L"*.o\n*.obj\n*.exe\n*.db\n*.sqlite\nsqlite3.c\nsqlite3.h\nsqlite.zip\nsqlite_amalg/\nbuild/\n"),
+            };
+            return true;
+        }
+        // (no other C++ kinds)
         out.buildCommand = L"makeit.bat";
         out.runCommand   = L"{{NAME}}.exe";
         out.files = { GitIgnore(L"*.o\n*.obj\n*.exe\n*.pdb\n*.ilk\nbuild/\n") };
@@ -538,6 +746,52 @@ L"add_executable({{NAME}} main.cpp)\n" },
 
     // ── C# (.NET) ─────────────────────────────────────────────────────────────
     if (langId == L"csharp") {
+        if (kindId == L"db") {
+            out.buildCommand = L"dotnet build";
+            out.runCommand   = L"dotnet run";
+            out.files = {
+                { L"Program.cs",
+L"using System;\n"
+L"using Microsoft.Data.Sqlite;\n\n"
+L"class Program {\n"
+L"    static void Main() {\n"
+L"        using var conn = new SqliteConnection(\"Data Source=app.db\");\n"
+L"        conn.Open();\n"
+L"        using (var cmd = conn.CreateCommand()) {\n"
+L"            cmd.CommandText = System.IO.File.ReadAllText(\"schema.sql\");\n"
+L"            cmd.ExecuteNonQuery();\n"
+L"        }\n"
+L"        using (var cmd = conn.CreateCommand()) {\n"
+L"            cmd.CommandText = \"INSERT INTO items (name) VALUES ('hello from {{NAME}}');\";\n"
+L"            cmd.ExecuteNonQuery();\n"
+L"        }\n"
+L"        Console.WriteLine(\"Rows in items:\");\n"
+L"        using (var cmd = conn.CreateCommand()) {\n"
+L"            cmd.CommandText = \"SELECT id, name FROM items;\";\n"
+L"            using var r = cmd.ExecuteReader();\n"
+L"            while (r.Read())\n"
+L"                Console.WriteLine($\"  id={r.GetInt32(0)} name={r.GetString(1)}\");\n"
+L"        }\n"
+L"    }\n"
+L"}\n" },
+                { L"{{NAME}}.csproj",
+L"<Project Sdk=\"Microsoft.NET.Sdk\">\n"
+L"  <PropertyGroup>\n"
+L"    <OutputType>Exe</OutputType>\n"
+L"    <TargetFramework>net8.0</TargetFramework>\n"
+L"    <ImplicitUsings>enable</ImplicitUsings>\n"
+L"    <Nullable>enable</Nullable>\n"
+L"  </PropertyGroup>\n"
+L"  <ItemGroup>\n"
+L"    <PackageReference Include=\"Microsoft.Data.Sqlite\" Version=\"8.0.8\" />\n"
+L"    <None Include=\"schema.sql\" CopyToOutputDirectory=\"PreserveNewest\" />\n"
+L"  </ItemGroup>\n"
+L"</Project>\n" },
+                DbSchema(),
+                GitIgnore(L"bin/\nobj/\n*.db\n*.sqlite\n"),
+            };
+            return true;
+        }
         if (kindId == L"gui") {
             out.buildCommand = L"dotnet build";
             out.runCommand   = L"dotnet run";
@@ -600,6 +854,43 @@ L"</Project>\n" },
 
     // ── Go ────────────────────────────────────────────────────────────────────
     if (langId == L"go") {
+        if (kindId == L"db") {
+            out.buildCommand = L"go mod tidy";   // fetches the driver + writes go.sum
+            out.runCommand   = L"go run .";
+            out.files = {
+                { L"main.go",
+L"package main\n\n"
+L"import (\n"
+L"    \"database/sql\"\n"
+L"    \"fmt\"\n"
+L"    \"os\"\n\n"
+L"    _ \"modernc.org/sqlite\"\n"
+L")\n\n"
+L"func main() {\n"
+L"    db, err := sql.Open(\"sqlite\", \"app.db\")\n"
+L"    if err != nil { panic(err) }\n"
+L"    defer db.Close()\n\n"
+L"    schema, _ := os.ReadFile(\"schema.sql\")\n"
+L"    if _, err := db.Exec(string(schema)); err != nil { panic(err) }\n"
+L"    if _, err := db.Exec(\"INSERT INTO items (name) VALUES ('hello from {{NAME}}')\"); err != nil { panic(err) }\n\n"
+L"    fmt.Println(\"Rows in items:\")\n"
+L"    rows, _ := db.Query(\"SELECT id, name FROM items\")\n"
+L"    defer rows.Close()\n"
+L"    for rows.Next() {\n"
+L"        var id int\n"
+L"        var name string\n"
+L"        rows.Scan(&id, &name)\n"
+L"        fmt.Printf(\"  id=%d name=%s\\n\", id, name)\n"
+L"    }\n"
+L"}\n" },
+                { L"go.mod",
+L"module {{NAME}}\n\n"
+L"go 1.22\n" },
+                DbSchema(),
+                GitIgnore(L"/bin\n*.exe\n*.db\n*.sqlite\n"),
+            };
+            return true;
+        }
         out.buildCommand = L"go build";
         out.runCommand   = L"go run main.go";
         out.files = {
@@ -619,6 +910,39 @@ L"go 1.22\n" },
 
     // ── Rust ──────────────────────────────────────────────────────────────────
     if (langId == L"rust") {
+        if (kindId == L"db") {
+            out.buildCommand = L"cargo build";
+            out.runCommand   = L"cargo run";
+            out.files = {
+                { L"src/main.rs",
+L"use rusqlite::Connection;\n\n"
+L"fn main() {\n"
+L"    let conn = Connection::open(\"app.db\").unwrap();\n"
+L"    let schema = std::fs::read_to_string(\"schema.sql\").unwrap();\n"
+L"    conn.execute_batch(&schema).unwrap();\n"
+L"    conn.execute(\"INSERT INTO items (name) VALUES ('hello from {{NAME}}')\", []).unwrap();\n\n"
+L"    println!(\"Rows in items:\");\n"
+L"    let mut stmt = conn.prepare(\"SELECT id, name FROM items\").unwrap();\n"
+L"    let rows = stmt\n"
+L"        .query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))\n"
+L"        .unwrap();\n"
+L"    for row in rows {\n"
+L"        let (id, name) = row.unwrap();\n"
+L"        println!(\"  id={} name={}\", id, name);\n"
+L"    }\n"
+L"}\n" },
+                { L"Cargo.toml",
+L"[package]\n"
+L"name = \"{{NAME}}\"\n"
+L"version = \"0.1.0\"\n"
+L"edition = \"2021\"\n\n"
+L"[dependencies]\n"
+L"rusqlite = { version = \"0.32\", features = [\"bundled\"] }\n" },
+                DbSchema(),
+                GitIgnore(L"/target\n*.db\n*.sqlite\n"),
+            };
+            return true;
+        }
         out.buildCommand = L"cargo build";
         out.runCommand   = L"cargo run";
         out.files = {
@@ -835,6 +1159,28 @@ L"    main()\n" },
             };
             return true;
         }
+        if (kindId == L"db") {
+            out.runCommand = L"python main.py";
+            out.files = {
+                { L"main.py",
+L"import sqlite3\n\n\n"
+L"def main():\n"
+L"    conn = sqlite3.connect(\"app.db\")\n"
+L"    with open(\"schema.sql\", encoding=\"utf-8\") as f:\n"
+L"        conn.executescript(f.read())\n"
+L"    conn.execute(\"INSERT INTO items (name) VALUES ('hello from {{NAME}}')\")\n"
+L"    conn.commit()\n\n"
+L"    print(\"Rows in items:\")\n"
+L"    for row in conn.execute(\"SELECT id, name FROM items\"):\n"
+L"        print(f\"  id={row[0]} name={row[1]}\")\n"
+L"    conn.close()\n\n\n"
+L"if __name__ == \"__main__\":\n"
+L"    main()\n" },
+                DbSchema(),
+                GitIgnore(L"__pycache__/\n*.pyc\n.venv/\nvenv/\n*.db\n*.sqlite\n"),
+            };
+            return true;
+        }
         out.files = {
             { L"main.py",
 L"def main():\n"
@@ -918,6 +1264,31 @@ L"source \"https://rubygems.org\"\n" },
 
     // ── Perl ──────────────────────────────────────────────────────────────────
     if (langId == L"perl") {
+        if (kindId == L"db") {
+            out.runCommand = L"perl main.pl";
+            out.files = {
+                { L"main.pl",
+L"#!/usr/bin/env perl\n"
+L"use strict;\n"
+L"use warnings;\n"
+L"use DBI;   # DBD::SQLite ships with Strawberry Perl; else: cpan DBD::SQLite\n\n"
+L"my $dbh = DBI->connect(\"dbi:SQLite:dbname=app.db\", \"\", \"\", { RaiseError => 1 });\n\n"
+L"open(my $fh, '<', 'schema.sql') or die \"cannot read schema.sql: $!\";\n"
+L"local $/; my $schema = <$fh>; close($fh);\n"
+L"$dbh->do($_) for grep { /\\S/ } split /;/, $schema;\n\n"
+L"$dbh->do(\"INSERT INTO items (name) VALUES ('hello from {{NAME}}')\");\n\n"
+L"print \"Rows in items:\\n\";\n"
+L"my $sth = $dbh->prepare(\"SELECT id, name FROM items\");\n"
+L"$sth->execute;\n"
+L"while (my @row = $sth->fetchrow_array) {\n"
+L"    print \"  id=$row[0] name=$row[1]\\n\";\n"
+L"}\n"
+L"$dbh->disconnect;\n" },
+                DbSchema(),
+                GitIgnore(L"*.db\n*.sqlite\n"),
+            };
+            return true;
+        }
         out.buildCommand = L"";
         out.runCommand   = L"perl main.pl";
         out.files = {
@@ -977,6 +1348,25 @@ L"cat(\"Hello from {{NAME}}!\\n\")\n" },
 
     // ── Shell (Bash) ──────────────────────────────────────────────────────────
     if (langId == L"bash") {
+        if (kindId == L"db") {
+            out.runCommand = L"bash main.sh";
+            out.files = {
+                { L"main.sh",
+L"#!/usr/bin/env bash\n"
+L"# Requires sqlite3 on PATH (https://sqlite.org/download.html).\n"
+L"if ! command -v sqlite3 >/dev/null 2>&1; then\n"
+L"  echo \"sqlite3 not found on PATH - install it from https://sqlite.org/download.html\" >&2\n"
+L"  exit 1\n"
+L"fi\n"
+L"sqlite3 app.db < schema.sql\n"
+L"sqlite3 app.db \"INSERT INTO items (name) VALUES ('hello from {{NAME}}');\"\n"
+L"echo \"Rows in items:\"\n"
+L"sqlite3 app.db \"SELECT id, name FROM items;\"\n" },
+                DbSchema(),
+                GitIgnore(L"*.db\n*.sqlite\n"),
+            };
+            return true;
+        }
         out.buildCommand = L"";
         out.runCommand   = L"bash main.sh";
         out.files = {
@@ -990,6 +1380,24 @@ L"echo \"Hello from {{NAME}}!\"\n" },
 
     // ── PowerShell ────────────────────────────────────────────────────────────
     if (langId == L"powershell") {
+        if (kindId == L"db") {
+            out.runCommand = L"pwsh ./main.ps1";
+            out.files = {
+                { L"main.ps1",
+L"# Requires sqlite3.exe on PATH (https://sqlite.org/download.html).\n"
+L"if (-not (Get-Command sqlite3 -ErrorAction SilentlyContinue)) {\n"
+L"    Write-Error 'sqlite3.exe not found on PATH - get it from https://sqlite.org/download.html'\n"
+L"    exit 1\n"
+L"}\n"
+L"Get-Content schema.sql | sqlite3 app.db\n"
+L"sqlite3 app.db \"INSERT INTO items (name) VALUES ('hello from {{NAME}}');\"\n"
+L"Write-Host 'Rows in items:'\n"
+L"sqlite3 app.db \"SELECT id, name FROM items;\"\n" },
+                DbSchema(),
+                GitIgnore(L"*.db\n*.sqlite\n"),
+            };
+            return true;
+        }
         out.buildCommand = L"";
         out.runCommand   = L"pwsh ./main.ps1";
         out.files = {
@@ -1002,6 +1410,26 @@ L"Write-Host \"Hello from {{NAME}}!\"\n" },
 
     // ── Batch (Windows) ───────────────────────────────────────────────────────
     if (langId == L"batch") {
+        if (kindId == L"db") {
+            out.runCommand = L"main.bat";
+            out.files = {
+                { L"main.bat",
+L"@echo off\n"
+L"REM Requires sqlite3.exe on PATH (https://sqlite.org/download.html).\n"
+L"where sqlite3 >nul 2>&1\n"
+L"if errorlevel 1 (\n"
+L"  echo sqlite3.exe not found on PATH - get it from https://sqlite.org/download.html\n"
+L"  exit /b 1\n"
+L")\n"
+L"sqlite3 app.db \".read schema.sql\"\n"
+L"sqlite3 app.db \"INSERT INTO items (name) VALUES ('hello from {{NAME}}');\"\n"
+L"echo Rows in items:\n"
+L"sqlite3 app.db \"SELECT id, name FROM items;\"\n" },
+                DbSchema(),
+                GitIgnore(L"*.db\n*.sqlite\n"),
+            };
+            return true;
+        }
         out.buildCommand = L"";
         out.runCommand   = L"main.bat";
         out.files = {

@@ -822,7 +822,11 @@
                                                 a NeTemplateVars map (unknown keys left verbatim);
                                                 NeTemplate_WriteFile writes one UTF-8 (no BOM) file,
                                                 creating parent dirs and refusing to overwrite
-                                                unless forced; NeTemplate_WriteSet expands relPath
+                                                unless forced, and NORMALISES line endings by file
+                                                type (Prj_NormalizeEol): LF for shell scripts and
+                                                source so a generated main.sh runs as-is under WSL/
+                                                Linux, CRLF only for .bat/.cmd (Windows cmd.exe);
+                                                NeTemplate_WriteSet expands relPath
                                                 + content for a NeTemplateFile set into a target
                                                 folder. Used by the New Project dialog to write the
                                                 common scaffold (README/CHANGELOG/.gitignore/LICENSE).
@@ -847,8 +851,8 @@
                                                 spdx/license-list-data.
 
   ne_proj_templates.h /                         Language catalogue for the New Project dialog
-  ne_proj_templates.cpp                         (CLI + Windows GUI starter templates for 25
-                                                languages). Pure data, no hard-coded switch:
+  ne_proj_templates.cpp                         (CLI + Windows GUI + Database starter templates for
+                                                25 languages). Pure data, no hard-coded switch:
                                                 NeLang_Catalog() returns a vector<NeLangInfo>{id,
                                                 display, kindIds, compiled}; NeLang_Find(id) looks one
                                                 up; NeLang_GetKindFiles(langId, kindId, out, toolkit,
@@ -879,6 +883,14 @@
                                                 via a self re-invoke in MakeitHeader. Interpreted/
                                                 toolchain languages use their native build tool
                                                 (dotnet/cargo/go/swift/gradle/tsc/…) and are not packed.
+                                                DB kind (SQLite only, the one DB supported): C/C++
+                                                fetch the SQLite amalgamation once + link sqlite3.c
+                                                statically; C# = Microsoft.Data.Sqlite, Go =
+                                                modernc.org/sqlite, Rust = rusqlite, Python = stdlib
+                                                sqlite3, Perl = DBI/DBD::SQLite; Bash/PowerShell/Batch
+                                                drive the sqlite3 CLI and guard that it is on PATH; SQL
+                                                materialises schema.sql + seed.sql. DbSchema() is the
+                                                shared schema.sql (items table).
                                                 The dialog's Language combo, Type list, GUI-toolkit
                                                 combo and default Build command all derive from here.
                                                 BATCH GOTCHA: never put ( ) in echo text inside a
