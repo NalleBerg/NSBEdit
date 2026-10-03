@@ -701,3 +701,23 @@ MSG_COMPARE_SAME          = Les deux onglets ont un contenu identique.
 MSG_COMPARE_SELECT_TWO    = Veuillez ouvrir au moins deux onglets à comparer.
 MSG_COMPARE_TOO_LARGE     = Les fichiers sont trop volumineux pour être comparés (maximum 3 000 lignes chacun).
 
+
+MENU_AI_MANAGE_MODELS = "Gérer les modesles..."
+AI_MANAGE_TITLE = "Gérer les modesles Ollama"
+AI_MANAGE_INSTALLED = "Modesles installés :"
+AI_MANAGE_AVAILABLE = "Disponibles téléchargement :"
+AI_MANAGE_INSTALL_BY_NAME = "Télécharger par nom :"
+AI_MANAGE_BTN_DELETE = "Supprimer"
+AI_MANAGE_BTN_INSTALL = "Télécharger"
+AI_MANAGE_INSTALLING = "Téléchargement du %s…"
+AI_MANAGE_PHASE_DOWNLOADING = "Téléchargement"
+AI_MANAGE_PHASE_INSTALLING = "Installation"
+AI_MANAGE_INSTALLED_OK = "%s installé avec succès ✓"
+AI_MANAGE_INSTALL_FAILED = "Téléchargement échoué pour %s :"
+AI_MANAGE_DELETING = "Supprimer %s…"
+AI_MANAGE_DELETED_OK = "Supprimé %s ✓"
+AI_MANAGE_DELETE_FAILED = "Impossible de supprimer %s :"
+AI_MANAGE_DELETE_CONFIRM_TITLE = "Supprimer un modele"
+AI_MANAGE_DELETE_CONFIRM_MSG = "Supprimer le modele “%s”?\nCela supprime définitivement ce modèle de Ollama et ne peut pas être annulé."
+AI_MANAGE_NO_SELECTION = "Sélectionner un modèle dans la liste d'abord."
+AI_MANAGE_EMPTY_NAME = "Entrez le nom du modèle à télécharger (par exemple: llama3.2)"

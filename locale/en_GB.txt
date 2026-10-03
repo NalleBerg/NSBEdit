@@ -687,12 +687,7 @@ MSG_COMPARE_SAME          = The two tabs have identical content.
 MSG_COMPARE_SELECT_TWO    = Please open at least two tabs to compare.
 MSG_COMPARE_TOO_LARGE     = Files are too large to compare (maximum 3 000 lines each).
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# >>> TRANSLATE ME <<<  —  Manage Ollama models dialog (added 2026-10-02)
-# These keys are English-only. Translate the VALUES (right of '=') into each
-# locale file in .\locale and the dialog + the delete confirmation will show in
-# that language. %s is replaced with the model name; \n is a line break.
-# ═══════════════════════════════════════════════════════════════════════════════
+
 MENU_AI_MANAGE_MODELS = Manage models…
 AI_MANAGE_TITLE = Manage Ollama models
 AI_MANAGE_INSTALLED = Installed models:
@@ -712,5 +707,5 @@ AI_MANAGE_DELETE_CONFIRM_TITLE = Delete model
 AI_MANAGE_DELETE_CONFIRM_MSG = Delete the model “%s”?\nThis permanently removes it from Ollama and cannot be undone.
 AI_MANAGE_NO_SELECTION = Select a model in the list first.
 AI_MANAGE_EMPTY_NAME = Type a model name to install (for example: llama3.2).
-# >>> END TRANSLATE ME <<<
+
 

@@ -678,3 +678,25 @@ MENU_FTP             = FTP
 FTP_CHMOD_READ       = r
 FTP_CHMOD_WRITE      = w
 FTP_CHMOD_EXEC       = x
+
+
+
+MENU_AI_MANAGE_MODELS = "Håndtering av modeller"
+AI_MANAGE_TITLE = "Håndtering av Ollama-modeller"
+AI_MANAGE_INSTALLED = "Installerte modeller:"
+AI_MANAGE_AVAILABLE = "Tilgjengelige for nedlasting:"
+AI_MANAGE_INSTALL_BY_NAME = "Installér ved navn:"
+AI_MANAGE_BTN_DELETE = "Slett"
+AI_MANAGE_BTN_INSTALL = "Installér"
+AI_MANAGE_INSTALLING = "Installerer %s..."
+AI_MANAGE_PHASE_DOWNLOADING = "Nedlasting"
+AI_MANAGE_PHASE_INSTALLING = "Installasjon"
+AI_MANAGE_INSTALLED_OK = "%s installert suksssfullt ✓"
+AI_MANAGE_INSTALL_FAILED = "Installasjon feilet for %s:"
+AI_MANAGE_DELETING = "Sletting av %s..."
+AI_MANAGE_DELETED_OK = "Slettet %s ✓"
+AI_MANAGE_DELETE_FAILED = "Kunne ikke slette %s:"
+AI_MANAGE_DELETE_CONFIRM_TITLE = "Slett modell"
+AI_MANAGE_DELETE_CONFIRM_MSG = "Slett modellen «%s»?\nDette er n permanent sletting av modellen og kan ikke angres."
+AI_MANAGE_NO_SELECTION = "Vennligst velg et modell fra listen først."
+AI_MANAGE_EMPTY_NAME = "Skriv inn et navn for installasjon (f.eks.: llama3.2)"

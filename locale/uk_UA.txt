@@ -682,3 +682,25 @@ BTN_COMPARE               = Порівняти
 MSG_COMPARE_SAME          = Дві вкладки мають однаковий вміст.
 MSG_COMPARE_SELECT_TWO    = Відкрийте принаймні дві вкладки для порівняння.
 MSG_COMPARE_TOO_LARGE     = Файли завеликі для порівняння (максимум 3 000 рядків кожен).
+
+
+
+MENU_AI_MANAGE_MODELS = "Управління моделями"
+AI_MANAGE_TITLE = "Управління моделями Оллами"
+AI_MANAGE_INSTALLED = "Заряджені моделі:"
+AI_MANAGE_AVAILABLE = "Доступні до завантаження:"
+AI_MANAGE_INSTALL_BY_NAME = "Установка за ім'ю:"
+AI_MANAGE_BTN_DELETE = "Видалити"
+AI_MANAGE_BTN_INSTALL = "Установити"
+AI_MANAGE_INSTALLING = "Зарядження %s..."
+AI_MANAGE_PHASE_DOWNLOADING = "Зарядження"
+AI_MANAGE_PHASE_INSTALLING = "Установка"
+AI_MANAGE_INSTALLED_OK = "%s заряджено успішно ✓"
+AI_MANAGE_INSTALL_FAILED = "Невдається завантажити %s:"
+AI_MANAGE_DELETING = "ВидалENCHення %s..."
+AI_MANAGE_DELETED_OK = "ВидалENCHено %s ✓"
+AI_MANAGE_DELETE_FAILED = "Невдається видалити %s:"
+AI_MANAGE_DELETE_CONFIRM_TITLE = "Видалити модель"
+AI_MANAGE_DELETE_CONFIRM_MSG = "ВидалENCHіте модель “%s”?\nЦя дія є everlastingою і не може бути відозвана."
+AI_MANAGE_NO_SELECTION = "Виберите модель з списоку перш."
+AI_MANAGE_EMPTY_NAME = "Введіть ім'ю моделі для завантаження (наприклад: llama3.2)."

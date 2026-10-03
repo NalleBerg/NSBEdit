@@ -667,3 +667,24 @@ MENU_FTP             = FTP
 FTP_CHMOD_READ       = r
 FTP_CHMOD_WRITE      = w
 FTP_CHMOD_EXEC       = x
+
+
+MENU_AI_MANAGE_MODELS = "Hantera modeller..."
+AI_MANAGE_TITLE = "Hantera Ollama-modeller"
+AI_MANAGE_INSTALLED = "Inställda modeller:"
+AI_MANAGE_AVAILABLE = "Tillgängliga för laddning:"
+AI_MANAGE_INSTALL_BY_NAME = "Ladda in genom namn:"
+AI_MANAGE_BTN_DELETE = "Radera"
+AI_MANAGE_BTN_INSTALL = "Installera"
+AI_MANAGE_INSTALLING = "Installering av %s..."
+AI_MANAGE_PHASE_DOWNLOADING = "Laddning"
+AI_MANAGE_PHASE_INSTALLING = "Installering"
+AI_MANAGE_INSTALLED_OK = "%s installerades lyckligtvis ✓"
+AI_MANAGE_INSTALL_FAILED = "Installering av %s MISLYCKAD"
+AI_MANAGE_DELETING = "Radera %s..."
+AI_MANAGE_DELETED_OK = "Detta modell har raderats ✓"
+AI_MANAGE_DELETE_FAILED = "Kunde inte radera %s:"
+AI_MANAGE_DELETE_CONFIRM_TITLE = "Radera modell"
+AI_MANAGE_DELETE_CONFIRM_MSG = "Radera modellen “%s”?\nDennapermanent raderas från Ollama och kan inte återställas."
+AI_MANAGE_NO_SELECTION = "Välj ett modell i lista först."
+AI_MANAGE_EMPTY_NAME = "Ange ett modellnamn för installation (t.ex. llama3.2)."

@@ -692,3 +692,23 @@ MSG_COMPARE_SELECT_TWO    = Avaa vähintään kaksi välilehteä vertailua varte
 MSG_COMPARE_TOO_LARGE     = Tiedostot ovat liian suuria vertailtavaksi (enintään 3 000 riviä kumpikin).
 
 
+
+MENU_AI_MANAGE_MODELS = Manage models…
+AI_MANAGE_TITLE = Manage Ollama models
+AI_MANAGE_INSTALLED = Installed models:
+AI_MANAGE_AVAILABLE = Available to download:
+AI_MANAGE_INSTALL_BY_NAME = Install by name:
+AI_MANAGE_BTN_DELETE = Delete
+AI_MANAGE_BTN_INSTALL = Install
+AI_MANAGE_INSTALLING = Installing %s…
+AI_MANAGE_PHASE_DOWNLOADING = Downloading
+AI_MANAGE_PHASE_INSTALLING = Installing
+AI_MANAGE_INSTALLED_OK = %s installed successfully ✓
+AI_MANAGE_INSTALL_FAILED = Install failed for %s:
+AI_MANAGE_DELETING = Deleting %s…
+AI_MANAGE_DELETED_OK = Deleted %s ✓
+AI_MANAGE_DELETE_FAILED = Could not delete %s:
+AI_MANAGE_DELETE_CONFIRM_TITLE = Delete model
+AI_MANAGE_DELETE_CONFIRM_MSG = Delete the model “%s”?\nThis permanently removes it from Ollama and cannot be undone.
+AI_MANAGE_NO_SELECTION = Select a model in the list first.
+AI_MANAGE_EMPTY_NAME = Type a model name to install (for example: llama3.2)

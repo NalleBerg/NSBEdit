@@ -696,3 +696,24 @@ SCD_RELOAD_FILE   = Επαναφόρτωση του τρέχοντος αρχε�
 
 # ── Added for completeness ──
 CREDITS_CMARK_GFM  = Το cmark-gfm είναι ένας εκτεταμένος αναλυτής CommonMark με υποστήριξη GitHub Flavored Markdown. Το NSBEdit μεταφέρει τον renderer Markdown της προβολής AI στο cmark-gfm, ώστε η προβολή απαντήσεων να σταματήσει να εφευρίσκει κανόνες markdown στο RichEdit. Αδειοδοτείται υπό την άδεια BSD 2-Clause.\n\n
+
+
+MENU_AI_MANAGE_MODELS = 'Δυατοποίηση Μоделей'
+AI_MANAGE_TITLE = 'Δυατοποίηση Ολλάμα Μоделей'
+AI_MANAGE_INSTALLED = 'Κτιστούμενοι Μодèles:'
+AI_MANAGE_AVAILABLE = 'Δisinεληγμένος για κατεβασμό:'
+AI_MANAGE_INSTALL_BY_NAME = 'Δυατοποίηση durch Ονόμα'
+AI_MANAGE_BTN_DELETE = 'Δύναμη'
+AI_MANAGE_BTN_INSTALL = 'Δύναμη'
+AI_MANAGE_INSTALLING = 'Δυατοποίηση %s...'
+AI_MANAGE_PHASE_DOWNLOADING = 'Δownloading'
+AI_MANAGE_PHASE_INSTALLING = 'Δυατοποίηση'
+AI_MANAGE_INSTALLED_OK = '%s δυσκολαπής successully '
+AI_MANAGE_INSTALL_FAILED = 'Δυατοποίηση failed for %s:'
+AI_MANAGE_DELETING = 'Δηλωσις %s...'
+AI_MANAGE_DELETED_OK = 'Δηλωσις %s '
+AI_MANAGE_DELETE_FAILED = 'Δυατοποίηση cannot be deleted %s:'
+AI_MANAGE_DELETE_CONFIRM_TITLE = 'Δηλωσις Μονο'
+AI_MANAGE_DELETE_CONFIRM_MSG = 'Δηλωσις του ονόματος „%s“?\nΔυατοποίηση το ονόμα-to οOLLAMA και δεν μπορεί να αποκλειστεί.'
+AI_MANAGE_NO_SELECTION = 'Δυατοποίηση einem Ονόμα στη λίστα पहल.'
+AI_MANAGE_EMPTY_NAME = 'Δυατοποίηση ονόμα στη λίστα (π.χ: llama3.2)'

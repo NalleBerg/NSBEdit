@@ -688,3 +688,25 @@ SCD_RELOAD_FILE   = Aktuelle Datei von Datenträger oder FTP neu laden und lokal
 
 # ── Added for completeness ──
 CREDITS_CMARK_GFM  = cmark-gfm ist ein erweiterter CommonMark-Parser mit Unterstützung für GitHub Flavored Markdown. NSBEdit stellt den Markdown-Renderer der KI-Ansicht auf cmark-gfm um, damit die Antwortansicht keine Markdown-Regeln mehr in RichEdit erfindet. Lizenziert unter der BSD-2-Clause-Lizenz.\n\n
+
+
+
+MENU_DE_DE = Manage Modell…
+AI_MANAGE_TITLE_DE_DE = Modell Ollama-Verwaltung
+AI_MANAGE_INSTALLED_DE_DE = installierte Modelle:
+AI_MANAGE_AVAILABLE_DE_DE = Modelle zur Download-Möglichkeit:
+AI_MANAGE_INSTALL_BY_NAME_DE_DE = Modell per Name installieren:
+AI_MANAGE_BTN_DELETE_DE_DE = Löschen
+AI_MANAGE_BTN_INSTALL_DE_DE = Installieren
+AI_MANAGE_INSTALLING_DE_DE = Installation von %s…
+AI_MANAGE_PHASE_DOWNLOADING_DE_DE = Downloaden
+AI_MANAGE_PHASE_INSTALLING_DE_DE = Installieren
+AI_MANAGE_INSTALLED_OK_DE_DE = %s erfolgreich installiert ✓
+AI_MANAGE_INSTALL_FAILED_DE_DE = Installation fehlgeschlagen für %s:
+AI_MANAGE_DELETING_DE_DE = Löschen von %s…
+AI_MANAGE_DELETED_OK_DE_DE = Modell %s gelöscht ✓
+AI_MANAGE_DELETE_FAILED_DE_DE = Modell %s nicht gelöschen können:
+AI_MANAGE_DELETE_CONFIRM_TITLE_DE_DE = Modell löschen
+AI_MANAGE_DELETE_CONFIRM_MSG_DE_DE = Das Modell „%s“ löschen? \nDieses Modell wird dauerhaft aus Ollama entfernt und kann nicht wiederhergestellt werden.
+AI_MANAGE_NO_SELECTION_DE_DE = Ein Modell aus der Liste auswählen, bevor du es installierst.
+AI_MANAGE_EMPTY_NAME_DE_DE = Ein Modellname für die Installation eingeben (z.B. llama3.2)

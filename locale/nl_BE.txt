@@ -687,3 +687,23 @@ MSG_COMPARE_TOO_LARGE     = Bestanden zijn te groot om te vergelijken (maximaal 
 REGEX_GUIDE_SEARCH = Zoek in de gids
 REGEX_GUIDE_CLEAR = Zoekopdracht wissen
 
+
+MENU_AI_MANAGE_MODELS_NL_BE = Manage modellen…
+AI_MANAGE_TITLE_NL_BE = Beherz Ollama-modellen
+AI_MANAGE_INSTALLED_NL_BE = Geïnstalleerde modellen:
+AI_MANAGE_AVAILABLE_NL_BE = Te downloaden:
+AI_MANAGE_INSTALL_BY_NAME_NL_BE = Installeren door naam:
+AI_MANAGE_BTN_DELETE_NL_BE = Verwijderen
+AI_MANAGE_BTN_INSTALL_NL_BE = Installeren
+AI_MANAGE_INSTALLING_NL_BE = %s… instaleren
+AI_MANAGE_PHASE_DOWNLOADING_NL_BE = Downloaden
+AI_MANAGE_PHASE_INSTALLING_NL_BE = Installen
+AI_MANAGE_INSTALLED_OK_NL_BE = %s is succesvol geïnstalleerd ✓
+AI_MANAGE_INSTALL_FAILED_NL_BE = Installatie mislukt voor %s:
+AI_MANAGE_DELETING_NL_BE = %s… verwijderen
+AI_MANAGE_DELETED_OK_NL_BE = %s is succesvol verwijderd ✓
+AI_MANAGE_DELETE_FAILED_NL_BE = Kan niet verwijderen %s:
+AI_MANAGE_DELETE_CONFIRM_TITLE_NL_BE = Verwijder model
+AI_MANAGE_DELETE_CONFIRM_MSG_NL_BE = Het model “%s” verwijderen? Dit verwijderd het definitief uit Ollama en kan niet ongedaan maken.
+AI_MANAGE_NO_SELECTION_NL_BE = Selecteer een model uit de lijst eerst.
+AI_MANAGE_EMPTY_NAME_NL_BE = Geef een naam voor het model in te installeren (bijv. llama3.2).

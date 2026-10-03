@@ -685,3 +685,25 @@ SCD_RELOAD_FILE   = Genindlæs den aktuelle fil fra disk eller FTP og kassér lo
 
 # ── Added for completeness ──
 CREDITS_CMARK_GFM  = cmark-gfm er en udvidet CommonMark-parser med understøttelse af GitHub Flavored Markdown. NSBEdit flytter Markdown-gengiveren i AI-visningen til cmark-gfm, så svarvisningen kan holde op med at opfinde markdown-regler i RichEdit. Licenseret under BSD 2-Clause-licensen.\n\n
+
+
+
+MENU_AI_MANAGE_MODELS = "Håndter Ollama-modeller"
+AI_MANAGE_TITLE = "Håndtere Ollama-modeller"
+AI_MANAGE_INSTALLED = "Indlåste modeler:"
+AI_MANAGE_AVAILABLE = "Tilgængelige for download:"
+AI_MANAGE_INSTALL_BY_NAME = "Installér ved navn:"
+AI_MANAGE_BTN_DELETE = "Slet"
+AI_MANAGE_BTN_INSTALL = "Installér"
+AI_MANAGE_INSTALLING = "Indsætting af %s..."
+AI_MANAGE_PHASE_DOWNLOADING = "Hændling: Downloading"
+AI_MANAGE_PHASE_INSTALLING = "Indsætning"
+AI_MANAGE_INSTALLED_OK = "%s indlåst med succes ✓"
+AI_MANAGE_INSTALL_FAILED = "Indsætning mislykkedes for %s:"
+AI_MANAGE_DELETING = "Sletting af %s..."
+AI_MANAGE_DELETED_OK = "Sletning af %s ✓"
+AI_MANAGE_DELETE_FAILED = "Kunne ikke slette %s:"
+AI_MANAGE_DELETE_CONFIRM_TITLE = "Slet model"
+AI_MANAGE_DELETE_CONFIRM_MSG = "Slet model "%s"?\nDette slette permanent gør det uret fra Ollama og kan ikke tilbageværende gøres."
+AI_MANAGE_NO_SELECTION = "Vælg et model i listen først."
+AI_MANAGE_EMPTY_NAME = "Tidscende navn til indsætning (f.eks. llama3.2)"
