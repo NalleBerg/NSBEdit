@@ -262,8 +262,13 @@
 -------------------------------------------------------------------------------
  PHASE D — BUILD ACTION + POLISH
 -------------------------------------------------------------------------------
+ DECISION 2026-10-03: STEP 9 (in-editor "Build" action) is CLI/IDE territory —
+ developers build by running makeit.bat in a terminal. PARKED as Agent-only: its
+ guts become the Agent's run_build tool (ImplementAgentSteps STEP 10), NOT a
+ user-facing Project-menu item. STEP 10's git-init / i18n / docs polish is still
+ wanted when convenient.
 
-[ ] STEP 9 — "Build project" action (standalone + pre-wires the Agent)
+[ ] STEP 9 — "Build project" action  (PARKED 2026-10-03 — Agent-only, no menu item)
     - Project -> "Build current project" runs the active project's build_command
       asynchronously, streams output to a pane/output area, reports success/errors
       (parse the build log). Useful on its own; this is exactly what the Agent's
@@ -282,6 +287,20 @@
 -------------------------------------------------------------------------------
  PHASE E — PROGRAMMING LANGUAGE + ONLINE (FTP) PROJECTS
 -------------------------------------------------------------------------------
+ DECISION 2026-10-03 (status after the Create-New-Project work landed):
+   E1 (language selector / language axis) — DONE in PHASE C STEP 6 (25-language
+      catalogue + Language combo + per-language Type/build_command). Nothing left.
+   E2 (web + ONLINE/FTP creation) — NOT building dedicated online creation. The
+      existing "Save to FTP" feature covers deploying a locally-created HTML/PHP
+      project to a server well enough for now. Parked.
+   E3 (toolchain doctor) — DEFERRED until the Agent exists. Project creation only
+      scaffolds the files that naturally belong in the project; detecting /
+      installing a missing toolchain is Agent-era work (the Agent reuses the same
+      doctor).
+ NET: the New Project feature is FEATURE-COMPLETE for now. Remaining items are
+ optional polish (STEP 10) and Agent-era follow-ups.
+
+ (Original placeholder notes kept below for reference.)
  (Placeholder — needs more thinking. Captured now so it isn't forgotten. This
  generalises Phases B/C beyond the C++ assumption. Design first, then split into
  more day-sized steps.)
@@ -319,7 +338,7 @@
    index.php + a small include + .htaccess; both get README/CHANGELOG locally or
    remotely as appropriate.
 
-[ ] STEP E1 — Language selector in the model + dialog (design + minimal wire)
+[x] STEP E1 — Language selector  DONE in PHASE C (STEP 6, v2026.10.01.17)
     - Add a language column (migration) + Language combo in the dialog. Make the
       Type/Kind list and Build command default DERIVE from the language (data-
       driven table, no hardcoded switch that blocks new languages).
@@ -327,7 +346,7 @@
       simple local templates to prove the axis works.
     - Invisible/gated until it works. Build + run. Commit.
 
-[ ] STEP E2 — Web languages + ONLINE (FTP) creation (HTML / PHP)
+[ ] STEP E2 — Web + ONLINE (FTP) creation  (PARKED 2026-10-03 — "Save to FTP" covers it)
     - Add HTML + PHP languages with Website templates. Add the LOCAL vs REMOTE/FTP
       "where" mode to the dialog, reusing ne_ftp.* + stored FTP profiles for the
       remote case. Empty-target rule applies to the remote dir too.
@@ -336,7 +355,7 @@
 
  (More steps to be split out once the design above is settled.)
 
-[ ] STEP E3 — Toolchain doctor (detect -> ask -> offer install / guide)
+[ ] STEP E3 — Toolchain doctor  (DEFERRED 2026-10-03 — do with the Agent)
     - After the language/toolchain is chosen (and reused at first build), probe
       PATH + known locations for the toolchain's key exe. If MISSING:
         * no winget + no toolchain -> show an install GUIDE (link / manual steps),

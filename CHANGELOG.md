@@ -1,6 +1,7 @@
 # Changelog
 
-## v2026.10.03.09 (Manage models dialog translated in every interface language; Spanish locale completed) - 03.10.2026 09:38
+## v2026.10.03.09 (Manage models dialog translated in every interface language; Spanish locale completed; Edition 4) - 03.10.2026 09:59
+- **Edition 4**: the **Help → About** dialog now shows **Edition: 4** (previously Edition 3), bumped in all 14 interface languages to mark this milestone — the in-editor AI model manager, its full localisation, and the now feature-complete Create New Project feature.
 - **i18n: the «Manage models…» dialog is now translated in all 14 interface languages**: the whole model-management flow — the **Manage models…** menu item, the dialog labels (**Installed models**, **Available to download**, **Install by name**), the live progress phases (**Downloading** / **Installing**), the success and failure lines, and the **delete confirmation** (title + message, with its **Yes/No** buttons) — now reads in the user's own language. Translations shipped for **Danish, German, Greek, Spanish, Finnish, French, Icelandic, Flemish, Dutch, Norwegian, Portuguese, Swedish and Ukrainian** (English is the reference). No code or feature changes; strings only.
 - **i18n: the Spanish (es_ES) locale is now complete**: a large block of strings that had been left in English — the **Convert** menu, file-dialog filters and titles, message boxes, the **spell-check** dialog, every **toolbar tooltip**, the full **Keyboard Shortcuts** list (function + description columns), the **About** and **Credits** dialogs, the **FTP/SFTP** feature, **session restore**, **Compare Tabs**, and the **New Project** language/website/toolkit options — are now fully translated into Spanish.
 
