@@ -44,6 +44,21 @@ bool NeAiClient_ListCloudModels(std::vector<std::wstring>& outModels);
 bool NeAiClient_ListOllamaModels(std::vector<std::wstring>& outModels);
 typedef void (*NeAiPullProgressFn)(void* context, const std::wstring& status,
 	unsigned long long completed, unsigned long long total);
+
+// --- Web search (DuckDuckGo) -------------------------------------------------
+// One result from a web search: page title, URL, and a short snippet.
+struct NeAiWebResult {
+	std::wstring title;
+	std::wstring url;
+	std::wstring snippet;
+};
+// Searches the web via DuckDuckGo's HTML endpoint and fills `out` with up to
+// maxResults hits. Returns true when at least one result was parsed; on failure
+// outError holds a short reason. Network call (HTTPS) — run off the UI thread or
+// expect a brief block.
+bool NeAiClient_WebSearch(const std::wstring& query, int maxResults,
+	std::vector<NeAiWebResult>& out, std::wstring& outError);
+
 typedef void (*NeAiOllamaChunkFn)(void* context, const std::wstring& chunk);
 bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
 	NeAiPullProgressFn onProgress, std::wstring& outError);

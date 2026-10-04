@@ -803,7 +803,153 @@ bool NeAiClient_ListCloudModels(std::vector<std::wstring>& outModels)
     WinHttpCloseHandle(hSession);
     return ok;
 }
-// the bearer API key.  Mirrors the local curl path's NDJSON handling: append
+
+// ── Web search (DuckDuckGo HTML endpoint) ────────────────────────────────────
+static std::string Web_UrlEncode(const std::string& s)
+{
+    static const char* hex = "0123456789ABCDEF";
+    std::string o;
+    for (unsigned char c : s) {
+        if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') o += (char)c;
+        else if (c == ' ') o += '+';
+        else { o += '%'; o += hex[c >> 4]; o += hex[c & 15]; }
+    }
+    return o;
+}
+
+static std::string Web_UrlDecode(const std::string& s)
+{
+    auto hx = [](char h) -> int {
+        if (h >= '0' && h <= '9') return h - '0';
+        if (h >= 'a' && h <= 'f') return h - 'a' + 10;
+        if (h >= 'A' && h <= 'F') return h - 'A' + 10;
+        return -1;
+    };
+    std::string o;
+    for (size_t i = 0; i < s.size(); ++i) {
+        char c = s[i];
+        if (c == '+') o += ' ';
+        else if (c == '%' && i + 2 < s.size()) {
+            int hi = hx(s[i + 1]), lo = hx(s[i + 2]);
+            if (hi >= 0 && lo >= 0) { o += (char)((hi << 4) | lo); i += 2; }
+            else o += c;
+        } else o += c;
+    }
+    return o;
+}
+
+static std::wstring Web_StripHtml(const std::string& html)
+{
+    std::string t;
+    bool inTag = false;
+    for (char c : html) {
+        if (c == '<') inTag = true;
+        else if (c == '>') inTag = false;
+        else if (!inTag) t += c;
+    }
+    auto repl = [&](const char* e, const char* r) {
+        std::string es = e, rs = r; size_t p = 0;
+        while ((p = t.find(es, p)) != std::string::npos) { t.replace(p, es.size(), rs); p += rs.size(); }
+    };
+    repl("&amp;", "&"); repl("&lt;", "<"); repl("&gt;", ">");
+    repl("&quot;", "\""); repl("&#x27;", "'"); repl("&#39;", "'"); repl("&nbsp;", " ");
+    // trim
+    size_t a = t.find_first_not_of(" \t\r\n");
+    size_t b = t.find_last_not_of(" \t\r\n");
+    if (a == std::string::npos) return L"";
+    return Ai_Utf8ToWide(t.substr(a, b - a + 1));
+}
+
+bool NeAiClient_WebSearch(const std::wstring& query, int maxResults,
+    std::vector<NeAiWebResult>& out, std::wstring& outError)
+{
+    out.clear();
+    outError.clear();
+    if (query.empty()) { outError = L"Empty query."; return false; }
+    if (maxResults <= 0) maxResults = 5;
+
+    std::string q = Web_UrlEncode(Ai_WideToUtf8(query));
+    std::wstring path = L"/html/?q=" + Ai_Utf8ToWide(q);
+
+    HINTERNET hSession = WinHttpOpen(
+        L"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+        WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) { outError = L"Could not open WinHTTP session."; return false; }
+    WinHttpSetTimeouts(hSession, 6000, 6000, 8000, 12000);
+
+    bool ok = false;
+    HINTERNET hConnect = WinHttpConnect(hSession, L"html.duckduckgo.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", path.c_str(),
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+        if (hRequest) {
+            const wchar_t* hdrs = L"Accept: text/html\r\nAccept-Language: en-US,en;q=0.9\r\n";
+            if (WinHttpSendRequest(hRequest, hdrs, (DWORD)-1L, WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0, ssz = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                        WINHTTP_HEADER_NAME_BY_INDEX, &status, &ssz, WINHTTP_NO_HEADER_INDEX) && status == 200) {
+                    std::string body;
+                    if (Ai_ReadBody(hRequest, body)) {
+                        size_t pos = 0;
+                        while ((int)out.size() < maxResults) {
+                            size_t a = body.find("result__a", pos);
+                            if (a == std::string::npos) break;
+                            size_t href = body.find("href=\"", a);
+                            if (href == std::string::npos) break;
+                            href += 6;
+                            size_t hend = body.find('"', href);
+                            if (hend == std::string::npos) break;
+                            std::string url = body.substr(href, hend - href);
+                            size_t gt = body.find('>', hend);
+                            size_t aend = (gt == std::string::npos) ? std::string::npos : body.find("</a>", gt);
+                            std::string titleHtml = (gt != std::string::npos && aend != std::string::npos)
+                                                  ? body.substr(gt + 1, aend - gt - 1) : std::string();
+                            size_t uddg = url.find("uddg=");
+                            if (uddg != std::string::npos) {
+                                std::string enc = url.substr(uddg + 5);
+                                size_t amp = enc.find('&'); if (amp != std::string::npos) enc = enc.substr(0, amp);
+                                url = Web_UrlDecode(enc);
+                            } else if (url.compare(0, 2, "//") == 0) {
+                                url = "https:" + url;
+                            }
+                            std::wstring snippet;
+                            size_t sn = body.find("result__snippet", (aend == std::string::npos) ? a : aend);
+                            if (sn != std::string::npos) {
+                                size_t sgt = body.find('>', sn);
+                                size_t send = (sgt == std::string::npos) ? std::string::npos : body.find("</a>", sgt);
+                                if (sgt != std::string::npos && send != std::string::npos)
+                                    snippet = Web_StripHtml(body.substr(sgt + 1, send - sgt - 1));
+                            }
+                            NeAiWebResult r;
+                            r.title = Web_StripHtml(titleHtml);
+                            r.url = Ai_Utf8ToWide(url);
+                            r.snippet = snippet;
+                            if (!r.title.empty() || !r.url.empty()) out.push_back(std::move(r));
+                            pos = (aend != std::string::npos) ? aend + 4 : href;
+                        }
+                        ok = !out.empty();
+                        if (!ok) outError = L"No results parsed.";
+                    } else {
+                        outError = L"Could not read the DuckDuckGo response.";
+                    }
+                } else {
+                    outError = L"DuckDuckGo returned HTTP " + std::to_wstring(status) + L".";
+                }
+            } else {
+                outError = L"Could not reach DuckDuckGo.";
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    } else {
+        outError = L"Could not connect to DuckDuckGo.";
+    }
+
+    WinHttpCloseHandle(hSession);
+    return ok;
+}
+
 // "response" tokens, and use "thinking" ONLY when a line has no "response" (so
 // reasoning models don't double every token).  Honours the shared Stop flag.
 // Build the JSON ",\"images\":[...]" fragment from base64-encoded images.

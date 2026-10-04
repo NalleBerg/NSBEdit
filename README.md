@@ -3,7 +3,7 @@
 
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.10.03.09**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.10.04.11**
 
 
 ## Download
@@ -11,6 +11,8 @@ A lightweight, standalone RTF notepad and programming editor for Windows. **v202
 Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no dependencies. Drop it anywhere and run it.
 
 ## Features
+
+- **AI: project-file search that works, with feedback — plus DuckDuckGo web search** — the AI's project search now finds **plain words** in your question (not just code identifiers), so asking for *all URLs/emails/IPs/TODOs* returns the **real, verbatim** matches scanned straight from your files (no invented links). It shows progress on the status line (*searching… scanning N files… done*), says so when **no project is active**, and follows **junctions/symlinks** so linked folders (e.g. a shared `.\MyStyle`) are searched too. Ask naturally about something online and the AI runs a **DuckDuckGo** web search and folds the results into its answer, telling you while it does; a **Search the web (DuckDuckGo)** toggle in the AI window's **Log** menu (remembered between sessions) makes every question also consult the web.
 
 - **AI: paste images into the query (multimodal)** — paste an image straight into the AI query box; it appears inline in the text flow (sized to read, capped ~420&nbsp;px wide) mixed with your typed text, is sent to Ollama in the request's `images` array, stays visible in the query, the answer and every previous answer, and is saved to the database so it is restored next launch. Text-only coding models ignore it; pick a vision model (`llava`, `llama3.2-vision`, `qwen2.5vl`) to have the picture understood.
 

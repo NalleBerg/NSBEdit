@@ -779,6 +779,13 @@
                                                 (GET /api/tags), NeAiClient_PullOllamaModel (POST
                                                 /api/pull, streamed progress) and
                                                 NeAiClient_DeleteOllamaModel (DELETE /api/delete).
+                                                Web search: NeAiClient_WebSearch(query, maxResults,
+                                                out, err) does a WinHTTP HTTPS GET to
+                                                html.duckduckgo.com/html/ with a browser UA, parses
+                                                the result__a / result__snippet markup and decodes
+                                                each uddg= redirect back to the real URL into a
+                                                vector<NeAiWebResult>{title,url,snippet} — no API
+                                                key, used for the AI's internet-search feature.
                                                 ALL localhost daemon calls go through
                                                 Ai_OpenLocalDaemonSession() which opens WinHTTP with
                                                 WINHTTP_ACCESS_TYPE_NO_PROXY — loopback must never be
@@ -1028,6 +1035,33 @@
                                                 without reading whole files), and the exact
                                                 files the user named (Ai_ResolveRef fuzzy-
                                                 matches typos against disk, through junctions).
+                                                Search-term extraction (Ai_ExtractSearchTerms)
+                                                now also pulls PLAIN words from the prompt,
+                                                filtered by a stop-word set (Ai_SearchStopwords),
+                                                so an ordinary word like "url" is actually
+                                                searched for — not just code identifiers and
+                                                back-tick spans. The search is verbose: it drives
+                                                the status line via Ai_SearchStatus (AI_SEARCH_FOR
+                                                / AI_SEARCH_SCANNING / AI_SEARCH_DONE) and logs
+                                                AI_LOG_NO_PROJECT when nothing is active.
+                                                To stop the model inventing plausible links,
+                                                Ai_ExtractProjectPatterns deterministically
+                                                scans the files with std::wregex for URLs,
+                                                emails, IPv4 and TODO/FIXME when the prompt asks
+                                                for them, dedupes and strips trailing
+                                                punctuation (bare "https://" with no host is
+                                                dropped), and injects the VERBATIM matches with a
+                                                "list ONLY these, do not invent" instruction.
+                                                Web search: Ai_ExtractWebQuery detects a natural
+                                                online intent (online/internet/website/latest
+                                                version/.com… or a web:/search web: prefix); a
+                                                Log-menu toggle (IDM_AI_WEB_SEARCH, persisted as
+                                                ai.web_search, state AiWindowState::webSearch)
+                                                forces it on for every question. When fired,
+                                                Ai_DoSend calls NeAiClient_WebSearch, shows
+                                                AI_SEARCH_WEB / _DONE / _NONE, and folds a
+                                                "[INTERNET SEARCH RESULTS — DuckDuckGo]" block
+                                                into the prompt.
                                                 A large named file with no matching symbol is
                                                 read in batches (Ai_PlanBigFileChunks) and
                                                 answered map-reduce style; the spinner shows a

@@ -62,6 +62,7 @@
 #define IDM_AI_CHECK_MODELS       1923
 #define IDM_AI_SET_API_KEY        1924
 #define IDM_AI_MANAGE_MODELS      1925
+#define IDM_AI_WEB_SEARCH         1926
 #define IDM_AI_LOG_CLEAR          1930
 #define IDM_AI_LOG_COPY           1931
 #define IDM_AI_SEND               1932
@@ -350,6 +351,7 @@ struct AiWindowState {
     std::wstring cloudApiKey;  // ollama.com API key (browser-free cloud sign-in); stored only in the local profile
     AiMenuRole role = AiMenuRole::Suggest;
     bool cloudMode = false;
+    bool webSearch = false;   // when on, every send also searches the web (DuckDuckGo)
     bool signedIn = false;
     int historyIndex = -1;
     std::wstring historyDraft;
@@ -678,6 +680,9 @@ static void Ai_LoadPrefs(AiWindowState* st)
     NeProfiles_GetIntSetting("ai.role", 0, role);
     st->cloudMode = (mode != 0);
     st->signedIn = (signedIn != 0);
+    int web = 0;
+    NeProfiles_GetIntSetting("ai.web_search", 0, web);
+    st->webSearch = (web != 0);
     st->role = (role == (int)AiMenuRole::Agent) ? AiMenuRole::Agent : AiMenuRole::Suggest;
     // The cached flag above can be stale (e.g. `ollama signout` while the app
     // was closed); ask the daemon and adopt its real sign-in state.
@@ -2292,6 +2297,27 @@ static void Ai_AppendLog(HWND hwnd, const std::wstring& line)
     SendMessageW(hLog, EM_REPLACESEL, FALSE, (LPARAM)line.c_str());
     SendMessageW(hLog, EM_SCROLLCARET, 0, 0);
     if (st && st->hLogSb) msb_notify_content_changed(st->hLogSb);
+}
+
+// Live search feedback: overwrite the status line and force an immediate repaint
+// (the project walk/grep runs on the UI thread, so a normal invalidate wouldn't
+// paint until it returns).
+static void Ai_SearchStatus(HWND hwnd, const std::wstring& text)
+{
+    if (!hwnd) return;
+    AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
+    if (!st || !st->hStatus || !IsWindow(st->hStatus)) return;
+    SetWindowTextW(st->hStatus, text.c_str());
+    UpdateWindow(st->hStatus);
+}
+
+// Two-argument "%s … %s" formatter (Ai_FormatLocaleText only fills one).
+static std::wstring Ai_Format2(const wchar_t* fmt, const std::wstring& a, const std::wstring& b)
+{
+    std::wstring s = fmt ? fmt : L"";
+    size_t p = s.find(L"%s"); if (p != std::wstring::npos) s.replace(p, 2, a);
+    p = s.find(L"%s"); if (p != std::wstring::npos) s.replace(p, 2, b);
+    return s;
 }
 
 static void Ai_StreamChunkCallback(void* context, const std::wstring& chunk)
@@ -4125,6 +4151,9 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
     Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_SEND, Ne_Ls(L"AI_MENU_SEND_PROMPT"), false);
     Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_LOG_CLEAR, Ne_Ls(L"AI_MENU_CLEAR_LOG"), false);
     Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_LOG_COPY, Ne_Ls(L"AI_MENU_COPY_ANSWER"), false);
+    Ai_AppendMenuOD(hLog, MF_SEPARATOR, 0, NULL, false);
+    Ai_AppendMenuOD(hLog, MF_STRING, IDM_AI_WEB_SEARCH, Ne_Ls(L"AI_MENU_WEB_SEARCH"), false);
+    if (st && st->webSearch) CheckMenuItem(hLog, IDM_AI_WEB_SEARCH, MF_BYCOMMAND | MF_CHECKED);
 
     Ai_AppendMenuOD(hHelp, MF_STRING, IDM_AI_ABOUT, Ne_Ls(L"AI_MENU_ABOUT_WINDOW"), false);
 
@@ -4561,6 +4590,27 @@ static std::vector<AiRequestedItem> Ai_ExpandFileRefs(
 
 // plus identifier-like tokens (containing '_' or camelCase) so the AI can find a
 // symbol/function by name without reading whole files.
+// Common words that would match almost everything — kept out of the content grep.
+static const std::set<std::wstring>& Ai_SearchStopwords()
+{
+    static const std::set<std::wstring> sw = {
+        L"the",L"and",L"for",L"are",L"you",L"your",L"yours",L"that",L"this",L"these",
+        L"those",L"with",L"have",L"has",L"had",L"can",L"could",L"would",L"should",
+        L"from",L"into",L"onto",L"what",L"when",L"where",L"which",L"whom",L"who",
+        L"why",L"how",L"does",L"did",L"done",L"will",L"wont",L"want",L"wants",
+        L"need",L"needs",L"show",L"shows",L"give",L"gives",L"tell",L"find",L"finds",
+        L"list",L"lists",L"all",L"any",L"some",L"use",L"uses",L"used",L"using",
+        L"there",L"here",L"they",L"them",L"their",L"then",L"than",L"but",L"not",
+        L"was",L"were",L"been",L"being",L"get",L"gets",L"got",L"make",L"makes",
+        L"made",L"like",L"also",L"just",L"only",L"more",L"most",L"such",L"each",
+        L"out",L"about",L"over",L"under",L"please",L"return",L"returns",L"add",
+        L"adds",L"new",L"old",L"one",L"two",L"its",L"look",L"looking",L"know",
+        L"something",L"anything",L"inside",L"within",L"thanks",L"file",L"files",
+        L"project",L"projects",L"code",L"line",L"lines",L"text",L"search",L"searching"
+    };
+    return sw;
+}
+
 static std::vector<std::wstring> Ai_ExtractSearchTerms(const std::wstring& prompt)
 {
     std::vector<std::wstring> terms;
@@ -4571,7 +4621,7 @@ static std::vector<std::wstring> Ai_ExtractSearchTerms(const std::wstring& promp
         for (const auto& e : terms) if (Ai_LowerW(e) == Ai_LowerW(t)) return;
         terms.push_back(std::move(t));
     };
-    // `backtick`-quoted spans.
+    // `backtick`-quoted spans (highest-priority exact user intent).
     size_t p = 0;
     while ((p = prompt.find(L'`', p)) != std::wstring::npos) {
         size_t e = prompt.find(L'`', p + 1);
@@ -4579,15 +4629,23 @@ static std::vector<std::wstring> Ai_ExtractSearchTerms(const std::wstring& promp
         addTerm(prompt.substr(p + 1, e - p - 1));
         p = e + 1;
     }
-    // Identifier-like tokens.
+    // Identifier-like tokens (ne_foo, CamelCase, name123) AND meaningful plain
+    // words — so a natural-language question ("find a URL in the credits")
+    // actually greps the files. Plain words are filtered against a stopword list.
     std::wstring cur;
     auto flush = [&]() {
-        if (cur.size() >= 4) {
+        if (cur.size() >= 3) {
             bool hasUnderscore = cur.find(L'_') != std::wstring::npos;
-            bool camel = false;
-            for (size_t i = 1; i < cur.size(); ++i)
-                if (iswupper(cur[i]) && iswlower(cur[i - 1])) { camel = true; break; }
-            if (hasUnderscore || camel) addTerm(cur);
+            bool hasDigit = false, camel = false;
+            for (size_t i = 0; i < cur.size(); ++i) {
+                if (iswdigit(cur[i])) hasDigit = true;
+                if (i && iswupper(cur[i]) && iswlower(cur[i - 1])) camel = true;
+            }
+            if (cur.size() >= 4 && (hasUnderscore || camel || hasDigit)) {
+                addTerm(cur);                                   // identifier-ish token
+            } else if (!Ai_SearchStopwords().count(Ai_LowerW(cur))) {
+                addTerm(cur);                                   // meaningful plain word
+            }
         }
         cur.clear();
     };
@@ -4596,8 +4654,42 @@ static std::vector<std::wstring> Ai_ExtractSearchTerms(const std::wstring& promp
         else flush();
     }
     flush();
-    if (terms.size() > 10) terms.resize(10);
+    if (terms.size() > 12) terms.resize(12);
     return terms;
+}
+
+// Detect — from natural phrasing — that the question needs current information
+// from the internet, and return the query (empty if not). A leading "web:" /
+// "search web:" uses the rest as the query; otherwise any web-intent signal
+// (online/site/latest/documentation/a domain/…) uses the whole prompt.
+static std::wstring Ai_ExtractWebQuery(const std::wstring& prompt)
+{
+    std::wstring low = Ai_LowerW(prompt);
+    auto afterPrefix = [&](const wchar_t* pre) -> std::wstring {
+        size_t n = wcslen(pre);
+        if (low.compare(0, n, pre) == 0) {
+            std::wstring q = prompt.substr(n);
+            while (!q.empty() && iswspace(q.front())) q.erase(q.begin());
+            return q;
+        }
+        return L"";
+    };
+    std::wstring q = afterPrefix(L"web:");
+    if (q.empty()) q = afterPrefix(L"search web:");
+    if (!q.empty()) return q;
+
+    // Natural web-intent phrases/words — the whole prompt becomes the query.
+    static const wchar_t* signals[] = {
+        L"search the web", L"search online", L"search the internet", L"search internet",
+        L"on the web", L"on the internet", L"look online", L"look it up", L"web search",
+        L"duckduckgo", L"google", L"online", L"internet", L"website", L"web site",
+        L" site", L"home page", L"homepage", L"documentation", L"official",
+        L"latest version", L"current version", L"currently available", L"up to date",
+        L"up-to-date", L"newest", L"what's new", L"release notes", L"download",
+        L".com", L".org", L".io", L".net", L".dev", L".ai"
+    };
+    for (auto s : signals) if (low.find(s) != std::wstring::npos) return prompt;
+    return L"";
 }
 
 // Grep the project for the search terms and return matching code snippets with a
@@ -4606,8 +4698,9 @@ static std::vector<std::wstring> Ai_ExtractSearchTerms(const std::wstring& promp
 static bool Ai_SearchSnippets(const std::vector<NeProjectFile>& files,
                               const std::vector<std::wstring>& terms,
                               const std::set<std::wstring>& referencedLower,
-                              std::wstring& outBlock)
+                              std::wstring& outBlock, HWND hwnd, int* outScanned)
 {
+    if (outScanned) *outScanned = 0;
     if (terms.empty() || files.empty()) return false;
     std::vector<std::wstring> termsLow;
     for (const auto& t : terms) termsLow.push_back(Ai_LowerW(t));
@@ -4616,7 +4709,7 @@ static bool Ai_SearchSnippets(const std::vector<NeProjectFile>& files,
     const size_t kMaxSnippets = 12;
     const int    kBefore      = 6;
     const int    kAfter       = 34;
-    const int    kFileScanCap = 2500;
+    const int    kFileScanCap = 6000;     // files read for content (bounds UI-thread time)
     const size_t kFileReadCap = 800 * 1024;
     const size_t kPerSnippet  = 3200;
 
@@ -4635,6 +4728,8 @@ static bool Ai_SearchSnippets(const std::vector<NeProjectFile>& files,
         std::wstring content;
         if (!NeProjects_ReadTextFile(files[order[oi]].fullPath, content, kFileReadCap)) continue;
         ++scanned;
+        if (hwnd && (scanned % 48) == 0)
+            Ai_SearchStatus(hwnd, Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_SCANNING"), std::to_wstring(scanned)));
         if (content.empty()) continue;
         std::wstring contentLow = Ai_LowerW(content);
         bool anyTerm = false;
@@ -4673,6 +4768,7 @@ static bool Ai_SearchSnippets(const std::vector<NeProjectFile>& files,
             lastEmittedEnd = end;
         }
     }
+    if (outScanned) *outScanned = scanned;
     if (block.empty()) return false;
     outBlock = L"Matching code snippets (searched the project for: ";
     for (size_t i = 0; i < terms.size(); ++i) { if (i) outBlock += L", "; outBlock += terms[i]; }
@@ -4794,12 +4890,86 @@ static bool Ai_RegexSearchSnippets(const std::vector<NeProjectFile>& files,
 // still covering any realistic source project.
 static constexpr int kAiMaxProjectFiles = 20000;
 
-static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
+// Deterministic pattern extraction. When the user asks (naturally) for URLs /
+// emails / IPs / TODOs, the editor itself regex-scans the project files and
+// returns the ACTUAL verbatim matches, so a small model formats real data
+// instead of hallucinating plausible-looking values.
+static std::wstring Ai_ExtractProjectPatterns(const std::vector<NeProjectFile>& files,
+                                              const std::wstring& prompt, HWND hwnd)
+{
+    std::wstring low = Ai_LowerW(prompt);
+    auto want = [&](std::initializer_list<const wchar_t*> kws) {
+        for (auto k : kws) if (low.find(k) != std::wstring::npos) return true;
+        return false;
+    };
+    struct Req { std::wstring label; std::wregex re; };
+    std::vector<Req> reqs;
+    try {
+        if (want({ L"url", L"link", L"hyperlink" }))
+            reqs.push_back({ L"URLs", std::wregex(L"https?://[^\\s\"'<>)\\]}]+", std::regex::icase) });
+        if (want({ L"email", L"e-mail", L"mail address" }))
+            reqs.push_back({ L"email addresses", std::wregex(L"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}") });
+        if (want({ L"ip address", L"ip-address", L"ipv4" }))
+            reqs.push_back({ L"IP addresses", std::wregex(L"\\b\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\b") });
+        if (want({ L"todo", L"fixme" }))
+            reqs.push_back({ L"TODO/FIXME notes", std::wregex(L"(?:TODO|FIXME|XXX)\\b[^\\r\\n]{0,160}") });
+    } catch (...) { return L""; }
+    if (reqs.empty()) return L"";
+
+    const int    kScanCap       = 6000;
+    const size_t kFileReadCap   = 800 * 1024;
+    const size_t kMaxPerPattern = 300;
+
+    std::wstring block;
+    for (auto& req : reqs) {
+        std::vector<std::wstring> hits;
+        std::set<std::wstring> seen;
+        int scanned = 0;
+        for (const auto& f : files) {
+            if (scanned >= kScanCap || hits.size() >= kMaxPerPattern) break;
+            std::wstring content;
+            if (!NeProjects_ReadTextFile(f.fullPath, content, kFileReadCap)) continue;
+            ++scanned;
+            if (hwnd && (scanned % 64) == 0)
+                Ai_SearchStatus(hwnd, Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_SCANNING"), std::to_wstring(scanned)));
+            auto b = std::wsregex_iterator(content.begin(), content.end(), req.re);
+            auto e = std::wsregex_iterator();
+            for (auto it = b; it != e && hits.size() < kMaxPerPattern; ++it) {
+                std::wstring m = it->str();
+                while (!m.empty()) {   // strip trailing punctuation glued to the match
+                    wchar_t c = m.back();
+                    if (c==L'.'||c==L','||c==L')'||c==L']'||c==L'}'||c==L'"'||c==L'\''||c==L';'||c==L'>'||c==L'`') m.pop_back();
+                    else break;
+                }
+                if (m.size() < 3) continue;
+                if (req.label == L"URLs") {   // reject bare schemes with no host (e.g. a "https://" string literal)
+                    size_t sep = m.find(L"://");
+                    if (sep == std::wstring::npos || sep + 3 >= m.size()) continue;
+                }
+                std::wstring key = Ai_LowerW(m);
+                if (seen.count(key)) continue;
+                seen.insert(key);
+                hits.push_back(m);
+            }
+        }
+        block += L"Real " + req.label + L" found in the project (verbatim from the files — list ONLY these, do not invent or add any others):\r\n";
+        if (hits.empty()) block += L"  (none found)\r\n";
+        else for (size_t i = 0; i < hits.size(); ++i)
+            block += L"  " + std::to_wstring(i + 1) + L". " + hits[i] + L"\r\n";
+        block += L"\r\n";
+    }
+    return block;
+}
+
+static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt, HWND hwnd = NULL)
 {
     int64_t pid = NeProjects_GetActiveId();
-    if (!pid) return L"";
+    if (!pid) { if (hwnd) Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_NO_PROJECT")); return L""; }
     NeProject proj;
-    if (!NeProjects_GetById(pid, proj) || proj.rootPath.empty()) return L"";
+    if (!NeProjects_GetById(pid, proj) || proj.rootPath.empty()) {
+        if (hwnd) Ai_AppendLog(hwnd, Ne_Ls(L"AI_LOG_NO_PROJECT"));
+        return L"";
+    }
 
     std::vector<NeProjectFile> files;
     NeProjects_CollectFiles(proj.rootPath, files, kAiMaxProjectFiles);
@@ -4967,8 +5137,21 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
     std::set<std::wstring> refLower;
     for (const auto& r : requested) refLower.insert(Ai_LowerW(r.full));
     std::wstring snippetBlock;
-    bool haveSnippets = Ai_SearchSnippets(files, Ai_ExtractSearchTerms(userPrompt),
-                                          refLower, snippetBlock);
+    std::vector<std::wstring> searchTerms = Ai_ExtractSearchTerms(userPrompt);
+    if (hwnd && !searchTerms.empty()) {
+        std::wstring joined;
+        for (size_t i = 0; i < searchTerms.size(); ++i) { if (i) joined += L", "; joined += searchTerms[i]; }
+        Ai_SearchStatus(hwnd, Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_FOR"), joined));
+    }
+    int scannedCount = 0;
+    bool haveSnippets = Ai_SearchSnippets(files, searchTerms,
+                                          refLower, snippetBlock, hwnd, &scannedCount);
+    if (hwnd && !searchTerms.empty()) {
+        int matched = 0; size_t pos = 0; const std::wstring key = L"=== ";
+        while ((pos = snippetBlock.find(key, pos)) != std::wstring::npos) { ++matched; pos += key.size(); }
+        Ai_SearchStatus(hwnd, Ai_Format2(Ne_Ls(L"AI_SEARCH_DONE"),
+                                         std::to_wstring(scannedCount), std::to_wstring(matched)));
+    }
 
 
     if (!haveSnippets && !haveRegex) {
@@ -4987,6 +5170,12 @@ static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt)
         ctx += L"Other relevant file contents:\r\n" + relStr;
     if (!refStr.empty())
         ctx += L"Referenced file contents (the exact files you named, read from disk):\r\n" + refStr;
+
+    // Deterministic verbatim matches (URLs/emails/…), placed last so they are the
+    // freshest, most salient context and never truncated by the file budget.
+    std::wstring patternBlock = Ai_ExtractProjectPatterns(files, userPrompt, hwnd);
+    if (!patternBlock.empty())
+        ctx += patternBlock;
 
     ctx += L"[END PROJECT CONTEXT]\r\n\r\n";
     return ctx;
@@ -5222,16 +5411,40 @@ static void Ai_DoSend(HWND hwnd)
         Ai_NormalizeModelNameLocal(selectedModel);
         Ai_NormalizeModelNameLocal(fallbackModel);
     }
+    // Optional internet search (DuckDuckGo) when the user explicitly asks for it.
+    std::wstring webBlock;
+    {
+        std::wstring wq = Ai_ExtractWebQuery(prompt);
+        if (wq.empty() && st && st->webSearch) wq = prompt;
+        if (!wq.empty()) {
+            Ai_SearchStatus(hwnd, Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_WEB"), wq));
+            std::vector<NeAiWebResult> results;
+            std::wstring werr;
+            if (NeAiClient_WebSearch(wq, 5, results, werr) && !results.empty()) {
+                webBlock = L"[INTERNET SEARCH RESULTS \u2014 DuckDuckGo, query: " + wq + L"]\r\n";
+                for (size_t i = 0; i < results.size(); ++i) {
+                    webBlock += std::to_wstring(i + 1) + L". " + results[i].title + L"\r\n";
+                    webBlock += L"   " + results[i].url + L"\r\n";
+                    if (!results[i].snippet.empty()) webBlock += L"   " + results[i].snippet + L"\r\n";
+                }
+                webBlock += L"[END INTERNET SEARCH RESULTS]\r\n\r\n";
+                Ai_SearchStatus(hwnd, Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_WEB_DONE"), std::to_wstring((int)results.size())));
+            } else {
+                Ai_SearchStatus(hwnd, Ne_Ls(L"AI_SEARCH_WEB_NONE"));
+            }
+        }
+    }
+
     // Decide between the normal single call and a chunked map-reduce over a large
     // named file.  Both built here on the UI thread (SQLite handle is single-threaded).
     AiChunkPlan chunkPlan = Ai_PlanBigFileChunks(prompt);
     st->chunkedActive = chunkPlan.chunked;
     std::wstring promptForModel;
     if (chunkPlan.chunked) {
-        promptForModel = prompt;   // raw question; file context via batches
+        promptForModel = webBlock + prompt;   // raw question; file context via batches
     } else {
-        std::wstring projectCtx = Ai_BuildProjectContext(prompt);
-        promptForModel = projectCtx.empty() ? prompt : (projectCtx + prompt);
+        std::wstring projectCtx = Ai_BuildProjectContext(prompt, hwnd);
+        promptForModel = projectCtx + webBlock + prompt;
     }
 
     if (hLog) {
@@ -5586,6 +5799,14 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             }
             break;
         }
+        case IDM_AI_WEB_SEARCH:
+            if (st) {
+                st->webSearch = !st->webSearch;
+                NeProfiles_SetIntSetting("ai.web_search", st->webSearch ? 1 : 0);
+                Ai_AppendLog(hwnd, st->webSearch ? Ne_Ls(L"AI_LOG_WEB_ON") : Ne_Ls(L"AI_LOG_WEB_OFF"));
+                Ai_RefreshUi(hwnd);
+            }
+            return 0;
         case IDM_AI_MODE_LOCAL:
             if (st) {
                 st->cloudMode = false;
