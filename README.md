@@ -3,7 +3,7 @@
 
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.10.04.11**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.10.05.09**
 
 
 ## Download
@@ -11,6 +11,8 @@ A lightweight, standalone RTF notepad and programming editor for Windows. **v202
 Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no dependencies. Drop it anywhere and run it.
 
 ## Features
+
+- **AI: clickable URLs in answers** — links the AI prints are auto-detected: hover shows the hand cursor and a hint tooltip (**«[Ctrl]+[Left mouse click] to open page in external browser»**, in your own language), **Ctrl+click opens the link in your default browser** (brought to the front, even if already running), and a plain click still lets you select and copy text inside the URL.
 
 - **AI: project-file search that works, with feedback — plus DuckDuckGo web search** — the AI's project search now finds **plain words** in your question (not just code identifiers), so asking for *all URLs/emails/IPs/TODOs* returns the **real, verbatim** matches scanned straight from your files (no invented links). It shows progress on the status line (*searching… scanning N files… done*), says so when **no project is active**, and follows **junctions/symlinks** so linked folders (e.g. a shared `.\MyStyle`) are searched too. Ask naturally about something online and the AI runs a **DuckDuckGo** web search and folds the results into its answer, telling you while it does; a **Search the web (DuckDuckGo)** toggle in the AI window's **Log** menu (remembered between sessions) makes every question also consult the web.
 

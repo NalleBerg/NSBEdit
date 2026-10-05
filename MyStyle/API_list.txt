@@ -1027,6 +1027,19 @@
                                                 code boxes are syntax highlighted and copyable
                                                 on their own, and the answer pane uses the
                                                 custom MSB scrollbar instead of the native one.
+                                                Clickable URLs: answer blocks are RichEdits with
+                                                EM_AUTOURLDETECT, so printed URLs become CFE_LINK
+                                                runs. Ai_AnswerChildSubclassProc adds a hover hint
+                                                tooltip (AI_URL_OPEN_TIP, 14 langs) detected via
+                                                GetCursor()==IDC_HAND after calling through to the
+                                                control (NOT EN_LINK+EM_CHARFROMPOS, which is
+                                                unreliable), and Ctrl+click on WM_LBUTTONDOWN opens
+                                                the link (Ai_UrlTokenAt reads the URL token without
+                                                disturbing selection; Ai_OpenUrlInBrowser calls
+                                                AllowSetForegroundWindow(ASFW_ANY) before
+                                                ShellExecuteW so the browser comes to the front;
+                                                a plain click still selects text). Full gotchas in
+                                                API_INTERNALS\API\tooltip_API.txt section 20.
                                                 Project suggestion mode: when a project
                                                 (ne_projects) is active, Ai_BuildProjectContext
                                                 prepends a bounded suggestion-mode context —
@@ -1292,6 +1305,13 @@
                                                 checkboxes/radios — attach tip string via
                                                 SetPropW(L"avTip") and read in one shared proc;
                                                 Win32 TOOLTIPS_CLASS unreliable for these controls.
+                                                §20: hover tooltip + Ctrl+click-open on an auto-
+                                                detected URL in a RichEdit — detect hover via
+                                                GetCursor()==IDC_HAND (NOT EN_LINK+EM_CHARFROMPOS),
+                                                open on WM_LBUTTONDOWN+Ctrl, and
+                                                AllowSetForegroundWindow(ASFW_ANY) before
+                                                ShellExecuteW to raise the browser; single-line
+                                                hint sizing so the last word is not clipped.
 
   API_INTERNALS\INTERNALS\add_ui_language_INTERNALS.txt
                                                 Step-by-step checklist for adding a new UI

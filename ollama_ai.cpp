@@ -531,6 +531,8 @@ static LRESULT CALLBACK Ai_AnswerChildSubclassProc(HWND hwnd, UINT msg, WPARAM w
 static HWND Ai_CreateAnswerRichEdit(HWND hwndParent, int x, int y, int w, int h);
 static std::vector<AiAnswerBlockDesc> Ai_ParseAnswerBlocks(const std::wstring& reply);
 static void Ai_LayoutAnswerHost(HWND hwndHost);
+static void Ai_ShowMenuTip(HWND owner, const std::wstring& text);
+static void Ai_HideMenuTip();
 static void Ai_SaveHistory();
 static std::wstring Ai_DefaultModelName();
 static std::wstring Ai_FallbackModelName();
@@ -1736,6 +1738,81 @@ static void Ai_WriteRawReplyFile(const std::wstring& rawReply)
     (void)rawReply;
 }
 
+// ── AI answer URL hover / Ctrl+click open ─────────────────────────────────────
+// The answer blocks are RichEdits with EM_AUTOURLDETECT, so URLs become CFE_LINK
+// ranges and the control draws the hand cursor itself.  We add two things on top:
+// a Ctrl+Left-click (handled in the child subclass on WM_LBUTTONDOWN, the proven
+// path the main editor uses) that opens the link in the default browser while a
+// plain click still selects text, and the custom yellow hint tooltip shown while
+// hovering a link — detected via GetCursor()==IDC_HAND after letting the RichEdit
+// process the move, which is reliable (EN_LINK range-containment is not).
+static HWND s_aiUrlTipChild = NULL;   // answer RichEdit currently showing the URL hint
+static bool s_aiUrlTipShown = false;
+
+// Auto-detected URLs carry no RTF hyperlink field, so read the whitespace-
+// delimited token around charIdx and return it when it looks like a URL.  Uses
+// EM_GETTEXTRANGE only, so the user's text selection is never disturbed.
+static std::wstring Ai_UrlTokenAt(HWND hLog, int charIdx)
+{
+    int docLen = GetWindowTextLengthW(hLog);
+    if (docLen <= 0 || charIdx < 0) return L"";
+    LONG lo = std::max(0L, (LONG)charIdx - 1024);
+    LONG hi = std::min((LONG)docLen, (LONG)charIdx + 1024);
+    if (hi <= lo) return L"";
+    std::wstring buf((size_t)(hi - lo) + 1, L'\0');
+    TEXTRANGEW tr = {};
+    tr.chrg.cpMin = lo; tr.chrg.cpMax = hi; tr.lpstrText = &buf[0];
+    SendMessageW(hLog, EM_GETTEXTRANGE, 0, (LPARAM)&tr);
+    buf.resize(wcslen(buf.c_str()));
+    if (buf.empty()) return L"";
+
+    auto isBreak = [](wchar_t c) {
+        return c == L' ' || c == L'\t' || c == L'\r' || c == L'\n' ||
+               c == L'"' || c == L'<'  || c == L'>'  || c == L'\0';
+    };
+    size_t k = (size_t)std::min((LONG)buf.size() - 1, std::max(0L, (LONG)charIdx - lo));
+    if (isBreak(buf[k])) return L"";
+    size_t start = k, end = k;
+    while (start > 0 && !isBreak(buf[start - 1])) --start;
+    while (end + 1 < buf.size() && !isBreak(buf[end + 1])) ++end;
+    std::wstring tok = buf.substr(start, end - start + 1);
+    while (!tok.empty()) {
+        wchar_t c = tok.back();
+        if (c == L'.' || c == L',' || c == L';' || c == L':' || c == L')' ||
+            c == L']' || c == L'}' || c == L'!' || c == L'?' || c == L'\'')
+            tok.pop_back();
+        else break;
+    }
+    std::wstring low = tok;
+    for (auto& c : low) c = (wchar_t)towlower(c);
+    if (low.rfind(L"http://", 0) == 0 || low.rfind(L"https://", 0) == 0 ||
+        low.rfind(L"ftp://", 0) == 0  || low.rfind(L"www.", 0) == 0 ||
+        low.rfind(L"mailto:", 0) == 0)
+        return tok;
+    return L"";
+}
+
+static void Ai_OpenUrlInBrowser(HWND aiWindow, std::wstring url)
+{
+    if (url.empty()) return;
+    std::wstring low = url;
+    for (auto& c : low) c = (wchar_t)towlower(c);
+    if (low.rfind(L"www.", 0) == 0) url = L"https://" + url;   // autodetected bare www. host
+    // Grant the launched (or already-running) browser the right to take the
+    // foreground; without this an already-open browser only flashes in the taskbar.
+    AllowSetForegroundWindow(ASFW_ANY);
+    ShellExecuteW(aiWindow, L"open", url.c_str(), NULL, NULL, SW_SHOWNORMAL);
+}
+
+static void Ai_HideUrlTip()
+{
+    if (s_aiUrlTipShown) {
+        Ai_HideMenuTip();
+        s_aiUrlTipShown = false;
+        s_aiUrlTipChild = NULL;
+    }
+}
+
 static LRESULT CALLBACK Ai_AnswerHostSubclassProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam,
     UINT_PTR, DWORD_PTR)
 {
@@ -1915,6 +1992,48 @@ static LRESULT CALLBACK Ai_AnswerChildSubclassProc(HWND hwnd, UINT msg, WPARAM w
     UINT_PTR, DWORD_PTR)
 {
     switch (msg) {
+    case WM_LBUTTONDOWN:
+        // Ctrl+click opens the URL under the pointer (plain click still selects
+        // text).  Handled here on the down event — the control delivers it to the
+        // subclass reliably, unlike EN_LINK button notifications.
+        if (GetKeyState(VK_CONTROL) & 0x8000) {
+            POINT pt = { (LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam) };
+            int ch = Ai_CharIndexFromClientPoint(hwnd, pt);
+            std::wstring url = Ai_UrlTokenAt(hwnd, ch);
+            if (!url.empty()) {
+                Ai_HideUrlTip();
+                Ai_OpenUrlInBrowser(GetParent(GetParent(hwnd)), url);
+                return 0;   // consumed: do not start a selection drag
+            }
+        }
+        break;
+    case WM_MOUSEMOVE: {
+        // Detect link-hover the proven way (see main editor): let the RichEdit
+        // process the move first so it sets IDC_HAND over an auto-detected URL,
+        // then read the cursor.  Using EN_LINK + EM_CHARFROMPOS range-containment
+        // is unreliable — the two disagree at character boundaries and the tip
+        // flickers off immediately.
+        LRESULT r = DefSubclassProc(hwnd, msg, wParam, lParam);
+        static HCURSOR s_hHand = LoadCursorW(NULL, IDC_HAND);
+        bool overLink = (GetCursor() == s_hHand);
+        if (overLink) {
+            if (!s_aiUrlTipShown || s_aiUrlTipChild != hwnd) {
+                Ai_ShowMenuTip(GetParent(GetParent(hwnd)), Ne_Ls(L"AI_URL_OPEN_TIP"));
+                s_aiUrlTipShown = true;
+                s_aiUrlTipChild = hwnd;
+            }
+            TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hwnd, 0 };
+            TrackMouseEvent(&tme);
+        } else if (s_aiUrlTipShown && s_aiUrlTipChild == hwnd) {
+            Ai_HideUrlTip();
+        }
+        return r;
+    }
+    case WM_MOUSELEAVE:
+        if (s_aiUrlTipShown && s_aiUrlTipChild == hwnd) {
+            Ai_HideUrlTip();
+        }
+        break;
     case WM_KEYDOWN: {
         bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
         if (ctrl && wParam == 'A') {
@@ -3314,15 +3433,30 @@ static void Ai_ShowMenuTip(HWND owner, const std::wstring& text)
     }
     if (!s_hAiTipWnd) return;
 
-    // Measure (word-wrapped, capped like the shared tooltip).
+    // Measure.  These hints are short, so prefer a single line sized to the text;
+    // only fall back to word-wrapping when the text is wider than the monitor work
+    // area (the old fixed S(480) cap wrapped one-liners and clipped the last word).
+    HMONITOR hmM = MonitorFromWindow(owner, MONITOR_DEFAULTTONEAREST);
+    MONITORINFO miM = {}; miM.cbSize = sizeof(miM);
+    int maxW = S(900);
+    if (GetMonitorInfo(hmM, &miM)) maxW = (miM.rcWork.right - miM.rcWork.left) - S(40);
+
     HDC hdc = GetDC(s_hAiTipWnd);
     HFONT old = s_hAiTipFont ? (HFONT)SelectObject(hdc, s_hAiTipFont) : NULL;
-    RECT calc = { 0, 0, S(480) - S(16), 0 };
-    DrawTextW(hdc, text.c_str(), -1, &calc, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+    RECT one = { 0, 0, 0, 0 };
+    DrawTextW(hdc, text.c_str(), -1, &one, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
+    int w, h;
+    if ((one.right - one.left) + S(16) <= maxW) {
+        w = (one.right - one.left) + S(16);
+        h = (one.bottom - one.top) + S(12);
+    } else {
+        RECT calc = { 0, 0, maxW - S(16), 0 };
+        DrawTextW(hdc, text.c_str(), -1, &calc, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
+        w = (calc.right - calc.left) + S(16);
+        h = (calc.bottom - calc.top) + S(12);
+    }
     if (old) SelectObject(hdc, old);
     ReleaseDC(s_hAiTipWnd, hdc);
-    int w = (calc.right - calc.left) + S(16);
-    int h = (calc.bottom - calc.top) + S(12);
 
     POINT pt; GetCursorPos(&pt);
     int x = pt.x + S(18), y = pt.y + S(12);

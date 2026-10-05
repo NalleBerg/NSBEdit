@@ -847,3 +847,85 @@ API REFERENCE:
      tooltip text on language change, theme change, or any other re-init.
 
 
+   20) Hover tooltip + Ctrl+click-open on an auto-detected URL in a RichEdit
+   -------------------------------------------------------------------------
+   Use this when a read-only RichEdit (EM_AUTOURLDETECT) shows URLs as CFE_LINK
+   runs and you want (a) a hint tooltip while hovering a link and (b) Ctrl+click
+   to open the link in the browser while a plain click still selects text.
+   Verified in ollama_ai.cpp (Ai_AnswerChildSubclassProc) and the main editor
+   (Ne_EditCaretProc), v2026.10.05.09.
+
+   *** GOTCHA — DO NOT detect link-hover with EN_LINK + EM_CHARFROMPOS ***
+   The intuitive approach — handle EN_LINK(WM_MOUSEMOVE) in the parent to grab the
+   link's char range (ENLINK.chrg), then in the control's WM_MOUSEMOVE compute the
+   char index with EM_CHARFROMPOS and test range-containment to know when to hide —
+   DOES NOT WORK RELIABLY. EM_CHARFROMPOS rounds to the nearest character boundary
+   and disagrees with ENLINK.chrg at the edges, so the containment test fails on
+   the very next move and the tooltip flickers off immediately (symptom: "no
+   tooltip at all", even though the show path ran once).
+
+   CORRECT — use the hand cursor as the hover signal:
+   - Subclass the RichEdit. In WM_MOUSEMOVE, call THROUGH to the control FIRST
+     (DefSubclassProc / CallWindowProcW) so the control sets IDC_HAND over the
+     auto-detected URL, THEN read the cursor:
+
+       case WM_MOUSEMOVE: {
+           LRESULT r = DefSubclassProc(hwnd, msg, wParam, lParam);
+           static HCURSOR s_hHand = LoadCursorW(NULL, IDC_HAND);
+           bool overLink = (GetCursor() == s_hHand);
+           if (overLink) {
+               if (!s_tipShown || s_tipChild != hwnd) {
+                   ShowTip(ownerWindow, Ls(L"URL_OPEN_TIP"));   // your custom tip
+                   s_tipShown = true; s_tipChild = hwnd;
+               }
+               TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hwnd, 0 };
+               TrackMouseEvent(&tme);
+           } else if (s_tipShown && s_tipChild == hwnd) {
+               HideTip();
+           }
+           return r;
+       }
+       case WM_MOUSELEAVE:
+           if (s_tipShown && s_tipChild == hwnd) HideTip();
+           break;
+
+   - This needs ENM_LINK in EM_SETEVENTMASK — that is what makes the control draw
+     IDC_HAND over links (you do NOT have to handle the EN_LINK notification at
+     all; letting it fall through to DefSubclassProc is what shows the hand).
+   - Reading GetCursor() never touches the selection, so text selection inside the
+     URL keeps working.
+
+   *** GOTCHA — Ctrl+click: handle WM_LBUTTONDOWN in the control's subclass, NOT
+   EN_LINK(WM_LBUTTONUP) ***
+   Button EN_LINK notifications are swallowed by the control's selection handling
+   and arrive unreliably. Handle the down event directly in the subclass:
+
+       case WM_LBUTTONDOWN:
+           if (GetKeyState(VK_CONTROL) & 0x8000) {
+               POINT pt = { (LONG)(short)LOWORD(lParam), (LONG)(short)HIWORD(lParam) };
+               int ch = (int)SendMessageW(hwnd, EM_CHARFROMPOS, 0, (LPARAM)&(POINTL){pt.x,pt.y});
+               std::wstring url = UrlTokenAround(hwnd, ch);   // text token, no selection change
+               if (!url.empty()) { HideTip(); OpenUrl(ownerWindow, url); return 0; }  // 0 = consume
+           }
+           break;   // no Ctrl → fall through so a plain click still selects text
+
+   Resolve the URL by reading the whitespace-delimited text token around the
+   EM_CHARFROMPOS index (EM_GETTEXTRANGE only — never EM_EXSETSEL, which would wipe
+   the user's selection). Prepend https:// to a bare "www." token.
+
+   *** GOTCHA — bring the browser to the foreground ***
+   ShellExecuteW alone leaves an ALREADY-RUNNING browser only flashing in the
+   taskbar (Win32 foreground lock: the hand-off goes to a different process that
+   has no foreground right). Call AllowSetForegroundWindow(ASFW_ANY) immediately
+   before ShellExecuteW so the target browser may raise itself. The caller must
+   currently own the foreground (it does, inside a click handler). This works for
+   both the launch-new and hand-to-existing-instance cases across all browsers.
+
+   *** GOTCHA — single-line hint must not clip the last word ***
+   If your custom tip measures with a fixed width cap and DT_WORDBREAK, a one-line
+   hint that is slightly wider than the cap wraps to a second line while the box
+   height stays one line — the last word is clipped (looked like a missing
+   translation). Prefer single-line sizing: measure with DT_CALCRECT|DT_SINGLELINE,
+   use that width if it fits the monitor work area, and only fall back to
+   DT_WORDBREAK when the text is genuinely wider than the screen.
+
