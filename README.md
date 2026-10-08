@@ -3,7 +3,7 @@
 
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.10.05.09**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.10.08.12**
 
 
 ## Download
@@ -11,6 +11,8 @@ A lightweight, standalone RTF notepad and programming editor for Windows. **v202
 Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no dependencies. Drop it anywhere and run it.
 
 ## Features
+
+- **AI: which models can read images, at a glance** — every model in the **Model** menu shows a small icon (**picture** = image-capable, **document** = text-only) with a hover tooltip **«Supports images» / «Text only»**, read straight from Ollama (`/api/show` capabilities) for **local and cloud** models and cached in the database. The **Manage models…** dialog shows the same markers on both lists, its popular list includes real vision models (`qwen2.5vl`, `llama3.2-vision`, `gemma3`, `llava`, `minicpm-v`, `moondream`), and a registry check makes a mistyped *Install by name* fail fast instead of a long failed pull. _(Note: this build has a known cloud-send slowdown — see the changelog.)_
 
 - **AI: clickable URLs in answers** — links the AI prints are auto-detected: hover shows the hand cursor and a hint tooltip (**«[Ctrl]+[Left mouse click] to open page in external browser»**, in your own language), **Ctrl+click opens the link in your default browser** (brought to the front, even if already running), and a plain click still lets you select and copy text inside the URL.
 

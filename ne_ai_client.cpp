@@ -528,6 +528,166 @@ bool NeAiClient_ListOllamaModels(std::vector<std::wstring>& outModels)
     return ok;
 }
 
+// True when the /api/show response body advertises the "vision" capability. The
+// response contains a JSON array such as  "capabilities":["completion","vision"]
+// so the test is scoped to the bracketed array to avoid false hits elsewhere.
+static bool Ai_ShowBodyHasVision(const std::string& body)
+{
+    size_t k = body.find("\"capabilities\"");
+    if (k == std::string::npos) return false;
+    size_t lb = body.find('[', k);
+    if (lb == std::string::npos) return false;
+    size_t rb = body.find(']', lb);
+    if (rb == std::string::npos) return false;
+    size_t v = body.find("\"vision\"", lb);
+    return v != std::string::npos && v < rb;
+}
+
+int NeAiClient_QueryModelVision(const std::wstring& model)
+{
+    if (model.empty()) return -1;
+
+    HINTERNET hSession = Ai_OpenLocalDaemonSession();
+    if (!hSession) return -1;
+    WinHttpSetTimeouts(hSession, 4000, 4000, 4000, 4000);
+
+    int result = -1;
+    HINTERNET hConnect = WinHttpConnect(hSession, kOllamaHost, 11434, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/show",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, 0);
+        if (hRequest) {
+            std::string reqBody = std::string("{\"model\":\"") +
+                Ai_EscapeJson(Ai_WideToUtf8(model)) + "\"}";
+            std::wstring headers = L"Content-Type: application/json\r\n";
+            if (WinHttpSendRequest(hRequest, headers.c_str(), (DWORD)-1L,
+                    (LPVOID)reqBody.data(), (DWORD)reqBody.size(), (DWORD)reqBody.size(), 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0, statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX) &&
+                    status == 200) {
+                    std::string response;
+                    if (Ai_ReadBody(hRequest, response)) {
+                        result = Ai_ShowBodyHasVision(response) ? 1 : 0;
+                    }
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+
+    WinHttpCloseHandle(hSession);
+    return result;
+}
+
+int NeAiClient_QueryCloudModelVision(const std::wstring& model)
+{
+    if (model.empty()) return -1;
+
+    // Try the name as-is and, if that is not found, without the "-cloud" suffix
+    // the app appends for routing (ollama.com/api/show accepts both forms).
+    std::vector<std::wstring> tries;
+    tries.push_back(model);
+    size_t c = model.rfind(L"-cloud");
+    if (c != std::wstring::npos && c + 6 == model.size())
+        tries.push_back(model.substr(0, c));
+
+    std::wstring key = Ai_GetCloudApiKey();
+    for (const std::wstring& name : tries) {
+        HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+            WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+        if (!hSession) return -1;
+        WinHttpSetTimeouts(hSession, 8000, 8000, 8000, 8000);
+
+        int result = -1;
+        HINTERNET hConnect = WinHttpConnect(hSession, L"ollama.com", INTERNET_DEFAULT_HTTPS_PORT, 0);
+        if (hConnect) {
+            HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/show",
+                NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+            if (hRequest) {
+                std::string body = std::string("{\"model\":\"") +
+                    Ai_EscapeJson(Ai_WideToUtf8(name)) + "\"}";
+                std::wstring headers = L"Content-Type: application/json\r\n";
+                if (!key.empty()) { headers += L"Authorization: Bearer "; headers += key; headers += L"\r\n"; }
+                if (WinHttpSendRequest(hRequest, headers.c_str(), (DWORD)-1L,
+                        (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0) &&
+                    WinHttpReceiveResponse(hRequest, NULL)) {
+                    DWORD status = 0, statusSize = sizeof(status);
+                    if (WinHttpQueryHeaders(hRequest,
+                        WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                        WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX) &&
+                        status == 200) {
+                        std::string resp;
+                        if (Ai_ReadBody(hRequest, resp)) result = Ai_ShowBodyHasVision(resp) ? 1 : 0;
+                    }
+                }
+                WinHttpCloseHandle(hRequest);
+            }
+            WinHttpCloseHandle(hConnect);
+        }
+        WinHttpCloseHandle(hSession);
+        if (result >= 0) return result;
+    }
+    return -1;
+}
+
+int NeAiClient_IsModelDownloadable(const std::wstring& model)
+{
+    // Parse "[namespace/]name[:tag]" → defaults namespace=library, tag=latest.
+    std::wstring ref = model;
+    while (!ref.empty() && (ref.front() == L' ' || ref.front() == L'\t')) ref.erase(0, 1);
+    while (!ref.empty() && (ref.back() == L' ' || ref.back() == L'\t')) ref.pop_back();
+    if (ref.empty()) return 0;
+
+    std::wstring ns = L"library", rest = ref, name, tag = L"latest";
+    size_t slash = ref.find(L'/');
+    if (slash != std::wstring::npos) { ns = ref.substr(0, slash); rest = ref.substr(slash + 1); }
+    size_t colon = rest.find(L':');
+    if (colon != std::wstring::npos) { name = rest.substr(0, colon); tag = rest.substr(colon + 1); }
+    else name = rest;
+    if (name.empty() || tag.empty()) return 0;
+
+    std::wstring path = L"/v2/" + ns + L"/" + name + L"/manifests/" + tag;
+
+    // External host: honour a configured system proxy (unlike the loopback daemon).
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return -1;
+    WinHttpSetTimeouts(hSession, 8000, 8000, 8000, 8000);
+
+    int result = -1;
+    HINTERNET hConnect = WinHttpConnect(hSession, L"registry.ollama.ai",
+        INTERNET_DEFAULT_HTTPS_PORT, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"HEAD", path.c_str(),
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE);
+        if (hRequest) {
+            const wchar_t* accept =
+                L"Accept: application/vnd.docker.distribution.manifest.v2+json\r\n";
+            if (WinHttpSendRequest(hRequest, accept, (DWORD)-1L,
+                    WINHTTP_NO_REQUEST_DATA, 0, 0, 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0, statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                    WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                    WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX)) {
+                    if (status == 200) result = 1;
+                    else if (status == 404) result = 0;
+                    // Other statuses (401/5xx) leave -1 (unknown) so the pull is still tried.
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+
+    WinHttpCloseHandle(hSession);
+    return result;
+}
+
 bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
     NeAiPullProgressFn onProgress, std::wstring& outError)
 {

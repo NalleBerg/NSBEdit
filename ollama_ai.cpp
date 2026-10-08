@@ -26,6 +26,7 @@
 #include <set>
 #include <thread>
 #include <atomic>
+#include <mutex>
 #include <algorithm>
 #include <cwctype>
 #include <regex>
@@ -77,6 +78,8 @@
 #define WM_AI_MANAGE_APPEND       (WM_APP + 77)  // lParam = new std::wstring* (log line)
 #define WM_AI_MANAGE_DONE         (WM_APP + 78)  // lParam = new AiManageDoneInfo* (final line + ok)
 #define WM_AI_MANAGE_PROGRESS     (WM_APP + 79)  // lParam = new std::wstring* (live status text)
+#define WM_AI_MODELCAPS_READY     (WM_APP + 80)  // lParam = new AiModelCapsBatch* (vision caps)
+#define WM_AI_MANAGE_POPVALID     (WM_APP + 81)  // popular-list registry validation finished
 
 static constexpr UINT_PTR kAiLiveTypingTimerId = 0xA11E;
 static constexpr UINT_PTR kAiLiveTypingStartDelayTimerId = 0xA11F;
@@ -373,6 +376,7 @@ struct AiWindowState {
     std::vector<std::string> pendingImages; // base64 PNG images pasted into the current input
     std::vector<std::string> lastImages;    // images of the in-flight send, restored on Stop
     SpinnerDialog* spinner = NULL;
+    bool capsSpinnerActive = false;  // spinner is showing the first-run model-capability check
     std::wstring answerCopyText;
     std::vector<HWND> answerBlocks;
     std::wstring answerIntroText;
@@ -439,6 +443,7 @@ struct AiMenuItemData {
     std::wstring text;
     bool isSeparator = false;
     bool isBar = false;
+    int visionMark = 0;   // 0 = none, 1 = supports images, 2 = text only
 };
 
 struct AiModelMenuItem {
@@ -446,6 +451,15 @@ struct AiModelMenuItem {
     std::wstring model;
     AiMenuRole role = AiMenuRole::Suggest;
     bool isCloud = false;
+};
+
+// One model's image capability as resolved by the background worker (1 = vision,
+// 0 = text only) and a batch of them handed to the UI thread.
+struct AiModelVisionResult { std::wstring model; int vision = 0; };
+struct AiModelCapsBatch {
+    std::vector<AiModelVisionResult> items;
+    bool firstRun = false;   // the initial check that drives the first-run spinner
+    bool changed = false;    // at least one model differs from the cached value
 };
 
 static HWND s_hwndAiWindow = NULL;
@@ -533,6 +547,9 @@ static std::vector<AiAnswerBlockDesc> Ai_ParseAnswerBlocks(const std::wstring& r
 static void Ai_LayoutAnswerHost(HWND hwndHost);
 static void Ai_ShowMenuTip(HWND owner, const std::wstring& text);
 static void Ai_HideMenuTip();
+static void Ai_EnsureMenuIcons();
+static HICON Ai_MenuMarkerIcon(int mark);
+static int Ai_ModelMenuVisionMarker(const std::wstring& model, bool isCloud);
 static void Ai_SaveHistory();
 static std::wstring Ai_DefaultModelName();
 static std::wstring Ai_FallbackModelName();
@@ -2312,6 +2329,19 @@ static void Ai_RefreshUi(HWND hwnd)
     }
 }
 
+// True while a menu is dropped (modal menu loop). Rebuilding the menu then would
+// free the owner-draw item data under the open menu → use-after-free crash, so
+// background results defer their refresh until the menu closes.
+static bool s_aiMenuTracking = false;
+static bool s_aiMenuRefreshPending = false;
+
+// Rebuild the window UI/menu now, or mark it pending if a menu is currently open.
+static void Ai_RequestMenuRefresh(HWND hwnd)
+{
+    if (s_aiMenuTracking) { s_aiMenuRefreshPending = true; return; }
+    Ai_RefreshUi(hwnd);
+}
+
 static std::wstring Ai_FormatElapsedTimeText(ULONGLONG elapsedMs)
 {
     std::wstring timeText = L"00:00:00";
@@ -2458,6 +2488,7 @@ static void Ai_BeginBusyState(HWND hwnd)
 {
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (!st) return;
+    st->capsSpinnerActive = false;   // a send now owns the spinner; don't let the caps check free it
     if (!st->spinner) {
         st->spinner = new SpinnerDialog(hwnd);
     }
@@ -2853,7 +2884,7 @@ struct AiManageDoneInfo {
     std::wstring finalLine;     // transcript line appended when the worker finishes
 };
 
-struct AiPopularModel { const wchar_t* name; const wchar_t* size; };
+struct AiPopularModel { const wchar_t* name; const wchar_t* size; bool vision; };
 
 // Braille spinner frames shown after the percent so a long download never looks frozen.
 static const wchar_t* const kAiSpinnerFrames[] = {
@@ -2871,22 +2902,30 @@ static constexpr UINT     kAiManageSpinnerMs = 120;
 static const std::vector<AiPopularModel>& Ai_PopularModelCandidates()
 {
     static const std::vector<AiPopularModel> list = {
-        { L"qwen2.5-coder:7b",         L"~4.7 GB" },
-        { L"qwen2.5-coder:3b",         L"~1.9 GB" },
-        { L"qwen2.5-coder:14b",        L"~9.0 GB" },
-        { L"qwen2.5-coder:32b",        L"~20 GB"  },
-        { L"qwen3-coder:latest",       L"~18 GB"  },
-        { L"deepseek-coder-v2:latest", L"~8.9 GB" },
-        { L"deepseek-r1:latest",       L"~5.2 GB" },
-        { L"codellama:latest",         L"~3.8 GB" },
-        { L"codegemma:latest",         L"~5.0 GB" },
-        { L"starcoder2:latest",        L"~1.7 GB" },
-        { L"llama3.2:latest",          L"~2.0 GB" },
-        { L"llama3.1:8b",              L"~4.9 GB" },
-        { L"mistral:latest",           L"~4.1 GB" },
-        { L"gemma3:latest",            L"~3.3 GB" },
-        { L"phi4:latest",              L"~9.1 GB" },
-        { L"llava:latest",             L"~4.7 GB" },
+        { L"qwen2.5-coder:7b",         L"~4.7 GB", false },
+        { L"qwen2.5-coder:3b",         L"~1.9 GB", false },
+        { L"qwen2.5-coder:14b",        L"~9.0 GB", false },
+        { L"qwen2.5-coder:32b",        L"~20 GB" , false },
+        { L"qwen3-coder:latest",       L"~18 GB" , false },
+        { L"deepseek-coder-v2:latest", L"~8.9 GB", false },
+        { L"deepseek-r1:latest",       L"~5.2 GB", false },
+        { L"codellama:latest",         L"~3.8 GB", false },
+        { L"codegemma:latest",         L"~5.0 GB", false },
+        { L"starcoder2:latest",        L"~1.7 GB", false },
+        { L"llama3.2:latest",          L"~2.0 GB", false },
+        { L"llama3.1:8b",              L"~4.9 GB", false },
+        { L"mistral:latest",           L"~4.1 GB", false },
+        { L"gemma3:latest",            L"~3.3 GB", true  },
+        { L"phi4:latest",              L"~9.1 GB", false },
+        // Vision (image-capable) models — capability verified via /api/show.
+        { L"qwen2.5vl:7b",             L"~6.0 GB", true  },
+        { L"qwen2.5vl:32b",            L"~21 GB" , true  },
+        { L"llama3.2-vision:latest",   L"~7.8 GB", true  },
+        { L"gemma3:12b",               L"~8.1 GB", true  },
+        { L"gemma3:27b",               L"~17 GB" , true  },
+        { L"llava:latest",             L"~4.7 GB", true  },
+        { L"minicpm-v:latest",         L"~5.5 GB", true  },
+        { L"moondream:latest",         L"~1.7 GB", true  },
     };
     return list;
 }
@@ -2976,6 +3015,18 @@ static void Ai_ManageProgress(void* context, const std::wstring& status,
 static void Ai_ManageInstallWorker(HWND hwnd, std::wstring model)
 {
     std::thread([hwnd, model]() {
+        // Fast pre-check against the public registry: a mistyped name/tag gets a
+        // clear "not found" instead of a long failed pull. Cloud ("-cloud")
+        // models live elsewhere, so skip the check for them.
+        if (model.find(L"-cloud") == std::wstring::npos &&
+            NeAiClient_IsModelDownloadable(model) == 0) {
+            auto* info = new AiManageDoneInfo();
+            info->ok = false;
+            info->finalLine = Ai_FormatLocaleText(Ne_Ls(L"AI_MANAGE_NOT_FOUND"), model);
+            if (IsWindow(hwnd)) PostMessageW(hwnd, WM_AI_MANAGE_DONE, 0, (LPARAM)info);
+            else delete info;
+            return;
+        }
         AiManageProgressContext pc;
         pc.hwnd = hwnd;
         std::wstring error;
@@ -3026,6 +3077,12 @@ static std::wstring Ai_ListBoxSelText(HWND hList)
 
 // The popular list shows "name<TAB>~size"; the real model name is stored as the
 // item's data (an index into Ai_PopularModelCandidates), so retrieve it there.
+// Popular-list downloadability cache: model name → 1 downloadable / 0 gone.
+// Filled in the background by Ai_ValidatePopularAsync (registry HEAD per model);
+// not-yet-checked/unknown names are simply absent and stay visible.
+static std::mutex s_popularDlMutex;
+static std::map<std::wstring, int> s_popularDl;
+
 static std::wstring Ai_PopularSelName(HWND hList)
 {
     int sel = (int)SendMessageW(hList, LB_GETCURSEL, 0, 0);
@@ -3069,12 +3126,46 @@ static void Ai_ManagePopulateLists(AiManageModelsState* st)
             bool have = false;
             for (const std::wstring& in : installed) if (in == list[i].name) { have = true; break; }
             if (have) continue;
+            // Hide candidates the registry confirmed are gone; keep positives and
+            // not-yet-checked/unknown ones (so nothing disappears while offline).
+            {
+                std::lock_guard<std::mutex> lk(s_popularDlMutex);
+                auto it = s_popularDl.find(list[i].name);
+                if (it != s_popularDl.end() && it->second == 0) continue;
+            }
             std::wstring disp = std::wstring(list[i].name) + L"\t" + list[i].size;
             int pos = (int)SendMessageW(st->hPopularList, LB_ADDSTRING, 0, (LPARAM)disp.c_str());
             if (pos >= 0) SendMessageW(st->hPopularList, LB_SETITEMDATA, (WPARAM)pos, (LPARAM)i);
         }
         if (st->hPopularSb) msb_sync(st->hPopularSb);
     }
+}
+
+// Verify each popular candidate against the Ollama registry off the UI thread and,
+// once any confirmed-missing models are known, rebuild the list so only the
+// downloadable (and not-yet-checked) ones remain. Results are cached per process.
+static void Ai_ValidatePopularAsync(HWND hwnd)
+{
+    if (!hwnd) return;
+    std::thread([hwnd]() {
+        const auto& list = Ai_PopularModelCandidates();
+        bool changed = false;
+        for (const auto& m : list) {
+            std::wstring name = m.name;
+            {
+                std::lock_guard<std::mutex> lk(s_popularDlMutex);
+                if (s_popularDl.count(name)) continue;   // already resolved
+            }
+            int dl = NeAiClient_IsModelDownloadable(name);
+            if (dl < 0) continue;   // unknown (offline/TLS) — retry on next open
+            {
+                std::lock_guard<std::mutex> lk(s_popularDlMutex);
+                s_popularDl[name] = dl;
+            }
+            if (dl == 0) changed = true;   // only a removal changes the visible list
+        }
+        if (changed && IsWindow(hwnd)) PostMessageW(hwnd, WM_AI_MANAGE_POPVALID, 0, 0);
+    }).detach();
 }
 
 
@@ -3092,6 +3183,104 @@ static void Ai_ManageSetBusy(AiManageModelsState* st, bool busy)
     if (hDel)  EnableWindow(hDel, en);
     if (hIns)  EnableWindow(hIns, en);
     if (hInsN) EnableWindow(hInsN, en);
+}
+
+// Owner-draw one row of the installed/popular model list: capability icon on the
+// left, model name, and (popular list) the ~size right-aligned.  The popular
+// list stores the model's index as item data; the installed list is looked up
+// against the vision cache.
+static void Ai_ManageDrawListItem(AiManageModelsState* st, const DRAWITEMSTRUCT* dis)
+{
+    if (!dis || dis->itemID == (UINT)-1) return;
+    HDC hdc = dis->hDC;
+    RECT rc = dis->rcItem;
+    bool selected = (dis->itemState & ODS_SELECTED) != 0;
+    FillRect(hdc, &rc, GetSysColorBrush(selected ? COLOR_HIGHLIGHT : COLOR_WINDOW));
+
+    wchar_t buf[256] = {};
+    SendMessageW(dis->hwndItem, LB_GETTEXT, dis->itemID, (LPARAM)buf);
+    std::wstring text = buf, name = buf, size;
+    size_t tab = text.find(L'\t');
+    if (tab != std::wstring::npos) { name = text.substr(0, tab); size = text.substr(tab + 1); }
+
+    int mark;
+    if (dis->CtlID == IDC_AI_MANAGE_POPULAR_LIST) {
+        const auto& list = Ai_PopularModelCandidates();
+        size_t idx = (size_t)dis->itemData;
+        mark = (idx < list.size() && list[idx].vision) ? 1 : 2;
+    } else {
+        mark = Ai_ModelMenuVisionMarker(name, false);
+    }
+
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, GetSysColor(selected ? COLOR_HIGHLIGHTTEXT : COLOR_WINDOWTEXT));
+
+    int iy = rc.top + ((rc.bottom - rc.top) - S(16)) / 2;
+    if (HICON hIcon = Ai_MenuMarkerIcon(mark))
+        DrawIconEx(hdc, rc.left + S(4), iy, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
+
+    RECT nameRc = rc;
+    nameRc.left += S(4) + S(16) + S(6);
+    nameRc.right -= S(6);
+    DrawTextW(hdc, name.c_str(), -1, &nameRc,
+        DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_END_ELLIPSIS);
+    if (!size.empty()) {
+        RECT sizeRc = rc; sizeRc.right -= S(8);
+        DrawTextW(hdc, size.c_str(), -1, &sizeRc,
+            DT_SINGLELINE | DT_VCENTER | DT_RIGHT | DT_NOPREFIX);
+    }
+    if (dis->itemState & ODS_FOCUS) {
+        RECT f = rc; InflateRect(&f, -S(1), -S(1)); DrawFocusRect(hdc, &f);
+    }
+}
+
+// Hover tooltip for the installed/popular model lists — same AI-owned tooltip the
+// Model menu uses ("Supports images" / "Text only"). Shown only when the hovered
+// row changes so it never flickers.
+static LRESULT CALLBACK Ai_ManageListSubclassProc(HWND hList, UINT msg, WPARAM wParam, LPARAM lParam,
+    UINT_PTR, DWORD_PTR ref)
+{
+    auto* st = (AiManageModelsState*)ref;
+    static HWND s_tipList = NULL;
+    static int  s_tipItem = -1;
+    switch (msg) {
+    case WM_MOUSEMOVE: {
+        int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+        DWORD res = (DWORD)SendMessageW(hList, LB_ITEMFROMPOINT, 0, MAKELPARAM(x, y));
+        int item = (HIWORD(res) == 0) ? (int)(short)LOWORD(res) : -1;
+        if (item >= (int)SendMessageW(hList, LB_GETCOUNT, 0, 0)) item = -1;
+        if (hList != s_tipList || item != s_tipItem) {
+            s_tipList = hList; s_tipItem = item;
+            if (item < 0) {
+                Ai_HideMenuTip();
+            } else {
+                int mark;
+                if (GetDlgCtrlID(hList) == IDC_AI_MANAGE_POPULAR_LIST) {
+                    const auto& list = Ai_PopularModelCandidates();
+                    LRESULT idx = SendMessageW(hList, LB_GETITEMDATA, (WPARAM)item, 0);
+                    mark = (idx >= 0 && (size_t)idx < list.size() && list[(size_t)idx].vision) ? 1 : 2;
+                } else {
+                    wchar_t buf[256] = {};
+                    SendMessageW(hList, LB_GETTEXT, item, (LPARAM)buf);
+                    mark = Ai_ModelMenuVisionMarker(buf, false);
+                }
+                HWND owner = (st && st->parent) ? st->parent : hList;
+                Ai_ShowMenuTip(owner, Ne_Ls(mark == 1 ? L"AI_TIP_SUPPORTS_IMAGES" : L"AI_TIP_TEXT_ONLY"));
+            }
+        }
+        TRACKMOUSEEVENT tme = { sizeof(tme), TME_LEAVE, hList, 0 };
+        TrackMouseEvent(&tme);
+        break;
+    }
+    case WM_MOUSELEAVE:
+        s_tipList = NULL; s_tipItem = -1;
+        Ai_HideMenuTip();
+        break;
+    case WM_NCDESTROY:
+        RemoveWindowSubclass(hList, Ai_ManageListSubclassProc, 0xA1);
+        break;
+    }
+    return DefSubclassProc(hList, msg, wParam, lParam);
 }
 
 static LRESULT CALLBACK Ai_ManageModelsWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -3129,19 +3318,14 @@ static LRESULT CALLBACK Ai_ManageModelsWndProc(HWND hwnd, UINT msg, WPARAM wPara
         if (hLblAvail && st->hFont) SendMessageW(hLblAvail, WM_SETFONT, (WPARAM)st->hFont, TRUE);
 
         st->hInstalledList = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"",
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_HASSTRINGS,
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_HASSTRINGS | LBS_OWNERDRAWFIXED,
             S(12), S(64), S(320), S(180), hwnd, (HMENU)(UINT_PTR)IDC_AI_MANAGE_INSTALLED_LIST, GetModuleHandleW(NULL), NULL);
         if (st->hInstalledList && st->hFont) SendMessageW(st->hInstalledList, WM_SETFONT, (WPARAM)st->hFont, TRUE);
 
         st->hPopularList = CreateWindowExW(WS_EX_CLIENTEDGE, L"LISTBOX", L"",
-            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_HASSTRINGS | LBS_USETABSTOPS,
+            WS_CHILD | WS_VISIBLE | WS_VSCROLL | LBS_NOTIFY | LBS_HASSTRINGS | LBS_OWNERDRAWFIXED,
             S(356), S(64), S(320), S(180), hwnd, (HMENU)(UINT_PTR)IDC_AI_MANAGE_POPULAR_LIST, GetModuleHandleW(NULL), NULL);
         if (st->hPopularList && st->hFont) SendMessageW(st->hPopularList, WM_SETFONT, (WPARAM)st->hFont, TRUE);
-        {
-            // One tab stop clears the longest model name so the "~size" column aligns.
-            int tab = 116;   // listbox dialog units (4 units ≈ one average char)
-            SendMessageW(st->hPopularList, LB_SETTABSTOPS, 1, (LPARAM)&tab);
-        }
 
         CreateWindowExW(0, L"BUTTON", Ne_Ls(L"AI_MANAGE_BTN_DELETE"),
             WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
@@ -3184,7 +3368,12 @@ static LRESULT CALLBACK Ai_ManageModelsWndProc(HWND hwnd, UINT msg, WPARAM wPara
         st->hPopularSb   = msb_attach(st->hPopularList,   MSB_VERTICAL);
         st->hLogSb       = msb_attach(st->hLog,           MSB_VERTICAL);
 
+        // Per-row vision/text hover tooltip on both model lists.
+        SetWindowSubclass(st->hInstalledList, Ai_ManageListSubclassProc, 0xA1, (DWORD_PTR)st);
+        SetWindowSubclass(st->hPopularList,   Ai_ManageListSubclassProc, 0xA1, (DWORD_PTR)st);
+
         Ai_ManagePopulateLists(st);
+        Ai_ValidatePopularAsync(hwnd);   // prune any models the registry no longer has
         return 0;
     }
     case WM_COMMAND: {
@@ -3250,6 +3439,9 @@ static LRESULT CALLBACK Ai_ManageModelsWndProc(HWND hwnd, UINT msg, WPARAM wPara
         delete text;
         return 0;
     }
+    case WM_AI_MANAGE_POPVALID:
+        if (st) Ai_ManagePopulateLists(st);   // registry validation pruned the list
+        return 0;
     case WM_TIMER:
         if (st && wParam == kAiManageSpinnerTimerId && st->spinnerActive) {
             st->spinnerFrame++;
@@ -3272,14 +3464,28 @@ static LRESULT CALLBACK Ai_ManageModelsWndProc(HWND hwnd, UINT msg, WPARAM wPara
         return 0;
     }
     case WM_DRAWITEM:
-        if (st && st->dd) {
+        if (st) {
             DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
-            if (dis && Ai_ButtonIndexById(st->dd, dis->CtlID) >= 0) {
+            if (dis && dis->CtlType == ODT_LISTBOX &&
+                (dis->CtlID == IDC_AI_MANAGE_POPULAR_LIST || dis->CtlID == IDC_AI_MANAGE_INSTALLED_LIST)) {
+                Ai_ManageDrawListItem(st, dis);
+                return TRUE;
+            }
+            if (st->dd && dis && Ai_ButtonIndexById(st->dd, dis->CtlID) >= 0) {
                 Ai_DrawButton(dis, st->dd);
                 return TRUE;
             }
         }
         break;
+    case WM_MEASUREITEM: {
+        MEASUREITEMSTRUCT* mis = (MEASUREITEMSTRUCT*)lParam;
+        if (mis && mis->CtlType == ODT_LISTBOX &&
+            (mis->CtlID == IDC_AI_MANAGE_POPULAR_LIST || mis->CtlID == IDC_AI_MANAGE_INSTALLED_LIST)) {
+            mis->itemHeight = S(20);
+            return TRUE;
+        }
+        break;
+    }
     case WM_CLOSE:
         if (st && st->busy) { MessageBeep(MB_ICONASTERISK); return 0; }
         DestroyWindow(hwnd);
@@ -3366,6 +3572,7 @@ static void Ai_ShowManageModelsDialog(HWND parent)
 static HWND  s_hAiTipWnd = NULL;
 static HFONT s_hAiTipFont = NULL;
 static std::wstring s_aiTipText;
+static bool s_aiTipMultiline = false;   // paint wraps only when the tip is truly multi-line
 
 static LRESULT CALLBACK Ai_MenuTipWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -3379,7 +3586,11 @@ static LRESULT CALLBACK Ai_MenuTipWndProc(HWND hwnd, UINT msg, WPARAM wParam, LP
         SetTextColor(hdc, RGB(0, 0, 0));
         RECT tr = rc;
         tr.left += S(8); tr.top += S(6); tr.right -= S(8); tr.bottom -= S(6);
-        DrawTextW(hdc, s_aiTipText.c_str(), -1, &tr, DT_LEFT | DT_WORDBREAK | DT_NOPREFIX);
+        // Single-line tips are drawn without word-break so the full localized
+        // string shows (word-break in a tight rect clips the last word).
+        UINT fmt = DT_LEFT | DT_NOPREFIX |
+                   (s_aiTipMultiline ? DT_WORDBREAK : (DT_SINGLELINE | DT_VCENTER));
+        DrawTextW(hdc, s_aiTipText.c_str(), -1, &tr, fmt);
         if (old) SelectObject(hdc, old);
         EndPaint(hwnd, &ps);
         return 0;
@@ -3446,10 +3657,13 @@ static void Ai_ShowMenuTip(HWND owner, const std::wstring& text)
     RECT one = { 0, 0, 0, 0 };
     DrawTextW(hdc, text.c_str(), -1, &one, DT_CALCRECT | DT_SINGLELINE | DT_NOPREFIX);
     int w, h;
-    if ((one.right - one.left) + S(16) <= maxW) {
+    bool forceWrap = text.find(L'\n') != std::wstring::npos;
+    if (!forceWrap && (one.right - one.left) + S(16) <= maxW) {
+        s_aiTipMultiline = false;
         w = (one.right - one.left) + S(16);
         h = (one.bottom - one.top) + S(12);
     } else {
+        s_aiTipMultiline = true;
         RECT calc = { 0, 0, maxW - S(16), 0 };
         DrawTextW(hdc, text.c_str(), -1, &calc, DT_CALCRECT | DT_WORDBREAK | DT_NOPREFIX);
         w = (calc.right - calc.left) + S(16);
@@ -3768,6 +3982,174 @@ static std::vector<std::wstring> Ai_GetModelCandidates()
     return models;
 }
 
+// ── Model vision capability: cache + DB persistence + background refresh ──────
+// Cached per-model image capability.  1 = supports images (vision), 0 = text
+// only.  Unknown models are simply absent.  Written on the UI thread (after a
+// background worker hands results over via WM_AI_MODELCAPS_READY) and read while
+// building the Model menu, so a mutex guards it against the worker's snapshot.
+static std::mutex s_modelCapsMutex;
+static std::map<std::wstring, int> s_modelCaps;
+static bool s_modelCapsLoaded = false;
+static HICON s_hIconVision = NULL;     // shell32.dll #318 — image-capable marker
+static HICON s_hIconTextOnly = NULL;   // shell32.dll #260 — text-only marker
+
+// Heuristic used only for a provisional marker before the daemon has been asked
+// (first run) and for cloud models, which are not on the local daemon.
+static bool Ai_ModelNameLooksVision(const std::wstring& model)
+{
+    std::wstring l = model;
+    for (auto& c : l) c = (wchar_t)towlower(c);
+    static const wchar_t* keys[] = {
+        L"llava", L"bakllava", L"vision", L"-vl", L"vl:", L"qwen2.5vl",
+        L"qwen2-vl", L"minicpm-v", L"moondream", L"llama3.2-vision",
+    };
+    for (const wchar_t* k : keys) if (l.find(k) != std::wstring::npos) return true;
+    return false;
+}
+
+// Serialise the cache to the profile DB as lines "model\tV" / "model\tT".
+static void Ai_SaveModelCaps()
+{
+    std::string blob;
+    {
+        std::lock_guard<std::mutex> lk(s_modelCapsMutex);
+        for (const auto& kv : s_modelCaps) {
+            blob += Ai_WideToUtf8(kv.first);
+            blob += '\t';
+            blob += (kv.second == 1) ? 'V' : 'T';
+            blob += '\n';
+        }
+    }
+    NeProfiles_SetStrSetting("ai.model_caps", blob);
+}
+
+// Load the cache from the profile DB once per process.
+static void Ai_LoadModelCaps()
+{
+    if (s_modelCapsLoaded) return;
+    s_modelCapsLoaded = true;
+    std::string blob;
+    if (!NeProfiles_GetStrSetting("ai.model_caps", "", blob) || blob.empty()) return;
+    std::lock_guard<std::mutex> lk(s_modelCapsMutex);
+    size_t pos = 0;
+    while (pos < blob.size()) {
+        size_t nl = blob.find('\n', pos);
+        std::string line = blob.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos);
+        pos = (nl == std::string::npos) ? blob.size() : nl + 1;
+        size_t tab = line.find('\t');
+        if (tab == std::string::npos || tab == 0 || tab + 1 >= line.size()) continue;
+        std::wstring model = Ai_Utf8ToWide(line.substr(0, tab));
+        s_modelCaps[model] = (line[tab + 1] == 'V') ? 1 : 0;
+    }
+}
+
+// Menu marker for a model: 1 = images, 2 = text only.  Uses the authoritative
+// cache when present, else a name heuristic so every item still shows a marker.
+static int Ai_ModelMenuVisionMarker(const std::wstring& model, bool /*isCloud*/)
+{
+    {
+        std::lock_guard<std::mutex> lk(s_modelCapsMutex);
+        auto it = s_modelCaps.find(model);
+        if (it != s_modelCaps.end()) return it->second == 1 ? 1 : 2;
+    }
+    return Ai_ModelNameLooksVision(model) ? 1 : 2;
+}
+
+static HICON Ai_LoadShellSmallIcon(int index)
+{
+    HICON hSmall = NULL;
+    ExtractIconExW(L"shell32.dll", index, NULL, &hSmall, 1);
+    return hSmall;
+}
+
+static void Ai_EnsureMenuIcons()
+{
+    if (!s_hIconVision)   s_hIconVision   = Ai_LoadShellSmallIcon(318);
+    if (!s_hIconTextOnly) s_hIconTextOnly = Ai_LoadShellSmallIcon(260);
+}
+
+// Shell icon for a capability marker (1 = images, 2 = text only); NULL otherwise.
+static HICON Ai_MenuMarkerIcon(int mark)
+{
+    if (mark == 0) return NULL;
+    Ai_EnsureMenuIcons();
+    return (mark == 1) ? s_hIconVision : s_hIconTextOnly;
+}
+
+static void Ai_DestroyMenuIcons()
+{
+    if (s_hIconVision)   { DestroyIcon(s_hIconVision);   s_hIconVision = NULL; }
+    if (s_hIconTextOnly) { DestroyIcon(s_hIconTextOnly); s_hIconTextOnly = NULL; }
+}
+
+// Query every locally-installed model's vision capability off the UI thread and,
+// when anything changed (or on the first run), hand the results to the UI thread
+// via WM_AI_MODELCAPS_READY.  Runs again in the background on every window open
+// so a model that gains or loses image support is eventually reflected.
+static void Ai_RefreshModelCapsAsync(HWND hwnd, bool firstRun)
+{
+    if (!hwnd) return;
+    std::thread([hwnd, firstRun]() {
+        std::vector<std::wstring> installed;
+        NeAiClient_ListOllamaModels(installed);
+
+        std::map<std::wstring, int> snapshot;
+        {
+            std::lock_guard<std::mutex> lk(s_modelCapsMutex);
+            snapshot = s_modelCaps;
+        }
+
+        auto* batch = new AiModelCapsBatch();
+        batch->firstRun = firstRun;
+        for (std::wstring model : installed) {
+            Ai_NormalizeModelNameLocal(model);
+            int vision = NeAiClient_QueryModelVision(model);
+            if (vision < 0) continue;   // unreachable / unknown — keep old value
+            batch->items.push_back({ model, vision });
+            auto it = snapshot.find(model);
+            if (it == snapshot.end() || it->second != vision) batch->changed = true;
+        }
+
+        if (!IsWindow(hwnd)) { delete batch; return; }
+        if (batch->changed || firstRun) {
+            PostMessageW(hwnd, WM_AI_MODELCAPS_READY, 0, (LPARAM)batch);
+        } else {
+            delete batch;
+        }
+    }).detach();
+}
+
+// Resolve image capability for CLOUD models via ollama.com/api/show. The caller
+// passes a UI-thread snapshot of the cloud model names (Ai_CloudModelCandidates);
+// results are merged into the same cache/menu through WM_AI_MODELCAPS_READY.
+static void Ai_RefreshCloudCapsAsync(HWND hwnd, std::vector<std::wstring> cloudModels)
+{
+    if (!hwnd || cloudModels.empty()) return;
+
+    // Only query models we have NOT resolved yet. Without this, every window open
+    // fired ~18 ollama.com/api/show calls, which throttled/contended with the
+    // user's actual cloud send (the whole point is a one-time, cached lookup).
+    std::vector<std::wstring> todo;
+    {
+        std::lock_guard<std::mutex> lk(s_modelCapsMutex);
+        for (auto& cm : cloudModels)
+            if (!s_modelCaps.count(cm)) todo.push_back(cm);
+    }
+    if (todo.empty()) return;
+
+    std::thread([hwnd, todo = std::move(todo)]() {
+        auto* batch = new AiModelCapsBatch();
+        for (const std::wstring& cm : todo) {
+            int vision = NeAiClient_QueryCloudModelVision(cm);
+            if (vision < 0) continue;
+            batch->items.push_back({ cm, vision });
+            batch->changed = true;
+        }
+        if (!IsWindow(hwnd) || !batch->changed) { delete batch; return; }
+        PostMessageW(hwnd, WM_AI_MODELCAPS_READY, 0, (LPARAM)batch);
+    }).detach();
+}
+
 static std::wstring Ai_ModelMenuLabel(const std::wstring& model, AiMenuRole role)
 {
     std::wstring label = model;
@@ -3804,6 +4186,11 @@ static void Ai_AddModelMenuItem(HMENU hMenu, const std::wstring& model, AiMenuRo
         flags |= MF_GRAYED;
     }
     Ai_AppendMenuOD(hMenu, flags, entry.id, Ai_ModelMenuLabel(model, role).c_str(), false);
+    // Tag the owner-draw item with its image-capability marker so the menu draws
+    // the right shell icon (and the hover tooltip can describe it).
+    if (!s_aiMenuItems.empty()) {
+        s_aiMenuItems.back()->visionMark = Ai_ModelMenuVisionMarker(model, isCloud);
+    }
 }
 
 static const AiModelMenuItem* Ai_FindModelMenuItem(UINT id)
@@ -3890,13 +4277,24 @@ static bool Ai_DrawMenuItem(HWND hwnd, const DRAWITEMSTRUCT* dis)
             if (oldChkFont) SelectObject(dis->hDC, oldChkFont);
         }
         textRc.left += S(20);
-        textRc.right -= S(14);
+        int iconReserve = (d->visionMark != 0) ? (S(16) + S(10)) : 0;
+        textRc.right -= S(14) + iconReserve;
         DrawTextW(dis->hDC, main.c_str(), -1, &textRc, DT_SINGLELINE | DT_VCENTER | DT_LEFT | DT_NOPREFIX);
         if (!accel.empty()) {
             RECT accelRc = rc;
             accelRc.left += S(18);
             accelRc.right -= S(14);
             DrawTextW(dis->hDC, accel.c_str(), -1, &accelRc, DT_SINGLELINE | DT_VCENTER | DT_RIGHT | DT_NOPREFIX);
+        }
+        // Image-capability marker, right-aligned (model items have no accelerator).
+        if (d->visionMark != 0) {
+            Ai_EnsureMenuIcons();
+            HICON hIcon = (d->visionMark == 1) ? s_hIconVision : s_hIconTextOnly;
+            if (hIcon) {
+                int iy = rc.top + ((rc.bottom - rc.top) - S(16)) / 2;
+                int ix = rc.right - S(16) - S(8);
+                DrawIconEx(dis->hDC, ix, iy, hIcon, S(16), S(16), 0, NULL, DI_NORMAL);
+            }
         }
     }
 
@@ -5706,6 +6104,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         st->hPaneFont = Ai_MakePaneFont(hwnd);
         Ai_ApplyButtons(st);
 
+        Ai_LoadModelCaps();   // seed image/text markers from the DB before the first menu build
         SetMenu(hwnd, Ai_BuildMenu(st));
 
         HWND hHdr = CreateWindowExW(0, L"STATIC", L"",
@@ -5820,6 +6219,28 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         // arrives (WM_AI_CLOUDMODELS_READY) the menu is rebuilt so retired models
         // drop off and newly-released ones appear.
         Ai_RefreshCloudModelsAsync(hwnd);
+        // Resolve image capability for the cloud models too (ollama.com/api/show).
+        Ai_RefreshCloudCapsAsync(hwnd, Ai_CloudModelCandidates());
+        // Resolve each local model's image capability. On the very first run the
+        // cache is empty, so show a brief spinner while the daemon is queried;
+        // afterwards it is cached in the DB and re-checked silently in the
+        // background (a model could gain or lose vision support).
+        {
+            bool firstRun;
+            {
+                std::lock_guard<std::mutex> lk(s_modelCapsMutex);
+                firstRun = s_modelCaps.empty();
+            }
+            if (firstRun) {
+                if (!st->spinner) st->spinner = new SpinnerDialog(hwnd);
+                if (st->spinner) {
+                    st->capsSpinnerActive = true;
+                    st->spinner->SetTitle(Ne_Ls(L"AI_WAIT_TITLE"));
+                    st->spinner->Show(Ne_Ls(L"AI_CHECKING_MODELS"));
+                }
+            }
+            Ai_RefreshModelCapsAsync(hwnd, firstRun);
+        }
         SetFocus(hInput);
         return 0;
     }
@@ -5881,6 +6302,9 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
     case WM_EXITSIZEMOVE:
         if (s_aiGeometryReady && !s_aiClosing) Ai_SaveWinPlacement(hwnd);
         return 0;
+    case WM_ENTERMENULOOP:
+        s_aiMenuTracking = true;
+        break;
     case WM_MENUSELECT: {
         // Hover help for the "Add API key" menu item, using a tooltip OWNED by
         // the AI window so it never steals activation to the editor.
@@ -5891,13 +6315,23 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             size_t p;
             while ((p = msg.find(L"\\n")) != std::wstring::npos) msg.replace(p, 2, L"\n");
             Ai_ShowMenuTip(hwnd, msg);
+        } else if (flags != 0xFFFF && !(flags & MF_POPUP) &&
+                   Ai_FindModelMenuItem(item) != NULL) {
+            const AiModelMenuItem* mi = Ai_FindModelMenuItem(item);
+            int mark = Ai_ModelMenuVisionMarker(mi->model, mi->isCloud);
+            Ai_ShowMenuTip(hwnd, Ne_Ls(mark == 1 ? L"AI_TIP_SUPPORTS_IMAGES" : L"AI_TIP_TEXT_ONLY"));
         } else {
             Ai_HideMenuTip();
         }
         return 0;
     }
     case WM_EXITMENULOOP:
+        s_aiMenuTracking = false;
         Ai_HideMenuTip();
+        if (s_aiMenuRefreshPending) {   // a background result arrived while the menu was open
+            s_aiMenuRefreshPending = false;
+            Ai_RefreshUi(hwnd);
+        }
         break;
     case WM_COMMAND:
         if (st && HIWORD(wParam) == EN_CHANGE) {
@@ -6141,10 +6575,39 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         if (list) {
             if (*list != s_cloudModelsLive) {
                 s_cloudModelsLive = std::move(*list);
-                if (st) Ai_RefreshUi(hwnd);   // rebuilds the menu from the new list
+                if (st) Ai_RequestMenuRefresh(hwnd);   // rebuilds the menu from the new list
             }
             delete list;
         }
+        // Now that the live cloud list is known, resolve each model's vision cap.
+        Ai_RefreshCloudCapsAsync(hwnd, Ai_CloudModelCandidates());
+        return 0;
+    }
+    case WM_AI_MODELCAPS_READY: {
+        // Background vision-capability check finished. Merge results, persist them
+        // and (when something changed or this was the first run) rebuild the menu
+        // so the image/text markers are correct.
+        auto* batch = (AiModelCapsBatch*)lParam;
+        bool firstRun = false, changed = false;
+        if (batch) {
+            firstRun = batch->firstRun;
+            changed  = batch->changed;
+            if (!batch->items.empty()) {
+                std::lock_guard<std::mutex> lk(s_modelCapsMutex);
+                for (const auto& r : batch->items) s_modelCaps[r.model] = r.vision;
+            }
+            delete batch;
+        }
+        if (changed) Ai_SaveModelCaps();
+        if (firstRun && st && st->capsSpinnerActive) {
+            st->capsSpinnerActive = false;
+            if (st->spinner) {
+                st->spinner->Hide();
+                delete st->spinner;
+                st->spinner = NULL;
+            }
+        }
+        if ((changed || firstRun) && st) Ai_RequestMenuRefresh(hwnd);
         return 0;
     }
     case WM_AI_SEND_APPEND: {
@@ -6247,6 +6710,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             ReleaseDC(hwnd, hdc);
             mis->itemHeight = (rc.bottom - rc.top) + (d->isBar ? S(6) : S(8));
             mis->itemWidth = (rc.right - rc.left) + (d->isBar ? S(20) : S(40)) + accelW;
+            if (d->visionMark != 0) mis->itemWidth += S(16) + S(10);   // room for the capability icon
             return TRUE;
         }
         break;
@@ -6286,6 +6750,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
             if (st->hFont) DeleteObject(st->hFont);
             if (st->hPaneFont) DeleteObject(st->hPaneFont);
             if (s_hAiMenuFont) { DeleteObject(s_hAiMenuFont); s_hAiMenuFont = NULL; }
+            Ai_DestroyMenuIcons();
             Ai_ClearMenuStorage();
             if (st->hLog) {
                 AiCopyCode_HandleDestroy(st->hLog);
@@ -6336,6 +6801,8 @@ void Ne_ShowAiWindow(HWND parent)
         if (st) Ai_ReconcileSignInState(st);   // pick up terminal signin/signout
         Ai_RefreshUi(s_hwndAiWindow);
         Ai_RefreshCloudModelsAsync(s_hwndAiWindow); // refresh cloud model list on reopen
+        Ai_RefreshModelCapsAsync(s_hwndAiWindow, false); // silently re-check image support
+        Ai_RefreshCloudCapsAsync(s_hwndAiWindow, Ai_CloudModelCandidates()); // cloud vision caps
         ShowWindow(s_hwndAiWindow, SW_SHOW);
         SetForegroundWindow(s_hwndAiWindow);
         if (HWND hInput = GetDlgItem(s_hwndAiWindow, IDC_AI_INPUT))

@@ -179,6 +179,28 @@
     (llava, llama3.2-vision, qwen2.5vl, ...) is required to read the picture.
     NeAiClient_AskOllama (the non-streaming wrapper) forwards to this function.
 
+  int NeAiClient_QueryModelVision(model)
+
+    Asks the LOCAL daemon (POST localhost:11434/api/show) whether a model can
+    accept images, by testing the returned "capabilities" list for "vision".
+    Returns 1 = vision, 0 = text only, -1 = unknown (daemon unreachable / model
+    not found). One network call, no caching (the caller caches the result).
+
+  int NeAiClient_QueryCloudModelVision(model)
+
+    Same question for an Ollama CLOUD model, asking https://ollama.com/api/show
+    (PUBLIC — no API key required). Accepts the app's "-cloud" routing name and
+    retries without the suffix if needed. Returns 1 / 0 / -1 as above.
+
+  int NeAiClient_IsModelDownloadable(model)
+
+    Checks whether a model:tag can be pulled, via a HEAD request to the Ollama
+    registry (registry.ollama.ai/v2/<ns>/<name>/manifests/<tag>; defaults
+    ns=library, tag=latest). Returns 1 = downloadable (HTTP 200), 0 = not found
+    (404), -1 = unknown (network/TLS failure). Cloud "-cloud" models are NOT in
+    this registry. Used to fail a mistyped install fast and to prune the popular
+    list to real entries.
+
 ================================================================================
 5. INTEGRATION RULES
 ================================================================================

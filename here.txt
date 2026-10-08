@@ -1,29 +1,80 @@
 NSBEdit handover notes
-Written: 2026-06-28
+Written: 2026-10-08
 
-Current status
-- The AI answer now renders in a single RichEdit page and the visible layout is close to the target.
-- The query, the prose before the first code block, the first code block, and the Copy code header are all rendering again.
-- The code block spacing was just tuned with extra blank lines before the code preamble, and that change is stable.
-- The remaining visible problem is scrolling: the rendered page still does not properly track content height with the scrollbar, and the live streaming surface should not show scrolling at all.
-- The next safe step is to finish the scroll behavior separately from the render ordering so the page can be checked all the way to the bottom without disturbing the achieved layout.
+=====================================================================
+NON-MILESTONE BUILD — HAS A SERIOUS CLOUD-SEND REGRESSION
+=====================================================================
 
-What was fixed in this session
-- The build still succeeds with the current changes.
-- The render path now shows the query, the text before the first code block, and the first code block in the final page.
-- The Copy code affordance remains visible on the code block.
-- The code spacing and the small blank-line separation before the code preamble are working.
+WHAT THIS BUILD ADDS (all working)
+- Vision/image-capability markers in the AI Model menu: shell32.dll icon
+  #318 (image-capable) / #260 (text-only), with an AI-owned hover tooltip
+  "Supports images" / "Text only" (Ai_ShowMenuTip, NOT the shared tooltip).
+- Local caps from POST localhost:11434/api/show (capabilities contains
+  "vision"); cloud caps from POST https://ollama.com/api/show (PUBLIC, no
+  auth). Cached in the profile DB key "ai.model_caps" (Ai_LoadModelCaps/
+  Ai_SaveModelCaps), in-memory s_modelCaps (s_modelCapsMutex).
+- Manage Models dialog: both lists owner-drawn with the same icons + a
+  per-row hover tooltip; popular list has accurate AiPopularModel.vision
+  flags and more vision models; registry downloadability check
+  (NeAiClient_IsModelDownloadable = HEAD registry.ollama.ai/v2/..) prunes
+  dead entries and fails a bad "Install by name" fast (AI_MANAGE_NOT_FOUND).
+- Menu tooltip truncation fixed (single-line draw; "Kun tekst" shows fully).
+- Menu-rebuild-while-open CRASH fixed (Ai_RequestMenuRefresh defers until
+  WM_EXITMENULOOP; s_aiMenuTracking).
+- 4 new locale keys in all 14 embedded locales.
 
-What needs fixing next
-- Disable scrolling during streaming and remove the dormant scrollbar from the live streaming pane.
-- Make the rendered RichEdit scrollbar actually track the document height so the bottom of the answer can be reached.
-- Keep the current render order intact while fixing scrolling; do not reintroduce the earlier child-box layout.
-- After the scroll behavior is corrected, then refresh the release notes, version stamp, README, and API list together.
+THE REGRESSION (THE "serious error" — NOT fixed)
+- SYMPTOM: cloud sends (even text-only, e.g. "show me tiny c++ code") take
+  minutes (observed 6:41) in THIS build. The SAME query on the last good
+  milestone answers in ~2 s.
+- CONFIRMED baseline: milestone v2026.10.03.09 "Edition/Utgave 4"
+  (published 03.10.2026 09:59) = ~2 s cloud reply. That is the known-good.
+- The cache-first change to the cloud caps worker (query only uncached
+  models) did NOT fix it — still slow after that edit.
+- LEADING HYPOTHESIS: the new cloud vision-capability probe
+  (Ai_RefreshCloudCapsAsync -> NeAiClient_QueryCloudModelVision, ollama.com
+  /api/show) still contends with / throttles the user's cloud send. Each
+  call opens its OWN WinHTTP session with WINHTTP_ACCESS_TYPE_DEFAULT_PROXY
+  (per-session proxy/WPAD resolution). On a FRESH install the cache is empty
+  so the first window-open fires ~18 of these, racing the first send.
+- THINGS TO TRY NEXT (in order):
+  1. Make cloud caps FULLY LAZY: query a cloud model's vision only when it
+     is hovered/selected (WM_MENUSELECT), zero background burst. Simplest
+     safe fix; cloud markers fill in on first hover.
+  2. Reuse ONE WinHTTP session for all caps probes (avoid 18x proxy/TLS).
+  3. Delay the caps probe well after open AND skip while a send is active
+     (gate on Ai_BeginBusyState / a g_aiSendActive flag).
+  4. If still slow, TEMPORARILY disable Ai_RefreshCloudCapsAsync entirely
+     (fall back to the name heuristic for cloud markers) and re-measure to
+     PROVE the probe is the cause before investing more.
+  5. Confirm it is NOT the project-context build (Ai_BuildProjectContext,
+     "Searched NNNN files") or chunked map-reduce being wrongly triggered
+     (spinner showing a climbing %). Compare request body size vs the good
+     milestone.
 
-Suggested continuance
-- Resume in ollama_ai.cpp from the answer-host scroll handling and the RichEdit attachment points.
-- Keep the renderer itself stable; only touch the scroll behavior needed to make the bottom reachable.
-- After that, do the release/version/documentation refresh in one pass.
+SECONDARY OPEN ISSUE (image not seen by cloud model)
+- A pasted image shows inline in the query, but cloud vision models answer
+  "I don't see any image" — the image is reaching neither the render log nor
+  the model (images[] appears empty at send OR cloud /api/generate ignores
+  top-level images). Verify st->pendingImages is populated on paste
+  (ollama_ai.cpp ~L4514) and that Ai_CloudAskStream actually sends images[].
+  Note: ollama.com/api/generate needs auth (401 without key), so test with
+  the stored key or consider /api/chat with per-message images for cloud.
 
-Release notes
-- MyStyle remains the main documentation tree for API_INTERNALS/API work.
+GIT ROLLBACK PLAN (if needed)
+- LAST KNOWN-GOOD milestone: v2026.10.03.09 "Edition 4" = commit f7280fa
+  (2026-10-03). Cloud reply ~2 s.
+- Strategy: check out f7280fa and continue FORWARD, testing each build until
+  cloud send goes slow; the version just BEFORE the first slow one is the
+  real last-good. Candidates to bisect forward:
+    f7280fa  2026-10-03  v2026.10.03.09 Edition 4   (KNOWN GOOD, ~2 s)
+    b89231c  2026-10-04  v2026.10.04.11  (project search + DuckDuckGo)
+    1db77c2  2026-10-05  v2026.10.05.09  (clickable URLs)  <- this build sits on top
+    (current WIP = vision markers, has the regression)
+- Rollback command idea: git checkout f7280fa  (or revert the vision-caps
+  commit once identified).
+
+RELEASE NOTES / CONVENTIONS
+- MyStyle remains the main documentation tree for API_INTERNALS/API work
+  (follows the user across projects).
+- This build is committed as NOT a milestone (serious cloud-send regression).

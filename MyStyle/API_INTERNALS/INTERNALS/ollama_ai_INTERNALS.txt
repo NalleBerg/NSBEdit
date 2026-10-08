@@ -643,3 +643,68 @@ v2026.08.26.08 - Query-history navigation both ways + query box auto-focus
     frame only fires when the frame itself gets focus, so clicking the answer pane is
     unaffected.)
 
+
+v2026.10.08.12 - Image-capability markers (local + cloud) + smarter install dialog.
+                 NOT A MILESTONE: open cloud-send slowdown regression (see below).
+  - CAPABILITY SOURCE: a model's image support = its /api/show "capabilities" array
+    contains "vision". Local: NeAiClient_QueryModelVision (POST localhost:11434/api/show,
+    1/0/-1). Cloud: NeAiClient_QueryCloudModelVision (POST https://ollama.com/api/show -
+    PUBLIC, no key; accepts the "-cloud" name, retries without the suffix). Both use the
+    shared Ai_ShowBodyHasVision parser (scopes the "vision" test to the [...] after
+    "capabilities"). ollama.com/api/tags is ALSO public (no key).
+  - CACHE: std::map<wstring,int> s_modelCaps (s_modelCapsMutex), 1=vision/0=text; absent
+    = unknown. Persisted to profile DB key "ai.model_caps" (lines "model\tV|T") via
+    Ai_LoadModelCaps (WM_CREATE, before first menu build) / Ai_SaveModelCaps (on change).
+  - MARKERS: AiMenuItemData.visionMark (0 none/1 image/2 text). Ai_ModelMenuVisionMarker
+    reads the cache, else Ai_ModelNameLooksVision heuristic. Owner-draw (Ai_DrawMenuItem)
+    right-aligns a shell32.dll icon: #318 image, #260 text (ExtractIconExW small, cached
+    HICON s_hIconVision/s_hIconTextOnly via Ai_MenuMarkerIcon, DrawIconEx S(16), freed in
+    WM_DESTROY/Ai_DestroyMenuIcons). WM_MEASUREITEM widens model items by S(16)+S(10).
+    Hover tooltip = the AI-OWNED Ai_ShowMenuTip (NOT the shared singleton) in WM_MENUSELECT
+    -> AI_TIP_SUPPORTS_IMAGES / AI_TIP_TEXT_ONLY.
+  - BACKGROUND REFRESH: Ai_RefreshModelCapsAsync(hwnd, firstRun) (local, every open) +
+    Ai_RefreshCloudCapsAsync(hwnd, Ai_CloudModelCandidates()) (cloud; now CACHE-FIRST -
+    only queries uncached names). Both post WM_AI_MODELCAPS_READY (WM_APP+80) with an
+    AiModelCapsBatch{items,firstRun,changed}; handler merges+saves+defers UI refresh.
+    First run (empty cache) shows the spinner with AI_CHECKING_MODELS (st->capsSpinnerActive;
+    Ai_BeginBusyState clears it so a send owns the spinner).
+  - TOOLTIP TRUNCATION FIX: Ai_MenuTipWndProc painted DT_WORDBREAK in a rect whose inner
+    width == the single-line measured width, so "Kun tekst" wrapped+clipped to "Kun".
+    s_aiTipMultiline: Ai_ShowMenuTip sets it true only when text has '\n' or exceeds maxW;
+    paint uses DT_SINGLELINE|DT_VCENTER otherwise (full length).
+  - MENU-REBUILD CRASH FIX (use-after-free): a background result calling Ai_RefreshUi
+    (-> Ai_BuildMenu -> Ai_ClearMenuStorage frees AiMenuItemData + DestroyMenu(oldMenu))
+    WHILE the menu was open crashed on the next WM_DRAWITEM/WM_MENUSELECT. Fix:
+    s_aiMenuTracking (WM_ENTERMENULOOP/EXITMENULOOP) + Ai_RequestMenuRefresh defers
+    (s_aiMenuRefreshPending) and flushes on WM_EXITMENULOOP. Both background handlers
+    (WM_AI_MODELCAPS_READY, WM_AI_CLOUDMODELS_READY) route through it. LESSON: never
+    SetMenu/DestroyMenu/rebuild owner-draw menu storage during a menu modal loop.
+  - MANAGE DIALOG: both lists LBS_OWNERDRAWFIXED (Ai_ManageDrawListItem: icon + name +
+    right-aligned ~size; WM_MEASUREITEM S(20); WM_DRAWITEM ODT_LISTBOX). Popular vision
+    from new AiPopularModel.vision bool (expanded with qwen2.5vl:7b/32b, llama3.2-vision,
+    gemma3:12b/27b, llava, minicpm-v, moondream); installed from the cache. Per-row hover
+    tooltip via Ai_ManageListSubclassProc (LB_ITEMFROMPOINT; owner = st->parent AI window).
+  - DOWNLOADABILITY: NeAiClient_IsModelDownloadable = HEAD registry.ollama.ai/v2/<ns>/
+    <name>/manifests/<tag> (ns=library,tag=latest; 1/0/-1). Ai_ManageInstallWorker fails
+    a typo'd name fast (AI_MANAGE_NOT_FOUND; skipped for -cloud). Ai_ValidatePopularAsync
+    (cache s_popularDl; WM_AI_MANAGE_POPVALID=WM_APP+81) prunes confirmed-404 from the
+    popular list, keeps positives+unknowns. NOTE: no Ollama API enumerates the library;
+    cloud -cloud tags are NOT in this registry.
+  - CAPABILITIES ARE FUNCTIONAL, NOT A "CLASS": /api/show gives completion/tools/insert
+    (FIM)/vision/thinking/embedding - there is NO domain "Coding" field; the popular-list
+    grouping is editorial only.
+  - *** OPEN REGRESSION (why NOT a milestone) ***: cloud sends (even text-only) are very
+    slow in this build (~6:41 observed) vs ~2s on milestone v2026.10.03.09 (commit f7280fa).
+    Cache-first on the cloud caps probe did NOT fully fix it. Prime suspect: the cloud
+    /api/show probes (each opens its own WinHTTP DEFAULT_PROXY session -> per-call proxy/
+    WPAD) contend with the send; on a fresh install the first open fires ~18 of them.
+    NEXT: make cloud caps fully LAZY (probe on hover/select only), or reuse ONE session,
+    or gate the probe off while a send is active; if still slow, disable the probe to PROVE
+    causation, and verify it is not Ai_BuildProjectContext / chunked mode. See .\here.txt.
+  - SECONDARY OPEN ISSUE: pasted image shows inline but a cloud vision model answers "no
+    image" - images[] appears empty at the cloud send (or cloud /api/generate ignores
+    top-level images; may need /api/chat with per-message images for cloud). Verify
+    st->pendingImages on paste and the images[] actually on the wire.
+  - LOCALE: AI_CHECKING_MODELS / AI_TIP_SUPPORTS_IMAGES / AI_TIP_TEXT_ONLY /
+    AI_MANAGE_NOT_FOUND in all 14 embedded locales.
+

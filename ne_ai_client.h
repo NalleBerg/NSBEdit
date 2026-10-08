@@ -42,6 +42,32 @@ bool NeAiClient_ValidateCloudApiKey(const std::wstring& key);
 bool NeAiClient_ListCloudModels(std::vector<std::wstring>& outModels);
 
 bool NeAiClient_ListOllamaModels(std::vector<std::wstring>& outModels);
+
+// Asks the local Ollama daemon whether a model can accept images, by reading the
+// "capabilities" list returned from POST /api/show and testing it for "vision".
+// Returns:
+//    1 = the model supports images (vision)
+//    0 = text-only (reachable, but no vision capability)
+//   -1 = unknown (daemon unreachable / model not found / request failed)
+// This performs ONE network call and does no caching; the caller is expected to
+// cache the result (e.g. in the profile DB).
+int NeAiClient_QueryModelVision(const std::wstring& model);
+
+// Like NeAiClient_QueryModelVision but for Ollama CLOUD models, asking
+// https://ollama.com/api/show (public; no key required). Accepts the app's
+// "-cloud" routing name and retries without the suffix if needed.
+//   1 = vision, 0 = text only, -1 = unknown (offline / not found).
+int NeAiClient_QueryCloudModelVision(const std::wstring& model);
+
+// Checks whether a model:tag can be pulled, by asking the Ollama registry for its
+// manifest (HEAD https://registry.ollama.ai/v2/<ns>/<name>/manifests/<tag>):
+//   1 = downloadable (HTTP 200)
+//   0 = not found     (HTTP 404)
+//  -1 = unknown       (network/TLS failure — caller should not block the pull)
+// Accepts "name", "name:tag", or "namespace/name:tag"; defaults ns=library,
+// tag=latest. Cloud ("-cloud") models are not in this registry.
+int NeAiClient_IsModelDownloadable(const std::wstring& model);
+
 typedef void (*NeAiPullProgressFn)(void* context, const std::wstring& status,
 	unsigned long long completed, unsigned long long total);
 
