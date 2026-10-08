@@ -1,0 +1,152 @@
+================================================================================
+  NSBEdit - New Project System (PLAN)
+================================================================================
+
+  STATUS: PLANNING ONLY.  Nothing described below is implemented yet, except
+  where section 1 describes what already exists today.  This note is the agreed
+  design we work from; it is updated as the system is built, and the [ ] boxes
+  in section 7 are ticked off as each phase lands.
+
+FILES (today):
+  ne_projects.h / ne_projects.cpp        project store + file/doc collection
+  NSBEdit.cpp                            Project menu command handling
+
+FILES (planned):
+  ne_newproject.h / ne_newproject.cpp    New Project dialog + creation logic
+
+RELATED:
+  ne_profiles.h / ne_profiles.cpp        shared SQLite handle and settings
+  MyStyle\new-project.ps1                existing PowerShell skeleton bootstrap
+  API_INTERNALS\API\skeleton_idea.txt    skeleton checklist the wizard reuses
+  API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt   how the AI consumes a project
+
+================================================================================
+1. WHERE WE ARE TODAY
+================================================================================
+
+  A "project" is currently nothing more than a root folder the AI is allowed to
+  read:
+
+    - NeProject = { id, name, rootPath }, stored in the `projects` table.
+    - Project menu offers Add (folder picker), None, Remove, and a radio-style
+      list of known projects with a tick on the active one.
+    - "Add" derives the display name from the last path component; there is no
+      dialog, no validation, no way to rename, and no way to create a project
+      that does not already exist on disk.
+    - NeProjects_CollectFiles() walks the root for the AI; `project_docs` holds
+      free-form knowledge records (kind/title/body).
+
+  So we can ATTACH to an existing folder, but we cannot CREATE anything.  That
+  gap is what the New Project system closes.
+
+================================================================================
+2. GOAL
+================================================================================
+
+  One "New Project…" entry point that creates a project properly:
+
+    - asks for name, location and (optionally) a template,
+    - creates the folder on disk,
+    - lays down the template's starter files,
+    - registers the project in the database and makes it active,
+    - opens the starter files in tabs.
+
+  The existing "Add Existing Folder…" path stays exactly as it is.  New Project
+  is an addition, not a replacement.
+
+================================================================================
+3. PRINCIPLES (from rules.txt)
+================================================================================
+
+  - Modular: the dialog lives in its own ne_newproject.h / ne_newproject.cpp,
+    never inside NSBEdit.cpp.  This note is its _INTERNALS, and it is listed in
+    MyStyle\API_list.txt.
+  - No magic numbers: every pixel goes through S(); every visible string goes
+    through Ls() with keys added to locale\en_GB.txt only.  The other 19 locales
+    are translated in one pass before publishing.
+  - Simple UI: one modal dialog, not a multi-page wizard.  No feature creep.
+  - Work in memory, write on confirm: nothing is created on disk or in the
+    database until the user presses Create.
+  - Comment well: the code is read by strangers.
+
+================================================================================
+4. THE DIALOG
+================================================================================
+
+  Custom modal built with the house dialog pattern (see dialog_INTERNALS.txt):
+  measure first, then create, white background, 12 pt Segoe UI, DPI aware.
+
+  Fields:
+    Project name      edit; required; defaults empty
+    Location          edit + Browse… (Ne_PickFolder); parent folder
+    Template          combo; Empty is the default (see section 5)
+    Full path         read-only preview line, Location \ Name, live-updated
+    Create            default button, greyed until the input validates
+    Cancel            closes with no side effects
+
+  Validation, live, with the reason shown on one status line:
+    - name is non-empty and free of  \ / : * ? " < > |  and trailing dots/spaces
+    - location exists and is writable
+    - target path does not already exist, or exists and is empty
+    - reserved Windows device names (CON, PRN, AUX, NUL, COM1-9, LPT1-9) refused
+
+================================================================================
+5. TEMPLATES
+================================================================================
+
+  A template is a small, declarative list of folders and files to create.  It is
+  data, not code, so adding one is a table entry rather than a new code path.
+
+  Ship with:
+    Empty          folder only, no files
+    Notes          README.md
+    Web            index.html, style.css, script.js
+    C++ (Win32)    main.cpp, makeit.bat, .gitignore, README.md
+
+  Rules:
+    - Templates are ASCII/UTF-8 text only; no binaries are generated.
+    - Placeholder substitution is limited to {{NAME}} and {{YEAR}}.
+    - The C++ template mirrors MyStyle\new-project.ps1 / skeleton_idea.txt so
+      the wizard and the script stay in agreement.  Anything heavier (GUID
+      patching, git init, workspace files) stays in the script; the wizard is
+      deliberately the light path.
+
+================================================================================
+6. PERSISTENCE
+================================================================================
+
+  No schema change is required for the first phase: a created project is stored
+  through the existing NeProjects_Add() and made active with
+  NeProjects_SetActiveId().
+
+  Later, if per-project state is needed (last opened tabs, template used), it
+  goes into the generic `project_docs` store or an additive ALTER TABLE column
+  on `projects` — never a rewrite of the database, per ne_profiles_INTERNALS.
+
+  Failure handling: if file creation fails part way, the project is NOT written
+  to the database and whatever was created is left on disk untouched (we do not
+  delete user-visible folders).  The error is reported with the failing path.
+
+================================================================================
+7. PHASES
+================================================================================
+
+  [ ] 1. ne_newproject.h/.cpp skeleton + "New Project…" menu item and locale
+         keys; dialog opens, Cancel works, Create is a no-op.
+  [ ] 2. Validation and the live full-path preview.
+  [ ] 3. Folder + Empty template creation, NeProjects_Add, set active.
+  [ ] 4. Remaining templates and placeholder substitution.
+  [ ] 5. Open the created files in tabs; refresh the Project menu.
+  [ ] 6. Manual test pass, then this note is rewritten from PLAN to INTERNALS.
+
+================================================================================
+8. OPEN QUESTIONS
+================================================================================
+
+  - Should New Project offer "git init"?  Leaning no: that is the script's job.
+  - Do we need a per-project ignore list for the AI scan, or is the built-in
+    skip list in NeProjects_CollectFiles() enough?
+  - Where does New Project belong — Project menu only, or also File > New?
+    Current preference: Project menu only, to keep File > New meaning "new tab".
+
+================================================================================
