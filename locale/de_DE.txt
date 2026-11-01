@@ -2,7 +2,7 @@
 
 # NSBEdit locale file — de_DE (Deutsch)
 BTN_AI          = KI
-TIP_AI          = Ollama KI fragen
+TIP_AI          = KI fragen
 AI_WAKING_OLLAMA = Ollama wird kontaktiert, bitte warten!
 AI_THINKING_STATUS = KI denkt... Verwendete Zeit: %s
 MENU_AI_CHECK_MODELS = Lokale Modelle prüfen
@@ -133,7 +133,7 @@ MENU_HELP       = &Hilfe
 MENU_SHORTCUTS  = &Tastenkürzel...\tF1
 MENU_ABOUT      = &Über NSBEdit
 BTN_AI          = KI
-TIP_AI          = Frag Ollama nach KI.
+TIP_AI          = KI fragen
 REGEX_GUIDE_TITLE = Regex-Leitfaden
 REGEX_GUIDE_LABEL = Enthält
 REGEX_GUIDE_NOTE = Strg+F fokussiert das Suchfeld. Die Suche aktualisiert sich beim Tippen.

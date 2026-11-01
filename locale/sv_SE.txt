@@ -55,7 +55,7 @@ BTN_CLEAR = Rensa
 
 # ── AI UI ─────────────────────────────────────────────────────────────────────
 BTN_AI                     = AI
-TIP_AI                     = Fråga Ollama om KI.
+TIP_AI                     = Fråga om KI.
 AI_WAKING_OLLAMA           = Kontaktar Ollama, vänligen vänta!
 AI_THINKING_STATUS         = KI tänker… Använd tid: %s
 MENU_AI_CHECK_MODELS       = Kontrollera lokala modeller

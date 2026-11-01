@@ -237,3 +237,66 @@ FILES:
        Remove-Item "$env:LOCALAPPDATA\IconCache.db" -Force
        Remove-Item "$env:LOCALAPPDATA\Microsoft\Windows\Explorer\iconcache*" -Force
        Start-Process explorer
+
+================================================================================
+9. SECONDARY-WINDOW ICON FROM A NON-SQUARE PNG (reusable pattern)
+================================================================================
+
+  A secondary top-level window (e.g. a tool/assistant window that is NOT the
+  main app window) can carry its own icon loaded from a PNG that ships next to
+  the exe, rather than the embedded app ICO.  This is how the NSBEdit AI window
+  gets its "AI" wordmark icon (AI-icon.png) distinct from the app icon.
+
+  The source art is often NOT square (the AI wordmark is ~2:1).  Forcing a
+  non-square bitmap straight into GetHICON makes Windows stretch it in the
+  square title-bar / taskbar / Alt+Tab slots.  Fix: fit the image, preserving
+  its aspect ratio, into a transparent SQUARE canvas, then GetHICON that.
+
+    static HICON MakeWindowIconFromPng(const wchar_t* pngName, int size)
+    {
+        if (size <= 0) return NULL;
+        std::wstring path = ExeDir();          // dir of the running exe
+        if (path.empty()) return NULL;
+        path += pngName;                        // e.g. L"AI-icon.png"
+
+        Gdiplus::Bitmap src(path.c_str(), FALSE);
+        if (src.GetLastStatus() != Gdiplus::Ok) return NULL;
+        UINT sw = src.GetWidth(), sh = src.GetHeight();
+        if (!sw || !sh) return NULL;
+
+        Gdiplus::Bitmap canvas(size, size, PixelFormat32bppARGB);
+        {
+            Gdiplus::Graphics g(&canvas);
+            g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+            g.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+            g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+            g.Clear(Gdiplus::Color(0,0,0,0));   // transparent background
+            double sc = min((double)size/sw, (double)size/sh);
+            int dw = max(1,(int)(sw*sc+0.5)), dh = max(1,(int)(sh*sc+0.5));
+            int dx = (size-dw)/2, dy = (size-dh)/2;      // centre it
+            g.DrawImage(&src, Gdiplus::Rect(dx,dy,dw,dh), 0,0,(int)sw,(int)sh,
+                        Gdiplus::UnitPixel);
+        }
+        HICON icon = NULL;
+        canvas.GetHICON(&icon);
+        return icon;
+    }
+
+  Usage: build once at the system big/small sizes, cache for the process
+  lifetime (the OS frees them at exit), and apply BOTH to the window class and
+  via WM_SETICON so the icon is correct everywhere:
+
+    HICON big   = MakeWindowIconFromPng(L"AI-icon.png", GetSystemMetrics(SM_CXICON));
+    HICON small = MakeWindowIconFromPng(L"AI-icon.png", GetSystemMetrics(SM_CXSMICON));
+    wc.hIcon = big ? big : LoadIconW(hi, MAKEINTRESOURCEW(1));   // fall back to app icon
+    ...
+    SendMessageW(hwnd, WM_SETICON, ICON_BIG,   (LPARAM)(big   ? big   : appIcon));
+    SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)(small ? small : big));
+
+  Key points:
+    Requires GDI+ to be started (GdiplusStartup) — it already is app-wide.
+    Always fall back to the embedded app icon (resource ID 1) when the PNG is
+    missing, so the window is never left icon-less.
+    Ship the PNG next to the exe AND have the installer copy it (pack.ps1 +
+    _doinstall.ps1 file lists) — a packaged build that omits it silently falls
+    back to the app icon.

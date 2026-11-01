@@ -1879,7 +1879,13 @@
                                                 LoadImageW MAKEINTRESOURCEW(1) at explicit
                                                 size; subclass handles tooltip + click →
                                                 ShowAboutDialog), icon cache pitfall and
-                                                step-by-step update checklist.
+                                                step-by-step update checklist, and (§9) the
+                                                reusable secondary-window icon pattern: load a
+                                                PNG next to the exe, fit a non-square image into
+                                                a transparent square canvas (GDI+), GetHICON and
+                                                set via WNDCLASS.hIcon + WM_SETICON, falling back
+                                                to the app icon (used by the NSBEdit AI window,
+                                                AI-icon.png).
 
   API_INTERNALS\INTERNALS\files_save_load_INTERNALS.txt
                                                 Files-page save/load architecture — data flow

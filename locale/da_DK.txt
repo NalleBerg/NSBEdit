@@ -1,7 +1,7 @@
 # NSBEdit locale file — da_DK (Dansk)
 
 BTN_AI          = AI
-TIP_AI          = Spørg Ollama om KI.
+TIP_AI          = Spørg om KI.
 AI_WAKING_OLLAMA = Spørger Ollama, vent venligst!
 AI_THINKING_STATUS = AI tænker... Brugt tid: %s
 MENU_AI_CHECK_MODELS = Kontrollér lokale modeller
@@ -128,7 +128,7 @@ MENU_HELP       = &Hjælp
 MENU_SHORTCUTS  = &Tastaturgenveje...\tF1
 MENU_ABOUT      = &Om NSBEdit
 BTN_AI          = AI
-TIP_AI          = Spørg Ollama om KI.
+TIP_AI          = Spørg om KI.
 REGEX_GUIDE_TITLE = Regex-vejledning
 REGEX_GUIDE_LABEL = Indeholder
 REGEX_GUIDE_NOTE = Ctrl+F fokuserer søgefeltet. Søgningen opdateres, mens du skriver.

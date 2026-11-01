@@ -1,0 +1,287 @@
+
+Sammendrag: AI-oppsett for editoren
+
+Målet er å bygge en editor med både lokale og online modeller, der AI-en kan hjelpe med foreslå-modus, agentmodus, kodeforklaring og eventuelt bildeanalyse.
+
+Valgt retning:
+
+Vi går for en Mistral / Codestral-kombinasjon hvis det er mulig:
+
+Codestral: best egnet for ren kode, autocomplete og små kodeforslag.
+Mistral generelle modeller: bedre egnet for forklaring, planlegging og agentmodus.
+Mistral vision-modeller: kan brukes når input er bilder/skjermbilder, men de er ikke nødvendigvis like gode som en ren kodemodell på kode.
+
+Viktige prinsipper
+
+Ikke anta at én modell passer til alt.
+Skill mellom:
+kode
+forklaring
+bildeanalyse
+agenthandling
+La editoren bruke en provider-abstraksjon, slik at modellene kan byttes uten å endre resten av systemet.
+Lokal og online AI bør støttes side om side.
+
+ 
+
+Foreslått pipeline
+
+1. Vanlig kodeforslag
+
+Bruk Codestral eller en annen kodeoptimalisert modell.
+Input:
+aktiv fil
+omkringliggende kode
+prosjektkontekst
+Output:
+kodeforslag
+små patcher
+inline completion
+
+2. Agentmodus
+
+Bruk en sterkere Mistral-modell til planlegging og flertrinnsoppgaver.
+Input:
+brukerens mål
+relevante filer
+eventuelle tidligere forslag
+Output:
+plan
+filendringer
+konkrete steg for implementering
+
+3. Bildeanalyse
+
+Bruk en vision-modell når brukeren sender skjermbilder eller andre bilder.
+Vision-modellen beskriver hva den ser i tekst.
+Denne beskrivelsen sendes videre til kodemodellen.
+
+4. Kombinert flyt
+
+Vision-modell ser bildet og lager en tekstbeskrivelse.
+Kodemodell får beskrivelsen sammen med prosjektkontekst.
+Kodemodellen foreslår kode eller endringer.
+Editoren setter inn endringene der de hører hjemme.
+
+ 
+
+Anbefalt arkitektur
+
+Codestral til autocomplete og kodegenerering.
+Mistral generelle modeller til chat, analyse og agentmodus.
+Mistral vision-modell til bildebasert input.
+Ollama eller tilsvarende lokal runtime der det er praktisk.
+Felles grensesnitt for alle modeller, slik at de kan byttes etter abonnement, behov eller ytelse.
+
+ 
+
+Kort konklusjon
+
+Den beste løsningen for editoren din er en modulær AI-pipeline:
+
+vision-modell for bilder
+kodemodell for kode
+generell modell for agent og forklaring
+felles API-lag for å gjøre dem utskiftbare
+
+ 
+
+Hvis du vil, kan jeg også lage dette som en ren C++-kommentarboks eller som en mer teknisk spesifikasjon du kan lime direkte inn i prosjektet ditt.
+
+
+Klart — her er begge deler du ba om.
+
+ 
+
+1) C++-kommentarboks for notatbok / kildekode
+
+ 
+/*
+AI-oppsett for editoren:
+
+Mål:
+- Støtte lokale og online modeller
+- Bruke modeller til foreslå-modus, agentmodus, kodeforklaring og bildeanalyse
+- Holde arkitekturen fleksibel med en felles provider-abstraksjon
+
+Valgt retning:
+- Codestral: best for kode, autocomplete og små kodeforslag
+- Mistral generelle modeller: best for forklaring, planlegging og agentmodus
+- Mistral vision-modeller: best når input er bilder/skjermbilder
+
+Viktige prinsipper:
+- Ikke bruk én modell til alt
+- Skill mellom kode, forklaring, bildeanalyse og agenthandling
+- La modeller kunne byttes uten å endre resten av editoren
+- Støtt både lokal og online kjøring
+
+Foreslått pipeline:
+1. Kodeforslag:
+   - Bruk Codestral eller tilsvarende kodeoptimalisert modell
+   - Input: aktiv fil, omkringliggende kode, prosjektkontekst
+   - Output: kodeforslag, patcher, inline completion
+
+2. Agentmodus:
+   - Bruk en sterk Mistral-modell
+   - Input: brukerens mål, relevante filer, tidligere forslag
+   - Output: plan, filendringer, implementeringssteg
+
+3. Bildeanalyse:
+   - Bruk vision-modell når brukeren sender bilder
+   - Vision-modellen lager tekstbeskrivelse av bildet
+   - Beskrivelsen sendes videre til kodemodellen
+
+4. Kombinert flyt:
+   - Vision-modell tolker bildet
+   - Kodemodell bruker beskrivelsen + prosjektkontekst
+   - Editoren setter inn foreslåtte endringer i riktig fil og posisjon
+
+Anbefalt arkitektur:
+- Codestral for autocomplete og kodegenerering
+- Mistral generelle modeller for chat, analyse og agentmodus
+- Mistral vision-modell for bildeinput
+- Felles API-lag for utskiftbarhet
+- Lokal runtime der det passer, online API når nødvendig
+
+Konklusjon:
+- Beste løsning er en modulær AI-pipeline
+- Vision for bilder
+- Kodemodell for kode
+- Generell modell for plan og forklaring
+- Felles grensesnitt for enkel bytting av modeller
+*/
+ 
+
+ 
+
+2) Litt mer teknisk spesifikasjon
+
+AI-arkitektur for editoren
+
+Overordnet mål
+
+Systemet skal støtte både lokale og online modeller og tilby AI-funksjoner for:
+
+kodeforslag
+refaktorering
+forklaring av kode
+agentbaserte endringer
+bildeanalyse / skjermbildeforståelse
+
+Modellinndeling
+
+A. Kodeoptimalisert modell
+
+Brukes til:
+autocomplete
+små kodeendringer
+funksjonssnutter
+syntaksnær generering
+Eksempel: Codestral
+Krav:
+lav responstid
+god presisjon i kode
+helst støtte for streaming
+
+B. Generell språkmodell
+
+Brukes til:
+forklaringer
+planlegging
+agentmodus
+oppsummering av filer og feil
+Eksempel: Mistral generelle modeller
+Krav:
+god kontekstforståelse
+evne til å håndtere flere filer og instruksjoner
+robust tekstproduksjon
+
+C. Vision-modell
+
+Brukes til:
+skjermbilder
+UI-analyse
+dokumentbilder
+feilmeldinger fra bilder
+Output skal normaliseres til tekst før det sendes videre
+Krav:
+multimodal input
+god beskrivelse av visuell struktur
+stabil tekstutdata som kan brukes av kodemodellen
+
+ 
+
+Foreslått behandlingspipeline
+
+1. Input-mottak
+
+Editoren mottar brukerinput:
+tekst
+filer
+prosjektkontekst
+eventuelt bilde
+Input klassifiseres etter type:
+ren kodeoppgave
+agentoppgave
+bildebasert oppgave
+blandet oppgave
+
+2. Ruting
+
+Dersom input er bilde: send til vision-modell
+Dersom input er kode/tekst: send til kode- eller språkmodell
+Dersom oppgaven krever flere steg: send til generell modell først for planlegging
+
+3. Mellomrepresentasjon
+
+Vision-modellen produserer en tekstlig beskrivelse av bildet
+Denne beskrivelsen brukes som kontekst for kodemodellen
+Eventuelle filreferanser og symboler legges ved
+
+4. Generering
+
+Kodemodellen produserer:
+kodeforslag
+patch
+plassering i fil
+forklaring av endringen
+Generell modell kan først lage en plan før kodegenerering
+
+5. Validering og innsending
+
+Editorens logikk validerer:
+riktig fil
+riktig posisjon
+syntaktisk plausibilitet
+Deretter presenteres forslag til bruker eller settes inn automatisk avhengig av modus
+
+ 
+
+Anbefalt implementasjonsstrategi
+
+Lag et felles interface for alle provider-typer
+Skill mellom:
+ TextModel 
+ CodeModel 
+ VisionModel 
+Støtt provider-konfigurasjon per modus
+Tillat fallback mellom lokal og online modell
+Hold output i et strukturert format, helst med:
+plan
+forslag
+filnavn
+linjenummer / symbolreferanser
+patch-data
+
+ 
+
+Anbefalt arbeidsdeling
+
+Vision-modell = ser og beskriver
+Generell modell = planlegger
+Kodemodell = skriver endringer
+Editor = anvender endringene og viser resultatet
+
+ 
+
+

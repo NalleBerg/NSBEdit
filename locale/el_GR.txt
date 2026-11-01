@@ -54,7 +54,7 @@ MENU_SHORTCUTS  = &Συντομεύσεις πληκτρολογίου...\tF1
 MENU_ABOUT      = &Σχετικά με το NSBEdit
 
 BTN_AI          = ΤΝ
-TIP_AI          = Ρώτα το Ollama για ΤΝ.
+TIP_AI          = Ρώτα την ΤΝ.
 AI_WAKING_OLLAMA = Ζητάει από το Ollama, παρακαλώ περιμένετε!
 AI_THINKING_STATUS = Το ΤΝ σκέφτεται... Χρόνος που χρησιμοποιήθηκε: %s
 MENU_AI_CHECK_MODELS = Έλεγχος τοπικών μοντέλων

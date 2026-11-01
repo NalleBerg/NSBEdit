@@ -417,6 +417,13 @@ struct AiSendWorkItem {
     // streamed as the final answer.
     std::vector<std::wstring> mapChunks;
     std::wstring reduceHeader;
+    // Autonomous web retrieval: the raw user question (for the router + search
+    // query), whether the model is allowed to decide to search on its own, and
+    // whether an explicit web search already ran on the UI thread (so the worker
+    // does not search twice).
+    std::wstring userQuestion;
+    bool autoWeb = false;
+    bool webAlreadyDone = false;
 };
 
 struct AiModelCheckState {
@@ -954,6 +961,60 @@ static Gdiplus::Image* Ai_GetOllamaButtonImage()
         }
     }
     return s_ollamaImage;
+}
+
+// Build a square HICON of the given size from AI-icon.png (next to the exe).
+// The source art is not square, so it is fitted into a transparent square while
+// preserving its aspect ratio — avoids the stretching Windows would apply when
+// forcing a non-square icon into the title bar / taskbar / Alt+Tab slots.
+// Returns NULL when the PNG is missing or unreadable (caller falls back to the
+// app icon).
+static HICON Ai_MakeWindowIcon(int size)
+{
+    if (size <= 0) return NULL;
+    std::wstring path = Ai_GetExeDir();
+    if (path.empty()) return NULL;
+    path += L"AI-icon.png";
+
+    Gdiplus::Bitmap src(path.c_str(), FALSE);
+    if (src.GetLastStatus() != Gdiplus::Ok) return NULL;
+    UINT sw = src.GetWidth(), sh = src.GetHeight();
+    if (sw == 0 || sh == 0) return NULL;
+
+    Gdiplus::Bitmap canvas(size, size, PixelFormat32bppARGB);
+    {
+        Gdiplus::Graphics g(&canvas);
+        g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+        g.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+        g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+        g.Clear(Gdiplus::Color(0, 0, 0, 0));
+        double scale = (std::min)((double)size / (double)sw, (double)size / (double)sh);
+        int dw = (int)((double)sw * scale + 0.5);
+        int dh = (int)((double)sh * scale + 0.5);
+        if (dw < 1) dw = 1;
+        if (dh < 1) dh = 1;
+        int dx = (size - dw) / 2;
+        int dy = (size - dh) / 2;
+        g.DrawImage(&src, Gdiplus::Rect(dx, dy, dw, dh), 0, 0, (int)sw, (int)sh, Gdiplus::UnitPixel);
+    }
+
+    HICON icon = NULL;
+    canvas.GetHICON(&icon);
+    return icon;
+}
+
+// Cached window icons for the AI window, sized for the big (taskbar / Alt+Tab)
+// and small (title bar) slots.  Built once from AI-icon.png on first use; the
+// handles live for the process lifetime (freed by the OS at exit).
+static HICON Ai_GetWindowIconBig()
+{
+    static HICON s_icon = Ai_MakeWindowIcon(GetSystemMetrics(SM_CXICON));
+    return s_icon;
+}
+static HICON Ai_GetWindowIconSmall()
+{
+    static HICON s_icon = Ai_MakeWindowIcon(GetSystemMetrics(SM_CXSMICON));
+    return s_icon;
 }
 
 static std::wstring Ai_DefaultModelName()
@@ -3522,9 +3583,71 @@ static void Ai_PromptAndSetApiKey(HWND hwnd, AiWindowState* st)
     Ai_AppendLog(hwnd, valid ? Ne_Ls(L"AI_LOG_API_KEY_OK") : Ne_Ls(L"AI_LOG_API_KEY_BAD"));
 }
 
+// Format DuckDuckGo results into a prompt block that the model is instructed to
+// actually use.  The grounding sentence matters: without it small local models
+// tend to ignore injected snippets and answer from (stale) memory.
+static std::wstring Ai_FormatWebResultsBlock(const std::wstring& query,
+                                             const std::vector<NeAiWebResult>& results)
+{
+    std::wstring b = L"[INTERNET SEARCH RESULTS \u2014 DuckDuckGo, query: " + query + L"]\r\n";
+    for (size_t i = 0; i < results.size(); ++i) {
+        b += std::to_wstring(i + 1) + L". " + results[i].title + L"\r\n";
+        b += L"   " + results[i].url + L"\r\n";
+        if (!results[i].snippet.empty()) b += L"   " + results[i].snippet + L"\r\n";
+    }
+    b += L"[END INTERNET SEARCH RESULTS]\r\n";
+    b += L"Use these up-to-date search results to answer the question. Prefer them "
+         L"over your own memory when they disagree, and cite the relevant URL(s). "
+         L"If they do not contain the answer, say so briefly.\r\n\r\n";
+    return b;
+}
+
+// Autonomous web-search router.  Asks the model whether answering the user's
+// message needs current/external information it may not reliably know; if so the
+// model returns a concise search query.  Returns an empty string when no search
+// is needed (or the decision call fails).  Runs on the send worker thread, so it
+// must not touch the UI.
+static std::wstring Ai_RouterWebQuery(const std::wstring& model, const std::wstring& userQuestion)
+{
+    if (model.empty() || userQuestion.empty()) return L"";
+
+    std::wstring routerPrompt =
+        L"You are a routing classifier for a coding assistant that can search the web.\r\n"
+        L"Decide whether answering the user's message correctly needs CURRENT or EXTERNAL "
+        L"information you may not reliably have: recent events, latest or updated versions, "
+        L"release notes, changelogs, APIs or libraries that change over time, dates, prices, "
+        L"people, news, or anything you are not confident is up to date.\r\n"
+        L"If a web search would clearly help, reply with EXACTLY one line:\r\n"
+        L"SEARCH: <a short, specific search query>\r\n"
+        L"If you can answer reliably from your own knowledge (general programming, the user's "
+        L"own code, math, explanations, refactoring), reply with EXACTLY:\r\n"
+        L"NONE\r\n"
+        L"Reply with only that one line and nothing else.\r\n\r\n"
+        L"User message:\r\n" + userQuestion + L"\r\n";
+
+    std::wstring reply, err;
+    if (!NeAiClient_AskOllama(model, routerPrompt, reply, err, 2048)) return L"";
+
+    size_t p = reply.find(L"SEARCH:");
+    if (p == std::wstring::npos) return L"";
+    std::wstring q = reply.substr(p + 7);
+    size_t nl = q.find_first_of(L"\r\n");
+    if (nl != std::wstring::npos) q = q.substr(0, nl);
+    while (!q.empty() && iswspace((wint_t)q.front())) q.erase(q.begin());
+    while (!q.empty() && iswspace((wint_t)q.back()))  q.pop_back();
+    // Strip wrapping quotes/backticks the model sometimes adds.
+    while (!q.empty() && (q.front() == L'"' || q.front() == L'`' || q.front() == L'\'')) q.erase(q.begin());
+    while (!q.empty() && (q.back()  == L'"' || q.back()  == L'`' || q.back()  == L'\'')) q.pop_back();
+    // Guard against the model dumping a full answer instead of a query.
+    if (q.empty() || q.size() > 200) return L"";
+    if (q == L"NONE" || q == L"None" || q == L"none") return L"";
+    return q;
+}
+
 static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback, int answerStart,
                                std::vector<std::wstring> mapChunks = {}, std::wstring reduceHeader = {},
-                               std::vector<std::string> images = {})
+                               std::vector<std::string> images = {},
+                               std::wstring userQuestion = {}, bool autoWeb = false, bool webAlreadyDone = false)
 {
     AiSendWorkItem work;
     work.hwnd = hwnd;
@@ -3535,6 +3658,9 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
     work.mapChunks = std::move(mapChunks);
     work.reduceHeader = std::move(reduceHeader);
     work.images = std::move(images);
+    work.userQuestion = std::move(userQuestion);
+    work.autoWeb = autoWeb;
+    work.webAlreadyDone = webAlreadyDone;
 
     std::thread([work = std::move(work)]() mutable {
         auto* result = new AiSendResult();
@@ -3633,6 +3759,35 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
             else
                 delete result;
             return;
+        }
+
+        // ── Autonomous web retrieval ─────────────────────────────────────────
+        // When the user did not explicitly ask to search, let the model decide
+        // whether it needs current/external information and, if so, fetch it and
+        // ground the answer on the results.  Runs here on the worker thread so the
+        // extra decision + search never blocks the UI.
+        if (work.autoWeb && !work.webAlreadyDone && !work.userQuestion.empty()
+            && !NeAiClient_IsCancelRequested()) {
+            auto postProgress = [&](const std::wstring& text) {
+                if (IsWindow(work.hwnd))
+                    PostMessageW(work.hwnd, WM_AI_PROGRESS, 0, (LPARAM)new std::wstring(text));
+            };
+            // Prefer the smaller/faster fallback model for the quick yes/no
+            // decision; fall back to the main model when none is configured.
+            std::wstring routerModel = !work.fallback.empty() ? work.fallback : work.model;
+            std::wstring wq = Ai_RouterWebQuery(routerModel, work.userQuestion);
+            if (!wq.empty() && !NeAiClient_IsCancelRequested()) {
+                postProgress(Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_WEB"), wq));
+                std::vector<NeAiWebResult> results;
+                std::wstring werr;
+                if (NeAiClient_WebSearch(wq, 5, results, werr) && !results.empty()) {
+                    work.prompt = Ai_FormatWebResultsBlock(wq, results) + work.prompt;
+                    postProgress(Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_WEB_DONE"),
+                                                     std::to_wstring((int)results.size())));
+                } else {
+                    postProgress(Ne_Ls(L"AI_SEARCH_WEB_NONE"));
+                }
+            }
         }
 
         std::wstring formattedPrompt = L"Answer plainly. Preserve indentation.\r\n\r\n";
@@ -5545,8 +5700,12 @@ static void Ai_DoSend(HWND hwnd)
         Ai_NormalizeModelNameLocal(selectedModel);
         Ai_NormalizeModelNameLocal(fallbackModel);
     }
-    // Optional internet search (DuckDuckGo) when the user explicitly asks for it.
+    // Explicit internet search (DuckDuckGo) when the user asks for it (keyword
+    // trigger) or has the "always search" toggle on.  Runs here on the UI thread.
+    // When nothing explicit fires, the send worker may still decide to search on
+    // its own (autonomous retrieval) — see Ai_RouterWebQuery.
     std::wstring webBlock;
+    bool explicitWebDone = false;
     {
         std::wstring wq = Ai_ExtractWebQuery(prompt);
         if (wq.empty() && st && st->webSearch) wq = prompt;
@@ -5555,13 +5714,8 @@ static void Ai_DoSend(HWND hwnd)
             std::vector<NeAiWebResult> results;
             std::wstring werr;
             if (NeAiClient_WebSearch(wq, 5, results, werr) && !results.empty()) {
-                webBlock = L"[INTERNET SEARCH RESULTS \u2014 DuckDuckGo, query: " + wq + L"]\r\n";
-                for (size_t i = 0; i < results.size(); ++i) {
-                    webBlock += std::to_wstring(i + 1) + L". " + results[i].title + L"\r\n";
-                    webBlock += L"   " + results[i].url + L"\r\n";
-                    if (!results[i].snippet.empty()) webBlock += L"   " + results[i].snippet + L"\r\n";
-                }
-                webBlock += L"[END INTERNET SEARCH RESULTS]\r\n\r\n";
+                webBlock = Ai_FormatWebResultsBlock(wq, results);
+                explicitWebDone = true;
                 Ai_SearchStatus(hwnd, Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_WEB_DONE"), std::to_wstring((int)results.size())));
             } else {
                 Ai_SearchStatus(hwnd, Ne_Ls(L"AI_SEARCH_WEB_NONE"));
@@ -5580,6 +5734,9 @@ static void Ai_DoSend(HWND hwnd)
         std::wstring projectCtx = Ai_BuildProjectContext(prompt, hwnd);
         promptForModel = projectCtx + webBlock + prompt;
     }
+    // Autonomous web search applies only to the normal (non-chunked) path; a
+    // chunked big-file analysis is about the user's own file, not the web.
+    bool autoWeb = !chunkPlan.chunked;
 
     if (hLog) {
         st->replyBaseStart = GetWindowTextLengthW(hLog);
@@ -5597,7 +5754,8 @@ static void Ai_DoSend(HWND hwnd)
         AiSendWorkItem work;
         work.answerStart = st->replyBaseStart;
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, work.answerStart,
-                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages);
+                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages,
+                           prompt, autoWeb, explicitWebDone);
     } else {
         st->replyBaseStart = 0;
         st->liveReply.clear();
@@ -5611,7 +5769,8 @@ static void Ai_DoSend(HWND hwnd)
         Ai_StopLiveTypingTimer(hwnd);
         Ai_StopLiveTypingStartDelayTimer(hwnd);
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, 0,
-                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages);
+                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages,
+                           prompt, autoWeb, explicitWebDone);
     }
 }
 
@@ -6344,10 +6503,14 @@ void Ne_ShowAiWindow(HWND parent)
     }
 
     HINSTANCE hi = GetModuleHandleW(NULL);
+    HICON hAiIconBig = Ai_GetWindowIconBig();
+    HICON hAiIconSmall = Ai_GetWindowIconSmall();
     WNDCLASSW wc = {};
     wc.lpfnWndProc = Ai_WndProc;
     wc.hInstance = hi;
-    wc.hIcon = LoadIconW(hi, MAKEINTRESOURCEW(1));   // app icon (NSBEdit.ico) for taskbar
+    // AI window icon (AI-icon.png); falls back to the app icon (NSBEdit.ico) when
+    // the PNG is unavailable so the window is never left icon-less.
+    wc.hIcon = hAiIconBig ? hAiIconBig : LoadIconW(hi, MAKEINTRESOURCEW(1));
     wc.hCursor = LoadCursorW(NULL, MAKEINTRESOURCEW(kSystemArrowCursor));
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = L"NSBEditAIWindow";
@@ -6381,10 +6544,10 @@ void Ne_ShowAiWindow(HWND parent)
         return;
     }
 
-    if (HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(1))) {
-        SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIco);
-        SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
-    }
+    HICON hWndBig = hAiIconBig ? hAiIconBig : LoadIconW(hi, MAKEINTRESOURCEW(1));
+    HICON hWndSmall = hAiIconSmall ? hAiIconSmall : hWndBig;
+    if (hWndBig)   SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hWndBig);
+    if (hWndSmall) SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hWndSmall);
 
     s_hwndAiWindow = hwnd;
     // Restore the last saved geometry (size/position/maximized); else show normally.

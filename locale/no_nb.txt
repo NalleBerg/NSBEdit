@@ -51,7 +51,7 @@ BTN_PREV        = Forrige
 BTN_NEXT        = Neste
 BTN_CLEAR       = Tøm
 BTN_AI          = KI
-TIP_AI          = Spør Ollama KI.
+TIP_AI          = Spør AI
 
 # ── RTF editing ────────────────────────────────────────────────────────────────
 RTF_BOLD        = Fett

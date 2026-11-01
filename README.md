@@ -3,7 +3,7 @@
 
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.10.05.09**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.11.01.10**
 
 
 ## Download
@@ -11,6 +11,10 @@ A lightweight, standalone RTF notepad and programming editor for Windows. **v202
 Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no dependencies. Drop it anywhere and run it.
 
 ## Features
+
+- **AI: searches the web on its own when it needs current facts** — before answering, the AI decides whether your question needs **up-to-date or external information it cannot reliably know** (recent events, latest versions, release notes, changing APIs, dates, prices, people) and, if so, runs a **DuckDuckGo** search on its own, grounds its answer on the results and **cites the source links** — no need to ask. Questions it can answer from its own knowledge (your code, general programming, explanations) are answered straight away. The decision and the search run in the background so the window never freezes, and **Stop** cancels them cleanly. Explicit *“search the web …”* requests and the **Log → Search the web** toggle still work.
+
+- **AI: its own icon and provider-neutral wording** — the editor's **AI button** and the separate **AI window** (title bar, taskbar, Alt+Tab) use a dedicated **‘AI’** icon (`AI-icon.png`), and the AI button tooltip reads **«Spør AI» / «Ask A.I.»** in all 14 interface languages — the first step toward offering more than one AI provider.
 
 - **AI: clickable URLs in answers** — links the AI prints are auto-detected: hover shows the hand cursor and a hint tooltip (**«[Ctrl]+[Left mouse click] to open page in external browser»**, in your own language), **Ctrl+click opens the link in your default browser** (brought to the front, even if already running), and a plain click still lets you select and copy text inside the URL.
 
