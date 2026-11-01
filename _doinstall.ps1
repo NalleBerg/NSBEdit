@@ -29,6 +29,9 @@ $aiConfigPath = Join-Path $appDataDir 'ai-settings.json'
 $ollamaDownloadUrl = 'https://ollama.com/download/windows'
 $defaultAiModel = 'qwen3-coder'
 $fallbackAiModel = 'qwen2.5-coder:3b'
+# Vision model used to describe pasted images in text so ANY chat/code model can
+# "understand" an image (the describe-then-answer pipeline). Pulled during install.
+$visionAiModel = 'llava:7b'
 
 function Write-Section($text) {
     Write-Host ""
@@ -115,6 +118,20 @@ function Ensure-OllamaReady {
     return $false
 }
 
+function Test-OllamaModelInstalled([string]$modelName) {
+    if (-not $modelName) { return $false }
+    $cmd = Get-Command ollama -ErrorAction SilentlyContinue
+    if (-not $cmd) { return $false }
+    try {
+        $list = & $cmd.Source list 2>$null
+        if ($LASTEXITCODE -ne 0) { return $false }
+        foreach ($line in $list) {
+            if ($line -match [regex]::Escape($modelName)) { return $true }
+        }
+    } catch { }
+    return $false
+}
+
 function Install-OllamaModel([string]$modelName) {
     if (-not $modelName) { return $false }
 
@@ -166,8 +183,26 @@ $ollamaReady = Ensure-OllamaReady
 if ($ollamaReady) {
     $defaultModelReady  = Install-OllamaModel $defaultAiModel
     $fallbackModelReady  = Install-OllamaModel $fallbackAiModel
+
+    # Vision model is large (~4.4 GB) and optional: it lets any model "understand"
+    # pasted images (describe-then-answer).  Only ask when it is NOT already
+    # installed, so a reinstall does not nag and a deliberate delete is respected.
+    # If skipped here, the app offers to install it on-demand the first time an
+    # image is pasted.
+    $visionModelReady = $true
+    if (Test-OllamaModelInstalled $visionAiModel) {
+        Write-Host "  + vision model already installed: $visionAiModel"
+    } else {
+        $ans = Read-Host "  Install vision model for image support ($visionAiModel, ~4.4 GB)? [Y/n]"
+        if ($ans -notmatch '^[nN]') {
+            $visionModelReady = Install-OllamaModel $visionAiModel
+        } else {
+            Write-Host "  ~ skipped vision model; NSBEdit will offer to install it when you paste an image"
+        }
+    }
+
     Write-AiConfig $true 'ollama' $defaultAiModel $fallbackAiModel 'Local AI configured during install'
-    if (-not $defaultModelReady -or -not $fallbackModelReady) {
+    if (-not $defaultModelReady -or -not $fallbackModelReady -or -not $visionModelReady) {
         Write-Host "  ~ one or more AI models could not be pulled during install"
     }
 } else {

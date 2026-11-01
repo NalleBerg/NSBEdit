@@ -1,80 +1,127 @@
 NSBEdit handover notes
-Written: 2026-10-08
+Written: 2026-11-01 (end of day)
+Current version: 2026.11.01.10  (curver.txt)  -- built OK via makeit.bat
 
 =====================================================================
-NON-MILESTONE BUILD — HAS A SERIOUS CLOUD-SEND REGRESSION
+STATE: vision "describe-any-image" pipeline WORKS. One OPEN problem:
+a per-query LAG (autonomous web-search router). Details below.
 =====================================================================
 
-WHAT THIS BUILD ADDS (all working)
-- Vision/image-capability markers in the AI Model menu: shell32.dll icon
-  #318 (image-capable) / #260 (text-only), with an AI-owned hover tooltip
-  "Supports images" / "Text only" (Ai_ShowMenuTip, NOT the shared tooltip).
-- Local caps from POST localhost:11434/api/show (capabilities contains
-  "vision"); cloud caps from POST https://ollama.com/api/show (PUBLIC, no
-  auth). Cached in the profile DB key "ai.model_caps" (Ai_LoadModelCaps/
-  Ai_SaveModelCaps), in-memory s_modelCaps (s_modelCapsMutex).
-- Manage Models dialog: both lists owner-drawn with the same icons + a
-  per-row hover tooltip; popular list has accurate AiPopularModel.vision
-  flags and more vision models; registry downloadability check
-  (NeAiClient_IsModelDownloadable = HEAD registry.ollama.ai/v2/..) prunes
-  dead entries and fails a bad "Install by name" fast (AI_MANAGE_NOT_FOUND).
-- Menu tooltip truncation fixed (single-line draw; "Kun tekst" shows fully).
-- Menu-rebuild-while-open CRASH fixed (Ai_RequestMenuRefresh defers until
-  WM_EXITMENULOOP; s_aiMenuTracking).
-- 4 new locale keys in all 14 embedded locales.
+BIG PICTURE / GOAL
+- Make EVERY chat/code model "understand" a pasted image without marking
+  models as vision-capable. Approach (from Ai-europe.txt.txt point 4): a
+  vision model DESCRIBES the image in text, the text is injected into the
+  prompt, then the selected (text or code) model answers. No vision markers.
 
-THE REGRESSION (THE "serious error" — NOT fixed)
-- SYMPTOM: cloud sends (even text-only, e.g. "show me tiny c++ code") take
-  minutes (observed 6:41) in THIS build. The SAME query on the last good
-  milestone answers in ~2 s.
-- CONFIRMED baseline: milestone v2026.10.03.09 "Edition/Utgave 4"
-  (published 03.10.2026 09:59) = ~2 s cloud reply. That is the known-good.
-- The cache-first change to the cloud caps worker (query only uncached
-  models) did NOT fix it — still slow after that edit.
-- LEADING HYPOTHESIS: the new cloud vision-capability probe
-  (Ai_RefreshCloudCapsAsync -> NeAiClient_QueryCloudModelVision, ollama.com
-  /api/show) still contends with / throttles the user's cloud send. Each
-  call opens its OWN WinHTTP session with WINHTTP_ACCESS_TYPE_DEFAULT_PROXY
-  (per-session proxy/WPAD resolution). On a FRESH install the cache is empty
-  so the first window-open fires ~18 of these, racing the first send.
-- THINGS TO TRY NEXT (in order):
-  1. Make cloud caps FULLY LAZY: query a cloud model's vision only when it
-     is hovered/selected (WM_MENUSELECT), zero background burst. Simplest
-     safe fix; cloud markers fill in on first hover.
-  2. Reuse ONE WinHTTP session for all caps probes (avoid 18x proxy/TLS).
-  3. Delay the caps probe well after open AND skip while a send is active
-     (gate on Ai_BeginBusyState / a g_aiSendActive flag).
-  4. If still slow, TEMPORARILY disable Ai_RefreshCloudCapsAsync entirely
-     (fall back to the name heuristic for cloud markers) and re-measure to
-     PROVE the probe is the cause before investing more.
-  5. Confirm it is NOT the project-context build (Ai_BuildProjectContext,
-     "Searched NNNN files") or chunked map-reduce being wrongly triggered
-     (spinner showing a climbing %). Compare request body size vs the good
-     milestone.
+WHAT WORKS NOW (verified in the running app today)
+- Paste image -> it is sent. The describe pipeline runs in the SEND WORKER
+  thread (Ai_StartSendWorker in ollama_ai.cpp):
+    * mode-aware describer chosen on the UI thread in Ai_DoSend:
+        - LOCAL answer model  -> LOCAL vision model  Ai_LocalVisionModelName()
+          default "llava:7b"  (profile key ai.vision_model)
+        - CLOUD answer model  -> CLOUD vision model  Ai_CloudVisionModelName()
+          default "gemma4:31b-cloud" (profile key ai.vision_model_cloud).
+          gemma4:31b confirmed vision-capable via ollama.com/api/show.
+    * if the LOCAL vision model is missing: Y/N MessageBox
+      "Install vision-enabled model for images?" (AI_VISION_INSTALL_PROMPT).
+      Yes -> worker pulls it FIRST (installVision flag) showing a real
+      download % in the spinner, then describes.
+    * describe call: NeAiClient_AskOllamaStream(visionModel, describePrompt,
+      NULL, NULL, desc, err, 0, {oneImage})  (accumulates full reply even with
+      NULL onChunk). Then work.prompt = header + [IMAGE DESCRIPTION] + prompt,
+      and work.images.clear() (text-only to the answer model = user's choice).
+    * proven: llava:7b correctly described a test image (red circle + HELLO)
+      and today described a pasted UI/button screenshot via deepseek cloud.
+- llava:7b (4.41 GiB; 4.1GB model + 624MB projector + tiny layers) installed
+  and added to the installer (_doinstall.ps1 $visionAiModel). Installer now
+  ASKS Y/N before pulling it, and only when it is not already installed
+  (Test-OllamaModelInstalled). Ollama pulls are RESUMABLE (partial blobs);
+  Stop does NOT abort a pull yet (pull loop ignores the cancel flag).
+- Image now RENDERS in the answer window. Root cause fixed: the answer pane is
+  ES_READONLY and RichEdit silently drops EM_STREAMIN picture inserts on a
+  read-only control. Ai_InsertInlinePng now lifts read-only around the
+  EM_STREAMIN and restores it. (Input box worked because it is not read-only.)
+- Layout: the query is now on the line BELOW the "Du:"/"You:" label, with the
+  image under it, then "Ollama:". Changed in Ai_RenderConversation and the
+  live path in Ai_DoSend; copyAll updated too.
+- Download spinner polish:
+    * aggregate percentage across ALL layers (s_visionLayers map keyed by the
+      per-layer "pulling <digest>" status) so it is one overall % for the whole
+      download, not a per-layer number that resets.
+    * only re-posts when the integer % changes (no blink; LayoutForText resized
+      the spinner window on every update).
+    * visionActive flag (AiWindowState) suppresses the FAKE elapsed-time
+      "Asking Ollama (NN%)" progress (Ai_UpdateSpinnerProgress) during vision
+      work, like chunkedActive does -- otherwise it clobbered the real text.
+- Project menu added to the AI window (ollama_ai.cpp Ai_BuildMenu): (No project)
+  + the project list (radio-checked active) + "Add project..." (Ai_PickFolder).
+  Shares NeProjects_GetActiveId/SetActiveId with the editor. The ACTIVE PROJECT
+  is shown in the AI window title bar (Ai_RefreshUi).
+- AI icon: toolbar AI button and the AI window use AI-icon.png (not the Ollama
+  llama). Tooltip TIP_AI no longer says "Ollama" in any of the 14 locales
+  (Norwegian = "Spor AI"). Reusable PNG->square-HICON pattern documented in
+  MyStyle/API_INTERNALS/INTERNALS/icon_INTERNALS.txt section 9.
+- Locale loader fix (NSBEdit.cpp Ne_LoadLocale): strips a surrounding matching
+  quote pair from values, so mistranslated strings like "Handtering av
+  modeller" no longer show literal quotes. English reference is never wrapped.
 
-SECONDARY OPEN ISSUE (image not seen by cloud model)
-- A pasted image shows inline in the query, but cloud vision models answer
-  "I don't see any image" — the image is reaching neither the render log nor
-  the model (images[] appears empty at send OR cloud /api/generate ignores
-  top-level images). Verify st->pendingImages is populated on paste
-  (ollama_ai.cpp ~L4514) and that Ai_CloudAskStream actually sends images[].
-  Note: ollama.com/api/generate needs auth (401 without key), so test with
-  the stored key or consider /api/chat with per-message images for cloud.
+THE OPEN PROBLEM -- LAG on every send (NOT fixed)
+- SYMPTOM: even a simple code question ("Give me the code to a win32 window
+  with only Exit on the menu bar") took ~35 s before answering (spinner reached
+  ~58% on the fake curve = ~39 s). Also affects non-image queries.
+- ROOT CAUSE: the autonomous web-search ROUTER I added this session makes an
+  EXTRA LLM call per send to decide whether to search. In CLOUD mode it runs on
+  the CLOUD model (work.fallback is empty in cloud) -> a second cloud
+  round-trip before the answer. Measured: a LOCAL qwen2.5-coder:3b router took
+  13.8 s cold. Two LLM calls (router + answer) ~= the 35 s.
+- Code: ollama_ai.cpp
+    * Ai_RouterWebQuery(model, userQuestion)  ~ lines 3719-3759  (the LLM call)
+    * worker "Autonomous web retrieval" block  ~ lines 3945-3972  (calls it)
+    * Ai_ExtractWebQuery(prompt)  ~ line 4799+  (explicit keyword heuristic,
+      UI thread, used by the explicit/toggle path)
 
-GIT ROLLBACK PLAN (if needed)
-- LAST KNOWN-GOOD milestone: v2026.10.03.09 "Edition 4" = commit f7280fa
-  (2026-10-03). Cloud reply ~2 s.
-- Strategy: check out f7280fa and continue FORWARD, testing each build until
-  cloud send goes slow; the version just BEFORE the first slow one is the
-  real last-good. Candidates to bisect forward:
-    f7280fa  2026-10-03  v2026.10.03.09 Edition 4   (KNOWN GOOD, ~2 s)
-    b89231c  2026-10-04  v2026.10.04.11  (project search + DuckDuckGo)
-    1db77c2  2026-10-05  v2026.10.05.09  (clickable URLs)  <- this build sits on top
-    (current WIP = vision markers, has the regression)
-- Rollback command idea: git checkout f7280fa  (or revert the vision-caps
-  commit once identified).
+PLANNED FIX (designed, NOT yet applied) -- do this first tomorrow
+- Remove the per-query LLM router; detect "needs web" with an INSTANT keyword
+  heuristic instead (no extra model call):
+    1. DELETE Ai_RouterWebQuery (note: -Wall warns on an unused static function,
+       so it MUST be removed when its only caller is removed).
+    2. DELETE the worker "Autonomous web retrieval" block that calls it.
+    3. EXPAND Ai_ExtractWebQuery signals with recency/currency terms so the
+       EXISTING explicit path fires autonomously too: e.g. "recent", "recently",
+       "latest", "newest", "nowadays", "these days", "this year", "this month",
+       "today", "news", "announced", "2024","2025","2026","2027", "currently".
+       Keep them NON-code terms to avoid false positives (do NOT add "api",
+       "code", "function", bare "update").
+  Result: simple code questions have NO web signal -> no search -> fast.
+  "any recent updates on Ollama API?" -> "recent" -> searches. Explicit
+  "search the web ..." and the Log toggle still work. webBlock is still built
+  via Ai_FormatWebResultsBlock (grounding instruction) which stays.
+- OPTIONAL follow-ups if the heuristic feels too narrow: run the search in the
+  worker (non-blocking) using the heuristic query, or bring back a SMART router
+  but only when a cheap pre-filter flags possible need AND run it on the already
+  warm answer model.
 
-RELEASE NOTES / CONVENTIONS
-- MyStyle remains the main documentation tree for API_INTERNALS/API work
-  (follows the user across projects).
-- This build is committed as NOT a milestone (serious cloud-send regression).
+SECONDARY OPEN ISSUES
+- llava:7b hallucinates on complex UI screenshots (it called a mock button
+  window an "email client with Mails/Contacts/Calendar..."). Options: tighten
+  the describe prompt, or use a stronger vision model (llama3.2-vision, or a
+  cloud vision model). deepseek cloud answer for the button image was decent.
+- Autonomous search also fired on an image send; consider skipping web search
+  when an image is attached.
+- Cloud vision path: confirm gemma4:31b-cloud actually RECEIVES the image. The
+  send uses ollama.com/api/generate with top-level images[]; the ORIGINAL note
+  warned cloud /api/generate may ignore top-level images -> may need /api/chat
+  with per-message images for the cloud describer. Local (llava) is proven.
+- New vision/install strings (AI_VISION_*) live ONLY in en_GB (fallback). Same
+  pattern as AI_SEARCH_WEB_*; localize to the 14 langs when polishing.
+- Stop does not abort a model pull (make NeAiClient_PullOllamaModel check
+  NeAiClient_IsCancelRequested() for true pause/resume).
+
+GIT / BUILD
+- Last MILESTONE: 4bf5da7 "AI v2026.11.01.10 ... (MILESTONE)" on origin/main.
+- Today's work is committed ON TOP as a WIP (unfinished: the lag fix). Build
+  with makeit.bat (MinGW g++, then pack.ps1 -> zip). Version 2026.11.01.10.
+- The dropped vision-markers regression build (8ee2a3f) is parked on branch
+  wip-vision-markers-regression.
+- MyStyle (API_INTERNALS/INTERNALS/API) is a linked, non-project-specific tree
+  that follows the author across projects -- edit shared patterns there.

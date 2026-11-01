@@ -20,6 +20,7 @@
 #include "Lexilla.h"
 #include "third_party/cmark-gfm/src/cmark-gfm.h"
 #include <shellapi.h>
+#include <shlobj.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -68,6 +69,9 @@
 #define IDM_AI_SEND               1932
 #define IDM_AI_ABOUT              1933
 #define IDM_AI_CODE_COPY          1934
+#define IDM_AI_PROJECT_NONE       1970
+#define IDM_AI_PROJECT_ADD        1971
+#define IDM_AI_PROJECT_BASE       2300   // project switch entries 2300..2399
 #define WM_AI_SEND_COMPLETE       (WM_APP + 71)
 #define WM_AI_MODELCHECK_APPEND   (WM_APP + 72)
 #define WM_AI_MODELCHECK_DONE     (WM_APP + 73)
@@ -308,7 +312,14 @@ static void Ai_InsertInlinePng(HWND hEdit, const std::string& png)
     EDITSTREAM es = {};
     es.dwCookie = (DWORD_PTR)&sb;
     es.pfnCallback = Ai_RtfStreamInCb;
+    // EM_STREAMIN of a picture is ignored while the control is read-only (the
+    // answer pane is ES_READONLY), so briefly lift read-only for the insert and
+    // restore it — otherwise pasted images never appear in the answer box.
+    LONG_PTR style = GetWindowLongPtrW(hEdit, GWL_STYLE);
+    bool wasReadOnly = (style & ES_READONLY) != 0;
+    if (wasReadOnly) SendMessageW(hEdit, EM_SETREADONLY, FALSE, 0);
     SendMessageW(hEdit, EM_STREAMIN, SF_RTF | SFF_SELECTION, (LPARAM)&es);
+    if (wasReadOnly) SendMessageW(hEdit, EM_SETREADONLY, TRUE, 0);
 }
 
 // Append a PNG image inline at the very end of a RichEdit's text.
@@ -368,6 +379,7 @@ struct AiWindowState {
     ULONGLONG thinkingStartMs = 0;
     std::wstring lastThinkingElapsedText;
     bool chunkedActive = false;   // batch map-reduce running: spinner shows real batch %
+    bool visionActive = false;    // vision download/describe running: spinner shows real text
     bool sendCanceled = false;    // Stop pressed: ignore the worker's completion post
     std::wstring lastPrompt;      // raw prompt of the in-flight send, restored on Stop
     std::vector<std::string> pendingImages; // base64 PNG images pasted into the current input
@@ -424,6 +436,12 @@ struct AiSendWorkItem {
     std::wstring userQuestion;
     bool autoWeb = false;
     bool webAlreadyDone = false;
+    // Vision describer model to turn attached images into text (empty = skip the
+    // describe step, e.g. when no vision model is available).
+    std::wstring visionModel;
+    // When true the worker first pulls visionModel (showing download % in the
+    // spinner) before using it to describe the attached image(s).
+    bool installVision = false;
 };
 
 struct AiModelCheckState {
@@ -2251,7 +2269,7 @@ static void Ai_RenderConversation(HWND hwnd)
 
         st->turnAnchors.push_back(GetWindowTextLengthW(hLog));
 
-        Ai_AppendRichRun(hLog, youLabel, &kYou, &kNormal, false);
+        Ai_AppendRichRun(hLog, youLabel + L"\r\n", &kYou, &kNormal, false);
         Ai_AppendRichRun(hLog, prompt + L"\r\n", &kNormal, &kNormal, false);
         for (const std::string& b64 : turn.images) {
             std::string png = Ai_Base64Decode(b64);
@@ -2269,7 +2287,7 @@ static void Ai_RenderConversation(HWND hwnd)
         Ai_UnescapeModelText(md);
         Ai_AppendMarkdownBlocks(hLog, md);
 
-        copyAll += youLabel + prompt + L"\n\n" + ollamaLabel + L"\n" + replyMd + L"\n\n";
+        copyAll += youLabel + L"\n" + prompt + L"\n\n" + ollamaLabel + L"\n" + replyMd + L"\n\n";
     }
 
     st->answerCopyText = copyAll;
@@ -2337,6 +2355,17 @@ static void Ai_RefreshUi(HWND hwnd)
     std::wstring title = Ne_Ls(L"AI_WINDOW_TITLE_PREFIX");
     title += L" ";
     title += Ai_CurrentModeLabel(st);
+    {
+        // Show the active project (or "(No project)") in the title bar so the
+        // developer always sees which project the AI is working on.
+        int64_t pid = NeProjects_GetActiveId();
+        NeProject proj;
+        std::wstring projName = (pid && NeProjects_GetById(pid, proj) && !proj.name.empty())
+                              ? proj.name : Ne_Ls(L"PROJECT_NONE");
+        std::wstring projLabel;
+        for (wchar_t c : std::wstring(Ne_Ls(L"MENU_PROJECT"))) if (c != L'&') projLabel += c;
+        title += L"  \u2014  " + projLabel + L": " + projName;
+    }
     SetWindowTextW(hwnd, title.c_str());
 
     HWND hHdr = GetDlgItem(hwnd, IDC_AI_HEADER);
@@ -2419,7 +2448,7 @@ static void Ai_SetThinkingStatusText(HWND hwnd)
 static void Ai_UpdateSpinnerProgress(HWND hwnd)
 {
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st || st->chunkedActive || !st->spinner) return;
+    if (!st || st->chunkedActive || st->visionActive || !st->spinner) return;
     if (!st->spinner->IsVisible() || st->thinkingStartMs == 0) return;
     unsigned long long e = (GetTickCount64() - st->thinkingStartMs) / 1000ULL;   // seconds
     // Asymptotic curve approaching ~95%: pct = 95*e/(e+25).
@@ -2541,6 +2570,7 @@ static void Ai_EndBusyState(HWND hwnd)
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (!st) return;
     st->chunkedActive = false;
+    st->visionActive = false;
     if (st->spinner) {
         st->spinner->Hide();
     }
@@ -3583,6 +3613,90 @@ static void Ai_PromptAndSetApiKey(HWND hwnd, AiWindowState* st)
     Ai_AppendLog(hwnd, valid ? Ne_Ls(L"AI_LOG_API_KEY_OK") : Ne_Ls(L"AI_LOG_API_KEY_BAD"));
 }
 
+// Simple folder picker for the AI window's "Add project…" (the editor's own
+// Ne_PickFolder is file-local).  Returns the chosen absolute path.
+static bool Ai_PickFolder(HWND owner, const wchar_t* title, std::wstring& outPath)
+{
+    BROWSEINFOW bi = {};
+    bi.hwndOwner = owner;
+    bi.lpszTitle = title;
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    LPITEMIDLIST pidl = SHBrowseForFolderW(&bi);
+    if (!pidl) return false;
+    wchar_t path[MAX_PATH] = {};
+    bool ok = SHGetPathFromIDListW(pidl, path) != FALSE;
+    CoTaskMemFree(pidl);
+    if (ok) outPath = path;
+    return ok;
+}
+
+// Local vision model used to turn a pasted image into a text description when the
+// developer is using a LOCAL answer model.  Overridable via "ai.vision_model";
+// defaults to the model the installer pulls (llava:7b).
+static std::wstring Ai_LocalVisionModelName()
+{
+    std::string v;
+    if (NeProfiles_GetStrSetting("ai.vision_model", "llava:7b", v) && !v.empty())
+        return Ai_Utf8ToWide(v);
+    return L"llava:7b";
+}
+
+// Cloud vision model used when the developer is using a CLOUD answer model (so a
+// cloud user never needs a local vision model).  Overridable via
+// "ai.vision_model_cloud"; defaults to gemma4:31b (a multimodal cloud model),
+// addressed with the app's "-cloud" routing suffix.
+static std::wstring Ai_CloudVisionModelName()
+{
+    std::string v;
+    if (NeProfiles_GetStrSetting("ai.vision_model_cloud", "gemma4:31b-cloud", v) && !v.empty())
+        return Ai_Utf8ToWide(v);
+    return L"gemma4:31b-cloud";
+}
+
+// True when a model (by exact name or its base name before ':') is present in the
+// local Ollama daemon's installed list.
+static bool Ai_IsModelInstalled(const std::wstring& model)
+{
+    if (model.empty()) return false;
+    std::vector<std::wstring> installed;
+    if (!NeAiClient_ListOllamaModels(installed)) return false;
+    std::wstring want = model;
+    for (auto& c : want) c = (wchar_t)towlower(c);
+    std::wstring wantBase = want.substr(0, want.find(L':'));
+    for (std::wstring m : installed) {
+        for (auto& c : m) c = (wchar_t)towlower(c);
+        if (m == want) return true;
+        if (m.substr(0, m.find(L':')) == wantBase && !wantBase.empty()) return true;
+    }
+    return false;
+}
+
+// Progress callback for the vision-model pull — shows the download percentage in
+// the busy spinner.  The pull reports progress PER LAYER (llava has a 4.1 GB model
+// layer, a 624 MB projector, and a few tiny ones), so we aggregate completed/total
+// across all layers seen so far to show one overall percentage for the whole
+// download instead of a per-layer number that resets.  Only posts when the
+// integer percentage changes, so the spinner is not relaid out on every byte.
+static std::atomic<int> s_visionLastPct{ -1 };
+static std::map<std::wstring, std::pair<unsigned long long, unsigned long long>> s_visionLayers;
+static void Ai_VisionPullProgress(void* ctx, const std::wstring& status,
+                                  unsigned long long completed, unsigned long long total)
+{
+    HWND hwnd = (HWND)ctx;
+    if (!IsWindow(hwnd) || total == 0) return;   // skip "pulling manifest"/"verifying"
+    s_visionLayers[status] = { completed, total };   // status == "pulling <digest>" per layer
+    unsigned long long aggC = 0, aggT = 0;
+    for (const auto& kv : s_visionLayers) { aggC += kv.second.first; aggT += kv.second.second; }
+    if (aggT == 0) return;
+    int pct = (int)(aggC * 100ULL / aggT);
+    if (pct > 100) pct = 100;
+    if (pct == s_visionLastPct.load()) return;   // redraw only when the % changed
+    s_visionLastPct = pct;
+    std::wstring text = Ne_Ls(L"AI_VISION_DOWNLOADING");
+    text += L" " + std::to_wstring(pct) + L"%";
+    PostMessageW(hwnd, WM_AI_PROGRESS, 0, (LPARAM)new std::wstring(text));
+}
+
 // Format DuckDuckGo results into a prompt block that the model is instructed to
 // actually use.  The grounding sentence matters: without it small local models
 // tend to ignore injected snippets and answer from (stale) memory.
@@ -3647,7 +3761,8 @@ static std::wstring Ai_RouterWebQuery(const std::wstring& model, const std::wstr
 static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback, int answerStart,
                                std::vector<std::wstring> mapChunks = {}, std::wstring reduceHeader = {},
                                std::vector<std::string> images = {},
-                               std::wstring userQuestion = {}, bool autoWeb = false, bool webAlreadyDone = false)
+                               std::wstring userQuestion = {}, bool autoWeb = false, bool webAlreadyDone = false,
+                               std::wstring visionModel = {}, bool installVision = false)
 {
     AiSendWorkItem work;
     work.hwnd = hwnd;
@@ -3661,6 +3776,8 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
     work.userQuestion = std::move(userQuestion);
     work.autoWeb = autoWeb;
     work.webAlreadyDone = webAlreadyDone;
+    work.visionModel = std::move(visionModel);
+    work.installVision = installVision;
 
     std::thread([work = std::move(work)]() mutable {
         auto* result = new AiSendResult();
@@ -3759,6 +3876,70 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
             else
                 delete result;
             return;
+        }
+
+        // ── Vision: optionally install the local vision model first ──────────
+        // When the developer agreed to install a missing local vision model, pull
+        // it here (inside the busy state) so the spinner shows the download %.
+        if (work.installVision && !work.visionModel.empty() && !work.images.empty()
+            && !NeAiClient_IsCancelRequested()) {
+            if (IsWindow(work.hwnd))
+                PostMessageW(work.hwnd, WM_AI_PROGRESS, 0,
+                             (LPARAM)new std::wstring(Ne_Ls(L"AI_VISION_DOWNLOADING")));
+            s_visionLastPct = -1;   // reset the per-install percentage throttle
+            s_visionLayers.clear(); // reset the per-layer aggregation for this pull
+            std::wstring perr;
+            if (!NeAiClient_PullOllamaModel(work.visionModel, (void*)work.hwnd,
+                                            Ai_VisionPullProgress, perr)) {
+                work.visionModel.clear();   // install failed → skip describing
+            }
+        }
+
+        // ── Vision: describe any attached image as text ──────────────────────
+        // So ANY selected model (text-only coder, cloud model, …) can "understand"
+        // a pasted image: a vision model (local llava for a local answer model, a
+        // cloud vision model for a cloud answer model) describes it, the text is
+        // injected into the prompt, and the raw image is dropped from the send.
+        // The describer is chosen on the UI thread (so a missing local model can
+        // prompt for install); an empty visionModel means "skip describing".
+        // Runs on the worker thread (never blocks the UI) and honours Stop.
+        if (!work.visionModel.empty() && !work.images.empty()
+            && !NeAiClient_IsCancelRequested()) {
+            auto postProgress = [&](const std::wstring& text) {
+                if (IsWindow(work.hwnd))
+                    PostMessageW(work.hwnd, WM_AI_PROGRESS, 0, (LPARAM)new std::wstring(text));
+            };
+            postProgress(Ne_Ls(L"AI_VISION_LOOKING"));
+            const std::wstring describePrompt =
+                L"Describe this image in detail for a software developer. Transcribe any "
+                L"visible text, code or UI labels verbatim, and describe shapes, colours, "
+                L"layout, diagrams, charts and anything notable. Be factual and thorough.";
+            std::wstring descBlock;
+            int described = 0;
+            for (const std::string& img : work.images) {
+                if (NeAiClient_IsCancelRequested()) break;
+                std::wstring desc, derr;
+                std::vector<std::string> one{ img };
+                if (NeAiClient_AskOllamaStream(work.visionModel, describePrompt, NULL, NULL,
+                                               desc, derr, 0, one) && !desc.empty()) {
+                    while (!desc.empty() && (desc.back() == L'\n' || desc.back() == L'\r'
+                           || desc.back() == L' ')) desc.pop_back();
+                    ++described;
+                    descBlock += L"[IMAGE " + std::to_wstring(described) + L" DESCRIPTION]\r\n"
+                               + desc + L"\r\n[END IMAGE " + std::to_wstring(described)
+                               + L" DESCRIPTION]\r\n\r\n";
+                }
+            }
+            if (!descBlock.empty()) {
+                std::wstring header =
+                    L"The user attached image(s). A vision model examined them and produced "
+                    L"the description(s) below. Treat them as if you can see the images.\r\n\r\n";
+                work.prompt = header + descBlock + work.prompt;
+                work.images.clear();   // text-only to the selected model
+                postProgress(Ne_Ls(L"AI_VISION_DONE"));
+            }
+            // If description failed, keep work.images so the selected model still
+            // gets the raw image as a best-effort fallback.
         }
 
         // ── Autonomous web retrieval ─────────────────────────────────────────
@@ -4446,10 +4627,39 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
 
     Ai_AppendMenuOD(hHelp, MF_STRING, IDM_AI_ABOUT, Ne_Ls(L"AI_MENU_ABOUT_WINDOW"), false);
 
+    // ── Project menu ─────────────────────────────────────────────────────────
+    // Mirrors the editor's project switcher so the developer can see and change
+    // the active project without leaving the AI window.  Shares the same DB state
+    // (NeProjects_GetActiveId/SetActiveId), so a change here is reflected in the
+    // editor too.
+    HMENU hProject = CreatePopupMenu();
+    int64_t activeProjId = NeProjects_GetActiveId();
+    std::vector<NeProject> aiProjects;
+    NeProjects_List(aiProjects);
+    Ai_AppendMenuOD(hProject, MF_STRING, IDM_AI_PROJECT_NONE, Ne_Ls(L"PROJECT_NONE"), false);
+    if (!aiProjects.empty()) {
+        Ai_AppendMenuOD(hProject, MF_SEPARATOR, 0, NULL, false);
+        for (size_t pi = 0; pi < aiProjects.size() && pi < 100; ++pi) {
+            Ai_AppendMenuOD(hProject, MF_STRING, IDM_AI_PROJECT_BASE + (UINT)pi,
+                            aiProjects[pi].name.c_str(), false);
+        }
+    }
+    Ai_AppendMenuOD(hProject, MF_SEPARATOR, 0, NULL, false);
+    Ai_AppendMenuOD(hProject, MF_STRING, IDM_AI_PROJECT_ADD, Ne_Ls(L"PROJECT_ADD"), false);
+
     Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hModel, Ne_Ls(L"AI_MENU_MODEL"), true);
     Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hCloud, Ne_Ls(L"AI_MENU_CLOUD"), true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hProject, Ne_Ls(L"MENU_PROJECT"), true);
     Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hLog, Ne_Ls(L"AI_MENU_LOG"), true);
     Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ne_Ls(L"AI_MENU_HELP"), true);
+
+    // Radio-check the active project (or "(No project)").
+    CheckMenuItem(hProject, IDM_AI_PROJECT_NONE,
+                  MF_BYCOMMAND | (activeProjId == 0 ? MF_CHECKED : MF_UNCHECKED));
+    for (size_t pi = 0; pi < aiProjects.size() && pi < 100; ++pi) {
+        if (aiProjects[pi].id == activeProjId)
+            CheckMenuItem(hProject, IDM_AI_PROJECT_BASE + (UINT)pi, MF_BYCOMMAND | MF_CHECKED);
+    }
 
     if (st) {
         for (const AiModelMenuItem& item : s_aiModelMenuItems) {
@@ -5642,6 +5852,7 @@ static void Ai_DoSend(HWND hwnd)
     if (hInput) SetWindowTextW(hInput, L"");
 
     std::wstring userLine = Ne_Ls(L"AI_LOG_USER_PREFIX");
+    userLine += L"\r\n";
     userLine += prompt;
     st->answerIntroText = userLine;
     Ai_AppendLog(hwnd, userLine);
@@ -5738,6 +5949,40 @@ static void Ai_DoSend(HWND hwnd)
     // chunked big-file analysis is about the user's own file, not the web.
     bool autoWeb = !chunkPlan.chunked;
 
+    // ── Vision describer selection (mode-aware) ──────────────────────────────
+    // If the developer attached image(s), pick the model that will describe them:
+    //   • local answer model  → a LOCAL vision model (llava); if it is missing,
+    //     offer to install it (Y/N).  Declining / installing skips describing.
+    //   • cloud answer model  → a CLOUD vision model (no local model needed).
+    // The chosen model is handed to the worker; empty means "do not describe".
+    std::wstring visionModel;
+    bool installVision = false;
+    if (!st->lastImages.empty() && !chunkPlan.chunked) {
+        if (st->cloudMode) {
+            visionModel = Ai_CloudVisionModelName();
+        } else {
+            std::wstring localVision = Ai_LocalVisionModelName();
+            if (Ai_IsModelInstalled(localVision)) {
+                visionModel = localVision;
+            } else {
+                int r = MessageBoxW(hwnd, Ne_Ls(L"AI_VISION_INSTALL_PROMPT"),
+                                    Ne_Ls(L"AI_VISION_INSTALL_TITLE"),
+                                    MB_YESNO | MB_ICONQUESTION);
+                if (r == IDYES) {
+                    // The worker pulls it first (download % shown in the spinner),
+                    // then uses it to describe the image.
+                    visionModel = localVision;
+                    installVision = true;
+                }
+                // No → leave visionModel empty (skip describing this send).
+            }
+        }
+    }
+    // While a vision model is downloading and/or describing an image, the spinner
+    // shows the real status text (download % / "Looking at the image…"); suppress
+    // the fake "Asking Ollama (NN%)" thinking progress so it does not clobber it.
+    st->visionActive = !visionModel.empty();
+
     if (hLog) {
         st->replyBaseStart = GetWindowTextLengthW(hLog);
         st->historyDraft = L"";
@@ -5755,7 +6000,7 @@ static void Ai_DoSend(HWND hwnd)
         work.answerStart = st->replyBaseStart;
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, work.answerStart,
                            chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages,
-                           prompt, autoWeb, explicitWebDone);
+                           prompt, autoWeb, explicitWebDone, visionModel, installVision);
     } else {
         st->replyBaseStart = 0;
         st->liveReply.clear();
@@ -5770,7 +6015,7 @@ static void Ai_DoSend(HWND hwnd)
         Ai_StopLiveTypingStartDelayTimer(hwnd);
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, 0,
                            chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages,
-                           prompt, autoWeb, explicitWebDone);
+                           prompt, autoWeb, explicitWebDone, visionModel, installVision);
     }
 }
 
@@ -6071,6 +6316,18 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         switch (LOWORD(wParam)) {
         default: {
+            // Project switch entries (dynamic range) — mirror the editor's list.
+            UINT cmd = (UINT)LOWORD(wParam);
+            if (cmd >= IDM_AI_PROJECT_BASE && cmd < IDM_AI_PROJECT_BASE + 100) {
+                std::vector<NeProject> projects;
+                NeProjects_List(projects);
+                int idx = (int)(cmd - IDM_AI_PROJECT_BASE);
+                if (idx >= 0 && idx < (int)projects.size()) {
+                    NeProjects_SetActiveId(projects[idx].id);
+                    Ai_RefreshUi(hwnd);
+                }
+                return 0;
+            }
             const AiModelMenuItem* modelItem = Ai_FindModelMenuItem((UINT)LOWORD(wParam));
             if (modelItem && st) {
                 st->role = modelItem->role;
@@ -6158,6 +6415,27 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDM_AI_OPEN_PROVIDER:
             ShellExecuteW(hwnd, L"open", L"https://ollama.com", NULL, NULL, SW_SHOWNORMAL);
             return 0;
+        case IDM_AI_PROJECT_NONE:
+            NeProjects_SetActiveId(0);
+            Ai_RefreshUi(hwnd);
+            return 0;
+        case IDM_AI_PROJECT_ADD: {
+            std::wstring folder;
+            if (Ai_PickFolder(hwnd, Ne_Ls(L"PROJECT_PICK_TITLE"), folder)) {
+                std::wstring name = folder;
+                size_t slash = name.find_last_of(L"\\/");
+                if (slash != std::wstring::npos && slash + 1 < name.size())
+                    name = name.substr(slash + 1);
+                NeProject p;
+                p.name     = name.empty() ? folder : name;
+                p.rootPath = folder;
+                if (NeProjects_Add(p)) {
+                    NeProjects_SetActiveId(p.id);   // auto-select the new project
+                    Ai_RefreshUi(hwnd);
+                }
+            }
+            return 0;
+        }
         case IDM_AI_CHECK_MODELS:
             Ai_ShowModelCheckDialog(hwnd);
             return 0;

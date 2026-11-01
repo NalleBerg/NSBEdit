@@ -1719,6 +1719,15 @@ static void Ne_LoadLocale()
             std::wstring val = line.substr(eq + 1);
             while (!key.empty() && key.back() == L' ') key.pop_back();
             if (!val.empty() && val.front() == L' ') val.erase(0, 1);
+            // Some translated values were accidentally wrapped in surrounding
+            // quotes (e.g.  KEY = "Håndtering av modeller"); strip one matching
+            // pair so the quotes do not show up in the UI.  English (the
+            // reference) is never wrapped, so this only undoes translation noise.
+            if (val.size() >= 2 &&
+                ((val.front() == L'"'  && val.back() == L'"') ||
+                 (val.front() == L'\'' && val.back() == L'\''))) {
+                val = val.substr(1, val.size() - 2);
+            }
             g_str[std::move(key)] = Ne_Unescape(val);
         }
     };
