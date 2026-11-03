@@ -308,7 +308,14 @@ static void Ai_InsertInlinePng(HWND hEdit, const std::string& png)
     EDITSTREAM es = {};
     es.dwCookie = (DWORD_PTR)&sb;
     es.pfnCallback = Ai_RtfStreamInCb;
+    // EM_STREAMIN of a picture is ignored while the control is read-only (the
+    // answer pane is ES_READONLY), so briefly lift read-only for the insert and
+    // restore it — otherwise images never appear in the answer window.
+    LONG_PTR style = GetWindowLongPtrW(hEdit, GWL_STYLE);
+    bool wasReadOnly = (style & ES_READONLY) != 0;
+    if (wasReadOnly) SendMessageW(hEdit, EM_SETREADONLY, FALSE, 0);
     SendMessageW(hEdit, EM_STREAMIN, SF_RTF | SFF_SELECTION, (LPARAM)&es);
+    if (wasReadOnly) SendMessageW(hEdit, EM_SETREADONLY, TRUE, 0);
 }
 
 // Append a PNG image inline at the very end of a RichEdit's text.
