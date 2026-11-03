@@ -176,7 +176,7 @@ if ($ollamaReady) {
 
 # -- Copy program files --------------------------------------------------------
 Write-Section "Copy program files"
-foreach ($f in @('NSBEdit.exe','ollama.png','Changelog.html','GPLv2.md')) {
+foreach ($f in @('NSBEdit.exe','ollama.png','AI-icon.png','Changelog.html','GPLv2.md')) {
     $src = Join-Path $here $f
     if (Test-Path $src) {
         Copy-Item $src $installDir -Force

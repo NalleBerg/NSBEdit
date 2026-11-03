@@ -3209,7 +3209,7 @@ static Gdiplus::Image* Ne_GetOllamaButtonImage()
             if (slash) {
                 *(slash + 1) = L'\0';
                 std::wstring imagePath = exePath;
-                imagePath += L"ollama.png";
+                imagePath += L"AI-icon.png";
                 s_ollamaImage = Gdiplus::Image::FromFile(imagePath.c_str(), FALSE);
             }
         }
@@ -10479,8 +10479,8 @@ static int Ne_LayoutToolbar(HWND hwnd, int cW, int topY)
 
     HWND hAi = GetDlgItem(hwnd, IDC_NE_AI);
     if (hAi && IsWindowVisible(hAi)) {
-        int aiW = wXs;
-        int aiX = cW - pad - aiW;
+        int aiW = bSz + S(24);   // wider slot for the ≈2:1 "AI" wordmark (AI-icon.png)
+        int aiX = cW - pad - aiW - S(3);   // small gap so it isn't flush to the right edge
         if (aiX < pad) aiX = pad;
         int aiY = topY + (numRows > 0 ? (numRows - 1) * rowH : 0);
         SetWindowPos(hAi, NULL, aiX, aiY, aiW, bSz, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -16756,12 +16756,21 @@ static LRESULT CALLBACK Ne_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 if (aiImg) {
                     Gdiplus::Graphics g(dis->hDC);
                     g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
-                    int iconSz = std::min(rc.right - rc.left, rc.bottom - rc.top) - S(8);
-                    if (iconSz > S(18)) iconSz = S(18);
-                    if (iconSz < S(12)) iconSz = S(12);
-                    int x = rc.left + ((rc.right - rc.left) - iconSz) / 2 + (pressed ? 1 : 0);
-                    int y = rc.top + ((rc.bottom - rc.top) - iconSz) / 2 + (pressed ? 1 : 0);
-                    g.DrawImage(aiImg, x, y, iconSz, iconSz);
+                    // AI-icon.png is a wide (≈2:1) wordmark, so fit it inside the
+                    // button preserving its aspect ratio instead of forcing a square
+                    // (which would squash it).  Centred, with a little padding.
+                    UINT iw = aiImg->GetWidth(), ih = aiImg->GetHeight();
+                    int availW = (rc.right - rc.left) - S(6);
+                    int availH = (rc.bottom - rc.top) - S(6);
+                    if (availW < 1) availW = 1;
+                    if (availH < 1) availH = 1;
+                    double sc = (iw > 0 && ih > 0)
+                              ? std::min((double)availW / iw, (double)availH / ih) : 1.0;
+                    int dw = std::max(1, (int)(iw * sc + 0.5));
+                    int dh = std::max(1, (int)(ih * sc + 0.5));
+                    int x = rc.left + ((rc.right - rc.left) - dw) / 2 + (pressed ? 1 : 0);
+                    int y = rc.top + ((rc.bottom - rc.top) - dh) / 2 + (pressed ? 1 : 0);
+                    g.DrawImage(aiImg, x, y, dw, dh);
                 } else {
                     wchar_t txt[64] = {};
                     GetWindowTextW(dis->hwndItem, txt, 64);
