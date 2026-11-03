@@ -20,6 +20,7 @@
 #include "Lexilla.h"
 #include "third_party/cmark-gfm/src/cmark-gfm.h"
 #include <shellapi.h>
+#include <shlobj.h>
 #include <string>
 #include <vector>
 #include <map>
@@ -68,6 +69,9 @@
 #define IDM_AI_SEND               1932
 #define IDM_AI_ABOUT              1933
 #define IDM_AI_CODE_COPY          1934
+#define IDM_AI_PROJECT_NONE       2400
+#define IDM_AI_PROJECT_ADD        2401
+#define IDM_AI_PROJECT_BASE       2500   // project switch entries 2500..2599
 #define WM_AI_SEND_COMPLETE       (WM_APP + 71)
 #define WM_AI_MODELCHECK_APPEND   (WM_APP + 72)
 #define WM_AI_MODELCHECK_DONE     (WM_APP + 73)
@@ -995,6 +999,60 @@ static Gdiplus::Image* Ai_GetOllamaButtonImage()
         }
     }
     return s_ollamaImage;
+}
+
+// Build a square HICON of the given size from AI-icon.png (next to the exe).
+// The source art is not square, so it is fitted into a transparent square while
+// preserving its aspect ratio — avoids the stretching Windows would apply when
+// forcing a non-square icon into the title bar / taskbar / Alt+Tab slots.
+// Returns NULL when the PNG is missing or unreadable (caller falls back to the
+// app icon).
+static HICON Ai_MakeWindowIcon(int size)
+{
+    if (size <= 0) return NULL;
+    std::wstring path = Ai_GetExeDir();
+    if (path.empty()) return NULL;
+    path += L"AI-icon.png";
+
+    Gdiplus::Bitmap src(path.c_str(), FALSE);
+    if (src.GetLastStatus() != Gdiplus::Ok) return NULL;
+    UINT sw = src.GetWidth(), sh = src.GetHeight();
+    if (sw == 0 || sh == 0) return NULL;
+
+    Gdiplus::Bitmap canvas(size, size, PixelFormat32bppARGB);
+    {
+        Gdiplus::Graphics g(&canvas);
+        g.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+        g.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+        g.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+        g.Clear(Gdiplus::Color(0, 0, 0, 0));
+        double scale = (std::min)((double)size / (double)sw, (double)size / (double)sh);
+        int dw = (int)((double)sw * scale + 0.5);
+        int dh = (int)((double)sh * scale + 0.5);
+        if (dw < 1) dw = 1;
+        if (dh < 1) dh = 1;
+        int dx = (size - dw) / 2;
+        int dy = (size - dh) / 2;
+        g.DrawImage(&src, Gdiplus::Rect(dx, dy, dw, dh), 0, 0, (int)sw, (int)sh, Gdiplus::UnitPixel);
+    }
+
+    HICON icon = NULL;
+    canvas.GetHICON(&icon);
+    return icon;
+}
+
+// Cached window icons for the AI window, sized for the big (taskbar / Alt+Tab)
+// and small (title bar) slots.  Built once from AI-icon.png on first use; the
+// handles live for the process lifetime (freed by the OS at exit).
+static HICON Ai_GetWindowIconBig()
+{
+    static HICON s_icon = Ai_MakeWindowIcon(GetSystemMetrics(SM_CXICON));
+    return s_icon;
+}
+static HICON Ai_GetWindowIconSmall()
+{
+    static HICON s_icon = Ai_MakeWindowIcon(GetSystemMetrics(SM_CXSMICON));
+    return s_icon;
 }
 
 static std::wstring Ai_DefaultModelName()
@@ -2321,6 +2379,17 @@ static void Ai_RefreshUi(HWND hwnd)
     std::wstring title = Ne_Ls(L"AI_WINDOW_TITLE_PREFIX");
     title += L" ";
     title += Ai_CurrentModeLabel(st);
+    {
+        // Show the active project (or "(No project)") in the title bar so the
+        // developer always sees which project the AI is working on.
+        int64_t pid = NeProjects_GetActiveId();
+        NeProject proj;
+        std::wstring projName = (pid && NeProjects_GetById(pid, proj) && !proj.name.empty())
+                              ? proj.name : Ne_Ls(L"PROJECT_NONE");
+        std::wstring projLabel;
+        for (wchar_t c : std::wstring(Ne_Ls(L"MENU_PROJECT"))) if (c != L'&') projLabel += c;
+        title += L"  \u2014  " + projLabel + L": " + projName;
+    }
     SetWindowTextW(hwnd, title.c_str());
 
     HWND hHdr = GetDlgItem(hwnd, IDC_AI_HEADER);
@@ -4285,6 +4354,23 @@ static void Ai_ApplyButtons(AiWindowState* st)
     st->dd->buttons[6] = AiButtonSpec{ IDC_AI_CLOSE_BTN, Ne_Ls(L"BTN_CLOSE"), AiBtnTone::Red,   Ai_MeasureButtonWidth(Ne_Ls(L"BTN_CLOSE")), true };
 }
 
+// Folder picker for adding a project from the AI window (the editor's own
+// Ne_PickFolder is file-local).  Returns the chosen absolute path.
+static bool Ai_PickFolder(HWND owner, const wchar_t* title, std::wstring& outPath)
+{
+    BROWSEINFOW bi = {};
+    bi.hwndOwner = owner;
+    bi.lpszTitle = title;
+    bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+    LPITEMIDLIST pidl = SHBrowseForFolderW(&bi);
+    if (!pidl) return false;
+    wchar_t path[MAX_PATH] = {};
+    bool ok = SHGetPathFromIDListW(pidl, path) != FALSE;
+    CoTaskMemFree(pidl);
+    if (ok) outPath = path;
+    return ok;
+}
+
 static HMENU Ai_BuildMenu(const AiWindowState* st)
 {
     Ai_ClearMenuStorage();
@@ -4336,10 +4422,39 @@ static HMENU Ai_BuildMenu(const AiWindowState* st)
 
     Ai_AppendMenuOD(hHelp, MF_STRING, IDM_AI_ABOUT, Ne_Ls(L"AI_MENU_ABOUT_WINDOW"), false);
 
+    // ── Project menu ─────────────────────────────────────────────────────────
+    // Mirrors the editor's project switcher so the developer can see and change
+    // the active project without leaving the AI window.  Shares the same DB state
+    // (NeProjects_GetActiveId/SetActiveId), so a change here is reflected in the
+    // editor too.
+    HMENU hProject = CreatePopupMenu();
+    int64_t activeProjId = NeProjects_GetActiveId();
+    std::vector<NeProject> aiProjects;
+    NeProjects_List(aiProjects);
+    Ai_AppendMenuOD(hProject, MF_STRING, IDM_AI_PROJECT_NONE, Ne_Ls(L"PROJECT_NONE"), false);
+    if (!aiProjects.empty()) {
+        Ai_AppendMenuOD(hProject, MF_SEPARATOR, 0, NULL, false);
+        for (size_t pi = 0; pi < aiProjects.size() && pi < 100; ++pi) {
+            Ai_AppendMenuOD(hProject, MF_STRING, IDM_AI_PROJECT_BASE + (UINT)pi,
+                            aiProjects[pi].name.c_str(), false);
+        }
+    }
+    Ai_AppendMenuOD(hProject, MF_SEPARATOR, 0, NULL, false);
+    Ai_AppendMenuOD(hProject, MF_STRING, IDM_AI_PROJECT_ADD, Ne_Ls(L"PROJECT_ADD"), false);
+
     Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hModel, Ne_Ls(L"AI_MENU_MODEL"), true);
     Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hCloud, Ne_Ls(L"AI_MENU_CLOUD"), true);
+    Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hProject, Ne_Ls(L"MENU_PROJECT"), true);
     Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hLog, Ne_Ls(L"AI_MENU_LOG"), true);
     Ai_AppendMenuOD(hMenu, MF_POPUP, (UINT_PTR)hHelp, Ne_Ls(L"AI_MENU_HELP"), true);
+
+    // Radio-check the active project (or "(No project)").
+    CheckMenuItem(hProject, IDM_AI_PROJECT_NONE,
+                  MF_BYCOMMAND | (activeProjId == 0 ? MF_CHECKED : MF_UNCHECKED));
+    for (size_t pi = 0; pi < aiProjects.size() && pi < 100; ++pi) {
+        if (aiProjects[pi].id == activeProjId)
+            CheckMenuItem(hProject, IDM_AI_PROJECT_BASE + (UINT)pi, MF_BYCOMMAND | MF_CHECKED);
+    }
 
     if (st) {
         for (const AiModelMenuItem& item : s_aiModelMenuItems) {
@@ -5957,6 +6072,18 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         }
         switch (LOWORD(wParam)) {
         default: {
+            // Project switch entries (dynamic range) — mirror the editor's list.
+            UINT cmd = (UINT)LOWORD(wParam);
+            if (cmd >= IDM_AI_PROJECT_BASE && cmd < IDM_AI_PROJECT_BASE + 100) {
+                std::vector<NeProject> projects;
+                NeProjects_List(projects);
+                int idx = (int)(cmd - IDM_AI_PROJECT_BASE);
+                if (idx >= 0 && idx < (int)projects.size()) {
+                    NeProjects_SetActiveId(projects[idx].id);
+                    Ai_RefreshUi(hwnd);
+                }
+                return 0;
+            }
             const AiModelMenuItem* modelItem = Ai_FindModelMenuItem((UINT)LOWORD(wParam));
             if (modelItem && st) {
                 st->role = modelItem->role;
@@ -6044,6 +6171,27 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
         case IDM_AI_OPEN_PROVIDER:
             ShellExecuteW(hwnd, L"open", L"https://ollama.com", NULL, NULL, SW_SHOWNORMAL);
             return 0;
+        case IDM_AI_PROJECT_NONE:
+            NeProjects_SetActiveId(0);
+            Ai_RefreshUi(hwnd);
+            return 0;
+        case IDM_AI_PROJECT_ADD: {
+            std::wstring folder;
+            if (Ai_PickFolder(hwnd, Ne_Ls(L"PROJECT_PICK_TITLE"), folder)) {
+                std::wstring name = folder;
+                size_t slash = name.find_last_of(L"\\/");
+                if (slash != std::wstring::npos && slash + 1 < name.size())
+                    name = name.substr(slash + 1);
+                NeProject p;
+                p.name     = name.empty() ? folder : name;
+                p.rootPath = folder;
+                if (NeProjects_Add(p)) {
+                    NeProjects_SetActiveId(p.id);   // auto-select the new project
+                    Ai_RefreshUi(hwnd);
+                }
+            }
+            return 0;
+        }
         case IDM_AI_CHECK_MODELS:
             Ai_ShowModelCheckDialog(hwnd);
             return 0;
@@ -6389,10 +6537,14 @@ void Ne_ShowAiWindow(HWND parent)
     }
 
     HINSTANCE hi = GetModuleHandleW(NULL);
+    HICON hAiIconBig = Ai_GetWindowIconBig();
+    HICON hAiIconSmall = Ai_GetWindowIconSmall();
     WNDCLASSW wc = {};
     wc.lpfnWndProc = Ai_WndProc;
     wc.hInstance = hi;
-    wc.hIcon = LoadIconW(hi, MAKEINTRESOURCEW(1));   // app icon (NSBEdit.ico) for taskbar
+    // AI window icon (AI-icon.png); falls back to the app icon (NSBEdit.ico) when
+    // the PNG is missing or unreadable.
+    wc.hIcon = hAiIconBig ? hAiIconBig : LoadIconW(hi, MAKEINTRESOURCEW(1));
     wc.hCursor = LoadCursorW(NULL, MAKEINTRESOURCEW(kSystemArrowCursor));
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszClassName = L"NSBEditAIWindow";
@@ -6426,10 +6578,10 @@ void Ne_ShowAiWindow(HWND parent)
         return;
     }
 
-    if (HICON hIco = LoadIconW(hi, MAKEINTRESOURCEW(1))) {
-        SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hIco);
-        SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIco);
-    }
+    HICON hWndBig = hAiIconBig ? hAiIconBig : LoadIconW(hi, MAKEINTRESOURCEW(1));
+    HICON hWndSmall = hAiIconSmall ? hAiIconSmall : hWndBig;
+    if (hWndBig)   SendMessageW(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hWndBig);
+    if (hWndSmall) SendMessageW(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hWndSmall);
 
     s_hwndAiWindow = hwnd;
     // Restore the last saved geometry (size/position/maximized); else show normally.
