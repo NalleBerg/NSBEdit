@@ -362,6 +362,7 @@ struct AiWindowState {
     bool signedIn = false;
     int historyIndex = -1;
     std::wstring historyDraft;
+    std::vector<std::string> historyDraftImages; // images on the unsent draft, restored on history return
     int replyBaseStart = 0;
     std::wstring liveReply;
     std::wstring liveRawReply;
@@ -481,6 +482,10 @@ static std::vector<AiMenuItemData*> s_aiMenuItems;
 static std::vector<AiModelMenuItem> s_aiModelMenuItems;
 static UINT s_aiNextModelMenuId = IDM_AI_MODEL_DEFAULT;
 static std::vector<std::wstring> s_aiInputHistory;
+// Parallel to s_aiInputHistory: the base64 PNG image(s) attached to each
+// remembered prompt, so recalling a query via history also restores its
+// image(s).  Kept in memory only (not persisted — base64 would bloat settings).
+static std::vector<std::vector<std::string>> s_aiInputHistoryImages;
 static constexpr size_t kAiInputHistoryLimit = 500;
 // True while the query input's WM_PASTE handler is inserting text. Multi-line
 // inserts fire EN_CHANGE synchronously mid-insert; letting the custom scrollbar
@@ -506,7 +511,8 @@ static void Ai_LoadPrefs(AiWindowState* st);
 static void Ai_SavePrefs(const AiWindowState* st);
 static void Ai_AppendLog(HWND hwnd, const std::wstring& line);
 static bool Ai_CopyAnswerText(HWND hwndLog);
-static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& prompt);
+static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& prompt,
+                               const std::vector<std::string>& images);
 static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int delta);
 static void Ai_DoSend(HWND hwnd);
 static void Ai_StopSend(HWND hwnd);
@@ -783,11 +789,26 @@ static int Ai_ButtonIndexById(const AiDialogData* dd, int id)
     return -1;
 }
 
-static void Ai_HistorySetInput(HWND hwnd, const std::wstring& text, bool caretAtTop = false)
+static void Ai_HistorySetInput(HWND hwnd, AiWindowState* st, const std::wstring& text,
+                               const std::vector<std::string>& images, bool caretAtTop = false)
 {
     HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
     if (!hInput) return;
+    s_aiInputPasting = true;   // programmatic edit: do not run the paste/cut hooks
     SetWindowTextW(hInput, text.c_str());
+    // Re-attach the image(s) that belonged to this entry: restore pendingImages so
+    // the next send is still multimodal, and drop them inline (after the text) so
+    // the developer sees what will be sent.
+    if (st) st->pendingImages = images;
+    for (const std::string& b64 : images) {
+        std::string png = Ai_Base64Decode(b64);
+        if (png.empty()) continue;
+        int end = GetWindowTextLengthW(hInput);
+        SendMessageW(hInput, EM_SETSEL, (WPARAM)end, (LPARAM)end);
+        Ai_InsertInlinePng(hInput, png);
+    }
+    s_aiInputPasting = false;
+    if (st && st->hInputSb) msb_notify_content_changed(st->hInputSb);
     // Enter an OLDER query from the bottom and a NEWER one from the top, so
     // holding Up/Down keeps moving in the same direction through the text.
     int pos = caretAtTop ? 0 : (int)GetWindowTextLengthW(hInput);
@@ -795,20 +816,28 @@ static void Ai_HistorySetInput(HWND hwnd, const std::wstring& text, bool caretAt
     SendMessageW(hInput, EM_SCROLLCARET, 0, 0);
 }
 
-static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& text)
+static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& text,
+                               const std::vector<std::string>& images)
 {
     if (!st || text.empty()) return;
     if (!s_aiInputHistory.empty() && s_aiInputHistory.back() == text) {
+        if (!s_aiInputHistoryImages.empty())
+            s_aiInputHistoryImages.back() = images;   // keep the latest attachment
         st->historyIndex = -1;
         st->historyDraft.clear();
+        st->historyDraftImages.clear();
         return;
     }
     s_aiInputHistory.push_back(text);
+    s_aiInputHistoryImages.push_back(images);
     if (s_aiInputHistory.size() > kAiInputHistoryLimit) {
         s_aiInputHistory.erase(s_aiInputHistory.begin());
+        if (!s_aiInputHistoryImages.empty())
+            s_aiInputHistoryImages.erase(s_aiInputHistoryImages.begin());
     }
     st->historyIndex = -1;
     st->historyDraft.clear();
+    st->historyDraftImages.clear();
 }
 
 static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
@@ -830,6 +859,7 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
             }
         }
         st->historyDraft = current;
+        st->historyDraftImages = st->pendingImages;   // keep the draft's attachment
         st->historyIndex = (int)s_aiInputHistory.size() - 1;
     } else if (direction < 0) {
         if (st->historyIndex > 0) {
@@ -841,13 +871,17 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
             caretTop = true;
         } else {
             st->historyIndex = -1;
-            Ai_HistorySetInput(hwnd, st->historyDraft);
+            Ai_HistorySetInput(hwnd, st, st->historyDraft, st->historyDraftImages);
             return true;
         }
     }
 
     if (st->historyIndex >= 0 && st->historyIndex < (int)s_aiInputHistory.size()) {
-        Ai_HistorySetInput(hwnd, s_aiInputHistory[(size_t)st->historyIndex], caretTop);
+        const std::vector<std::string>& imgs =
+            (st->historyIndex < (int)s_aiInputHistoryImages.size())
+                ? s_aiInputHistoryImages[(size_t)st->historyIndex]
+                : std::vector<std::string>();
+        Ai_HistorySetInput(hwnd, st, s_aiInputHistory[(size_t)st->historyIndex], imgs, caretTop);
         return true;
     }
 
@@ -1072,6 +1106,7 @@ static void Ai_SaveHistory()
 static void Ai_LoadHistory()
 {
     s_aiInputHistory.clear();
+    s_aiInputHistoryImages.clear();
 
     int count = 0;
     if (!NeProfiles_GetIntSetting("ai.history.count", 0, count) || count <= 0) {
@@ -1087,6 +1122,9 @@ static void Ai_LoadHistory()
             s_aiInputHistory.push_back(Ai_Utf8ToWide(saved));
         }
     }
+    // Images are not persisted; keep the parallel list the same size (no images
+    // for restored-from-disk entries) so history indexing stays in sync.
+    s_aiInputHistoryImages.assign(s_aiInputHistory.size(), std::vector<std::string>());
 }
 
 static void Ai_CollectMarkdownText(cmark_node* node, std::wstring& out)
@@ -5480,7 +5518,7 @@ static void Ai_DoSend(HWND hwnd)
     st->sendCanceled = false;
     NeAiClient_ResetCancel();
 
-    Ai_HistoryRemember(st, prompt);
+    Ai_HistoryRemember(st, prompt, st->lastImages);
     Ai_SavePrefs(st);
 
     Ai_StopThinkingTimer(hwnd);
