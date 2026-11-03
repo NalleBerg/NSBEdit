@@ -331,6 +331,81 @@ static void Ai_AppendInlinePng(HWND hEdit, const std::string& png)
     Ai_InsertInlinePng(hEdit, png);
 }
 
+// EM_STREAMOUT sink that accumulates the control's RTF into a std::string.
+static DWORD CALLBACK Ai_RtfStreamOutCb(DWORD_PTR cookie, LPBYTE buff, LONG cb, LONG* pcb)
+{
+    std::string* s = (std::string*)cookie;
+    if (s && cb > 0) s->append((const char*)buff, (size_t)cb);
+    if (pcb) *pcb = cb;
+    return 0;
+}
+
+// Extract every inline PNG currently embedded in a RichEdit by streaming it out
+// as RTF and decoding the \pict\pngblip hex blocks.  This is the single source of
+// truth for "which images will be sent": it reflects pastes AND deletions, so a
+// stale/duplicate image can never accumulate in a side vector.  Returns base64
+// PNGs in document order.
+static void Ai_ExtractInlinePngs(HWND hEdit, std::vector<std::string>& outPngs)
+{
+    outPngs.clear();
+    if (!hEdit) return;
+
+    std::string rtf;
+    EDITSTREAM es = {};
+    es.dwCookie = (DWORD_PTR)&rtf;
+    es.pfnCallback = Ai_RtfStreamOutCb;
+    SendMessageW(hEdit, EM_STREAMOUT, SF_RTF, (LPARAM)&es);
+
+    auto hexVal = [](char h) -> int {
+        if (h >= '0' && h <= '9') return h - '0';
+        if (h >= 'a' && h <= 'f') return h - 'a' + 10;
+        if (h >= 'A' && h <= 'F') return h - 'A' + 10;
+        return -1;
+    };
+
+    size_t pos = 0;
+    while ((pos = rtf.find("\\pict", pos)) != std::string::npos) {
+        size_t blip = rtf.find("\\pngblip", pos);
+        // Only treat this \pict as PNG when \pngblip belongs to it (before the
+        // next \pict and before the group closes).
+        size_t nextPict = rtf.find("\\pict", pos + 5);
+        if (blip == std::string::npos || (nextPict != std::string::npos && blip > nextPict)) {
+            pos += 5; continue;
+        }
+        // Walk from after \pngblip to the end of the \pict group, collecting hex
+        // digits and skipping control words / braces / whitespace.
+        std::string hex;
+        int depth = 1;
+        size_t i = blip + 8;
+        for (; i < rtf.size(); ++i) {
+            char c = rtf[i];
+            if (c == '\\') {                       // control word — skip it
+                ++i;
+                while (i < rtf.size() && isalpha((unsigned char)rtf[i])) ++i;
+                if (i < rtf.size() && rtf[i] == '-') ++i;
+                while (i < rtf.size() && isdigit((unsigned char)rtf[i])) ++i;
+                --i;
+                continue;
+            }
+            if (c == '{') { ++depth; continue; }
+            if (c == '}') { if (--depth == 0) break; continue; }
+            if (isxdigit((unsigned char)c)) hex += c;
+        }
+        std::string png;
+        png.reserve(hex.size() / 2);
+        for (size_t k = 0; k + 1 < hex.size(); k += 2) {
+            int hi = hexVal(hex[k]), lo = hexVal(hex[k + 1]);
+            if (hi < 0 || lo < 0) break;
+            png += (char)((hi << 4) | lo);
+        }
+        if (png.size() > 8 && (unsigned char)png[0] == 0x89 &&
+            png[1] == 'P' && png[2] == 'N' && png[3] == 'G') {
+            outPngs.push_back(Ai_Base64Encode(png));
+        }
+        pos = (i < rtf.size()) ? i : rtf.size();
+    }
+}
+
 // One turn of the accumulated conversation: the user's prompt, the raw markdown
 // reply, and any images (base64-encoded PNG) the user attached to that query.
 struct AiConversationTurn {
@@ -863,7 +938,9 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
             }
         }
         st->historyDraft = current;
-        st->historyDraftImages = st->pendingImages;   // keep the draft's attachment
+        // Capture the draft's images from what is actually in the input box (not a
+        // side vector), so returning to the draft restores exactly those.
+        Ai_ExtractInlinePngs(hInput, st->historyDraftImages);
         st->historyIndex = (int)s_aiInputHistory.size() - 1;
     } else if (direction < 0) {
         if (st->historyIndex > 0) {
@@ -5627,8 +5704,15 @@ static void Ai_DoSend(HWND hwnd)
     }
     if (prompt.empty() && st->pendingImages.empty()) return;
 
+    // The input box is the single source of truth for attached images: extract
+    // exactly what is currently embedded (respects pastes AND deletions) instead
+    // of a side vector that could hold stale/duplicate entries.
+    std::vector<std::string> inputImages;
+    Ai_ExtractInlinePngs(hInput, inputImages);
+    if (prompt.empty() && inputImages.empty()) return;   // nothing to send
+
     st->lastPrompt = prompt;
-    st->lastImages = st->pendingImages;
+    st->lastImages = std::move(inputImages);
     st->pendingImages.clear();
     st->sendCanceled = false;
     NeAiClient_ResetCancel();
