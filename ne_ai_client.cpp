@@ -983,7 +983,7 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
         "\",\"prompt\":\"" +
         Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
         "\"" + Ai_BuildImagesJson(images) +
-        ",\"stream\":true,\"think\":false"
+        ",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\""
         ",\"options\":{\"num_ctx\":" + std::to_string(ctx) + "}}";
 
     HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
@@ -1013,6 +1013,13 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
                     if (status == 200) {
                         std::string pending;
                         bool done = false;
+                        // ── TEMP DIAGNOSTIC: where do the minutes go? ──────────
+                        // Capture wall-clock time-to-first-token plus the server's
+                        // own nanosecond breakdown from the final "done" line.
+                        unsigned long long dbgStartMs = GetTickCount64();
+                        unsigned long long dbgFirstMs = 0;
+                        unsigned long long dbgLoadNs = 0, dbgPromptNs = 0, dbgEvalNs = 0;
+                        unsigned long long dbgPromptTok = 0, dbgEvalTok = 0;
                         while (!g_aiCancelRequested.load()) {
                             DWORD available = 0;
                             if (!WinHttpQueryDataAvailable(hRequest, &available)) break;
@@ -1032,12 +1039,14 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
 
                                 std::string replyUtf8;
                                 if (Ai_FindJsonStringField(line, "response", replyUtf8) && !replyUtf8.empty()) {
+                                    if (dbgFirstMs == 0) dbgFirstMs = GetTickCount64();
                                     std::wstring wideChunk = Ai_Utf8ToWide(replyUtf8);
                                     outReply += wideChunk;
                                     if (onChunk && !wideChunk.empty()) onChunk(context, wideChunk);
                                 } else {
                                     std::string thinkingUtf8;
                                     if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8) && !thinkingUtf8.empty()) {
+                                        if (dbgFirstMs == 0) dbgFirstMs = GetTickCount64();
                                         std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
                                         outReply += wideChunk;
                                         if (onChunk && !wideChunk.empty()) onChunk(context, wideChunk);
@@ -1045,7 +1054,14 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
                                 }
 
                                 bool d = false;
-                                if (Ai_FindJsonBoolField(line, "done", d) && d) done = true;
+                                if (Ai_FindJsonBoolField(line, "done", d) && d) {
+                                    done = true;
+                                    Ai_FindJsonNumberField(line, "load_duration", dbgLoadNs);
+                                    Ai_FindJsonNumberField(line, "prompt_eval_duration", dbgPromptNs);
+                                    Ai_FindJsonNumberField(line, "prompt_eval_count", dbgPromptTok);
+                                    Ai_FindJsonNumberField(line, "eval_duration", dbgEvalNs);
+                                    Ai_FindJsonNumberField(line, "eval_count", dbgEvalTok);
+                                }
                                 std::string errUtf8;
                                 if (Ai_FindJsonStringField(line, "error", errUtf8) && !errUtf8.empty()) {
                                     outError = Ai_Utf8ToWide(errUtf8);
@@ -1053,7 +1069,47 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
                             }
                             if (!outError.empty()) break;
                         }
+                        // The final JSON line may arrive without a trailing newline;
+                        // process whatever is left so "done" + timing are not missed.
+                        if (!pending.empty()) {
+                            std::string line = Ai_TrimJsonLine(pending);
+                            pending.clear();
+                            if (!line.empty()) {
+                                std::string replyUtf8;
+                                if (Ai_FindJsonStringField(line, "response", replyUtf8) && !replyUtf8.empty()) {
+                                    if (dbgFirstMs == 0) dbgFirstMs = GetTickCount64();
+                                    std::wstring wideChunk = Ai_Utf8ToWide(replyUtf8);
+                                    outReply += wideChunk;
+                                    if (onChunk && !wideChunk.empty()) onChunk(context, wideChunk);
+                                }
+                                bool d = false;
+                                if (Ai_FindJsonBoolField(line, "done", d) && d) {
+                                    done = true;
+                                    Ai_FindJsonNumberField(line, "load_duration", dbgLoadNs);
+                                    Ai_FindJsonNumberField(line, "prompt_eval_duration", dbgPromptNs);
+                                    Ai_FindJsonNumberField(line, "prompt_eval_count", dbgPromptTok);
+                                    Ai_FindJsonNumberField(line, "eval_duration", dbgEvalNs);
+                                    Ai_FindJsonNumberField(line, "eval_count", dbgEvalTok);
+                                }
+                                std::string errUtf8;
+                                if (Ai_FindJsonStringField(line, "error", errUtf8) && !errUtf8.empty()) {
+                                    outError = Ai_Utf8ToWide(errUtf8);
+                                }
+                            }
+                        }
                         ok = outError.empty() && (done || !outReply.empty());
+                        {
+                            double ttfSec  = (dbgFirstMs ? (double)(dbgFirstMs - dbgStartMs) : 0.0) / 1000.0;
+                            wchar_t dbg[320];
+                            swprintf(dbg, 320,
+                                L"\r\n\r\n[cloud timing — wait-to-first %.1fs · load %.1fs · "
+                                L"prompt_eval %.1fs (%llu tok) · eval %.1fs (%llu tok)]",
+                                ttfSec, (double)dbgLoadNs / 1e9, (double)dbgPromptNs / 1e9,
+                                dbgPromptTok, (double)dbgEvalNs / 1e9, dbgEvalTok);
+                            std::wstring footer = dbg;
+                            outReply += footer;
+                            if (onChunk) onChunk(context, footer);
+                        }
                     } else {
                         // Non-200: surface the daemon's real error message (e.g.
                         // "this model requires a subscription, upgrade for

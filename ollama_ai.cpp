@@ -22,10 +22,12 @@
 #include <shellapi.h>
 #include <shlobj.h>
 #include <string>
+#include <cstdio>
 #include <vector>
 #include <map>
 #include <set>
 #include <thread>
+#include <mutex>
 #include <atomic>
 #include <algorithm>
 #include <cwctype>
@@ -366,6 +368,7 @@ struct AiWindowState {
     bool signedIn = false;
     int historyIndex = -1;
     std::wstring historyDraft;
+    std::vector<std::string> historyDraftImages; // images on the unsent draft, restored on history return
     int replyBaseStart = 0;
     std::wstring liveReply;
     std::wstring liveRawReply;
@@ -499,6 +502,10 @@ static std::vector<AiMenuItemData*> s_aiMenuItems;
 static std::vector<AiModelMenuItem> s_aiModelMenuItems;
 static UINT s_aiNextModelMenuId = IDM_AI_MODEL_DEFAULT;
 static std::vector<std::wstring> s_aiInputHistory;
+// Parallel to s_aiInputHistory: the base64 PNG image(s) attached to each remembered
+// prompt, so recalling a query via history also restores its image(s).  Kept in
+// memory only (not persisted — base64 images would bloat the settings DB).
+static std::vector<std::vector<std::string>> s_aiInputHistoryImages;
 static constexpr size_t kAiInputHistoryLimit = 500;
 // True while the query input's WM_PASTE handler is inserting text. Multi-line
 // inserts fire EN_CHANGE synchronously mid-insert; letting the custom scrollbar
@@ -518,13 +525,34 @@ static std::wstring Ai_GetExeDir()
     return exePath;
 }
 
+// TEMP timing instrumentation — appends "HH:MM:SS.mmm  <ticks>ms  <label>" to
+// ai_timing.log next to the exe.  Thread-safe.  Used to locate the cloud-send
+// lag; remove once fixed.
+static void Ai_DbgTime(const wchar_t* label)
+{
+    static std::mutex m;
+    std::lock_guard<std::mutex> lk(m);
+    wchar_t tmp[MAX_PATH] = {};
+    if (!GetTempPathW(MAX_PATH, tmp)) return;
+    std::wstring path = tmp;
+    path += L"nsbedit_timing.log";
+    FILE* f = _wfopen(path.c_str(), L"a");
+    if (!f) return;
+    SYSTEMTIME st; GetLocalTime(&st);
+    fwprintf(f, L"%02d:%02d:%02d.%03d  %llu  %ls\n",
+             st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+             (unsigned long long)GetTickCount64(), label);
+    fclose(f);
+}
+
 static void Ai_RefreshUi(HWND hwnd);
 static std::wstring Ai_FormatThinkingStatusText(const AiWindowState* st);
 static void Ai_LoadPrefs(AiWindowState* st);
 static void Ai_SavePrefs(const AiWindowState* st);
 static void Ai_AppendLog(HWND hwnd, const std::wstring& line);
 static bool Ai_CopyAnswerText(HWND hwndLog);
-static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& prompt);
+static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& prompt,
+                               const std::vector<std::string>& images);
 static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int delta);
 static void Ai_DoSend(HWND hwnd);
 static void Ai_StopSend(HWND hwnd);
@@ -801,11 +829,26 @@ static int Ai_ButtonIndexById(const AiDialogData* dd, int id)
     return -1;
 }
 
-static void Ai_HistorySetInput(HWND hwnd, const std::wstring& text, bool caretAtTop = false)
+static void Ai_HistorySetInput(HWND hwnd, AiWindowState* st, const std::wstring& text,
+                               const std::vector<std::string>& images, bool caretAtTop = false)
 {
     HWND hInput = GetDlgItem(hwnd, IDC_AI_INPUT);
     if (!hInput) return;
+    s_aiInputPasting = true;   // programmatic edit: do not run the paste/cut hooks
     SetWindowTextW(hInput, text.c_str());
+    // Re-attach the image(s) that belonged to this entry: restore pendingImages so
+    // the next send is still multimodal, and drop them inline (after the text) so
+    // the developer sees what will be sent.
+    if (st) st->pendingImages = images;
+    for (const std::string& b64 : images) {
+        std::string png = Ai_Base64Decode(b64);
+        if (png.empty()) continue;
+        int end = GetWindowTextLengthW(hInput);
+        SendMessageW(hInput, EM_SETSEL, (WPARAM)end, (LPARAM)end);
+        Ai_InsertInlinePng(hInput, png);
+    }
+    s_aiInputPasting = false;
+    if (st && st->hInputSb) msb_notify_content_changed(st->hInputSb);
     // Enter an OLDER query from the bottom and a NEWER one from the top, so
     // holding Up/Down keeps moving in the same direction through the text.
     int pos = caretAtTop ? 0 : (int)GetWindowTextLengthW(hInput);
@@ -813,20 +856,28 @@ static void Ai_HistorySetInput(HWND hwnd, const std::wstring& text, bool caretAt
     SendMessageW(hInput, EM_SCROLLCARET, 0, 0);
 }
 
-static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& text)
+static void Ai_HistoryRemember(AiWindowState* st, const std::wstring& text,
+                               const std::vector<std::string>& images)
 {
     if (!st || text.empty()) return;
     if (!s_aiInputHistory.empty() && s_aiInputHistory.back() == text) {
+        if (!s_aiInputHistoryImages.empty())
+            s_aiInputHistoryImages.back() = images;   // keep the latest attachment
         st->historyIndex = -1;
         st->historyDraft.clear();
+        st->historyDraftImages.clear();
         return;
     }
     s_aiInputHistory.push_back(text);
+    s_aiInputHistoryImages.push_back(images);
     if (s_aiInputHistory.size() > kAiInputHistoryLimit) {
         s_aiInputHistory.erase(s_aiInputHistory.begin());
+        if (!s_aiInputHistoryImages.empty())
+            s_aiInputHistoryImages.erase(s_aiInputHistoryImages.begin());
     }
     st->historyIndex = -1;
     st->historyDraft.clear();
+    st->historyDraftImages.clear();
 }
 
 static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
@@ -848,6 +899,7 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
             }
         }
         st->historyDraft = current;
+        st->historyDraftImages = st->pendingImages;   // keep the draft's attachment
         st->historyIndex = (int)s_aiInputHistory.size() - 1;
     } else if (direction < 0) {
         if (st->historyIndex > 0) {
@@ -859,13 +911,17 @@ static bool Ai_HistoryBrowse(HWND hwnd, AiWindowState* st, int direction)
             caretTop = true;
         } else {
             st->historyIndex = -1;
-            Ai_HistorySetInput(hwnd, st->historyDraft);
+            Ai_HistorySetInput(hwnd, st, st->historyDraft, st->historyDraftImages);
             return true;
         }
     }
 
     if (st->historyIndex >= 0 && st->historyIndex < (int)s_aiInputHistory.size()) {
-        Ai_HistorySetInput(hwnd, s_aiInputHistory[(size_t)st->historyIndex], caretTop);
+        const std::vector<std::string>& imgs =
+            (st->historyIndex < (int)s_aiInputHistoryImages.size())
+                ? s_aiInputHistoryImages[(size_t)st->historyIndex]
+                : std::vector<std::string>();
+        Ai_HistorySetInput(hwnd, st, s_aiInputHistory[(size_t)st->historyIndex], imgs, caretTop);
         return true;
     }
 
@@ -1144,6 +1200,7 @@ static void Ai_SaveHistory()
 static void Ai_LoadHistory()
 {
     s_aiInputHistory.clear();
+    s_aiInputHistoryImages.clear();
 
     int count = 0;
     if (!NeProfiles_GetIntSetting("ai.history.count", 0, count) || count <= 0) {
@@ -1159,6 +1216,9 @@ static void Ai_LoadHistory()
             s_aiInputHistory.push_back(Ai_Utf8ToWide(saved));
         }
     }
+    // Images are not persisted; keep the parallel list the same size (no images
+    // for restored-from-disk entries) so history indexing stays in sync.
+    s_aiInputHistoryImages.assign(s_aiInputHistory.size(), std::vector<std::string>());
 }
 
 static void Ai_CollectMarkdownText(cmark_node* node, std::wstring& out)
@@ -2534,6 +2594,7 @@ static void Ai_StreamChunkCallback(void* context, const std::wstring& chunk)
     auto* chunkInfo = (AiStreamChunk*)context;
     if (!chunkInfo || chunk.empty()) return;
 
+    if (!chunkInfo->streamed) Ai_DbgTime(L"first-chunk");
     chunkInfo->streamed = true;
     if (IsWindow(chunkInfo->hwnd)) {
         auto* queued = new AiStreamChunk(*chunkInfo);
@@ -3716,48 +3777,6 @@ static std::wstring Ai_FormatWebResultsBlock(const std::wstring& query,
     return b;
 }
 
-// Autonomous web-search router.  Asks the model whether answering the user's
-// message needs current/external information it may not reliably know; if so the
-// model returns a concise search query.  Returns an empty string when no search
-// is needed (or the decision call fails).  Runs on the send worker thread, so it
-// must not touch the UI.
-static std::wstring Ai_RouterWebQuery(const std::wstring& model, const std::wstring& userQuestion)
-{
-    if (model.empty() || userQuestion.empty()) return L"";
-
-    std::wstring routerPrompt =
-        L"You are a routing classifier for a coding assistant that can search the web.\r\n"
-        L"Decide whether answering the user's message correctly needs CURRENT or EXTERNAL "
-        L"information you may not reliably have: recent events, latest or updated versions, "
-        L"release notes, changelogs, APIs or libraries that change over time, dates, prices, "
-        L"people, news, or anything you are not confident is up to date.\r\n"
-        L"If a web search would clearly help, reply with EXACTLY one line:\r\n"
-        L"SEARCH: <a short, specific search query>\r\n"
-        L"If you can answer reliably from your own knowledge (general programming, the user's "
-        L"own code, math, explanations, refactoring), reply with EXACTLY:\r\n"
-        L"NONE\r\n"
-        L"Reply with only that one line and nothing else.\r\n\r\n"
-        L"User message:\r\n" + userQuestion + L"\r\n";
-
-    std::wstring reply, err;
-    if (!NeAiClient_AskOllama(model, routerPrompt, reply, err, 2048)) return L"";
-
-    size_t p = reply.find(L"SEARCH:");
-    if (p == std::wstring::npos) return L"";
-    std::wstring q = reply.substr(p + 7);
-    size_t nl = q.find_first_of(L"\r\n");
-    if (nl != std::wstring::npos) q = q.substr(0, nl);
-    while (!q.empty() && iswspace((wint_t)q.front())) q.erase(q.begin());
-    while (!q.empty() && iswspace((wint_t)q.back()))  q.pop_back();
-    // Strip wrapping quotes/backticks the model sometimes adds.
-    while (!q.empty() && (q.front() == L'"' || q.front() == L'`' || q.front() == L'\'')) q.erase(q.begin());
-    while (!q.empty() && (q.back()  == L'"' || q.back()  == L'`' || q.back()  == L'\'')) q.pop_back();
-    // Guard against the model dumping a full answer instead of a query.
-    if (q.empty() || q.size() > 200) return L"";
-    if (q == L"NONE" || q == L"None" || q == L"none") return L"";
-    return q;
-}
-
 static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback, int answerStart,
                                std::vector<std::wstring> mapChunks = {}, std::wstring reduceHeader = {},
                                std::vector<std::string> images = {},
@@ -3780,6 +3799,7 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
     work.installVision = installVision;
 
     std::thread([work = std::move(work)]() mutable {
+        Ai_DbgTime(L"worker-begin");
         auto* result = new AiSendResult();
 
         // ── Chunked map-reduce path for large files ──────────────────────────
@@ -3911,9 +3931,10 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
             };
             postProgress(Ne_Ls(L"AI_VISION_LOOKING"));
             const std::wstring describePrompt =
-                L"Describe this image in detail for a software developer. Transcribe any "
-                L"visible text, code or UI labels verbatim, and describe shapes, colours, "
-                L"layout, diagrams, charts and anything notable. Be factual and thorough.";
+                L"Describe this image concisely for a developer in one short paragraph. "
+                L"State what it shows, transcribe any key visible text or UI labels verbatim, "
+                L"and note the main UI elements, shapes and colours. Be factual and brief — "
+                L"do not pad or speculate.";
             std::wstring descBlock;
             int described = 0;
             for (const std::string& img : work.images) {
@@ -3942,35 +3963,6 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
             // gets the raw image as a best-effort fallback.
         }
 
-        // ── Autonomous web retrieval ─────────────────────────────────────────
-        // When the user did not explicitly ask to search, let the model decide
-        // whether it needs current/external information and, if so, fetch it and
-        // ground the answer on the results.  Runs here on the worker thread so the
-        // extra decision + search never blocks the UI.
-        if (work.autoWeb && !work.webAlreadyDone && !work.userQuestion.empty()
-            && !NeAiClient_IsCancelRequested()) {
-            auto postProgress = [&](const std::wstring& text) {
-                if (IsWindow(work.hwnd))
-                    PostMessageW(work.hwnd, WM_AI_PROGRESS, 0, (LPARAM)new std::wstring(text));
-            };
-            // Prefer the smaller/faster fallback model for the quick yes/no
-            // decision; fall back to the main model when none is configured.
-            std::wstring routerModel = !work.fallback.empty() ? work.fallback : work.model;
-            std::wstring wq = Ai_RouterWebQuery(routerModel, work.userQuestion);
-            if (!wq.empty() && !NeAiClient_IsCancelRequested()) {
-                postProgress(Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_WEB"), wq));
-                std::vector<NeAiWebResult> results;
-                std::wstring werr;
-                if (NeAiClient_WebSearch(wq, 5, results, werr) && !results.empty()) {
-                    work.prompt = Ai_FormatWebResultsBlock(wq, results) + work.prompt;
-                    postProgress(Ai_FormatLocaleText(Ne_Ls(L"AI_SEARCH_WEB_DONE"),
-                                                     std::to_wstring((int)results.size())));
-                } else {
-                    postProgress(Ne_Ls(L"AI_SEARCH_WEB_NONE"));
-                }
-            }
-        }
-
         std::wstring formattedPrompt = L"Answer plainly. Preserve indentation.\r\n\r\n";
         if (Ai_IsCodeRelatedPrompt(work.prompt)) {
             formattedPrompt +=
@@ -3983,6 +3975,7 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
         chunkInfo.hwnd = work.hwnd;
         chunkInfo.answerStart = work.answerStart;
 
+        Ai_DbgTime(L"ask-begin (main AskOllamaStream)");
         if (NeAiClient_AskOllamaStream(work.model, formattedPrompt, &chunkInfo, Ai_StreamChunkCallback, result->reply, result->error, 0, work.images)) {
             result->ok = true;
         } else {
@@ -3990,7 +3983,7 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
                 (result->error.find(L"not found") != std::wstring::npos ||
                  result->error.find(L"does not exist") != std::wstring::npos ||
                  result->error.find(L"pull the model") != std::wstring::npos);
-            if (modelMissing && work.fallback != work.model) {
+            if (modelMissing && !work.fallback.empty() && work.fallback != work.model) {
                 result->usedFallback = true;
                 std::wstring fallbackError;
                 chunkInfo.streamed = false;
@@ -4022,6 +4015,7 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
 
         result->streamed = result->streamed || chunkInfo.streamed;
 
+        Ai_DbgTime(L"worker-stream-done (AskOllamaStream returned)");
         if (IsWindow(work.hwnd)) {
             PostMessageW(work.hwnd, WM_AI_SEND_COMPLETE, 0, (LPARAM)result);
         } else {
@@ -5178,6 +5172,9 @@ static std::wstring Ai_ExtractWebQuery(const std::wstring& prompt)
     if (!q.empty()) return q;
 
     // Natural web-intent phrases/words — the whole prompt becomes the query.
+    // Includes recency/currency terms so the AI searches on its own when a
+    // question is about current/external facts, without an extra LLM "router"
+    // call. Keep these NON-code to avoid false positives on code generation.
     static const wchar_t* signals[] = {
         L"search the web", L"search online", L"search the internet", L"search internet",
         L"on the web", L"on the internet", L"look online", L"look it up", L"web search",
@@ -5185,6 +5182,10 @@ static std::wstring Ai_ExtractWebQuery(const std::wstring& prompt)
         L" site", L"home page", L"homepage", L"documentation", L"official",
         L"latest version", L"current version", L"currently available", L"up to date",
         L"up-to-date", L"newest", L"what's new", L"release notes", L"download",
+        // recency / currency (autonomous search triggers)
+        L"recent", L"recently", L"latest", L"nowadays", L"these days",
+        L"this year", L"this month", L"this week", L"news", L"announced",
+        L"announcement", L"2024", L"2025", L"2026", L"2027",
         L".com", L".org", L".io", L".net", L".dev", L".ai"
     };
     for (auto s : signals) if (low.find(s) != std::wstring::npos) return prompt;
@@ -5458,6 +5459,65 @@ static std::wstring Ai_ExtractProjectPatterns(const std::vector<NeProjectFile>& 
         block += L"\r\n";
     }
     return block;
+}
+
+// Decide whether a prompt actually concerns the ACTIVE PROJECT.  Walking and
+// grepping the project tree on every send — then injecting the file listing and
+// matched snippets into the prompt — adds latency and bloats the prompt for
+// generic questions ("give me a hello world in C++") that have nothing to do with
+// the project, which slows the model's time-to-first-token.  Only build project
+// context when the prompt shows clear PROJECT intent:
+//   • names a file (name.ext) or path, or gives an explicit regex,
+//   • uses project/codebase wording, or
+//   • mentions the active project by name.
+// Deliberately does NOT treat generic coding words (code, app, function, class,
+// program) as project signals, so a plain "write me X" request stays fast.
+static bool Ai_PromptNeedsProjectContext(const std::wstring& prompt)
+{
+    std::wstring low = Ai_LowerW(prompt);
+
+    // Explicit regex content search markers / a path.
+    if (low.find(L"regex:") != std::wstring::npos ||
+        low.find(L"re:")    != std::wstring::npos ||
+        prompt.find(L'/')   != std::wstring::npos ||
+        prompt.find(L'\\')  != std::wstring::npos)
+        return true;
+
+    // A filename-like token: <name>.<ext> with name >= 2 chars and ext 1-6 chars
+    // (skips "e.g.", "i.e.", "3.5", so plain prose does not trigger a search).
+    {
+        size_t n = prompt.size();
+        for (size_t i = 0; i < n; ++i) {
+            if (prompt[i] != L'.') continue;
+            size_t nameLen = 0, j = i;
+            while (j > 0 && (iswalnum(prompt[j - 1]) || prompt[j - 1] == L'_')) { --j; ++nameLen; }
+            size_t extLen = 0, k = i + 1;
+            while (k < n && iswalnum(prompt[k])) { ++k; ++extLen; }
+            if (nameLen >= 2 && extLen >= 1 && extLen <= 6) return true;
+        }
+    }
+
+    // Project/codebase intent wording (English + Norwegian).  Strong signals only.
+    static const wchar_t* kSignals[] = {
+        L"project", L"prosjekt", L"codebase", L"code base", L"repository", L"repo",
+        L"my code", L"min kode", L"my file", L"this file", L"the file", L"filen",
+        L"denne fila", L"denne filen", L"my class", L"this class", L"klassen",
+        L"my function", L"this function", L"funksjonen", L"my program", L"mitt program",
+        L"programmet", L"refactor", L"refaktor", L"existing code", L"current code",
+        L"in this project", L"in the project", L"i prosjektet",
+    };
+    for (const wchar_t* s : kSignals)
+        if (low.find(s) != std::wstring::npos) return true;
+
+    // Mentions the active project by name.
+    int64_t pid = NeProjects_GetActiveId();
+    if (pid) {
+        NeProject proj;
+        if (NeProjects_GetById(pid, proj) && proj.name.size() >= 3) {
+            if (low.find(Ai_LowerW(proj.name)) != std::wstring::npos) return true;
+        }
+    }
+    return false;
 }
 
 static std::wstring Ai_BuildProjectContext(const std::wstring& userPrompt, HWND hwnd = NULL)
@@ -5813,6 +5873,7 @@ static AiChunkPlan Ai_PlanBigFileChunks(const std::wstring& userPrompt)
 
 static void Ai_DoSend(HWND hwnd)
 {
+    Ai_DbgTime(L"DoSend-start");
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (!st) return;
 
@@ -5838,7 +5899,7 @@ static void Ai_DoSend(HWND hwnd)
     st->sendCanceled = false;
     NeAiClient_ResetCancel();
 
-    Ai_HistoryRemember(st, prompt);
+    Ai_HistoryRemember(st, prompt, st->lastImages);
     Ai_SavePrefs(st);
 
     Ai_StopThinkingTimer(hwnd);
@@ -5911,10 +5972,11 @@ static void Ai_DoSend(HWND hwnd)
         Ai_NormalizeModelNameLocal(selectedModel);
         Ai_NormalizeModelNameLocal(fallbackModel);
     }
-    // Explicit internet search (DuckDuckGo) when the user asks for it (keyword
-    // trigger) or has the "always search" toggle on.  Runs here on the UI thread.
-    // When nothing explicit fires, the send worker may still decide to search on
-    // its own (autonomous retrieval) — see Ai_RouterWebQuery.
+    // Internet search (DuckDuckGo) when the prompt shows web intent — explicit
+    // ("search the web …"), recency/currency wording (handled by the expanded
+    // Ai_ExtractWebQuery heuristic, so the AI searches on its own when needed),
+    // or the "always search" toggle.  Runs here on the UI thread; a plain code
+    // question has no web signal, so it is skipped entirely (fast).
     std::wstring webBlock;
     bool explicitWebDone = false;
     {
@@ -5942,23 +6004,35 @@ static void Ai_DoSend(HWND hwnd)
     if (chunkPlan.chunked) {
         promptForModel = webBlock + prompt;   // raw question; file context via batches
     } else {
-        std::wstring projectCtx = Ai_BuildProjectContext(prompt, hwnd);
+        // Only search/inject the project when the question actually concerns it;
+        // a generic request ("hello world in C++") skips it and stays fast.
+        std::wstring projectCtx;
+        if (Ai_PromptNeedsProjectContext(prompt))
+            projectCtx = Ai_BuildProjectContext(prompt, hwnd);
         promptForModel = projectCtx + webBlock + prompt;
     }
     // Autonomous web search applies only to the normal (non-chunked) path; a
     // chunked big-file analysis is about the user's own file, not the web.
     bool autoWeb = !chunkPlan.chunked;
 
-    // ── Vision describer selection (mode-aware) ──────────────────────────────
+    // ── Vision describer selection (cloud image viewer preferred) ────────────
     // If the developer attached image(s), pick the model that will describe them:
-    //   • local answer model  → a LOCAL vision model (llava); if it is missing,
-    //     offer to install it (Y/N).  Declining / installing skips describing.
-    //   • cloud answer model  → a CLOUD vision model (no local model needed).
+    //   • signed in to cloud  → a CLOUD vision model (gemma); fast describe, no
+    //     local model needed.  This is preferred regardless of which model
+    //     answers — the describe step is never the bottleneck (the cloud ANSWER
+    //     model's time-to-first-token is).
+    //   • no cloud available  → a LOCAL vision model (llava); if missing, offer
+    //     to install it (Y/N).
     // The chosen model is handed to the worker; empty means "do not describe".
     std::wstring visionModel;
     bool installVision = false;
     if (!st->lastImages.empty() && !chunkPlan.chunked) {
-        if (st->cloudMode) {
+        // Prefer a CLOUD image viewer whenever the developer is signed in to the
+        // cloud, regardless of which model answers.  A cloud vision model needs no
+        // local install and reads the image fast; the describe step is never the
+        // bottleneck (the cloud ANSWER model's time-to-first-token is).  Only when
+        // there is no cloud available do we fall back to a LOCAL vision model.
+        if (st->cloudMode || st->signedIn) {
             visionModel = Ai_CloudVisionModelName();
         } else {
             std::wstring localVision = Ai_LocalVisionModelName();
@@ -5983,6 +6057,7 @@ static void Ai_DoSend(HWND hwnd)
     // the fake "Asking Ollama (NN%)" thinking progress so it does not clobber it.
     st->visionActive = !visionModel.empty();
 
+    Ai_DbgTime(L"worker-dispatch (UI web+project done)");
     if (hLog) {
         st->replyBaseStart = GetWindowTextLengthW(hLog);
         st->historyDraft = L"";
@@ -6644,6 +6719,7 @@ static LRESULT CALLBACK Ai_WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lP
                 if (st && !st->liveReply.empty() && !st->liveTypingFinalRendered) {
                     Ai_CommitLiveReply(hwnd);
                     st->liveTypingFinalRendered = true;
+                    Ai_DbgTime(L"commit-done (final render)");
                 }
             }
             if (!result->ok && result->reply.empty()) {

@@ -177,11 +177,20 @@ void SpinnerDialog::LayoutForText(const std::wstring& text) {
     const int padBottom = 22;
     const int gap = 10;
     const int iconSz = 48;
-    const int minClientW = 340;
+    const int minClientW = 380;
     const int maxClientW = 660;
     const int spinnerFontPt = 26;
 
     int textWidth = Spinner_MeasureTextWidth(m_hDialog, text);
+    // GetTextExtentPoint32W measures emoji (e.g. the image glyph) in the base
+    // Segoe UI font, which under-measures them because the STATIC control draws
+    // them wider via the color-emoji fallback font. Reserve extra width per
+    // surrogate-pair glyph so lines like "Image understood" aren't clipped.
+    {
+        int emojiCount = 0;
+        for (wchar_t c : text) if (c >= 0xD800 && c <= 0xDBFF) ++emojiCount;
+        textWidth += emojiCount * 22;
+    }
     int clientW = textWidth + padX * 2;
     if (clientW < minClientW) clientW = minClientW;
     if (clientW > maxClientW) clientW = maxClientW;

@@ -1,11 +1,93 @@
 NSBEdit handover notes
-Written: 2026-11-01 (end of day)
+Written: 2026-11-02 (updated mid-session; ran out of tokens)
 Current version: 2026.11.01.10  (curver.txt)  -- built OK via makeit.bat
+Latest local build: build27 (makeit.bat) -- NOT yet installed/tested by user.
 
 =====================================================================
-STATE: vision "describe-any-image" pipeline WORKS. One OPEN problem:
-a per-query LAG (autonomous web-search router). Details below.
+STATE: vision "describe-any-image" pipeline WORKS end to end (the cloud
+vision model correctly described a 3-button UI screenshot and the cloud
+answer model returned correct Kopier/Forrige/Neste code).
+The ONE remaining question: WHY the cloud ANSWER model stalls for MINUTES
+at "Image understood" before its first token. We just added a server-side
+TIMING FOOTER to pinpoint it -- user must install build27 and paste the
+footer line. Details in "SESSION 2026-11-02" below.
 =====================================================================
+
+#####################################################################
+SESSION 2026-11-02 -- NEXT STEP IS THE FIRST THING TO DO
+#####################################################################
+
+WHERE WE STOPPED (do this first):
+- Install the latest build (build27 zip) and run an image query.
+- The cloud answer now ends with a diagnostic line:
+    [cloud timing — wait-to-first <s> · load <s> · prompt_eval <s> (<tok>) ·
+     eval <s> (<tok>)]
+  Paste that line back. Then send the SAME query again and paste its footer.
+- READ IT:
+    * big `load`  (e.g. 240s) on run 1, small on run 2  -> cloud model
+      COLD-START (model not resident). keep_alive now set, should help repeats.
+    * big `prompt_eval`                                 -> prompt PREFILL.
+    * load+prompt_eval small but `wait-to-first` big    -> pure QUEUE/scheduling
+      on ollama.com (not our code; try a lighter cloud answer model).
+
+MEASURED TODAY (running app, 3-button screenshot, deepseek-v4.1-flash-cloud):
+- "Image understood" appeared at ~2 s  -> the DESCRIBE step is NOT the
+  bottleneck (cloud vision read the image in ~2 s).
+- "Image understood" then sat until 4:25, total query 5:26 -> the ~4+ min gap
+  is ENTIRELY the cloud ANSWER model's time-to-first-token (deepseek).
+- Earlier identical image queries varied 46 s <-> 7 min -> strongly suggests
+  ollama.com server-side load/queue variance, not deterministic prefill.
+- The footer was MISSING on that run because the installed build predated it
+  (and/or the final JSON line had no trailing newline -- now handled).
+
+TEMP DIAGNOSTIC CODE TO REMOVE BEFORE COMMITTING (ne_ai_client.cpp,
+Ai_CloudAskStream, ~line 1016+):
+  * all dbg* locals (dbgStartMs/dbgFirstMs/dbgLoadNs/dbgPromptNs/dbgEvalNs/
+    dbgPromptTok/dbgEvalTok),
+  * the "[cloud timing — ...]" footer block (currently ALWAYS appended; it
+    writes into outReply so it is saved into history -- must be removed),
+  * the post-loop "process leftover pending" block is a REAL FIX (keep it;
+    only drop the dbg timing parses inside it).
+  Also remove any leftover Ai_DbgTime calls/function + <cstdio> if now unused
+  (ollama_ai.cpp) -- check before final commit.
+KEEP (real improvements made today, do NOT revert):
+  * keep_alive:"30m" added to the CLOUD request body (Ai_CloudAskStream) --
+    the cloud path previously sent NO keep_alive, so the model could be evicted
+    between calls. Parity with the local path.
+  * robust final-line handling (process leftover `pending` with no newline).
+
+FIXED TODAY (verified in app):
+- The REAL "image not read" bug: query HISTORY (PgUp/PgDn) dropped the attached
+  image. s_aiInputHistory stored only prompt TEXT; recalling a question via
+  PgUp restored text with NO image -> next send went out text-only (model then
+  answered generically "Button 1/2/3"). FIX in ollama_ai.cpp:
+    * added parallel s_aiInputHistoryImages (in-memory only; NOT persisted --
+      base64 would bloat the settings DB; Ai_LoadHistory sizes it to match).
+    * added AiWindowState.historyDraftImages (the unsent draft's image).
+    * Ai_HistoryRemember(st, text, images) now stores images per entry.
+    * Ai_HistorySetInput(hwnd, st, text, images, caretTop) re-attaches images:
+      restores st->pendingImages AND re-inserts the PNG(s) inline.
+    * Ai_HistoryBrowse saves the draft image on first PgUp and restores on
+      return. Caller passes st->lastImages.
+- Describer selection: now PREFERS the CLOUD image viewer whenever signed in to
+  cloud (st->cloudMode || st->signedIn), regardless of the answer model (was
+  strictly mode-aware). Local vision only when no cloud. (ollama_ai.cpp
+  Ai_DoSend ~5930.)
+- Spinner "Image understood" no longer truncates the trailing 'd' (emoji-width
+  fudge + minClientW 380 in spinner/spinner_dialog.cpp).
+- Removed the throwaway image-description POPUP (WM_AI_VISION_DESC) after it
+  confirmed the vision model does NOT write a huge description (not the
+  bottleneck). The define, the worker PostMessage, and the WndProc case are all
+  gone.
+
+STILL UNCOMMITTED: everything above is local only (lag router removal from the
+previous session + all of today). Local HEAD = origin at the WIP commit; a
+normal push fast-forwards once we commit. Remove TEMP diagnostic first.
+
+#####################################################################
+(Older notes below -- the "LAG / router" problem is RESOLVED: the router
+was removed last session; the REMAINING lag is the cloud TTFT above.)
+#####################################################################
 
 BIG PICTURE / GOAL
 - Make EVERY chat/code model "understand" a pasted image without marking
@@ -80,7 +162,7 @@ THE OPEN PROBLEM -- LAG on every send (NOT fixed)
     * Ai_ExtractWebQuery(prompt)  ~ line 4799+  (explicit keyword heuristic,
       UI thread, used by the explicit/toggle path)
 
-PLANNED FIX (designed, NOT yet applied) -- do this first tomorrow
+PLANNED FIX (DONE last session -- router removed, heuristic expanded)
 - Remove the per-query LLM router; detect "needs web" with an INSTANT keyword
   heuristic instead (no extra model call):
     1. DELETE Ai_RouterWebQuery (note: -Wall warns on an unused static function,
