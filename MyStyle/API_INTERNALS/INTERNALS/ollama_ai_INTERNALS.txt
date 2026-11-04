@@ -701,7 +701,9 @@ v2026.11.04.10 - MILESTONE: any model understands an image (vision OR describe-t
        We never fall through to sending the raw image to a non-vision model.
      - Status strings: AI_VISION_LOOKING ("Looking at the image...") then
        AI_VISION_DONE ("Image understood..."), posted via WM_AI_PROGRESS.
-       en_GB only so far (fallback); localise to the 14 langs.
+       All 7 AI_VISION_* keys (LOOKING/DONE/DOWNLOADING/INSTALL_TITLE/
+       INSTALL_PROMPT/NO_MODEL/FAILED) are translated in all 14 locale/*.txt
+       (v2026.11.04.12); en_GB is the reference.
      - LOCAL non-vision describing (v2026.11.04.12): DONE. For a LOCAL answer
        model the capability check + describer choice happen on the UI THREAD in
        Ai_DoSend (localhost /api/show is cheap) so a MISSING local vision model can
