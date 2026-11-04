@@ -702,10 +702,23 @@ v2026.11.04.10 - MILESTONE: any model understands an image (vision OR describe-t
      - Status strings: AI_VISION_LOOKING ("Looking at the image...") then
        AI_VISION_DONE ("Image understood..."), posted via WM_AI_PROGRESS.
        en_GB only so far (fallback); localise to the 14 langs.
-     - LOCAL non-vision describing (local answer model + local llava describer, with
-       a Y/N install prompt when no local vision model exists) is the next slice -
-       the capability gate and worker already handle local models; only the local
-       describer pick + install flow remain.
+     - LOCAL non-vision describing (v2026.11.04.12): DONE. For a LOCAL answer
+       model the capability check + describer choice happen on the UI THREAD in
+       Ai_DoSend (localhost /api/show is cheap) so a MISSING local vision model can
+       raise a Y/N MessageBox (a dialog can't run on the worker). describer =
+       Ai_LocalVisionModelName() (profile "ai.vision_model", default llava:7b). If
+       Ai_IsModelInstalled(llava) -> describe; else prompt (AI_VISION_INSTALL_*):
+       Yes -> installVision=true (worker pulls it FIRST via NeAiClient_PullOllama
+       Model + Ai_VisionPullProgress/s_visionLayers aggregate %, status
+       AI_VISION_DOWNLOADING); No -> send TEXT-ONLY (dropImagesFromSend -> sendImages
+       empty) so a blind model never gets a raw image, while the image still stays
+       in the query echo + history. The worker rechecks capability and agrees
+       (cached). GPU FIT: the describe call passes num_ctx=2048 (kVisionDescribeCtx),
+       not the default 12288 - a single-image describe needs little context, and the
+       full window bloats the KV cache so a 7B vision model spills onto the CPU on an
+       8 GB GPU (observed 65%/35% CPU/GPU, llava SIZE 6.1 GB, ~3 min describe). At
+       2048 it fits in VRAM and describes in seconds. (Pick an ANSWER model that
+       fits VRAM too; an 18 GB model can't fit an 8 GB card regardless.)
 
   3) IMAGE INPUT IS THE SINGLE SOURCE OF TRUTH - ollama_ai.cpp
      - Ai_ExtractInlinePngs(hEdit, &out): EM_STREAMOUT SF_RTF the query box, parse

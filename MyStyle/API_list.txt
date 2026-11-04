@@ -1079,7 +1079,14 @@
                                                 per process. AI window Project menu mirrors the editor
                                                 (active project in the title bar) and the AI window +
                                                 toolbar button use AI-icon.png (Ai_MakeWindowIcon;
-                                                see icon_INTERNALS.txt S9). Full notes in
+                                                see icon_INTERNALS.txt S9). LOCAL non-vision models
+                                                (v2026.11.04.12) describe via a LOCAL vision model
+                                                (llava); the first time none is installed a Y/N
+                                                MessageBox offers to pull it (install % in the
+                                                spinner), decline sends text-only. The describe call
+                                                caps num_ctx at 2048 so the vision model fits in VRAM
+                                                on a modest GPU instead of spilling to the CPU. Full
+                                                notes in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt
                                                 (v2026.11.04.10 section).
                                                 Project suggestion mode: when a project

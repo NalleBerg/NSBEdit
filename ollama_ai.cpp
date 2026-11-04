@@ -514,6 +514,7 @@ struct AiSendWorkItem {
     bool visionDescribe = false;
     std::wstring visionModel;                   // optional describer override
     std::vector<std::wstring> visionCandidates; // cloud models to auto-pick a describer from
+    bool installVision = false;                 // pull visionModel first (local llava) before describing
 };
 
 struct AiModelCheckState {
@@ -1212,6 +1213,55 @@ static std::wstring Ai_PickVisionDescriber(const std::vector<std::wstring>& cand
         s_cached = found;
     }
     return found;
+}
+
+// Local vision model used to DESCRIBE images when the selected LOCAL answer model
+// has no vision capability.  Overridable via the profile setting
+// "ai.vision_model"; defaults to llava:7b (what the installer offers to pull).
+static std::wstring Ai_LocalVisionModelName()
+{
+    std::string v;
+    if (NeProfiles_GetStrSetting("ai.vision_model", "llava:7b", v) && !v.empty())
+        return Ai_Utf8ToWide(v);
+    return L"llava:7b";
+}
+
+// True when a model (by exact name or its base name before ':') is present in the
+// local Ollama daemon's installed list.
+static bool Ai_IsModelInstalled(const std::wstring& model)
+{
+    if (model.empty()) return false;
+    std::vector<std::wstring> installed;
+    if (!NeAiClient_ListOllamaModels(installed)) return false;
+    std::wstring want = model;
+    for (auto& c : want) c = (wchar_t)towlower(c);
+    std::wstring wantBase = want.substr(0, want.find(L':'));
+    for (std::wstring m : installed) {
+        for (auto& c : m) c = (wchar_t)towlower(c);
+        if (m == want) return true;
+        if (!wantBase.empty() && m.substr(0, m.find(L':')) == wantBase) return true;
+    }
+    return false;
+}
+
+// Progress for the local vision-model pull — aggregates completed/total across
+// ALL layers (the pull reports per-layer) into one overall % shown in the
+// spinner, re-posting only when the integer % changes (no blink).
+static std::map<std::wstring, std::pair<unsigned long long, unsigned long long>> s_visionLayers;
+static int s_visionLastPct = -1;
+static void Ai_VisionPullProgress(void* ctx, const std::wstring& status,
+                                  unsigned long long completed, unsigned long long total)
+{
+    HWND hwnd = (HWND)ctx;
+    if (total > 0) s_visionLayers[status] = { completed, total };
+    unsigned long long aggC = 0, aggT = 0;
+    for (const auto& kv : s_visionLayers) { aggC += kv.second.first; aggT += kv.second.second; }
+    int pct = (aggT > 0) ? (int)((aggC * 100ULL) / aggT) : 0;
+    if (pct == s_visionLastPct) return;
+    s_visionLastPct = pct;
+    std::wstring text = std::wstring(Ne_Ls(L"AI_VISION_DOWNLOADING")) + L"\r\n(" + std::to_wstring(pct) + L"%)";
+    if (IsWindow(hwnd))
+        PostMessageW(hwnd, WM_AI_PROGRESS, 0, (LPARAM)new std::wstring(text));
 }
 
 // Curated list of well-known Ollama cloud models, merged with any "-cloud"
@@ -3827,7 +3877,8 @@ static void Ai_PromptAndSetApiKey(HWND hwnd, AiWindowState* st)
 static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback, int answerStart,
                                std::vector<std::wstring> mapChunks = {}, std::wstring reduceHeader = {},
                                std::vector<std::string> images = {}, bool visionDescribe = false,
-                               std::wstring visionModel = {}, std::vector<std::wstring> visionCandidates = {})
+                               std::wstring visionModel = {}, std::vector<std::wstring> visionCandidates = {},
+                               bool installVision = false)
 {
     AiSendWorkItem work;
     work.hwnd = hwnd;
@@ -3841,6 +3892,7 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
     work.visionDescribe = visionDescribe;
     work.visionModel = std::move(visionModel);
     work.visionCandidates = std::move(visionCandidates);
+    work.installVision = installVision;
 
     std::thread([work = std::move(work)]() mutable {
         auto* result = new AiSendResult();
@@ -3979,6 +4031,23 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
                     return;
                 }
 
+                // Local describer not yet installed: pull it first (the UI asked
+                // the developer and set installVision), showing the download % in
+                // the spinner.  On failure, surface it rather than a blind send.
+                if (work.installVision && !NeAiClient_IsCancelRequested()) {
+                    s_visionLayers.clear();
+                    s_visionLastPct = -1;
+                    postProgress(Ne_Ls(L"AI_VISION_DOWNLOADING"));
+                    std::wstring perr;
+                    if (!NeAiClient_PullOllamaModel(describer, (void*)work.hwnd,
+                                                    Ai_VisionPullProgress, perr)) {
+                        std::wstring msg = Ai_FormatLocaleText(Ne_Ls(L"AI_VISION_FAILED"), describer);
+                        if (!perr.empty()) msg += L"\r\n" + perr;
+                        failVision(msg);
+                        return;
+                    }
+                }
+
                 postProgress(Ne_Ls(L"AI_VISION_LOOKING"));
                 const std::wstring describePrompt =
                     L"Describe this image concisely for a developer in one short paragraph. "
@@ -3987,12 +4056,18 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
                     L"do not pad or speculate.";
                 std::wstring descBlock, lastErr;
                 int described = 0;
+                // A single-image description needs only a small context (the image
+                // embedding + a short prompt + a short reply).  Asking for the full
+                // 12288 window bloats the KV cache so the vision model spills onto
+                // the CPU on a modest GPU (e.g. an 8 GB laptop card) — the cause of
+                // a multi-minute local describe.  Cap it so the model fits in VRAM.
+                const int kVisionDescribeCtx = 2048;
                 for (const std::string& img : work.images) {
                     if (NeAiClient_IsCancelRequested()) break;
                     std::wstring desc, derr;
                     std::vector<std::string> one{ img };
                     if (NeAiClient_AskOllamaStream(describer, describePrompt, NULL, NULL,
-                                                   desc, derr, 0, one) && !desc.empty()) {
+                                                   desc, derr, kVisionDescribeCtx, one) && !desc.empty()) {
                         while (!desc.empty() && (desc.back() == L'\n' || desc.back() == L'\r'
                                || desc.back() == L' ')) desc.pop_back();
                         ++described;
@@ -6025,15 +6100,58 @@ static void Ai_DoSend(HWND hwnd)
     // itself (otherwise the image is sent directly).  Local non-vision describing
     // is handled in a later step.
     // ── Vision describe-then-answer eligibility ──────────────────────────────
-    // Eligible when image(s) are attached to a normal (non-chunked) CLOUD send.
-    // The worker auto-detects whether the answer model can see images and only
-    // describes when it cannot — the describer is the user override if set, else
-    // auto-discovered from the user's cloud models (no hardcoded model).
-    bool visionDescribe = (!st->lastImages.empty() && !chunkPlan.chunked && st->cloudMode);
-    std::wstring visionOverride = visionDescribe ? Ai_CloudVisionOverride() : std::wstring();
-    std::vector<std::wstring> visionCandidates =
-        visionDescribe ? Ai_CloudModelCandidates() : std::vector<std::wstring>();
+    // Eligible when image(s) are attached to a normal (non-chunked) send, in
+    // EITHER cloud or local mode.
+    //   • CLOUD: the worker auto-detects the answer model's vision capability and
+    //     only describes when it cannot see images; the describer is the user
+    //     override if set, else auto-discovered from the user's cloud models.
+    //   • LOCAL: the capability check + describer choice are done HERE (on the UI
+    //     thread, cheap on localhost) so a MISSING local vision model can prompt
+    //     the developer to install it (a MessageBox can't run on the worker).
+    bool visionDescribe = (!st->lastImages.empty() && !chunkPlan.chunked);
+    std::wstring visionOverride;
+    std::vector<std::wstring> visionCandidates;
+    bool installVision = false;
+    bool dropImagesFromSend = false;   // declined install → never blind-send the image
+    if (visionDescribe) {
+        if (st->cloudMode) {
+            visionOverride = Ai_CloudVisionOverride();
+            visionCandidates = Ai_CloudModelCandidates();
+        } else {
+            // Local: does the chosen answer model see images itself?
+            bool answerHasVision = false;
+            bool known = NeAiClient_ModelHasVision(selectedModel, answerHasVision);
+            if (known && answerHasVision) {
+                visionDescribe = false;   // e.g. llava as the answer model → send image direct
+            } else {
+                std::wstring localVision = Ai_LocalVisionModelName();   // llava:7b
+                if (Ai_IsModelInstalled(localVision)) {
+                    visionOverride = localVision;
+                } else {
+                    // First time a local non-vision model is asked to view an
+                    // image and no local vision model is installed: offer to pull
+                    // one.  Yes → install + describe; No → don't send a blind image.
+                    int r = MessageBoxW(hwnd, Ne_Ls(L"AI_VISION_INSTALL_PROMPT"),
+                                        Ne_Ls(L"AI_VISION_INSTALL_TITLE"),
+                                        MB_YESNO | MB_ICONQUESTION);
+                    if (r == IDYES) {
+                        visionOverride = localVision;
+                        installVision = true;
+                    } else {
+                        visionDescribe = false;
+                        dropImagesFromSend = true;   // declined: send text-only
+                    }
+                }
+            }
+        }
+    }
     st->visionActive = visionDescribe;
+
+    // What actually goes to the worker as images: normally the attached images,
+    // but NONE when the developer declined to install a local vision model for a
+    // non-vision answer model (so a blind model never receives a raw image).  The
+    // image still stays in the query echo and history.
+    std::vector<std::string> sendImages = dropImagesFromSend ? std::vector<std::string>() : st->lastImages;
 
     if (hLog) {
         st->replyBaseStart = GetWindowTextLengthW(hLog);
@@ -6051,8 +6169,8 @@ static void Ai_DoSend(HWND hwnd)
         AiSendWorkItem work;
         work.answerStart = st->replyBaseStart;
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, work.answerStart,
-                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages,
-                           visionDescribe, visionOverride, visionCandidates);
+                           chunkPlan.mapChunks, chunkPlan.reduceHeader, sendImages,
+                           visionDescribe, visionOverride, visionCandidates, installVision);
     } else {
         st->replyBaseStart = 0;
         st->liveReply.clear();
@@ -6066,8 +6184,8 @@ static void Ai_DoSend(HWND hwnd)
         Ai_StopLiveTypingTimer(hwnd);
         Ai_StopLiveTypingStartDelayTimer(hwnd);
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, 0,
-                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages,
-                           visionDescribe, visionOverride, visionCandidates);
+                           chunkPlan.mapChunks, chunkPlan.reduceHeader, sendImages,
+                           visionDescribe, visionOverride, visionCandidates, installVision);
     }
 }
 
