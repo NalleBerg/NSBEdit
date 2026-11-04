@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <map>
 
 // Set when the user presses Stop; the streaming write callback aborts the
 // transfer and the worker skips any retry.  Lives at file scope so both the
@@ -45,6 +46,7 @@ struct OllamaStreamState {
     NeAiOllamaChunkFn onChunk = nullptr;
     std::string pending;
     std::wstring outReply;
+    std::wstring thinkingOnly;   // reasoning (hidden); fallback only if no response
     std::wstring outError;
     bool ok = false;
 };
@@ -141,18 +143,12 @@ static size_t Ai_OllamaWriteCallback(char* ptr, size_t size, size_t nmemb, void*
         else {
             // Reasoning ("thinking") models — e.g. Ollama cloud models such as
             // qwen3-coder, gpt-oss, deepseek — stream their chain-of-thought in a
-            // separate "thinking" field.  Only fall back to it when there is no
-            // "response" token on this line, so the final answer is never
-            // duplicated (a line carrying both fields otherwise appended twice,
-            // corrupting code fences), and the raw reasoning is not mixed into
-            // the rendered answer during the answer phase.
+            // separate "thinking" field.  Keep it OUT of the visible answer (do
+            // not stream it); it is only used as a fallback at the end if the
+            // model produced no "response" at all.
             std::string thinkingUtf8;
             if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8)) {
-                std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
-                state->outReply += wideChunk;
-                if (state->onChunk && !wideChunk.empty()) {
-                    state->onChunk(state->context, wideChunk);
-                }
+                state->thinkingOnly += Ai_Utf8ToWide(thinkingUtf8);
             }
         }
 
@@ -804,6 +800,89 @@ bool NeAiClient_ListCloudModels(std::vector<std::wstring>& outModels)
     return ok;
 }
 
+// Parse an Ollama /api/show response for the "vision" capability.
+static bool Ai_JsonHasVisionCapability(const std::string& json)
+{
+    size_t cap = json.find("\"capabilities\"");
+    if (cap == std::string::npos) return false;
+    size_t lb = json.find('[', cap);
+    size_t rb = (lb == std::string::npos) ? std::string::npos : json.find(']', lb);
+    if (lb == std::string::npos || rb == std::string::npos) return false;
+    return json.substr(lb, rb - lb + 1).find("\"vision\"") != std::string::npos;
+}
+
+// Query a model's capabilities via /api/show and report whether it accepts
+// images.  Cloud models ("-cloud") query ollama.com with the API key; others the
+// local daemon.  Results are cached per model (capabilities are static for a
+// given model).  Returns true when the capability was DETERMINED (outHasVision
+// is then valid); false when the query failed so the caller can choose a safe
+// fallback (treat as non-vision → describe the image).
+bool NeAiClient_ModelHasVision(const std::wstring& model, bool& outHasVision)
+{
+    outHasVision = false;
+    if (model.empty()) return false;
+
+    static std::mutex s_capMutex;
+    static std::map<std::wstring, bool> s_capCache;
+    {
+        std::lock_guard<std::mutex> lk(s_capMutex);
+        auto it = s_capCache.find(model);
+        if (it != s_capCache.end()) { outHasVision = it->second; return true; }
+    }
+
+    bool isCloud = model.find(L"-cloud") != std::wstring::npos;
+    std::wstring apiKey = Ai_GetCloudApiKey();
+    if (isCloud && apiKey.empty()) return false;   // cannot query cloud without a key
+
+    std::string body = std::string("{\"model\":\"") +
+        Ai_EscapeJson(Ai_WideToUtf8(model)) + "\"}";
+
+    HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
+    if (!hSession) return false;
+    WinHttpSetTimeouts(hSession, 8000, 8000, 8000, 15000);
+
+    bool determined = false, hasVision = false;
+    INTERNET_PORT port = isCloud ? INTERNET_DEFAULT_HTTPS_PORT : (INTERNET_PORT)11434;
+    const wchar_t* host = isCloud ? L"ollama.com" : kOllamaHost;
+    DWORD secFlag = isCloud ? WINHTTP_FLAG_SECURE : 0;
+
+    HINTERNET hConnect = WinHttpConnect(hSession, host, port, 0);
+    if (hConnect) {
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"POST", L"/api/show",
+            NULL, WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES, secFlag);
+        if (hRequest) {
+            std::wstring headers = L"Content-Type: application/json\r\n";
+            if (isCloud) headers += L"Authorization: Bearer " + apiKey + L"\r\n";
+            if (WinHttpSendRequest(hRequest, headers.c_str(), (DWORD)-1L,
+                    (LPVOID)body.data(), (DWORD)body.size(), (DWORD)body.size(), 0) &&
+                WinHttpReceiveResponse(hRequest, NULL)) {
+                DWORD status = 0, statusSize = sizeof(status);
+                if (WinHttpQueryHeaders(hRequest,
+                        WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                        WINHTTP_HEADER_NAME_BY_INDEX, &status, &statusSize, WINHTTP_NO_HEADER_INDEX) &&
+                    status == 200) {
+                    std::string response;
+                    if (Ai_ReadBody(hRequest, response)) {
+                        hasVision = Ai_JsonHasVisionCapability(response);
+                        determined = true;
+                    }
+                }
+            }
+            WinHttpCloseHandle(hRequest);
+        }
+        WinHttpCloseHandle(hConnect);
+    }
+    WinHttpCloseHandle(hSession);
+
+    if (determined) {
+        std::lock_guard<std::mutex> lk(s_capMutex);
+        s_capCache[model] = hasVision;
+        outHasVision = hasVision;
+    }
+    return determined;
+}
+
 // ── Web search (DuckDuckGo HTML endpoint) ────────────────────────────────────
 static std::string Web_UrlEncode(const std::string& s)
 {
@@ -1013,6 +1092,11 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
                     if (status == 200) {
                         std::string pending;
                         bool done = false;
+                        // Reasoning models (gpt-oss, deepseek, …) stream their
+                        // chain-of-thought in a separate "thinking" field.  Keep
+                        // it OUT of the visible answer; only use it as a fallback
+                        // if the model produced no "response" at all.
+                        std::wstring thinkingOnly;
                         while (!g_aiCancelRequested.load()) {
                             DWORD available = 0;
                             if (!WinHttpQueryDataAvailable(hRequest, &available)) break;
@@ -1038,9 +1122,7 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
                                 } else {
                                     std::string thinkingUtf8;
                                     if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8) && !thinkingUtf8.empty()) {
-                                        std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
-                                        outReply += wideChunk;
-                                        if (onChunk && !wideChunk.empty()) onChunk(context, wideChunk);
+                                        thinkingOnly += Ai_Utf8ToWide(thinkingUtf8);  // hidden
                                     }
                                 }
 
@@ -1052,6 +1134,11 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
                                 }
                             }
                             if (!outError.empty()) break;
+                        }
+                        // Fallback: a model that answered ONLY via "thinking".
+                        if (outReply.empty() && !thinkingOnly.empty()) {
+                            outReply = thinkingOnly;
+                            if (onChunk) onChunk(context, thinkingOnly);
                         }
                         ok = outError.empty() && (done || !outReply.empty());
                     } else {
@@ -1163,11 +1250,7 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
 
                     std::string thinkingUtf8;
                     if (Ai_FindJsonStringField(line, "thinking", thinkingUtf8)) {
-                        std::wstring wideChunk = Ai_Utf8ToWide(thinkingUtf8);
-                        state.outReply += wideChunk;
-                        if (state.onChunk && !wideChunk.empty()) {
-                            state.onChunk(state.context, wideChunk);
-                        }
+                        state.thinkingOnly += Ai_Utf8ToWide(thinkingUtf8);  // hidden
                     }
 
                     bool done = false;
@@ -1181,7 +1264,12 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
                     }
                 }
             }
-            ok = state.ok;
+            // Fallback: a model that answered ONLY via "thinking" (no response).
+            if (state.outReply.empty() && !state.thinkingOnly.empty()) {
+                state.outReply = state.thinkingOnly;
+                if (state.onChunk) state.onChunk(state.context, state.thinkingOnly);
+            }
+            ok = state.ok || !state.outReply.empty();
             outReply = std::move(state.outReply);
             outError = std::move(state.outError);
         } else {

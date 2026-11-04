@@ -41,6 +41,11 @@ bool NeAiClient_ValidateCloudApiKey(const std::wstring& key);
 // Returns false when no API key is set or the request fails.
 bool NeAiClient_ListCloudModels(std::vector<std::wstring>& outModels);
 
+// Report whether a model can accept images (vision capability) via /api/show.
+// Returns true when the capability was determined (outHasVision is then valid);
+// false when the query failed (caller should treat as non-vision).
+bool NeAiClient_ModelHasVision(const std::wstring& model, bool& outHasVision);
+
 bool NeAiClient_ListOllamaModels(std::vector<std::wstring>& outModels);
 typedef void (*NeAiPullProgressFn)(void* context, const std::wstring& status,
 	unsigned long long completed, unsigned long long total);

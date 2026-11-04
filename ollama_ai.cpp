@@ -27,6 +27,7 @@
 #include <set>
 #include <thread>
 #include <atomic>
+#include <mutex>
 #include <algorithm>
 #include <cwctype>
 #include <regex>
@@ -455,6 +456,7 @@ struct AiWindowState {
     ULONGLONG thinkingStartMs = 0;
     std::wstring lastThinkingElapsedText;
     bool chunkedActive = false;   // batch map-reduce running: spinner shows real batch %
+    bool visionActive = false;    // vision describe running: spinner shows real status text
     bool sendCanceled = false;    // Stop pressed: ignore the worker's completion post
     std::wstring lastPrompt;      // raw prompt of the in-flight send, restored on Stop
     std::vector<std::string> pendingImages; // base64 PNG images pasted into the current input
@@ -504,6 +506,14 @@ struct AiSendWorkItem {
     // streamed as the final answer.
     std::vector<std::wstring> mapChunks;
     std::wstring reduceHeader;
+    // Vision describe-then-answer: when visionDescribe is true and images are
+    // attached, the worker checks the answer model's vision capability.  A vision
+    // model gets the image directly; a non-vision (or undetermined) model instead
+    // gets a text description produced by a describer — visionModel if set
+    // (user override), else auto-discovered from visionCandidates by capability.
+    bool visionDescribe = false;
+    std::wstring visionModel;                   // optional describer override
+    std::vector<std::wstring> visionCandidates; // cloud models to auto-pick a describer from
 };
 
 struct AiModelCheckState {
@@ -565,7 +575,7 @@ static std::vector<std::wstring> s_aiInputHistory;
 // remembered prompt, so recalling a query via history also restores its
 // image(s).  Kept in memory only (not persisted — base64 would bloat settings).
 static std::vector<std::vector<std::string>> s_aiInputHistoryImages;
-static constexpr size_t kAiInputHistoryLimit = 500;
+static constexpr size_t kAiInputHistoryLimit = 100;
 // True while the query input's WM_PASTE handler is inserting text. Multi-line
 // inserts fire EN_CHANGE synchronously mid-insert; letting the custom scrollbar
 // reflow (which calls EM_SETRECT back on the RichEdit) run at that point
@@ -1152,6 +1162,58 @@ static std::wstring Ai_DefaultCloudModelName()
     return L"qwen3-coder:480b-cloud";
 }
 
+// Optional user override for the cloud vision describer (profile setting
+// "ai.vision_model_cloud").  Empty when unset — the describer is then
+// auto-discovered from the user's available cloud models by capability, so no
+// specific (and perishable) model name is ever hardcoded.
+static std::wstring Ai_CloudVisionOverride()
+{
+    std::string v;
+    if (NeProfiles_GetStrSetting("ai.vision_model_cloud", "", v) && !v.empty())
+        return Ai_Utf8ToWide(v);
+    return L"";
+}
+
+// Auto-discover a vision-capable DESCRIBER from the given cloud model candidates
+// (the first that reports the "vision" capability via /api/show).  Skips the
+// answer model itself and non-cloud names.  Result cached for the process once
+// found.  Runs on the worker thread (does network capability checks), so no model
+// name is ever hardcoded and a retired model simply drops out of the candidates.
+static std::wstring Ai_PickVisionDescriber(const std::vector<std::wstring>& candidates,
+                                           const std::wstring& excludeModel)
+{
+    static std::mutex s_mtx;
+    static std::wstring s_cached;
+    {
+        std::lock_guard<std::mutex> lk(s_mtx);
+        if (!s_cached.empty()) return s_cached;
+    }
+    // Check names that look multimodal first to minimise /api/show calls.
+    auto looksVisual = [](const std::wstring& m) {
+        std::wstring l = m; for (auto& c : l) c = (wchar_t)towlower(c);
+        return l.find(L"-vl") != std::wstring::npos || l.find(L"vision") != std::wstring::npos
+            || l.find(L"llava") != std::wstring::npos || l.find(L"gemma") != std::wstring::npos
+            || l.find(L"flash") != std::wstring::npos || l.find(L"minicpm") != std::wstring::npos
+            || l.find(L"moondream") != std::wstring::npos || l.find(L"multimodal") != std::wstring::npos;
+    };
+    std::vector<std::wstring> ordered = candidates;
+    std::stable_sort(ordered.begin(), ordered.end(),
+        [&](const std::wstring& a, const std::wstring& b) {
+            return looksVisual(a) && !looksVisual(b);
+        });
+    std::wstring found;
+    for (const std::wstring& m : ordered) {
+        if (m == excludeModel || m.find(L"-cloud") == std::wstring::npos) continue;
+        bool hv = false;
+        if (NeAiClient_ModelHasVision(m, hv) && hv) { found = m; break; }
+    }
+    if (!found.empty()) {
+        std::lock_guard<std::mutex> lk(s_mtx);
+        s_cached = found;
+    }
+    return found;
+}
+
 // Curated list of well-known Ollama cloud models, merged with any "-cloud"
 // models the local daemon already reports.  Used to populate the Model menu so
 // the user can pick which cloud model to use.
@@ -1231,15 +1293,41 @@ static void Ai_OpenOllamaSignUp(HWND hwnd)
 
 static void Ai_SaveHistory()
 {
-    NeProfiles_SetIntSetting("ai.history.count", (int)s_aiInputHistory.size());
-    for (size_t i = 0; i < s_aiInputHistory.size(); ++i) {
+    const size_t n = s_aiInputHistory.size();
+    NeProfiles_SetIntSetting("ai.history.count", (int)n);
+    for (size_t i = 0; i < n; ++i) {
         std::string key = "ai.history." + std::to_string(i);
         NeProfiles_SetStrSetting(key.c_str(), Ai_WideToUtf8(s_aiInputHistory[i]));
     }
+    // Persist the per-entry images as ONE compact blob so there is no clutter in
+    // the file system and they survive a full restart.  Records (one per history
+    // entry, in order) are separated by 0x1E; images within a record by 0x1F —
+    // neither byte occurs in base64, so this is unambiguous.  Entries without an
+    // image are empty records, keeping the common case tiny.
+    static const std::vector<std::string> kNoImages;
+    std::string blob;
+    for (size_t i = 0; i < n; ++i) {
+        if (i) blob.push_back('\x1e');
+        const std::vector<std::string>& imgs =
+            (i < s_aiInputHistoryImages.size()) ? s_aiInputHistoryImages[i] : kNoImages;
+        for (size_t k = 0; k < imgs.size(); ++k) {
+            if (k) blob.push_back('\x1f');
+            blob += imgs[k];
+        }
+    }
+    NeProfiles_SetStrSetting("ai.history.images", blob);
 }
 
 static void Ai_LoadHistory()
 {
+    // Load from the DB only ONCE per process.  The AI window can be closed and
+    // reopened while the editor keeps running; on reopen we keep the in-memory
+    // history — which includes the pasted images (held in memory only) — instead
+    // of reloading text-only from the DB and losing the images.
+    static bool s_loaded = false;
+    if (s_loaded) return;
+    s_loaded = true;
+
     s_aiInputHistory.clear();
     s_aiInputHistoryImages.clear();
 
@@ -1257,9 +1345,31 @@ static void Ai_LoadHistory()
             s_aiInputHistory.push_back(Ai_Utf8ToWide(saved));
         }
     }
-    // Images are not persisted; keep the parallel list the same size (no images
-    // for restored-from-disk entries) so history indexing stays in sync.
+    // Restore the per-entry images from the blob written by Ai_SaveHistory.
     s_aiInputHistoryImages.assign(s_aiInputHistory.size(), std::vector<std::string>());
+    std::string blob;
+    if (NeProfiles_GetStrSetting("ai.history.images", "", blob) && !blob.empty()) {
+        size_t rec = 0, p = 0;
+        for (;;) {
+            size_t rs = blob.find('\x1e', p);
+            std::string record = (rs == std::string::npos) ? blob.substr(p) : blob.substr(p, rs - p);
+            if (rec < s_aiInputHistoryImages.size() && !record.empty()) {
+                std::vector<std::string> imgs;
+                size_t q = 0;
+                for (;;) {
+                    size_t us = record.find('\x1f', q);
+                    std::string one = (us == std::string::npos) ? record.substr(q) : record.substr(q, us - q);
+                    if (!one.empty()) imgs.push_back(std::move(one));
+                    if (us == std::string::npos) break;
+                    q = us + 1;
+                }
+                s_aiInputHistoryImages[rec] = std::move(imgs);
+            }
+            ++rec;
+            if (rs == std::string::npos) break;
+            p = rs + 1;
+        }
+    }
 }
 
 static void Ai_CollectMarkdownText(cmark_node* node, std::wstring& out)
@@ -2549,7 +2659,7 @@ static void Ai_SetThinkingStatusText(HWND hwnd)
 static void Ai_UpdateSpinnerProgress(HWND hwnd)
 {
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
-    if (!st || st->chunkedActive || !st->spinner) return;
+    if (!st || st->chunkedActive || st->visionActive || !st->spinner) return;
     if (!st->spinner->IsVisible() || st->thinkingStartMs == 0) return;
     unsigned long long e = (GetTickCount64() - st->thinkingStartMs) / 1000ULL;   // seconds
     // Asymptotic curve approaching ~95%: pct = 95*e/(e+25).
@@ -2671,6 +2781,7 @@ static void Ai_EndBusyState(HWND hwnd)
     AiWindowState* st = (AiWindowState*)GetWindowLongPtrW(hwnd, GWLP_USERDATA);
     if (!st) return;
     st->chunkedActive = false;
+    st->visionActive = false;
     if (st->spinner) {
         st->spinner->Hide();
     }
@@ -3715,7 +3826,8 @@ static void Ai_PromptAndSetApiKey(HWND hwnd, AiWindowState* st)
 
 static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring model, std::wstring fallback, int answerStart,
                                std::vector<std::wstring> mapChunks = {}, std::wstring reduceHeader = {},
-                               std::vector<std::string> images = {})
+                               std::vector<std::string> images = {}, bool visionDescribe = false,
+                               std::wstring visionModel = {}, std::vector<std::wstring> visionCandidates = {})
 {
     AiSendWorkItem work;
     work.hwnd = hwnd;
@@ -3726,6 +3838,9 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
     work.mapChunks = std::move(mapChunks);
     work.reduceHeader = std::move(reduceHeader);
     work.images = std::move(images);
+    work.visionDescribe = visionDescribe;
+    work.visionModel = std::move(visionModel);
+    work.visionCandidates = std::move(visionCandidates);
 
     std::thread([work = std::move(work)]() mutable {
         auto* result = new AiSendResult();
@@ -3824,6 +3939,84 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
             else
                 delete result;
             return;
+        }
+
+        // ── Vision describe-then-answer (auto-detect, no hardcoded models) ───
+        // When image(s) are attached, auto-detect whether the ANSWER model can
+        // see images (via /api/show):
+        //   • vision model            → send the image DIRECTLY (fast path).
+        //   • non-vision/undetermined → a vision DESCRIBER turns each image into
+        //     text that is injected and sent text-only, so a text model can never
+        //     hallucinate from an image it cannot see.  The describer is the user
+        //     override if set, else auto-discovered from the user's cloud models.
+        // If no describer is available or describing fails, surface a clear ERROR
+        // instead of sending the raw image to a blind model.
+        if (work.visionDescribe && !work.images.empty() && !NeAiClient_IsCancelRequested()) {
+            bool answerHasVision = false;
+            bool known = NeAiClient_ModelHasVision(work.model, answerHasVision);
+            if (!(known && answerHasVision)) {
+                auto postProgress = [&](const std::wstring& text) {
+                    if (IsWindow(work.hwnd))
+                        PostMessageW(work.hwnd, WM_AI_PROGRESS, 0, (LPARAM)new std::wstring(text));
+                };
+                std::wstring describer = work.visionModel;   // user override
+                if (describer.empty())
+                    describer = Ai_PickVisionDescriber(work.visionCandidates, work.model);
+
+                auto failVision = [&](const std::wstring& msg) {
+                    result->ok = false;
+                    result->error = msg;
+                    if (IsWindow(work.hwnd))
+                        PostMessageW(work.hwnd, WM_AI_SEND_COMPLETE, 0, (LPARAM)result);
+                    else
+                        delete result;
+                };
+
+                if (describer.empty()) {
+                    // No vision model to describe with — do NOT send the raw image
+                    // to a non-vision model (that yields a hallucination).
+                    failVision(Ne_Ls(L"AI_VISION_NO_MODEL"));
+                    return;
+                }
+
+                postProgress(Ne_Ls(L"AI_VISION_LOOKING"));
+                const std::wstring describePrompt =
+                    L"Describe this image concisely for a developer in one short paragraph. "
+                    L"State what it shows, transcribe any key visible text or UI labels verbatim, "
+                    L"and note the main UI elements, shapes and colours. Be factual and brief — "
+                    L"do not pad or speculate.";
+                std::wstring descBlock, lastErr;
+                int described = 0;
+                for (const std::string& img : work.images) {
+                    if (NeAiClient_IsCancelRequested()) break;
+                    std::wstring desc, derr;
+                    std::vector<std::string> one{ img };
+                    if (NeAiClient_AskOllamaStream(describer, describePrompt, NULL, NULL,
+                                                   desc, derr, 0, one) && !desc.empty()) {
+                        while (!desc.empty() && (desc.back() == L'\n' || desc.back() == L'\r'
+                               || desc.back() == L' ')) desc.pop_back();
+                        ++described;
+                        descBlock += L"[IMAGE " + std::to_wstring(described) + L" DESCRIPTION]\r\n"
+                                   + desc + L"\r\n[END IMAGE " + std::to_wstring(described)
+                                   + L" DESCRIPTION]\r\n\r\n";
+                    } else if (!derr.empty()) {
+                        lastErr = derr;
+                    }
+                }
+                if (descBlock.empty()) {
+                    // Describing failed — surface why instead of a blind send.
+                    std::wstring msg = Ai_FormatLocaleText(Ne_Ls(L"AI_VISION_FAILED"), describer);
+                    if (!lastErr.empty()) msg += L"\r\n" + lastErr;
+                    failVision(msg);
+                    return;
+                }
+                std::wstring header =
+                    L"The user attached image(s). A vision model examined them and produced "
+                    L"the description(s) below. Treat them as if you can see the images.\r\n\r\n";
+                work.prompt = header + descBlock + work.prompt;
+                work.images.clear();   // text-only to the answer model
+                postProgress(Ne_Ls(L"AI_VISION_DONE"));
+            }
         }
 
         std::wstring formattedPrompt = L"Answer plainly. Preserve indentation.\r\n\r\n";
@@ -5825,6 +6018,23 @@ static void Ai_DoSend(HWND hwnd)
         promptForModel = projectCtx + webBlock + prompt;
     }
 
+    // ── Vision describer candidate ───────────────────────────────────────────
+    // If image(s) are attached and the answer model is a CLOUD model, hand the
+    // worker a cloud vision model as a candidate describer.  The worker checks the
+    // answer model's vision capability and only describes when it can't see images
+    // itself (otherwise the image is sent directly).  Local non-vision describing
+    // is handled in a later step.
+    // ── Vision describe-then-answer eligibility ──────────────────────────────
+    // Eligible when image(s) are attached to a normal (non-chunked) CLOUD send.
+    // The worker auto-detects whether the answer model can see images and only
+    // describes when it cannot — the describer is the user override if set, else
+    // auto-discovered from the user's cloud models (no hardcoded model).
+    bool visionDescribe = (!st->lastImages.empty() && !chunkPlan.chunked && st->cloudMode);
+    std::wstring visionOverride = visionDescribe ? Ai_CloudVisionOverride() : std::wstring();
+    std::vector<std::wstring> visionCandidates =
+        visionDescribe ? Ai_CloudModelCandidates() : std::vector<std::wstring>();
+    st->visionActive = visionDescribe;
+
     if (hLog) {
         st->replyBaseStart = GetWindowTextLengthW(hLog);
         st->historyDraft = L"";
@@ -5841,7 +6051,8 @@ static void Ai_DoSend(HWND hwnd)
         AiSendWorkItem work;
         work.answerStart = st->replyBaseStart;
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, work.answerStart,
-                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages);
+                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages,
+                           visionDescribe, visionOverride, visionCandidates);
     } else {
         st->replyBaseStart = 0;
         st->liveReply.clear();
@@ -5855,7 +6066,8 @@ static void Ai_DoSend(HWND hwnd)
         Ai_StopLiveTypingTimer(hwnd);
         Ai_StopLiveTypingStartDelayTimer(hwnd);
         Ai_StartSendWorker(hwnd, promptForModel, selectedModel, fallbackModel, 0,
-                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages);
+                           chunkPlan.mapChunks, chunkPlan.reduceHeader, st->lastImages,
+                           visionDescribe, visionOverride, visionCandidates);
     }
 }
 

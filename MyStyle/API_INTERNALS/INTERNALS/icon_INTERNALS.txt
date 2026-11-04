@@ -237,3 +237,41 @@ FILES:
        Remove-Item "$env:LOCALAPPDATA\IconCache.db" -Force
        Remove-Item "$env:LOCALAPPDATA\Microsoft\Windows\Explorer\iconcache*" -Force
        Start-Process explorer
+
+================================================================================
+9. PNG -> SQUARE HICON FROM A NON-SQUARE WORDMARK (AI window + toolbar)
+================================================================================
+
+  Pattern for giving a secondary top-level window (and an owner-draw toolbar
+  button) its own icon loaded from a PNG at runtime - used by NSBEdit's AI
+  window and the editor's AI toolbar button (source art: AI-icon.png, a wide
+  ~2:1 wordmark). The point: Windows title bar / taskbar / Alt+Tab want a
+  SQUARE icon, and forcing a non-square bitmap into that slot STRETCHES it. So
+  fit the art into a transparent square, preserving aspect ratio.
+
+  Build the HICON (ollama_ai.cpp, Ai_MakeWindowIcon):
+      Gdiplus::Bitmap src(L"...\\AI-icon.png", FALSE);     // next to the exe
+      UINT sw = src.GetWidth(), sh = src.GetHeight();
+      Gdiplus::Bitmap canvas(size, size, PixelFormat32bppARGB);  // size = SM_CXICON etc.
+      Gdiplus::Graphics g(&canvas);
+      g.Clear(Gdiplus::Color(0,0,0,0));                    // transparent
+      double scale = min((double)size/sw, (double)size/sh); // FIT, keep aspect
+      int dw = (int)(sw*scale+0.5), dh = (int)(sh*scale+0.5);
+      g.DrawImage(&src, Rect((size-dw)/2, (size-dh)/2, dw, dh), 0,0,sw,sh, UnitPixel);
+      HICON icon = NULL; canvas.GetHICON(&icon); return icon;  // 32bpp ARGB -> HICON
+
+  - Cache per size (Ai_GetWindowIconBig = SM_CXICON, ...Small = SM_CXSMICON) in a
+    function-static; the handles live for the process (freed by the OS at exit).
+  - Apply to the window: set wc.hIcon before RegisterClassW AND send WM_SETICON
+    (ICON_BIG + ICON_SMALL) after CreateWindowEx. Fall back to the app icon
+    (LoadIconW(hi, MAKEINTRESOURCEW(1))) when the PNG is missing/unreadable, so a
+    broken/absent file never leaves the window icon-less.
+  - Toolbar wordmark (NSBEdit.cpp): the owner-draw button loads the same PNG
+    (Ne_GetOllamaButtonImage), the layout gives it a WIDER slot than a square
+    button (Ne_LayoutToolbar), and WM_DRAWITEM aspect-FITS the image into the
+    button rect (scale = min(availW/iw, availH/ih)) instead of forcing a square -
+    otherwise the ~2:1 wordmark is squashed.
+  - GDI+ must already be started (NSBEdit does GdiplusStartup once in WinMain).
+  - Ship the PNG next to the exe: add it to pack.ps1 and _doinstall.ps1 so the
+    installed build finds it via the exe directory (GetModuleFileNameW -> strip
+    to folder -> append the file name).

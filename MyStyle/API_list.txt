@@ -797,6 +797,19 @@
                                                 (e.g. "this model requires a subscription, upgrade
                                                 for access: ...") instead of blaming the key; only a
                                                 genuine 401 tells the user to re-enter the key.
+                                                Vision capability (v2026.11.04.10):
+                                                NeAiClient_ModelHasVision(model, &hasVision) POSTs
+                                                /api/show (cloud = ollama.com + key, else localhost)
+                                                and scans the "capabilities" array for "vision",
+                                                cached per model. The AI shell uses it to decide
+                                                whether to send a pasted image DIRECTLY (vision model)
+                                                or to describe-then-answer (non-vision/undetermined).
+                                                Reasoning models: streamed "thinking" chunks are now
+                                                routed to a HIDDEN buffer (both the curl/local and
+                                                WinHTTP/cloud paths) and only promoted to the reply as
+                                                a fallback if "response" was empty — so a model's
+                                                chain-of-thought never leaks into the answer (which
+                                                also used to corrupt code fences).
 
   ne_projects.h / ne_projects.cpp               AI project (workspace) store and scanner.
                                                 Reuses the shared SQLite handle from
@@ -1040,6 +1053,35 @@
                                                 ShellExecuteW so the browser comes to the front;
                                                 a plain click still selects text). Full gotchas in
                                                 API_INTERNALS\API\tooltip_API.txt section 20.
+                                                Image understanding (v2026.11.04.10 MILESTONE): a
+                                                pasted image is understood by ANY selected model.
+                                                The send worker calls NeAiClient_ModelHasVision on
+                                                the answer model: a vision model gets the image
+                                                directly; a non-vision/undetermined model gets a
+                                                describe-then-answer (a vision DESCRIBER turns the
+                                                image into text that is injected, text-only, into
+                                                the prompt). The describer is the "ai.vision_model_
+                                                cloud" override or AUTO-DISCOVERED from the user's
+                                                cloud models by capability (Ai_PickVisionDescriber)
+                                                — no model name is hardcoded (cloud tags perish).
+                                                A text model is never handed a raw image (no
+                                                hallucinated descriptions); describe failure surfaces
+                                                AI_VISION_NO_MODEL / AI_VISION_FAILED, never a blind
+                                                send. Ai_ExtractInlinePngs makes the query box the
+                                                single source of truth for attached images (RTF
+                                                \pict\pngblip -> base64 at send), so delete/re-paste
+                                                is honoured and stale images can't accumulate. Inline
+                                                images render in the answer pane too (Ai_InsertInlinePng
+                                                lifts ES_READONLY around EM_STREAMIN). Query-history
+                                                keeps each entry's image (s_aiInputHistoryImages),
+                                                persisted in the DB as one compact 0x1E/0x1F blob
+                                                ("ai.history.images"); history limit 100; load-once
+                                                per process. AI window Project menu mirrors the editor
+                                                (active project in the title bar) and the AI window +
+                                                toolbar button use AI-icon.png (Ai_MakeWindowIcon;
+                                                see icon_INTERNALS.txt S9). Full notes in
+                                                API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt
+                                                (v2026.11.04.10 section).
                                                 Project suggestion mode: when a project
                                                 (ne_projects) is active, Ai_BuildProjectContext
                                                 prepends a bounded suggestion-mode context —

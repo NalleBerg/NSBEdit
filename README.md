@@ -3,7 +3,7 @@
 
 # NSBEdit
 
-A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.10.05.09**
+A lightweight, standalone RTF notepad and programming editor for Windows. **v2026.11.04.10**
 
 
 ## Download
@@ -16,7 +16,11 @@ Just grab **[NSBEdit.exe](NSBEdit.exe)** — no installer, no extra files, no de
 
 - **AI: project-file search that works, with feedback — plus DuckDuckGo web search** — the AI's project search now finds **plain words** in your question (not just code identifiers), so asking for *all URLs/emails/IPs/TODOs* returns the **real, verbatim** matches scanned straight from your files (no invented links). It shows progress on the status line (*searching… scanning N files… done*), says so when **no project is active**, and follows **junctions/symlinks** so linked folders (e.g. a shared `.\MyStyle`) are searched too. Ask naturally about something online and the AI runs a **DuckDuckGo** web search and folds the results into its answer, telling you while it does; a **Search the web (DuckDuckGo)** toggle in the AI window's **Log** menu (remembered between sessions) makes every question also consult the web.
 
-- **AI: paste images into the query (multimodal)** — paste an image straight into the AI query box; it appears inline in the text flow (sized to read, capped ~420&nbsp;px wide) mixed with your typed text, is sent to Ollama in the request's `images` array, stays visible in the query, the answer and every previous answer, and is saved to the database so it is restored next launch. Text-only coding models ignore it; pick a vision model (`llava`, `llama3.2-vision`, `qwen2.5vl`) to have the picture understood.
+- **AI: every model understands a pasted image — even text-only ones (cloud & local)** — paste an image into the AI query box and ask about it. A **vision** model (cloud `deepseek-v4.1-flash`, local `llava`, …) sees it directly; a **text-only** model (`gpt-oss`, `qwen2.5-coder`, …) understands it too because a vision model **describes** it and the description is fed into your question (**describe-then-answer**). NSBEdit auto-detects each model's vision capability via Ollama's `/api/show` — so a text model is **never** handed a raw image (no invented/hallucinated descriptions) — and **auto-discovers** the describer from your own cloud models (no hardcoded, perishable model name). The image renders inline in both the **query box and the answer**, the query box is the single source of truth for what gets sent (paste/delete/re-paste respected), and pasted images are **remembered in history** (Up/PgUp restores them) and **saved in the database** (last 100 queries) so they survive a restart. Reasoning models (`gpt-oss`, `deepseek`) keep their chain-of-thought **out of the answer**, so code blocks render cleanly.
+
+- **AI: Project menu + its own icon** — the AI window has a **Project** menu mirroring the editor (switch/add the active project, shown in the title bar) and its own **AI wordmark icon** on the window and the editor's AI toolbar button.
+
+- **AI: paste images into the query (multimodal)** — paste an image straight into the AI query box; it appears inline in the text flow (sized to read, capped ~420&nbsp;px wide) mixed with your typed text, is sent to Ollama in the request's `images` array, stays visible in the query, the answer and every previous answer, and is saved to the database so it is restored next launch.
 
 - **AI rendering note** — the AI answer now renders the full reply in one page: the query, the prose, and every code block. Fenced code blocks are drawn in a bordered box with Scintilla/Lexilla syntax highlighting mapped from the fence language. Double-click, Ctrl+A, and Ctrl+C are scoped to a single code cell so you copy just the snippet, and a right-click Copy menu is available on each box. The answer pane uses the custom MSB scrollbar on the right instead of the native one.
 

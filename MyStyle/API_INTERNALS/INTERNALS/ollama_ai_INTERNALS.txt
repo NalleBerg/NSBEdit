@@ -643,3 +643,141 @@ v2026.08.26.08 - Query-history navigation both ways + query box auto-focus
     frame only fires when the frame itself gets focus, so clicking the answer pane is
     unaffected.)
 
+
+v2026.11.04.10 - MILESTONE: any model understands an image (vision OR describe-then-
+                 answer, auto-detected); image I/O hardening; images persist in DB;
+                 reasoning hidden; AI-window Project menu + AI icon
+  The headline: a pasted image is now understood by WHATEVER model is selected,
+  cloud or local, WITHOUT the user having to know which models can "see". The two
+  paths and the capability gate that chooses between them:
+
+  1) VISION-CAPABILITY DETECTION (the gate) - ne_ai_client.cpp
+     - NeAiClient_ModelHasVision(model, &hasVision): POST /api/show and scan the
+       JSON "capabilities" array for "vision" (Ai_JsonHasVisionCapability). Cloud
+       models ("-cloud") hit https://ollama.com/api/show with the Authorization:
+       Bearer key; everything else hits localhost:11434/api/show. Result is CACHED
+       per model name (static map+mutex) because capabilities are static; so only
+       the FIRST image send per model pays the round-trip.
+     - Return value is "was it DETERMINED", with hasVision as the out. On an
+       undetermined result the CALLER treats the model as NON-vision (describe) -
+       correctness first: describing always yields a right understanding; sending a
+       raw image to a blind model yields a hallucinated description (the infamous
+       "grayscale tree" where a blue "Tøm" button actually was).
+
+  2) DIRECT vs DESCRIBE-THEN-ANSWER (the two paths) - ollama_ai.cpp worker
+     - Ai_DoSend marks a send "visionDescribe-eligible" when image(s) are attached
+       to a normal (non-chunked) CLOUD send, and hands the worker: visionDescribe
+       (bool), visionModel (user OVERRIDE, usually empty) and visionCandidates (the
+       user's live cloud model list, Ai_CloudModelCandidates). It also sets
+       st->visionActive so Ai_UpdateSpinnerProgress suppresses the fake "Asking
+       Ollama (NN%)" curve while the real describe status shows.
+     - In the SEND WORKER (Ai_StartSendWorker thread), before the answer call:
+         if visionDescribe && images:
+           known = NeAiClient_ModelHasVision(answerModel, &hasVision)
+           if (known && hasVision)  -> leave work.images intact: the answer model
+                                       SEES the image directly (fast path, e.g.
+                                       deepseek-v4.1-flash cloud, llava local).
+           else                     -> DESCRIBE: pick a describer, turn each image
+                                       into text, inject it, drop the raw image.
+     - DESCRIBER SELECTION (NO hardcoded model - this was a hard lesson; cloud model
+       TAGS perish, e.g. deepseek-v4.1-flash-cloud was retired mid-development and a
+       hardcoded describer would have silently broken image support):
+         describer = work.visionModel (profile "ai.vision_model_cloud" override)
+                     OR Ai_PickVisionDescriber(visionCandidates, answerModel)
+       Ai_PickVisionDescriber auto-discovers: it orders the candidate cloud models
+       "looks multimodal first" (name contains vl/vision/llava/gemma/flash/minicpm/
+       moondream/multimodal) to minimise /api/show calls, skips the answer model
+       itself and non-"-cloud" names, and returns the FIRST whose capabilities
+       include "vision". Cached once found (static).
+     - DESCRIBE call: for each image, NeAiClient_AskOllamaStream(describer,
+       describePrompt, NULL, NULL, desc, derr, 0, {oneImage}) - a concise
+       "describe for a developer, transcribe visible text/labels verbatim" prompt.
+       Descriptions are wrapped as [IMAGE n DESCRIPTION]..[END ..] and PREPENDED to
+       work.prompt under a header telling the model to treat them as if it saw the
+       images; then work.images.clear() so only TEXT goes to the answer model.
+     - FAILURE IS VISIBLE, NEVER A BLIND SEND: if no describer is available ->
+       result->error = AI_VISION_NO_MODEL and the send completes with that error;
+       if every describe call fails -> AI_VISION_FAILED + the describer's own error.
+       We never fall through to sending the raw image to a non-vision model.
+     - Status strings: AI_VISION_LOOKING ("Looking at the image...") then
+       AI_VISION_DONE ("Image understood..."), posted via WM_AI_PROGRESS.
+       en_GB only so far (fallback); localise to the 14 langs.
+     - LOCAL non-vision describing (local answer model + local llava describer, with
+       a Y/N install prompt when no local vision model exists) is the next slice -
+       the capability gate and worker already handle local models; only the local
+       describer pick + install flow remain.
+
+  3) IMAGE INPUT IS THE SINGLE SOURCE OF TRUTH - ollama_ai.cpp
+     - Ai_ExtractInlinePngs(hEdit, &out): EM_STREAMOUT SF_RTF the query box, parse
+       each \pict\pngblip group (skip control words/braces, collect hex, decode to
+       PNG bytes, verify the \x89PNG signature) -> base64. This is called at SEND
+       and when capturing a history draft, REPLACING the old append-only
+       st->pendingImages as the authority for "what will be sent". So deleting or
+       re-pasting an image in the box is honoured; stale/duplicate images can no
+       longer accumulate (the old bug: paste A, delete A, paste B -> sent A+B).
+       pendingImages still exists for the inline paste insert but no longer drives
+       the send.
+
+  4) INLINE IMAGE IN THE ANSWER PANE - ollama_ai.cpp
+     - Ai_InsertInlinePng now briefly lifts ES_READONLY around EM_STREAMIN
+       (GetWindowLongPtr GWL_STYLE -> EM_SETREADONLY FALSE, stream, restore). RichEdit
+       SILENTLY DROPS a picture stream-in on a read-only control, which is why the
+       pasted image showed in the (editable) query box but not in the (read-only)
+       answer/conversation pane. One-line-ish fix, fixes both the live echo and
+       Ai_RenderConversation redisplay.
+
+  5) QUERY-HISTORY IMAGES + DB PERSISTENCE - ollama_ai.cpp
+     - s_aiInputHistoryImages is a parallel vector<vector<string>> to
+       s_aiInputHistory; AiWindowState.historyDraftImages holds the unsent draft's
+       images. Ai_HistoryRemember(st, text, images) stores per entry;
+       Ai_HistorySetInput(hwnd, st, text, images, caretTop) restores on PgUp/PgDn -
+       re-inserts the PNG(s) inline AND refills st->pendingImages so a recalled
+       query re-sends multimodal. Ai_HistoryBrowse captures the draft's images via
+       Ai_ExtractInlinePngs (source of truth again).
+     - PERSISTENCE: kAiInputHistoryLimit lowered 500 -> 100. Ai_SaveHistory (called
+       at Send via Ai_SavePrefs) writes the images as ONE compact blob in setting
+       "ai.history.images": records (one per entry, in order) joined by 0x1E, images
+       within a record by 0x1F - neither byte occurs in base64, so no escaping. One
+       write keeps the common "no image" entries tiny; the whole thing lives in the
+       settings DB (no file-system clutter). Ai_LoadHistory parses it back aligned
+       to the text entries. Chosen over a file cache on purpose (user: "less clutter
+       in the file system"); ~100 images max, usually < 50.
+     - LOAD ONCE PER PROCESS: Ai_LoadHistory has a static s_loaded guard. The AI
+       window can be closed/reopened while the editor runs; on reopen we KEEP the
+       in-memory history (incl. images) instead of reloading text-and-losing-images.
+       (Pre-DB-persistence this was the fix for "image gone after reopen"; with the
+       DB blob it also means we don't re-parse the blob on every reopen.)
+
+  6) REASONING MODELS - KEEP CHAIN-OF-THOUGHT OUT OF THE ANSWER - ne_ai_client.cpp
+     - Reasoning models (gpt-oss, deepseek, ...) stream their analysis in a separate
+       "thinking" field and the final answer in "response". We now route "thinking"
+       to a HIDDEN buffer (thinkingOnly) in BOTH transports (the curl/local
+       OllamaStreamState callback + leftover handler, and the WinHTTP cloud loop),
+       and only PROMOTE it to the visible reply as a FALLBACK if "response" was empty.
+       Before, thinking was appended to the answer -> the model's "We need to answer
+       plainly... Let's respond with code." preamble leaked in AND ran into the
+       ```lang fence (no longer at line start) so code blocks stopped rendering.
+       Both fixed by hiding thinking.
+
+  7) CLOUD FALLBACK NO LONGER HITS LOCALHOST - ollama_ai.cpp worker
+     - The missing-model fallback is now gated `modelMissing && !work.fallback.empty()
+       && fallback != model`. In CLOUD mode work.fallback is empty, so a failed cloud
+       model (e.g. retired/renamed) surfaces the REAL cloud error (often the daemon's
+       own "not found. Try <model>" suggestion) instead of silently retrying an empty
+       model name on localhost:11434 and reporting "could not connect to localhost".
+
+  8) AI-WINDOW PROJECT MENU + AI ICON - ollama_ai.cpp / NSBEdit.cpp
+     - Project menu (mirrors the editor; shared NeProjects_GetActiveId/SetActiveId):
+       IDM_AI_PROJECT_NONE/ADD (2400/2401) + dynamic IDM_AI_PROJECT_BASE (2500..2599)
+       in Ai_BuildMenu (a "Project" popup between Cloud and Log), handled in Ai_WndProc
+       (switch by index / set 0 / Ai_PickFolder+NeProjects_Add). Active project is
+       shown in the AI window title bar (Ai_RefreshUi). IDs chosen ABOVE the dynamic
+       model-menu range (which starts at IDM_AI_MODEL_DEFAULT=1901 and climbs) to
+       avoid WM_COMMAND collisions.
+     - AI icon: Ai_MakeWindowIcon/Ai_GetWindowIcon{Big,Small} build a square HICON
+       from AI-icon.png (aspect-fit into a transparent square; see
+       icon_INTERNALS.txt S9). Wired as the AI window class/WM_SETICON (fallback to
+       the app icon). Editor toolbar: Ne_GetOllamaButtonImage loads AI-icon.png,
+       Ne_LayoutToolbar widens the slot for the ~2:1 wordmark, and the owner-draw
+       aspect-fits it. pack.ps1 + _doinstall.ps1 ship AI-icon.png.
+

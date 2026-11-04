@@ -1,29 +1,141 @@
 NSBEdit handover notes
-Written: 2026-06-28
+Written: 2026-11-03 (end of a long session)
+Current version: 2026.10.05.09 base (we rolled back to milestone 1db77c2 today)
+Build: makeit.bat (MinGW g++ at C:\mingw64) -> pack.ps1 -> zip\
 
-Current status
-- The AI answer now renders in a single RichEdit page and the visible layout is close to the target.
-- The query, the prose before the first code block, the first code block, and the Copy code header are all rendering again.
-- The code block spacing was just tuned with extra blank lines before the code preamble, and that change is stable.
-- The remaining visible problem is scrolling: the rendered page still does not properly track content height with the scrollbar, and the live streaming surface should not show scrolling at all.
-- The next safe step is to finish the scroll behavior separately from the render ordering so the page can be checked all the way to the bottom without disturbing the achieved layout.
+=====================================================================
+BIG PICTURE / GOAL
+- The AI must UNDERSTAND a pasted image, both in CLOUD and LOCAL mode.
+- Vision models (cloud deepseek-v4.1-flash, local llava:7b) already see
+  images DIRECTLY.
+- NON-vision / text-only models (cloud gpt-oss, deepseek-v4-pro, local
+  qwen2.5-coder, ...) must understand images via DESCRIBE-THEN-ANSWER: a
+  vision model describes the image to text, the text is injected into the
+  prompt, and only text is sent to the answer model. (Ai-europe.txt.txt pt 4)
+- MUST auto-detect vision vs non-vision models (via /api/show) so a text
+  model NEVER gets a raw image (that caused hallucinations - the "tree" and
+  "Click Me" wrong answers today).
+- MUST NOT hardcode a describer model name (they get retired - see below).
+=====================================================================
 
-What was fixed in this session
-- The build still succeeds with the current changes.
-- The render path now shows the query, the text before the first code block, and the first code block in the final page.
-- The Copy code affordance remains visible on the code block.
-- The code spacing and the small blank-line separation before the code preamble are working.
+THE BIG LESSON OF TODAY (why we rolled back)
+- The multi-MINUTE "lag" at "Image understood" / on every query was NOT our
+  code. The cloud model deepseek-v4.1-flash-CLOUD was RETIRED/flaky on
+  ollama.com (it even replied "model not found. Try glm-5.3-flash:cloud").
+  The fix was to pick a CURRENT cloud model (deepseek-v4.1-flash:1017-cloud
+  works and is instant). Lesson: cloud model names/tags perish -> never
+  hardcode one; detect/auto-pick instead.
+- We rolled main back from the messy WIP (c39a358) to the clean milestone
+  1db77c2 and re-added the good pieces ONE TESTED STEP AT A TIME, pushing
+  after each. ALL the old vision work is preserved on branch
+  origin/vision-wip-2026-11-03 (diff/cherry-pick from there if useful).
 
-What needs fixing next
-- Disable scrolling during streaming and remove the dormant scrollbar from the live streaming pane.
-- Make the rendered RichEdit scrollbar actually track the document height so the bottom of the answer can be reached.
-- Keep the current render order intact while fixing scrolling; do not reintroduce the earlier child-box layout.
-- After the scroll behavior is corrected, then refresh the release notes, version stamp, README, and API list together.
+WORKFLOW RULE (user preference - follow it)
+- One small step at a time, test in the running app, then git push. Keep
+  every rollback short.
 
-Suggested continuance
-- Resume in ollama_ai.cpp from the answer-host scroll handling and the RichEdit attachment points.
-- Keep the renderer itself stable; only touch the scroll behavior needed to make the bottom reachable.
-- After that, do the release/version/documentation refresh in one pass.
+GIT STATE
+- origin/main = eebb620  (last PUSHED, all green/tested):
+    1db77c2  clean milestone (URLs, web search, project/file search)
+    55d478b  image renders in the ANSWER window (lift ES_READONLY around the
+             inline-PNG EM_STREAMIN)
+    40ab336  Project menu in the AI window (mirrors editor; shared DB state;
+             active project shown in title bar)
+    68f472d  AI icon restored: AI-icon.png for the AI window icon + editor
+             toolbar AI button (aspect-fit wordmark); shipped in pack.ps1 /
+             _doinstall.ps1
+    eebb620  image sync fix: the INPUT BOX is the single source of truth -
+             at send time we EXTRACT the PNGs actually embedded in the input
+             (EM_STREAMOUT RTF -> parse \pict\pngblip -> base64), so
+             delete/re-paste is respected and stale images can't accumulate.
+- Preservation branch: origin/vision-wip-2026-11-03 (all prior vision work).
 
-Release notes
-- MyStyle remains the main documentation tree for API_INTERNALS/API work.
+WHAT WORKS NOW (verified in the app today)
+- Paste image -> renders in the INPUT box AND in the ANSWER conversation.
+- PgUp/PgDn history restores the image (in-memory parallel list
+  s_aiInputHistoryImages; not persisted).
+- Delete/re-paste images: only what is visually in the input gets sent.
+- Cloud VISION model (deepseek-v4.1-flash:1017-cloud) describes images,
+  instant.
+- Local VISION model (llava:7b) describes images directly (~15-30s).
+- Project menu + AI icon both good.
+
+IN PROGRESS - UNCOMMITTED - DO FIRST TOMORROW
+Cloud DESCRIBE-THEN-ANSWER with AUTO-DETECT (no hardcoded describer):
+  Files touched (uncommitted): ne_ai_client.cpp/.h, ollama_ai.cpp, locale/en_GB.txt
+  - ne_ai_client: NeAiClient_ModelHasVision(model,&hasVision) - POSTs
+    /api/show (cloud=ollama.com+apiKey, local=localhost:11434), parses the
+    "capabilities" array for "vision", cached per model. (+#include <map>)
+  - ollama_ai.cpp:
+      * Ai_CloudVisionOverride() -> profile "ai.vision_model_cloud" or EMPTY
+        (no hardcoded default).
+      * Ai_PickVisionDescriber(candidates, excludeAnswerModel) -> auto-pick
+        first cloud model whose /api/show says "vision" (names that look
+        multimodal checked first; cached). Candidates come from
+        Ai_CloudModelCandidates() (the user's live cloud list).
+      * AiSendWorkItem: visionDescribe(bool), visionModel(override),
+        visionCandidates(vector). Ai_StartSendWorker params updated + both
+        call sites.
+      * Worker logic: if visionDescribe && images:
+          - NeAiClient_ModelHasVision(answerModel)
+          - KNOWN vision  -> send image directly (fast)
+          - non-vision/UNKNOWN -> describer = override || auto-pick;
+              if no describer -> ERROR AI_VISION_NO_MODEL (never blind-send)
+              describe each image; if all fail -> ERROR AI_VISION_FAILED+err
+              else inject [IMAGE n DESCRIPTION] text, clear images, send text.
+      * AiWindowState.visionActive suppresses the fake "Asking Ollama (NN%)"
+        spinner while describing (reset in Ai_EndBusyState).
+      * Ai_DoSend sets visionDescribe = images && !chunked && cloudMode.
+  - locale/en_GB.txt new keys: AI_VISION_LOOKING, AI_VISION_DONE,
+    AI_VISION_NO_MODEL, AI_VISION_FAILED (English only so far).
+  STATUS: compile-check at end of session BUILT CLEAN (0 errors). The code is
+  UNCOMMITTED but compiles. Install and TEST first thing:
+    * answer model = gpt-oss:120b-cloud (non-vision) + paste image -> should
+      show "Looking at the image..." then "Image understood..." then a
+      CORRECT answer about the image (describer auto-picked). No tree/Click-Me
+      hallucination.
+    * answer model = deepseek-v4.1-flash:1017-cloud (vision) -> image sent
+      DIRECT (no describe), still instant.
+    * If it says AI_VISION_NO_MODEL / AI_VISION_FAILED: the auto-pick found no
+      usable cloud vision model on this account - note which cloud models the
+      account actually has and we set the describer/candidate logic to match.
+  When it works -> PUSH.
+
+NEXT STEPS (in order)
+1. Finish + test + PUSH the cloud describe-then-answer above.
+2. TRANSLATE the new locale keys to ALL 14 languages (currently English-only
+   in en_GB.txt): AI_VISION_LOOKING, AI_VISION_DONE, AI_VISION_NO_MODEL,
+   AI_VISION_FAILED. (Locale files: locale/*.txt - 14 langs; en_GB is the
+   fallback/reference.) <-- user asked for this explicitly.
+3. LOCAL describe-then-answer: non-vision LOCAL answer models describe via a
+   LOCAL vision model (llava:7b). If NO local vision model is installed, ASK
+   the developer (Y/N) to install one, then pull it (show download % in the
+   spinner) and describe. (The vision-wip branch has this install-prompt code
+   - Ai_LocalVisionModelName, Ai_IsModelInstalled, NeAiClient_PullOllamaModel,
+   Ai_VisionPullProgress/s_visionLayers - port from there.)
+4. Optional polish: a "Vision model" picker menu so the user can choose the
+   describer explicitly; make Stop abort an in-progress describe/pull.
+
+KEY FILES / ANCHORS
+- ollama_ai.cpp:
+    Ai_ExtractInlinePngs (~line 330) - RTF image extraction (source of truth).
+    Ai_CloudVisionOverride / Ai_PickVisionDescriber (~line 1164).
+    AiSendWorkItem (~line 494); Ai_StartSendWorker (~line 3716); worker vision
+    describe block (~line 3895, after the chunked return); Ai_DoSend vision
+    eligibility + dispatch (~line 5940/6005).
+    History-image: s_aiInputHistoryImages, Ai_HistorySetInput,
+    Ai_HistoryRemember, Ai_HistoryBrowse (~line 490/826/900).
+    Project menu: IDM_AI_PROJECT_* (71-73=2400/2401/2500), Ai_PickFolder,
+    Ai_BuildMenu project submenu, WndProc handlers.
+    AI icon: Ai_MakeWindowIcon/Ai_GetWindowIcon{Big,Small}; wired at AI window
+    creation (NSBEditAIWindow class) + NSBEdit.cpp toolbar (Ne_GetOllamaButtonImage
+    loads AI-icon.png, Ne_LayoutToolbar wider slot, owner-draw aspect-fit).
+- ne_ai_client.cpp/.h: NeAiClient_ModelHasVision (/api/show capability + cache).
+
+MODELS ON HAND (ollama list)
+- Local: qwen2.5-coder:3b, qwen2.5-coder:7b, qwen3-coder:latest,
+  deepseek-coder-v2:latest, llama3.2:latest (all text-only), llava:7b (VISION).
+- Cloud (account): deepseek-v4.1-flash:1017-cloud (VISION, instant),
+  deepseek-v4-pro:0813-cloud (text-only), gpt-oss:120b-cloud (text-only),
+  qwen3-coder:480b-cloud, etc. qwen3-vl:235b-cloud was NOT usable (tried as a
+  describer default and failed) - hence auto-pick instead of hardcoding.
