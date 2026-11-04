@@ -70,9 +70,12 @@ bool NeAiClient_PullOllamaModel(const std::wstring& model, void* context,
 // Deletes a locally-installed Ollama model (DELETE /api/delete). Returns true on
 // HTTP 200; on failure outError holds a short reason (e.g. model not found).
 bool NeAiClient_DeleteOllamaModel(const std::wstring& model, std::wstring& outError);
+// temperature < 0 leaves the sampling temperature unset (model default). Pass
+// 0.0 for a deterministic, low-hallucination reply (used by the image describer).
 bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& prompt,
 	void* context, NeAiOllamaChunkFn onChunk, std::wstring& outReply, std::wstring& outError,
-	int numCtx = 0, const std::vector<std::string>& images = std::vector<std::string>());
+	int numCtx = 0, const std::vector<std::string>& images = std::vector<std::string>(),
+	double temperature = -1.0);
 bool NeAiClient_AskOllama(const std::wstring& model, const std::wstring& prompt,
 	std::wstring& outReply, std::wstring& outError, int numCtx = 0);
 

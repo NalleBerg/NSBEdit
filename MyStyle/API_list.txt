@@ -1081,12 +1081,14 @@
                                                 toolbar button use AI-icon.png (Ai_MakeWindowIcon;
                                                 see icon_INTERNALS.txt S9). LOCAL non-vision models
                                                 (v2026.11.04.12) describe via a LOCAL vision model
-                                                (llava); the first time none is installed a Y/N
-                                                MessageBox offers to pull it (install % in the
-                                                spinner), decline sends text-only. The describe call
-                                                caps num_ctx at 2048 so the vision model fits in VRAM
-                                                on a modest GPU instead of spilling to the CPU. Full
-                                                notes in
+                                                (default qwen2.5vl:7b since v2026.11.04.15, was
+                                                llama3.2-vision whose mllama arch no longer loads on
+                                                current Ollama -> HTTP 500); the first time none is
+                                                installed a Y/N MessageBox offers to pull it (install
+                                                % in the spinner), decline sends text-only. The
+                                                describe call caps num_ctx at 2048 (and temperature 0)
+                                                so the vision model fits in VRAM on a modest GPU
+                                                instead of spilling to the CPU. Full notes in
                                                 API_INTERNALS\INTERNALS\ollama_ai_INTERNALS.txt
                                                 (v2026.11.04.10 section).
                                                 Project suggestion mode: when a project

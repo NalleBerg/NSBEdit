@@ -231,6 +231,10 @@ Visual Appearance:
   - Animation: 60ms per frame (~16 FPS, smooth)
 
 Layout:
+  - NOTE: the fixed coordinates below are the original design; the dialog now
+    SIZES ITSELF DYNAMICALLY to the message via the measure-then-create pattern
+    (LayoutForText) so any locale's text fits. See the emoji-width caveat under
+    TROUBLESHOOTING.
   - Icon: Top center at (150, 20), 100×100
   - Text: Below icon at (20, 130), 360×30
   - Spinner: Bottom at (150, 170), 100×60
@@ -344,6 +348,18 @@ A: Always delete the SpinnerDialog object:
    delete spinner;
    spinner = nullptr;
 
+Q: Status text is clipped, right-shifted, or overlaps the icon?
+A: The dialog auto-sizes to the text (measure-then-create), but a leading
+   EMOJI/symbol (👁 🔎 🌐 ⬇ ✓) is the trap: the classic Win32 STATIC control
+   renders emoji with the WIDE colour-emoji font, while GDI's text-measurement
+   APIs (GetTextExtentPoint32W and DrawTextW alike) fall back to a NARROW
+   monochrome glyph. The measured width is then smaller than the rendered width,
+   so the window is sized too small and the centred line is pushed off / clipped.
+   Fix (Spinner_MeasureTextWidth): measure with DrawTextW + DT_CALCRECT and add
+   one font-cell of width slack per emoji/symbol glyph (surrogate pairs plus the
+   BMP ranges U+2190..U+2BFF, excluding the em-dash U+2014 and ellipsis U+2026).
+   This over-sizes harmlessly so the full line always fits, in any language.
+
 
 EXAMPLE PROJECT STRUCTURE
 --------------------------
@@ -375,6 +391,11 @@ SpinnerDialog vs. Hourglass Cursor:
 
 VERSION HISTORY
 ---------------
+v1.1 (2026-11-04)
+  - Dynamic measure-then-create sizing fits any locale's text.
+  - Emoji/symbol width slack so a leading emoji in the status text can no longer
+    clip or overlap the layout (see TROUBLESHOOTING).
+
 v1.0 (2026-02-03)
   - Initial extraction from WinProgramManager startup loading dialog
   - C++ class-based API

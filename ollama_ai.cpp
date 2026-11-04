@@ -514,7 +514,7 @@ struct AiSendWorkItem {
     bool visionDescribe = false;
     std::wstring visionModel;                   // optional describer override
     std::vector<std::wstring> visionCandidates; // cloud models to auto-pick a describer from
-    bool installVision = false;                 // pull visionModel first (local llava) before describing
+    bool installVision = false;                 // pull visionModel first (local llama3.2-vision) before describing
 };
 
 struct AiModelCheckState {
@@ -1217,13 +1217,16 @@ static std::wstring Ai_PickVisionDescriber(const std::vector<std::wstring>& cand
 
 // Local vision model used to DESCRIBE images when the selected LOCAL answer model
 // has no vision capability.  Overridable via the profile setting
-// "ai.vision_model"; defaults to llava:7b (what the installer offers to pull).
+// "ai.vision_model"; defaults to qwen2.5vl:7b — a strong OCR-capable reader (what
+// the installer offers to pull) that reads on-screen text far more reliably than
+// the older llava:7b, and that loads on current Ollama engines (unlike the older
+// llama3.2-vision, whose "mllama" architecture fails to load on newer builds).
 static std::wstring Ai_LocalVisionModelName()
 {
     std::string v;
-    if (NeProfiles_GetStrSetting("ai.vision_model", "llava:7b", v) && !v.empty())
+    if (NeProfiles_GetStrSetting("ai.vision_model", "qwen2.5vl:7b", v) && !v.empty())
         return Ai_Utf8ToWide(v);
-    return L"llava:7b";
+    return L"qwen2.5vl:7b";
 }
 
 // True when a model (by exact name or its base name before ':') is present in the
@@ -3239,6 +3242,10 @@ static const std::vector<AiPopularModel>& Ai_PopularModelCandidates()
         { L"gemma3:latest",            L"~3.3 GB" },
         { L"phi4:latest",              L"~9.1 GB" },
         { L"llava:latest",             L"~4.7 GB" },
+        { L"qwen2.5vl:7b",             L"~6.0 GB" },
+        { L"qwen2.5vl:3b",             L"~3.2 GB" },
+        { L"llama3.2-vision:11b",      L"~7.8 GB" },
+        { L"llama3.2-vision:latest",   L"~7.8 GB" },
     };
     return list;
 }
@@ -4051,9 +4058,12 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
                 postProgress(Ne_Ls(L"AI_VISION_LOOKING"));
                 const std::wstring describePrompt =
                     L"Describe this image concisely for a developer in one short paragraph. "
-                    L"State what it shows, transcribe any key visible text or UI labels verbatim, "
-                    L"and note the main UI elements, shapes and colours. Be factual and brief — "
-                    L"do not pad or speculate.";
+                    L"State only what is actually visible: the main UI elements, shapes and "
+                    L"colours. Transcribe on-screen text ONLY when you can read it clearly and "
+                    L"character for character; if any text is small, blurry or uncertain, do "
+                    L"NOT guess it — say \"some text is not legible\" instead. Never invent "
+                    L"words, labels, messages or details that are not plainly there. Be "
+                    L"factual and brief — do not pad or speculate.";
                 std::wstring descBlock, lastErr;
                 int described = 0;
                 // A single-image description needs only a small context (the image
@@ -4062,12 +4072,18 @@ static void Ai_StartSendWorker(HWND hwnd, std::wstring prompt, std::wstring mode
                 // the CPU on a modest GPU (e.g. an 8 GB laptop card) — the cause of
                 // a multi-minute local describe.  Cap it so the model fits in VRAM.
                 const int kVisionDescribeCtx = 2048;
+                // Temperature 0: greedy, deterministic decoding so a weak local
+                // vision model (e.g. llava:7b) cannot "creatively" invent or
+                // misread on-screen text — the main source of described-image
+                // hallucination.
+                const double kVisionDescribeTemp = 0.0;
                 for (const std::string& img : work.images) {
                     if (NeAiClient_IsCancelRequested()) break;
                     std::wstring desc, derr;
                     std::vector<std::string> one{ img };
                     if (NeAiClient_AskOllamaStream(describer, describePrompt, NULL, NULL,
-                                                   desc, derr, kVisionDescribeCtx, one) && !desc.empty()) {
+                                                   desc, derr, kVisionDescribeCtx, one,
+                                                   kVisionDescribeTemp) && !desc.empty()) {
                         while (!desc.empty() && (desc.back() == L'\n' || desc.back() == L'\r'
                                || desc.back() == L' ')) desc.pop_back();
                         ++described;
@@ -6124,7 +6140,7 @@ static void Ai_DoSend(HWND hwnd)
             if (known && answerHasVision) {
                 visionDescribe = false;   // e.g. llava as the answer model → send image direct
             } else {
-                std::wstring localVision = Ai_LocalVisionModelName();   // llava:7b
+                std::wstring localVision = Ai_LocalVisionModelName();   // qwen2.5vl:7b
                 if (Ai_IsModelInstalled(localVision)) {
                     visionOverride = localVision;
                 } else {

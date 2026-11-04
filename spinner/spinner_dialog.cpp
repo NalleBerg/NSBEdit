@@ -16,18 +16,50 @@ static HFONT Spinner_CreatePointFont(HWND hwnd, int ptSize, const wchar_t* face)
         CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, face);
 }
 
+// Count emoji / symbol glyphs that GDI measures narrow (monochrome fallback) but
+// the STATIC control renders wide (colour-emoji font).  Status strings start with
+// 👁 🔎 🌐 ⬇ ✓ etc.; each needs extra width slack so the sized window is never too
+// narrow (which clipped the text and pushed it behind the icon).  Counts
+// surrogate-pair code points plus the BMP symbol/arrow/dingbat ranges, and skips
+// the em-dash (U+2014) and ellipsis (U+2026) used in the same strings.
+static int Spinner_CountWideGlyphs(const std::wstring& text)
+{
+    int n = 0;
+    for (size_t i = 0; i < text.size(); ++i) {
+        wchar_t c = text[i];
+        if (c >= 0xD800 && c <= 0xDBFF) {          // high surrogate → emoji
+            ++n;
+            if (i + 1 < text.size()) ++i;           // skip the low surrogate
+        } else if (c >= 0x2190 && c <= 0x2BFF) {    // arrows, symbols, dingbats
+            ++n;
+        }
+    }
+    return n;
+}
+
 static int Spinner_MeasureTextWidth(HWND hwnd, const std::wstring& text)
 {
     HDC hdc = GetDC(NULL);
     if (!hdc) return 0;
     HFONT hf = Spinner_CreatePointFont(hwnd, 12, L"Segoe UI");
     HFONT old = hf ? (HFONT)SelectObject(hdc, hf) : NULL;
-    SIZE sz = {};
-    GetTextExtentPoint32W(hdc, text.c_str(), (int)text.size(), &sz);
+    // Measure with DrawTextW + DT_CALCRECT (the canonical measure-then-create
+    // path, matching the height helper and the STATIC control's own rendering).
+    // No DT_SINGLELINE / DT_WORDBREAK so the width is the widest explicit
+    // (\r\n-delimited) line.
+    RECT rc = { 0, 0, 10000, 0 };
+    DrawTextW(hdc, text.c_str(), -1, &rc, DT_CALCRECT | DT_NOPREFIX);
+    TEXTMETRICW tm = {};
+    GetTextMetricsW(hdc, &tm);
     if (old) SelectObject(hdc, old);
     if (hf) DeleteObject(hf);
     ReleaseDC(NULL, hdc);
-    return sz.cx;
+    int w = rc.right - rc.left;
+    // Colour-emoji glyphs render wider than GDI measures them; add one font cell
+    // of slack per emoji/symbol so the window is always wide enough.
+    int cell = tm.tmHeight > 0 ? tm.tmHeight : 20;
+    w += Spinner_CountWideGlyphs(text) * cell;
+    return w > 0 ? w : 0;
 }
 
 static int Spinner_MeasureTextHeight(HWND hwnd, const std::wstring& text, int maxWidth)

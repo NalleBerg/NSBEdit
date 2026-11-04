@@ -1048,10 +1048,27 @@ static std::string Ai_BuildImagesJson(const std::vector<std::string>& images)
     return j;
 }
 
+// Build the ",\"options\":{...}}" tail that closes the request body. Always sets
+// num_ctx; adds temperature only when >= 0 (so the model default is kept when the
+// caller passes a negative value). Deterministic (temperature 0) is used by the
+// image describer to curb hallucinated/guessed on-screen text.
+static std::string Ai_BuildOptionsJson(int ctx, double temperature)
+{
+    std::string o = ",\"options\":{\"num_ctx\":" + std::to_string(ctx);
+    if (temperature >= 0.0) {
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%.3g", temperature);
+        o += ",\"temperature\":";
+        o += buf;
+    }
+    o += "}}";
+    return o;
+}
+
 static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& prompt,
     const std::wstring& apiKey, void* context, NeAiOllamaChunkFn onChunk,
     std::wstring& outReply, std::wstring& outError, int numCtx,
-    const std::vector<std::string>& images)
+    const std::vector<std::string>& images, double temperature)
 {
     outReply.clear();
     outError.clear();
@@ -1062,8 +1079,8 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
         "\",\"prompt\":\"" +
         Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
         "\"" + Ai_BuildImagesJson(images) +
-        ",\"stream\":true,\"think\":false"
-        ",\"options\":{\"num_ctx\":" + std::to_string(ctx) + "}}";
+        ",\"stream\":true,\"think\":false" +
+        Ai_BuildOptionsJson(ctx, temperature);
 
     HINTERNET hSession = WinHttpOpen(L"NSBEdit/AI", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
         WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
@@ -1174,7 +1191,7 @@ static bool Ai_CloudAskStream(const std::wstring& model, const std::wstring& pro
 
 bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& prompt,
     void* context, NeAiOllamaChunkFn onChunk, std::wstring& outReply, std::wstring& outError,
-    int numCtx, const std::vector<std::string>& images)
+    int numCtx, const std::vector<std::string>& images, double temperature)
 {
     outReply.clear();
     outError.clear();
@@ -1186,7 +1203,7 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
     {
         std::wstring apiKey = Ai_GetCloudApiKey();
         if (!apiKey.empty() && model.find(L"-cloud") != std::wstring::npos) {
-            return Ai_CloudAskStream(model, prompt, apiKey, context, onChunk, outReply, outError, numCtx, images);
+            return Ai_CloudAskStream(model, prompt, apiKey, context, onChunk, outReply, outError, numCtx, images, temperature);
         }
     }
 
@@ -1207,8 +1224,8 @@ bool NeAiClient_AskOllamaStream(const std::wstring& model, const std::wstring& p
         "\",\"prompt\":\"" +
         Ai_EscapeJson(Ai_WideToUtf8(prompt)) +
         "\"" + Ai_BuildImagesJson(images) +
-        ",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\""
-        ",\"options\":{\"num_ctx\":" + std::to_string(ctx) + "}}";
+        ",\"stream\":true,\"think\":false,\"keep_alive\":\"30m\"" +
+        Ai_BuildOptionsJson(ctx, temperature);
 
     std::string responseBody;
     char errbuf[CURL_ERROR_SIZE] = {};
